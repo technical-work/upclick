@@ -1127,5 +1127,20 @@ export const ARTEXT = {
   "Cancelled": "ملغي",
   "Draft": "مسودة",
   "Ready": "جاهز",
-  "Free tier": "مجاني"
+  "Free tier": "مجاني",
+  "AI Growth Intel": "ذكاء النمو الاصطناعي",
+  "Social Trends": "الترندات الاجتماعية",
+  "Grow": "النمو",
+  "Marketing Lab": "مختبر التسويق",
+  "Creator": "صناع المحتوى",
+  "Build": "البناء",
+  "Automation Hub": "مركز الأتمتة",
+  "Creator Hub": "مركز صناع المحتوى",
+  "Bio Link": "رابط السيرة",
+  "Niche & Brand Studio": "استوديو النيش والبراند",
+  "Design Studio": "استوديو التصميم",
+  "Calendar": "التقويم",
+  "Finance": "المالية",
+  "Team": "الفريق",
+  "Team Chat": "دردشة الفريق"
 };

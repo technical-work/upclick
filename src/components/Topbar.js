@@ -14,7 +14,8 @@ export default function Topbar() {
     currency,
     setCurrency,
     t,
-    setAiPanelOpen
+    setAiPanelOpen,
+    setMobileMenuOpen
   } = useBusiness();
 
   const [currOpen, setCurrOpen] = useState(false);
@@ -59,6 +60,9 @@ export default function Topbar() {
 
   return (
     <div id="tb">
+      <button className="tb-menu-toggle" onClick={() => setMobileMenuOpen(true)}>
+        ☰
+      </button>
       <div className="tb-breadcrumb">
         <span className="bc-section" id="tb-section">
           {t(meta.section)}
@@ -135,56 +139,20 @@ export default function Topbar() {
           )}
         </div>
 
-        {/* Theme Selector */}
-        <div className={`theme-sel ${themeOpen ? 'open' : ''}`} ref={themeRef}>
+        {/* Theme Switcher */}
+        <div className="lang-sw">
           <button
-            className="theme-pill"
-            onClick={(e) => {
-              e.stopPropagation();
-              setThemeOpen(!themeOpen);
-              setCurrOpen(false);
-            }}
+            className={`lang-btn ${theme === 'dark' ? 'on' : ''}`}
+            onClick={() => setTheme('dark')}
           >
-            <div
-              className="theme-dot"
-              style={{
-                background:
-                  theme === 'dark' || theme === 'light'
-                    ? '#FF6B35'
-                    : theme === 'neon'
-                    ? '#00F0B4'
-                    : '#b060ff'
-              }}
-            ></div>
-            <span id="theme-label">{t(currentThemeOpt.label)}</span> ▾
+            {t('Dark', 'داكن')}
           </button>
-          {themeOpen && (
-            <div className="theme-menu" id="theme-menu">
-              {themeOptions.map((opt) => (
-                <div
-                  key={opt.key}
-                  className={`th-item ${opt.key === theme ? 'on' : ''}`}
-                  onClick={() => {
-                    setTheme(opt.key);
-                    setThemeOpen(false);
-                  }}
-                  id={`ti-${opt.key}`}
-                >
-                  <div
-                    className="th-swatch"
-                    style={{
-                      background: opt.swatch,
-                      boxShadow: opt.glow ? opt.glow : 'none'
-                    }}
-                  ></div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '12px' }}>{opt.label}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)' }}>{t(opt.desc)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <button
+            className={`lang-btn ${theme === 'light' ? 'on' : ''}`}
+            onClick={() => setTheme('light')}
+          >
+            {t('Light', 'فاتح')}
+          </button>
         </div>
 
         {/* AI assistant toggle icon */}

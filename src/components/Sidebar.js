@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useBusiness } from '../context/BusinessContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
   const {
@@ -10,10 +11,13 @@ export default function Sidebar() {
     setCurrentPage,
     GC,
     t,
-    setAiPanelOpen
+    setAiPanelOpen,
+    mobileMenuOpen
   } = useBusiness();
 
+  const { logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const isRtl = lang === 'ar';
 
   // Compute badges
   const hotLeads = GC.crm.leads.filter(l => l.stage === 'qualified' || l.stage === 'proposal').length;
@@ -35,22 +39,24 @@ export default function Sidebar() {
       items: [
         { page: 'crm', label: 'Smart CRM', icon: '🎯', badge: hotLeads },
         { page: 'whatsapp', label: 'WhatsApp Hub', icon: '💬' },
+        { page: 'strategy', label: 'Strategy Lab', icon: '🧠' }
+      ]
+    },
+    {
+      title: 'Marketing Lab',
+      items: [
         { page: 'marketing', label: 'Marketing OS', icon: '📣', id: 'sb-marketing' },
-        { page: 'revenue', label: 'Revenue Hub', icon: '💰' }
-      ]
-    },
-    {
-      title: 'Discover',
-      items: [
-        { page: 'ai-growth', label: 'AI Growth Intel', icon: '🔮' },
-        { page: 'tiktok-trends', label: 'Social Trends', icon: '📡' }
-      ]
-    },
-    {
-      title: 'Create',
-      items: [
         { page: 'content', label: 'Content Hub', icon: '✦' },
+        { page: 'automation', label: 'Automation Hub', icon: '⚡' },
+        { page: 'ai-growth', label: 'AI Growth Intel', icon: '🔮' }
+      ]
+    },
+    {
+      title: 'Creator',
+      items: [
+        { page: 'revenue', label: 'Creator Hub', icon: '⚡' },
         { page: 'social', label: 'Social Accounts', icon: '📡' },
+        { page: 'tiktok-trends', label: 'Social Trends', icon: '📡' },
         { page: 'bio', label: 'Bio Link', icon: '🔗' }
       ]
     },
@@ -59,6 +65,9 @@ export default function Sidebar() {
       items: [
         { page: 'landing', label: 'Landing Page AI', icon: '⚡' },
         { page: 'digital', label: 'Digital Products', icon: '📦' },
+        { page: 'niche', label: 'Niche & Brand Studio', icon: '🎯' },
+        { page: 'community', label: 'Community Hub', icon: '🏘️' },
+        { page: 'design', label: 'Design Studio', icon: '🎨' },
         { page: 'upclick', label: 'UpClick Builder', icon: '⬆' }
       ]
     },
@@ -68,14 +77,9 @@ export default function Sidebar() {
         { page: 'tasks', label: 'Task Board', icon: '◉', badge: highTasks },
         { page: 'calendar', label: 'Calendar', icon: '📅' },
         { page: 'finance', label: 'Finance', icon: '💳' },
-        { page: 'strategy', label: 'Strategy', icon: '🧠' },
-        { page: 'ops', label: 'Ops Hub', icon: '⚙' }
-      ]
-    },
-    {
-      title: 'Community',
-      items: [
-        { page: 'community', label: 'Community', icon: '👥' }
+        { page: 'ops', label: 'Ops Hub', icon: '⚙' },
+        { page: 'team', label: 'Team', icon: '👥' },
+        { page: 'teamchat', label: 'Team Chat', icon: '💬' }
       ]
     },
     {
@@ -88,21 +92,21 @@ export default function Sidebar() {
   ];
 
   return (
-    <nav id="sb" className={collapsed ? 'collapsed' : ''}>
+    <nav id="sb" className={`${collapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
       <button id="sb-tog" onClick={() => setCollapsed(!collapsed)}>
         {collapsed ? '›' : '‹'}
       </button>
 
-      <div className="sb-logo">
-        <div className="sb-logo-mark">U</div>
-        <div className="sb-logo-text">
-          <div className="sb-logo-name">UpKlick</div>
-          <div className="sb-logo-sub">{t('t-sub')}</div>
-        </div>
+      <div className="sb-logo" style={{ justifyContent: 'center', padding: '20px 14px' }}>
+        <img 
+          src="https://storage.googleapis.com/msgsndr/GRFYul19fkMHp7sNiPF0/media/69447879aca6ab0633721cf7.png" 
+          alt="UpKlick Logo" 
+          style={{ maxHeight: '35px', maxWidth: '100%', objectFit: 'contain', transition: 'all 0.3s ease' }}
+          className={collapsed ? 'logo-collapsed' : 'logo-expanded'}
+        />
       </div>
 
       <div className="sb-sections">
-        {/* AI Assistant */}
         <div style={{ padding: '5px 7px 3px' }}>
           <button
             className="sb-btn"
@@ -144,11 +148,16 @@ export default function Sidebar() {
       </div>
 
       <div className="sb-foot">
-        <div className="sb-user" onClick={() => setCurrentPage('profile')} title="View Profile">
+        {/* User profile row */}
+        <div
+          className="sb-user"
+          onClick={() => setCurrentPage('profile')}
+          title={isRtl ? 'عرض الملف الشخصي' : 'View Profile'}
+        >
           <div className="sb-avatar" id="sb-avatar-initials">
             {initials}
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <div className="sb-user-name" id="sb-user-name-lbl">
               {GC.profile.name ? GC.profile.name.split(' ')[0] : 'Sara'}
             </div>
@@ -156,10 +165,41 @@ export default function Sidebar() {
               {GC.profile.type ? `${GC.profile.type} — Pro` : t('t-plan')}
             </div>
           </div>
-          <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--t3)' }} className="sb-lbl">
-            →
+          <span style={{ fontSize: '12px', color: 'var(--t3)', flexShrink: 0 }}>
+            {isRtl ? '←' : '→'}
           </span>
         </div>
+
+        {/* Logout button */}
+        <button
+          className="sb-logout-btn"
+          onClick={async (e) => { e.stopPropagation(); await logout(); }}
+          title={isRtl ? 'تسجيل الخروج' : 'Sign Out'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isRtl ? 'flex-end' : 'flex-start',
+            flexDirection: isRtl ? 'row-reverse' : 'row',
+            gap: '8px',
+            width: '100%',
+            padding: '9px 12px',
+            margin: '4px 0 0',
+            background: 'transparent',
+            border: '1px solid rgba(255, 61, 110, 0.15)',
+            borderRadius: '8px',
+            color: 'var(--red)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            fontFamily: 'var(--ff)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,61,110,0.3)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,61,110,0.15)'; }}
+        >
+          <span>⎋</span>
+          <span>{isRtl ? 'تسجيل الخروج' : 'Sign Out'}</span>
+        </button>
       </div>
     </nav>
   );

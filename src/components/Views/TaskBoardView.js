@@ -154,7 +154,7 @@ Give me the top 3 tasks I must focus on today to make progress, and why. Be extr
       )}
 
       {activeTab === 'kanban' && (
-        <div className="kanban" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+        <div className="kanban">
           {kanbanColumns.map(col => {
             const colTasks = items.filter(col.filter);
             return (

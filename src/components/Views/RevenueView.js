@@ -218,24 +218,24 @@ export default function RevenueView() {
       {activeSubTab === 'rv-streams' && (
         <div className="tool-panel on" id="rv-streams">
           <div className="g4 stagger mb">
-            <div className="stat">
-              <div className="slbl">💵 {L('Total Monthly', 'إجمالي الدخل الشهري')}</div>
-              <div className="sval">$4,320</div>
-              <div className="sch up">▲ +12%</div>
+            <div className="stat-card">
+              <div className="stat-lbl">💵 {L('Total Monthly', 'إجمالي الدخل الشهري')}</div>
+              <div className="stat-val">$4,320</div>
+              <div className="stat-ch ch-up">▲ +12%</div>
             </div>
-            <div className="stat">
-              <div className="slbl">🔢 {L('Active Streams', 'المصادر النشطة')}</div>
-              <div className="sval" style={{ color: 'var(--green)' }}>{activeStreamsCount}</div>
-              <div className="sch nu">{L('of 7', 'من 7')}</div>
+            <div className="stat-card">
+              <div className="stat-lbl">🔢 {L('Active Streams', 'المصادر النشطة')}</div>
+              <div className="stat-val" style={{ color: 'var(--green)' }}>{activeStreamsCount}</div>
+              <div className="stat-ch ch-nu">{L('of 7', 'من 7')}</div>
             </div>
-            <div className="stat">
-              <div className="slbl">📈 {L('Best Stream', 'أفضل مصدر')}</div>
-              <div className="sval" style={{ fontSize: '14px' }}>{L('Sponsorships', 'الرعايات')}</div>
-              <div className="sch nu">65% {L('of income', 'من الدخل')}</div>
+            <div className="stat-card">
+              <div className="stat-lbl">📈 {L('Best Stream', 'أفضل مصدر')}</div>
+              <div className="stat-val" style={{ fontSize: '20px' }}>{L('Sponsorships', 'الرعايات')}</div>
+              <div className="stat-ch ch-nu">65% {L('of income', 'من الدخل')}</div>
             </div>
-            <div className="stat">
-              <div className="slbl">🎯 {L('Diversity Score', 'معدل التنوع')}</div>
-              <div className="sval" style={{ color: 'var(--amber)' }}>58/100</div>
+            <div className="stat-card">
+              <div className="stat-lbl">🎯 {L('Diversity Score', 'معدل التنوع')}</div>
+              <div className="stat-val" style={{ color: 'var(--amber)' }}>58<span style={{ fontSize: '14px', color: 'var(--t3)' }}>/100</span></div>
             </div>
           </div>
           <div className="g2">

@@ -44,6 +44,12 @@ export function BusinessProvider({ children }) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile sidebar on page navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [currentPage]);
 
   // Modal control states
   const [leadModalOpen, setLeadModalOpen] = useState(false);
@@ -402,6 +408,8 @@ export function BusinessProvider({ children }) {
         supportOpen,
         setSupportOpen,
         onboardingDone,
+        mobileMenuOpen,
+        setMobileMenuOpen,
         finishOnboarding,
         resetOnboarding,
         leadModalOpen,

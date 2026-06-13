@@ -167,7 +167,7 @@ export default function WhatsAppHubView() {
       
       {/* 1. INBOX TAB */}
       {activeTab === 'inbox' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '14px', height: '500px' }}>
+        <div className="wa-inbox-grid">
           <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '12px', borderBottom: '1px solid var(--edge)' }}>
               <input className="inp" placeholder={L('🔍 Search conversations...', '🔍 البحث في المحادثات...')} style={{ fontSize: '12px', padding: '7px 11px' }} />
