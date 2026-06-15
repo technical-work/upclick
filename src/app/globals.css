@@ -751,6 +751,11 @@ textarea.inp { resize:vertical; line-height:1.6 }
 [dir=rtl] .pg-header,.sec-hd{flex-direction:row-reverse;}
 [dir=rtl] .card{text-align:right;}
 [dir=rtl] .inp,[dir=rtl] input,[dir=rtl] textarea,[dir=rtl] select{text-align:right;direction:rtl;}
+
+/* Fix date inputs backward text rendering in RTL */
+[dir=rtl] input[type="date"], [dir=rtl] input[type="datetime-local"] {
+  direction: ltr;
+}
 [dir=rtl] #ai-panel{right:auto !important;left:0 !important;border-left:none !important;border-right:1px solid var(--edge) !important;transform:translateX(-100%) !important;}
 [dir=rtl] #ai-panel.open{transform:translateX(0) !important;}
 [dir=rtl] .ai-msg-user{margin-left:0;margin-right:20px;}
@@ -851,6 +856,10 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:background-color .25s ease,bord
 .kanban-col-count { background:var(--surface3); border-radius:5px; padding:1px 6px; font-size:10px; color:var(--t3) }
 .kanban-card { background:var(--surface); border:1px solid var(--edge); border-radius:8px; padding:10px; margin-bottom:6px; cursor:pointer; transition:all .14s }
 .kanban-card:hover { border-color:rgba(255,107,53,.25); transform:translateY(-1px) }
+@media (min-width: 769px) {
+  .kanban-card .kanban-card-actions { opacity: 0; max-height: 0; overflow: hidden; margin-top: 0 !important; transition: all .2s ease; }
+  .kanban-card:hover .kanban-card-actions { opacity: 1; max-height: 50px; margin-top: 6px !important; }
+}
 .row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--edge) }
 .row:last-child { border-bottom:none; padding-bottom:0 }
 .rn { font-size:13px; font-weight:500; color:var(--t1) }

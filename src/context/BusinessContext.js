@@ -1,16 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Tr, ARTEXT } from '../data/translations';
+import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
+import { useAuth } from './AuthContext';
+import { db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 const BusinessContext = createContext();
 
 const initialGC = {
   profile: {
-    name: 'Sara Hassan',
+    name: '',
     desc: '',
-    niche: 'Fashion & Lifestyle',
+    niche: '',
     stage: 'Idea',
     type: 'Content Creator',
     level: 'beginner',
@@ -42,6 +45,9 @@ export function BusinessProvider({ children }) {
   const [GC, setGC] = useState(initialGC);
   const [savedNotes, setSavedNotes] = useState([]);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  
+  const authContext = useAuth();
+  const userData = authContext?.userData;
   const [supportOpen, setSupportOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -54,6 +60,7 @@ export function BusinessProvider({ children }) {
   // Modal control states
   const [leadModalOpen, setLeadModalOpen] = useState(false);
   const [leadModalStage, setLeadModalStage] = useState('new');
+  const [editingLead, setEditingLead] = useState(null);
   const [aiQuery, setAiQuery] = useState('');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [financeModalOpen, setFinanceModalOpen] = useState(false);
@@ -98,18 +105,40 @@ export function BusinessProvider({ children }) {
     }
   }, []);
 
+  // Sync lang/theme from Firebase if available
+  useEffect(() => {
+    if (userData?.lang) setLang(userData.lang);
+    if (userData?.theme) setTheme(userData.theme);
+  }, [userData]);
+
+  // Sync GC from Firebase if available
+  useEffect(() => {
+    if (userData?.GC) {
+      setGC(userData.GC);
+      localStorage.setItem('ba_context', JSON.stringify(userData.GC));
+    }
+  }, [userData?.GC]);
+
   // Sync language attributes to HTML
   useEffect(() => {
     document.documentElement.setAttribute('lang', lang);
     document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
     localStorage.setItem('upklick_lang', lang);
-  }, [lang]);
+
+    if (authContext?.user?.uid) {
+      setDoc(doc(db, 'users', authContext.user.uid), { lang }, { merge: true }).catch(() => {});
+    }
+  }, [lang, authContext?.user?.uid]);
 
   // Sync theme attributes to HTML
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('upklick_theme', theme);
+
+    if (authContext?.user?.uid) {
+      setDoc(doc(db, 'users', authContext.user.uid), { theme }, { merge: true }).catch(() => {});
+    }
 
     // Apply color accents
     const color = themeColors[theme] || '#FF6B35';
@@ -128,11 +157,17 @@ export function BusinessProvider({ children }) {
     }
   }, [theme]);
 
-  // Sync GC to localStorage
+  // Sync GC to localStorage and Firebase
   const saveGC = (updatedGC) => {
     const gcWithSaved = { ...updatedGC, _lastSaved: new Date().toISOString() };
     setGC(gcWithSaved);
     localStorage.setItem('ba_context', JSON.stringify(gcWithSaved));
+    
+    if (authContext?.user?.uid) {
+      setDoc(doc(db, 'users', authContext.user.uid), { GC: gcWithSaved }, { merge: true }).catch((err) => {
+        console.error("Error saving GC to Firebase:", err);
+      });
+    }
   };
 
   // Translation function
@@ -148,6 +183,28 @@ export function BusinessProvider({ children }) {
 
   // Mirror text check (L function)
   const L = (en, ar) => (lang === 'ar' ? ar : en);
+
+  // Toast notification
+  const showToast = (msg) => {
+    const el = document.getElementById('toast');
+    if (el) {
+      el.innerText = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+  };
+
+  // Standardize dates to English DD/MM/YYYY
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB'); // en-GB always gives DD/MM/YYYY in English numerals
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Currency switcher
   const setCurrency = (code) => {
@@ -237,6 +294,17 @@ export function BusinessProvider({ children }) {
       crm: {
         ...GC.crm,
         leads: GC.crm.leads.map((l) => (l.id === leadId ? { ...l, stage } : l))
+      }
+    };
+    saveGC(updated);
+  };
+
+  const updateLead = (leadId, updates) => {
+    const updated = {
+      ...GC,
+      crm: {
+        ...GC.crm,
+        leads: GC.crm.leads.map((l) => (l.id === leadId ? { ...l, ...updates } : l))
       }
     };
     saveGC(updated);
@@ -390,8 +458,11 @@ export function BusinessProvider({ children }) {
         saveGC,
         t,
         L,
+        showToast,
+        formatDate,
         updateProfile,
         addLead,
+        updateLead,
         updateLeadStage,
         deleteLead,
         addTask,
@@ -416,6 +487,8 @@ export function BusinessProvider({ children }) {
         setLeadModalOpen,
         leadModalStage,
         setLeadModalStage,
+        editingLead,
+        setEditingLead,
         aiQuery,
         setAiQuery,
         openAIFor,

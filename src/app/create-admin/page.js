@@ -1,49 +1,64 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { firebaseConfig } from '@/lib/firebase';
 
-export default function LoginPage() {
+export default function CreateAdminPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user');
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user, userData, loading: authLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!authLoading && user && userData) {
-      if (userData.role === 'admin' || userData.role === 'super_admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
-    }
-  }, [user, userData, authLoading, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
 
     try {
-      await login(email, password);
+      const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+
+      await setDoc(doc(db, 'users', uid), {
+        uid: uid,
+        email: email,
+        name: role === 'admin' ? 'Admin User' : 'Normal User',
+        role: role,
+        createdAt: new Date()
+      });
+
+      setMessage(
+        role === 'admin' 
+          ? 'تم إنشاء حساب Admin بنجاح!' 
+          : 'تم إنشاء حساب المستخدم بنجاح!'
+      );
+      setEmail('');
+      setPassword('');
     } catch (err) {
       console.error(err);
-      setError('فشل تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.');
+      setError(err.message || 'حدث خطأ أثناء إنشاء الحساب.');
+    } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         <img src="/upklick-logo.png" alt="UpKlick" style={styles.logo} />
-        <h1 style={styles.title}>تسجيل الدخول</h1>
-        <p style={styles.subtitle}>أدخل بياناتك للوصول إلى لوحة التحكم</p>
+        <h1 style={styles.title}>تهيئة حساب مسؤول جديد</h1>
+        <p style={styles.subtitle}>أدخل البريد الإلكتروني وكلمة المرور لإنشاء حساب إداري في Firestore</p>
 
+        {message && <div style={styles.success}>{message}</div>}
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -54,7 +69,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
-              placeholder="example@email.com"
+              placeholder="admin@upklick.com"
               required 
               dir="ltr"
             />
@@ -71,8 +86,19 @@ export default function LoginPage() {
               dir="ltr"
             />
           </div>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>الدور والصلاحية</label>
+            <select 
+              value={role} 
+              onChange={(e) => setRole(e.target.value)}
+              style={styles.select}
+            >
+              <option value="user">مستخدم عادي (User)</option>
+              <option value="admin">مسؤول عادي (Admin)</option>
+            </select>
+          </div>
           <button type="submit" disabled={loading} style={styles.button}>
-            {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+            {loading ? 'جاري تهيئة الحساب...' : 'إنشاء الحساب'}
           </button>
         </form>
       </div>
@@ -94,7 +120,7 @@ const styles = {
   },
   card: {
     width: '100%',
-    maxWidth: '400px',
+    maxWidth: '450px',
     backgroundColor: '#181825',
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '20px',
@@ -115,12 +141,15 @@ const styles = {
     color: '#f8f4ff',
     fontSize: '22px',
     fontWeight: '700',
-    marginBottom: '8px'
+    marginBottom: '8px',
+    textAlign: 'center'
   },
   subtitle: {
     color: '#9090b0',
     fontSize: '14px',
-    marginBottom: '30px'
+    marginBottom: '30px',
+    textAlign: 'center',
+    lineHeight: '1.5'
   },
   form: {
     width: '100%',
@@ -149,6 +178,16 @@ const styles = {
     outline: 'none',
     transition: 'border-color 0.2s'
   },
+  select: {
+    padding: '12px 16px',
+    borderRadius: '10px',
+    backgroundColor: '#101018',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#f8f4ff',
+    fontSize: '14px',
+    outline: 'none',
+    cursor: 'pointer'
+  },
   button: {
     marginTop: '10px',
     padding: '14px',
@@ -160,6 +199,17 @@ const styles = {
     fontWeight: '700',
     cursor: 'pointer',
     boxShadow: '0 4px 24px rgba(255,107,53,0.3)'
+  },
+  success: {
+    color: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    padding: '10px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    marginBottom: '20px',
+    width: '100%',
+    textAlign: 'center',
+    border: '1px solid rgba(16, 185, 129, 0.2)'
   },
   error: {
     color: '#ff5f57',

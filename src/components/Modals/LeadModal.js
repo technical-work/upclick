@@ -11,7 +11,10 @@ export default function LeadModal() {
     leadModalOpen,
     setLeadModalOpen,
     leadModalStage,
-    addLead
+    editingLead,
+    setEditingLead,
+    addLead,
+    updateLead
   } = useBusiness();
 
   const [name, setName] = useState('');
@@ -25,9 +28,27 @@ export default function LeadModal() {
 
   useEffect(() => {
     if (leadModalOpen) {
-      setStage(leadModalStage || 'new');
+      if (editingLead) {
+        setName(editingLead.name || '');
+        setPhone(editingLead.phone || '');
+        setEmail(editingLead.email || '');
+        setStage(editingLead.stage || 'new');
+        setValue(editingLead.value || '');
+        setSource(editingLead.source || 'Instagram DM');
+        setNotes(editingLead.notes || '');
+        setFollowupDate(editingLead.followupDate || '');
+      } else {
+        setName('');
+        setPhone('');
+        setEmail('');
+        setStage(leadModalStage || 'new');
+        setValue('');
+        setSource('Instagram DM');
+        setNotes('');
+        setFollowupDate('');
+      }
     }
-  }, [leadModalOpen, leadModalStage]);
+  }, [leadModalOpen, leadModalStage, editingLead]);
 
   if (!leadModalOpen) return null;
 
@@ -36,7 +57,8 @@ export default function LeadModal() {
       alert(L('Please enter a name', 'يرجى إدخال الاسم'));
       return;
     }
-    addLead({
+    
+    const leadData = {
       name,
       phone,
       email,
@@ -45,27 +67,33 @@ export default function LeadModal() {
       source,
       notes,
       followupDate
-    });
-    // Clear inputs and close
-    setName('');
-    setPhone('');
-    setEmail('');
-    setStage('new');
-    setValue('');
-    setNotes('');
-    setFollowupDate('');
+    };
+
+    if (editingLead) {
+      updateLead(editingLead.id, leadData);
+    } else {
+      addLead(leadData);
+    }
+
+    handleClose();
+  };
+
+  const handleClose = () => {
     setLeadModalOpen(false);
+    setTimeout(() => {
+      setEditingLead(null);
+    }, 200);
   };
 
   return (
-    <div className="modal-overlay" onClick={() => setLeadModalOpen(false)}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-box" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-close" onClick={() => setLeadModalOpen(false)}>
+        <div className="modal-close" onClick={handleClose}>
           ✕
         </div>
         <div style={{ padding: '22px' }}>
           <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 800, color: 'var(--t1)', marginBottom: '16px' }}>
-            {t('Add New Lead')}
+            {editingLead ? t('Edit Lead') : t('Add New Lead')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
@@ -175,7 +203,10 @@ export default function LeadModal() {
               <input
                 className="inp"
                 id="lead-followup"
-                type="date"
+                type={followupDate ? "date" : "text"}
+                placeholder="dd/mm/yyyy"
+                onFocus={(e) => e.target.type = 'date'}
+                onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
                 value={followupDate}
                 onChange={(e) => setFollowupDate(e.target.value)}
               />

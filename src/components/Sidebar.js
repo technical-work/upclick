@@ -15,7 +15,7 @@ export default function Sidebar() {
     mobileMenuOpen
   } = useBusiness();
 
-  const { logout } = useAuth();
+  const { logout, userData } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const isRtl = lang === 'ar';
 
@@ -23,8 +23,9 @@ export default function Sidebar() {
   const hotLeads = GC.crm.leads.filter(l => l.stage === 'qualified' || l.stage === 'proposal').length;
   const highTasks = GC.tasks.items.filter(t => !t.done && t.priority === 'high').length;
 
-  const initials = GC.profile.name
-    ? GC.profile.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+  const displayName = userData?.name || GC?.profile?.name || userData?.email?.split('@')[0] || 'User';
+  const initials = displayName
+    ? displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
 
   const sections = [
@@ -126,7 +127,16 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {sections.map((sec, idx) => (
+        {sections.map(sec => {
+          const visibleItems = sec.items.filter(item => {
+            if (item.page === 'home') return true;
+            if (userData?.allowedTools) {
+              return userData.allowedTools.includes(item.page);
+            }
+            return true;
+          });
+          return { ...sec, items: visibleItems };
+        }).filter(sec => sec.items.length > 0).map((sec, idx) => (
           <div className="sb-sec" key={idx} style={idx === 0 ? { marginTop: '4px' } : {}}>
             {sec.title !== 'Dashboard' && <div className="sb-sec-title">{t(sec.title)}</div>}
             {sec.items.map((item) => (
@@ -159,10 +169,10 @@ export default function Sidebar() {
           </div>
           <div style={{ flex: 1 }}>
             <div className="sb-user-name" id="sb-user-name-lbl">
-              {GC.profile.name ? GC.profile.name.split(' ')[0] : 'Sara'}
+              {displayName}
             </div>
             <div className="sb-user-plan" id="t-plan">
-              {GC.profile.type ? `${GC.profile.type} — Pro` : t('t-plan')}
+              {GC.profile.type ? `${GC.profile.type} — Pro` : (userData?.role === 'admin' ? 'Admin — Pro' : t('t-plan'))}
             </div>
           </div>
           <span style={{ fontSize: '12px', color: 'var(--t3)', flexShrink: 0 }}>

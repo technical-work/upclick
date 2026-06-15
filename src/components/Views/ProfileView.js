@@ -2,18 +2,33 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function ProfileView() {
   const {
     lang,
+    setLang,
+    theme,
+    setTheme,
     L,
     t,
     GC,
+    showToast,
     updateProfile,
     resetOnboarding,
     formatMoney,
     setCurrentPage
   } = useBusiness();
+
+  const { user, userData, updateUserAccount } = useAuth();
+
+  // Account Settings State
+  const [accountName, setAccountName] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingAccount, setSavingAccount] = useState(false);
 
   // Local state for profile fields
   const [name, setName] = useState('');
@@ -38,30 +53,42 @@ export default function ProfileView() {
 
   // Sync state with GC on mount or context changes
   useEffect(() => {
-    if (GC.profile) {
-      setName(GC.profile.name || '');
-      setDesc(GC.profile.desc || '');
-      setNiche(GC.profile.niche || '');
-      setBizType(GC.profile.type || 'Coach / Trainer');
-      setStage(GC.profile.stage || 'Idea — Just starting');
-      setLevel(GC.profile.level ? GC.profile.level.charAt(0).toUpperCase() + GC.profile.level.slice(1) : 'Beginner');
-      setChallenge(GC.profile.challenge || 'Getting clients & revenue');
-      setOfferName(GC.profile.offer?.name || '');
-      setTargetMarket(GC.profile.offer?.market || '');
-      setRevenueGoal(GC.profile.goal || '');
+    if (userData || GC.profile) {
+      setAccountName(userData?.name || GC.profile?.name || '');
+    }
+
+    const activeProfile = userData?.businessProfile || GC.profile;
+    if (activeProfile) {
+      const resolvedName = activeProfile.name === 'Sara Hassan' ? (userData?.name || '') : (activeProfile.name || userData?.name || '');
+      const resolvedNiche = activeProfile.niche === 'Fashion & Lifestyle' ? '' : (activeProfile.niche || '');
+
+      setName(resolvedName);
+      setDesc(activeProfile.desc || '');
+      setNiche(resolvedNiche);
+      setBizType(activeProfile.type || 'Coach / Trainer');
+      setStage(activeProfile.stage || 'Idea — Just starting');
+      setLevel(activeProfile.level ? activeProfile.level.charAt(0).toUpperCase() + activeProfile.level.slice(1) : 'Beginner');
+      setChallenge(activeProfile.challenge || 'Getting clients & revenue');
+      setOfferName(activeProfile.offer?.name || '');
+      setTargetMarket(activeProfile.offer?.market || '');
+      setRevenueGoal(activeProfile.goal || '');
     }
 
     if (typeof window !== 'undefined') {
       const savedTg = localStorage.getItem('tg_user_id');
+      const savedTgToken = localStorage.getItem('tg_bot_token');
       if (savedTg) {
         setTgUserId(savedTg);
         setTgConnected(true);
       }
+      if (savedTgToken) {
+        setTgBotToken(savedTgToken);
+      }
     }
-  }, [GC.profile]);
+  }, [GC.profile, userData]);
 
-  const handleSave = () => {
-    updateProfile({
+  const handleSave = async () => {
+    const profileData = {
       name,
       desc,
       niche,
@@ -74,8 +101,41 @@ export default function ProfileView() {
         market: targetMarket
       },
       goal: revenueGoal
-    });
-    alert(L('Profile saved! ✅', 'تم حفظ الملف الشخصي! ✅'));
+    };
+
+    updateProfile(profileData);
+
+    if (user?.uid) {
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        await setDoc(docRef, { businessProfile: profileData }, { merge: true });
+      } catch (err) {
+        console.error('Failed to save to Firebase:', err);
+      }
+    }
+
+    showToast(L('Profile saved! ✅', 'تم حفظ الملف الشخصي! ✅'));
+  };
+
+  const handleSaveAccount = async () => {
+    if (newPassword && newPassword !== confirmPassword) {
+      showToast(L('Passwords do not match.', 'كلمات المرور غير متطابقة.'));
+      return;
+    }
+    setSavingAccount(true);
+    try {
+      await updateUserAccount(accountName, newPassword, lang, theme);
+      showToast(L('Account settings updated! ✅', 'تم تحديث إعدادات الحساب! ✅'));
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      if (err.message.includes('requires-recent-login')) {
+        showToast(L('Please log out and log in again to change your password.', 'يرجى تسجيل الخروج وتسجيل الدخول مرة أخرى لتغيير كلمة المرور.'));
+      } else {
+        showToast(L('Error updating account.', 'خطأ في تحديث الحساب.'));
+      }
+    }
+    setSavingAccount(false);
   };
 
   const handleAIAnalyze = async () => {
@@ -114,20 +174,55 @@ export default function ProfileView() {
     }
     const cleanId = tgUserId.trim();
     localStorage.setItem('tg_user_id', cleanId);
+    
+    if (tgBotToken.trim()) {
+      localStorage.setItem('tg_bot_token', tgBotToken.trim());
+    } else {
+      localStorage.removeItem('tg_bot_token');
+    }
+    
     setTgConnected(true);
-    alert(L('✈️ Telegram connected!', '✈️ تم ربط تيليجرام بنجاح!'));
+    alert(L('✈️ Telegram connected and saved!', '✈️ تم ربط وحفظ إعدادات تيليجرام بنجاح!'));
   };
 
   const handleDisconnectTg = () => {
     localStorage.removeItem('tg_user_id');
+    localStorage.removeItem('tg_bot_token');
     setTgUserId('');
     setTgBotToken('');
     setTgConnected(false);
     alert(L('Telegram disconnected', 'تم قطع اتصال تيليجرام'));
   };
 
-  const handleTestTg = () => {
-    alert(L('✈️ Test sent!', '✈️ تم إرسال رسالة الاختبار!'));
+  const handleTestTg = async () => {
+    if (!tgUserId) {
+      alert(L('Please enter a Telegram User ID first.', 'يرجى إدخال معرّف تيليجرام أولاً.'));
+      return;
+    }
+    const token = tgBotToken.trim() || localStorage.getItem('tg_bot_token');
+    if (!token) {
+      alert(L('Please enter your Telegram Bot Token to test the connection.', 'يرجى إدخال توكن البوت لاختبار الاتصال.'));
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: tgUserId.trim(),
+          text: "🚀 Test message from UpKlick Dashboard!"
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(L('✈️ Test sent successfully to your Telegram!', '✈️ تم إرسال رسالة الاختبار بنجاح إلى تيليجرام!'));
+      } else {
+        alert(L('Error sending test: ' + data.description, 'خطأ في الإرسال: ' + data.description));
+      }
+    } catch (err) {
+      alert(L('Network error. Check your connection.', 'خطأ في الشبكة. تحقق من اتصالك.'));
+    }
   };
 
   // Compute profile initials
@@ -157,7 +252,54 @@ export default function ProfileView() {
 
       <div className="g21">
         {/* Left column: Profile details */}
-        <div className="card mb">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Account Settings Card */}
+          <div className="card">
+            <div className="sec-hd">
+              <div className="sec-title">⚙️ {L('Account Settings', 'إعدادات الحساب')}</div>
+              <button className="btn btn-prime" onClick={handleSaveAccount} disabled={savingAccount} style={{ padding: '6px 12px', fontSize: '12px' }}>
+                {savingAccount ? '...' : L('Update Account', 'تحديث الحساب')}
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Full Name', 'الاسم الكامل')}</label>
+                <input className="inp" placeholder={L('Your name...', 'اسمك...')} value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('New Password', 'كلمة المرور الجديدة')}</label>
+                  <input className="inp" type="password" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Confirm Password', 'تأكيد كلمة المرور')}</label>
+                  <input className="inp" type="password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Default Language', 'اللغة الافتراضية')}</label>
+                  <select className="inp" value={lang} onChange={(e) => setLang(e.target.value)}>
+                    <option value="en">English</option>
+                    <option value="ar">العربية</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Interface Theme', 'مظهر الواجهة')}</label>
+                  <select className="inp" value={theme} onChange={(e) => setTheme(e.target.value)}>
+                    <option value="dark">{L('Dark', 'داكن')}</option>
+                    <option value="light">{L('Light', 'فاتح')}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card mb">
           <div className="sec-hd">
             <div className="sec-title">🧑‍💼 {L('Business Profile', 'ملف العمل')}</div>
             <button className="btn-ai" onClick={handleAIAnalyze}>
@@ -264,6 +406,7 @@ export default function ProfileView() {
             </div>
           </div>
         </div>
+        </div>
 
         {/* Right column: Stats, AI outputs, and Links */}
         <div>
@@ -363,8 +506,8 @@ export default function ProfileView() {
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Bot Token (optional)', 'توكن البوت (اختياري)')}</label>
-            <input className="inp" placeholder={L('Use UpKlick bot or enter your own', 'استخدم بوت UpKlick أو أدخل توكن خاصاً بك')} style={{ fontSize: '13px' }} value={tgBotToken} onChange={(e) => setTgBotToken(e.target.value)} disabled={tgConnected} />
+            <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Bot Token', 'توكن البوت')}</label>
+            <input className="inp" placeholder={L('Enter your bot token...', 'أدخل توكن البوت الخاص بك...')} style={{ fontSize: '13px' }} value={tgBotToken} onChange={(e) => setTgBotToken(e.target.value)} />
             <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '3px' }}>
               {L('Create your own bot via @BotFather', 'أنشئ بوتك الخاص عبر @BotFather')}
             </div>

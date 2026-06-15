@@ -657,7 +657,15 @@ export default function MarketingView() {
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Launch Date', 'تاريخ الإطلاق')}</label>
-                    <input className="inp" type="date" value={inputs.launchDate} onChange={e => handleInputChange('launchDate', e.target.value)} />
+                    <input 
+                      className="inp" 
+                      type={inputs.launchDate ? "date" : "text"} 
+                      placeholder="dd/mm/yyyy" 
+                      onFocus={(e) => e.target.type = 'date'} 
+                      onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                      value={inputs.launchDate} 
+                      onChange={e => handleInputChange('launchDate', e.target.value)} 
+                    />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>

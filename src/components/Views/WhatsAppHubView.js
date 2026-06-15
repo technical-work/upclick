@@ -321,7 +321,13 @@ export default function WhatsAppHubView() {
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                   {L('Schedule', 'جدولة الإرسال')}
                 </label>
-                <input className="inp" type="datetime-local" />
+                <input 
+                  className="inp" 
+                  type="text" 
+                  placeholder="dd/mm/yyyy --:--" 
+                  onFocus={(e) => e.target.type = 'datetime-local'} 
+                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }} 
+                />
               </div>
               <div style={{ display: 'flex', gap: '7px' }}>
                 <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setAiPanelOpen(true)}>

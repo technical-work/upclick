@@ -11,16 +11,19 @@ export default function CRMView() {
     t,
     GC,
     formatMoney,
+    formatDate,
     updateLeadStage,
     deleteLead,
     setLeadModalOpen,
     setLeadModalStage,
+    setEditingLead,
     openAIFor
   } = useBusiness();
 
   const [activeTab, setActiveTab] = useState('pipeline');
   const [aiOutput, setAiOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [draggedLeadId, setDraggedLeadId] = useState(null);
 
   const stages = [
     { key: 'new', label: L('New Lead', 'ليد جديد'), color: 'var(--blue)' },
@@ -148,7 +151,19 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                   <div className="kanban-col-count">{stageLeads.length}</div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '120px' }}>
+                <div 
+                  style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '120px', flex: 1 }}
+                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'; }}
+                  onDragLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    if (draggedLeadId) {
+                      updateLeadStage(draggedLeadId, stage.key);
+                      setDraggedLeadId(null);
+                    }
+                  }}
+                >
                   {stageLeads.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '16px 8px', fontSize: '12px', color: 'var(--t3)' }}>
                       {L('Drop leads here', 'أضف عملاء هنا')}
@@ -158,7 +173,11 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                       <div
                         className="kanban-card"
                         key={lead.id}
+                        draggable
+                        onDragStart={() => setDraggedLeadId(lead.id)}
+                        onDragEnd={() => setDraggedLeadId(null)}
                         onClick={() => alert(`${lead.name} — ${formatMoney(lead.value)} — ${stage.label}`)}
+                        style={{ cursor: 'grab', opacity: draggedLeadId === lead.id ? 0.5 : 1 }}
                       >
                         <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '3px' }}>
                           {lead.name}
@@ -173,12 +192,39 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                         </div>
                         {lead.followupDate && (
                           <div style={{ fontSize: '10px', color: 'var(--amber)', marginTop: '3px' }}>
-                            📅 {lead.followupDate}
+                            📅 {formatDate(lead.followupDate)}
                           </div>
                         )}
 
-                        {/* Move stage buttons */}
-                        <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
+                        {/* Edit / Delete actions top-right absolute or inline */}
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                          <button
+                            className="btn btn-ghost"
+                            style={{ fontSize: '10px', padding: '3px 8px', flex: 1 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingLead(lead);
+                              setLeadModalOpen(true);
+                            }}
+                          >
+                            ✏️ {L('Edit', 'تعديل')}
+                          </button>
+                          <button
+                            className="btn btn-ghost"
+                            style={{ fontSize: '10px', padding: '3px 8px', color: 'var(--red)', borderColor: 'var(--red)', flex: 1 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(L('Are you sure you want to delete this lead?', 'هل أنت متأكد من حذف هذا العميل؟'))) {
+                                deleteLead(lead.id);
+                              }
+                            }}
+                          >
+                            🗑️ {L('Delete', 'حذف')}
+                          </button>
+                        </div>
+
+                        {/* Move stage buttons - hidden on desktop, visible on mobile or touch */}
+                        <div className="kanban-card-actions" style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
                           {stages.filter(s => s.key !== stage.key).map(s => (
                             <button
                               key={s.key}
@@ -282,8 +328,22 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
 
                       <button
                         className="btn btn-ghost"
+                        style={{ padding: '3px 8px', fontSize: '11px' }}
+                        onClick={() => {
+                          setEditingLead(l);
+                          setLeadModalOpen(true);
+                        }}
+                      >
+                        {L('Edit', 'تعديل')}
+                      </button>
+                      <button
+                        className="btn btn-ghost"
                         style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
-                        onClick={() => deleteLead(l.id)}
+                        onClick={() => {
+                          if (window.confirm(L('Are you sure you want to delete this lead?', 'هل أنت متأكد من حذف هذا العميل؟'))) {
+                            deleteLead(l.id);
+                          }
+                        }}
                       >
                         {L('Delete', 'حذف')}
                       </button>
@@ -315,7 +375,7 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                   <div className="row" key={l.id}>
                     <div style={{ flex: 1 }}>
                       <div className="rn">{l.name}</div>
-                      <div className="rs">{L('Due:', 'تاريخ الاستحقاق:')} {l.followupDate}</div>
+                      <div className="rs">{L('Due:', 'تاريخ الاستحقاق:')} {formatDate(l.followupDate)}</div>
                     </div>
                     {l.phone && (
                       <a

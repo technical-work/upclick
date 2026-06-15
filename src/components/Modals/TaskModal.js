@@ -94,7 +94,10 @@ export default function TaskModal() {
                 <input
                   className="inp"
                   id="task-due"
-                  type="date"
+                  type={due ? "date" : "text"}
+                  placeholder="dd/mm/yyyy"
+                  onFocus={(e) => e.target.type = 'date'}
+                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
                   value={due}
                   onChange={(e) => setDue(e.target.value)}
                 />

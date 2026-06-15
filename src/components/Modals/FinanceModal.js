@@ -92,7 +92,10 @@ export default function FinanceModal() {
                 <input
                   className="inp"
                   id="fin-date"
-                  type="date"
+                  type={date ? "date" : "text"}
+                  placeholder="dd/mm/yyyy"
+                  onFocus={(e) => e.target.type = 'date'}
+                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />

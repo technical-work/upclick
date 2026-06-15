@@ -12,6 +12,7 @@ export default function FinanceView() {
     GC,
     saveGC,
     formatMoney,
+    formatDate,
     setFinanceModalOpen,
     setFinanceModalType,
     addSubscription,
@@ -202,7 +203,7 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
                     <span style={{ fontSize: '18px' }}>{item.type === 'income' ? '💚' : '🔴'}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)' }}>{item.desc}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{item.category} · {item.date}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{item.category} · {formatDate(item.date)}</div>
                     </div>
                     <span style={{ fontWeight: 'bold', fontSize: '13.5px', color: item.type === 'income' ? 'var(--green)' : 'var(--red)' }}>
                       {item.type === 'income' ? '+' : '-'}{formatMoney(item.amount)}

@@ -50,25 +50,34 @@ import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
 function DashboardShell() {
   const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen } = useBusiness();
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
+    } else if (!loading && user && userData) {
+      if (userData.role === 'admin' || userData.role === 'super_admin') {
+        router.push('/admin');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, userData, loading, router]);
 
   useEffect(() => {
     document.body.classList.add('dashboard-body');
     return () => document.body.classList.remove('dashboard-body');
   }, []);
 
-  if (loading || !user) return null; // Show nothing or a spinner until redirected
+  if (loading || !user || !userData || userData.role === 'admin' || userData.role === 'super_admin') return null; // Show nothing or a spinner until redirected
+
 
 
   const renderActiveView = () => {
-    switch (currentPage) {
+    const allowedTools = userData?.allowedTools;
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile'].includes(currentPage);
+    const activeView = isAllowed ? currentPage : 'home';
+
+    switch (activeView) {
       case 'home':
         return <HomeView />;
       case 'crm':

@@ -212,7 +212,10 @@ export default function TeamManagementView() {
                     <option>Full-time</option><option>Part-time</option><option>Freelancer</option><option>Intern</option>
                   </select>
                 </div>
-                <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Join Date', 'تاريخ الانضمام')}</label><input className="inp" type="date" /></div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Join Date', 'تاريخ الانضمام')}</label>
+                  <input className="inp" type="text" placeholder="dd/mm/yyyy" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }} />
+                </div>
               </div>
 
               <div style={{ marginTop: '16px' }}>
@@ -276,7 +279,10 @@ export default function TeamManagementView() {
                     </select>
                   </div>
                 </div>
-                <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Due Date', 'تاريخ الاستحقاق')}</label><input className="inp" type="date" /></div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Due Date', 'تاريخ الاستحقاق')}</label>
+                  <input className="inp" type="text" placeholder="dd/mm/yyyy" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }} />
+                </div>
                 <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Description', 'الوصف')}</label><textarea className="inp" rows="2" placeholder="Details..."></textarea></div>
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
