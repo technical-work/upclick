@@ -12,7 +12,8 @@ export default function Sidebar() {
     GC,
     t,
     setAiPanelOpen,
-    mobileMenuOpen
+    mobileMenuOpen,
+    tenantConfig
   } = useBusiness();
 
   const { logout, userData } = useAuth();
@@ -100,8 +101,8 @@ export default function Sidebar() {
 
       <div className="sb-logo" style={{ justifyContent: 'center', padding: '20px 14px' }}>
         <img 
-          src="https://storage.googleapis.com/msgsndr/GRFYul19fkMHp7sNiPF0/media/69447879aca6ab0633721cf7.png" 
-          alt="UpKlick Logo" 
+          src={tenantConfig?.logoUrl || "https://storage.googleapis.com/msgsndr/GRFYul19fkMHp7sNiPF0/media/69447879aca6ab0633721cf7.png"} 
+          alt={tenantConfig?.appName || "UpKlick Logo"} 
           style={{ maxHeight: '35px', maxWidth: '100%', objectFit: 'contain', transition: 'all 0.3s ease' }}
           className={collapsed ? 'logo-collapsed' : 'logo-expanded'}
         />

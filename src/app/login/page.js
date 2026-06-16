@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { query, collection, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,6 +13,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login, user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  const [tenantConfig, setTenantConfig] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const currentHost = window.location.hostname;
+    
+    // Fetch tenant by domain match
+    const q = query(collection(db, 'tenants'), where('domain', '==', currentHost));
+    getDocs(q).then((snap) => {
+      if (!snap.empty) {
+        setTenantConfig(snap.docs[0].data());
+      }
+    }).catch(err => console.error("Error fetching login tenant:", err));
+  }, []);
+
+  useEffect(() => {
+    if (tenantConfig?.appName) {
+      document.title = `${tenantConfig.appName} - تسجيل الدخول`;
+    }
+  }, [tenantConfig]);
 
   useEffect(() => {
     if (!authLoading && user && userData) {
@@ -38,17 +61,25 @@ export default function LoginPage() {
 
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <img src="/upklick-logo.png" alt="UpKlick" style={styles.logo} />
-        <h1 style={styles.title}>تسجيل الدخول</h1>
-        <p style={styles.subtitle}>أدخل بياناتك للوصول إلى لوحة التحكم</p>
+    <div style={{ ...styles.container, ...(tenantConfig?.bgColor ? { backgroundColor: tenantConfig.bgColor } : {}) }}>
+      <div style={{ ...styles.card, ...(tenantConfig?.panelColor ? { backgroundColor: tenantConfig.panelColor } : {}) }}>
+        <img 
+          src={tenantConfig?.logoUrl || "/upklick-logo.png"} 
+          alt={tenantConfig?.appName || "UpKlick"} 
+          style={styles.logo} 
+        />
+        <h1 style={{ ...styles.title, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>
+          {tenantConfig?.appName ? `تسجيل الدخول - ${tenantConfig.appName}` : 'تسجيل الدخول'}
+        </h1>
+        <p style={{ ...styles.subtitle, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
+          {tenantConfig?.tagline || 'أدخل بياناتك للوصول إلى لوحة التحكم'}
+        </p>
 
         {error && <div style={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>البريد الإلكتروني</label>
+            <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
             <input 
               type="email" 
               value={email}
@@ -60,7 +91,7 @@ export default function LoginPage() {
             />
           </div>
           <div style={styles.inputGroup}>
-            <label style={styles.label}>كلمة المرور</label>
+            <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
             <input 
               type="password" 
               value={password}
@@ -71,7 +102,16 @@ export default function LoginPage() {
               dir="ltr"
             />
           </div>
-          <button type="submit" disabled={loading} style={styles.button}>
+          <button 
+            type="submit" 
+            disabled={loading} 
+            style={{ 
+              ...styles.button, 
+              ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
+                ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
+                : {}) 
+            }}
+          >
             {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
           </button>
         </form>

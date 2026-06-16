@@ -5,7 +5,7 @@ import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const BusinessContext = createContext();
 
@@ -45,6 +45,7 @@ export function BusinessProvider({ children }) {
   const [GC, setGC] = useState(initialGC);
   const [savedNotes, setSavedNotes] = useState([]);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [tenantConfig, setTenantConfig] = useState(null);
   
   const authContext = useAuth();
   const userData = authContext?.userData;
@@ -111,6 +112,79 @@ export function BusinessProvider({ children }) {
     if (userData?.theme) setTheme(userData.theme);
   }, [userData]);
 
+  // Real-time listen to tenant branding configurations
+  useEffect(() => {
+    if (!userData?.adminId) {
+      setTenantConfig(null);
+      return;
+    }
+    const unsub = onSnapshot(doc(db, 'tenants', userData.adminId), (docSnap) => {
+      if (docSnap.exists()) {
+        setTenantConfig(docSnap.data());
+      } else {
+        setTenantConfig(null);
+      }
+    }, (err) => {
+      console.error("Error listening to tenant config:", err);
+    });
+    return () => unsub();
+  }, [userData?.adminId]);
+
+  // Apply tenant branding styles to CSS variables dynamically
+  useEffect(() => {
+    if (!tenantConfig) return;
+    const root = document.documentElement;
+
+    if (tenantConfig.primaryColor) {
+      root.style.setProperty('--orange', tenantConfig.primaryColor);
+      root.style.setProperty('--a', tenantConfig.primaryColor);
+      
+      const hx = tenantConfig.primaryColor.replace('#', '');
+      if (hx.length === 6) {
+        const r = parseInt(hx.slice(0, 2), 16);
+        const g = parseInt(hx.slice(2, 4), 16);
+        const b = parseInt(hx.slice(4, 6), 16);
+        if (!isNaN(r)) {
+          root.style.setProperty('--a-rgb', `${r},${g},${b}`);
+          root.style.setProperty('--orange-d', `rgba(${r}, ${g}, ${b}, 0.14)`);
+          root.style.setProperty('--orange-dim', `rgba(${r}, ${g}, ${b}, 0.07)`);
+        }
+      }
+    }
+    if (tenantConfig.accentColor) {
+      root.style.setProperty('--purple', tenantConfig.accentColor);
+      
+      const hx = tenantConfig.accentColor.replace('#', '');
+      if (hx.length === 6) {
+        const r = parseInt(hx.slice(0, 2), 16);
+        const g = parseInt(hx.slice(2, 4), 16);
+        const b = parseInt(hx.slice(4, 6), 16);
+        if (!isNaN(r)) {
+          root.style.setProperty('--purple-d', `rgba(${r}, ${g}, ${b}, 0.14)`);
+          root.style.setProperty('--purple-dim', `rgba(${r}, ${g}, ${b}, 0.07)`);
+        }
+      }
+    }
+    if (tenantConfig.bgColor) {
+      root.style.setProperty('--ink', tenantConfig.bgColor);
+    }
+    if (tenantConfig.panelColor) {
+      root.style.setProperty('--surface', tenantConfig.panelColor);
+    }
+    if (tenantConfig.sidebarBgColor) {
+      root.style.setProperty('--surface2', tenantConfig.sidebarBgColor);
+    }
+    if (tenantConfig.navBgColor) {
+      root.style.setProperty('--surface3', tenantConfig.navBgColor);
+    }
+    if (tenantConfig.textColor) {
+      root.style.setProperty('--t1', tenantConfig.textColor);
+    }
+    if (tenantConfig.text2Color) {
+      root.style.setProperty('--t2', tenantConfig.text2Color);
+    }
+  }, [tenantConfig]);
+
   // Sync GC from Firebase if available
   useEffect(() => {
     if (userData?.GC) {
@@ -172,6 +246,10 @@ export function BusinessProvider({ children }) {
 
   // Translation function
   const t = (keyOrText) => {
+    const override = tenantConfig?.i18nOverrides?.[lang]?.[keyOrText];
+    if (override) {
+      return override;
+    }
     if (Tr[lang] && Tr[lang][keyOrText]) {
       return Tr[lang][keyOrText];
     }
@@ -505,7 +583,8 @@ export function BusinessProvider({ children }) {
         dpDetailOpen,
         setDpDetailOpen,
         dpDetailIndex,
-        setDpDetailIndex
+        setDpDetailIndex,
+        tenantConfig
       }}
     >
       {children}

@@ -8,105 +8,167 @@ import { db, libStorage } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../hooks/useTranslation';
 
-const DICTIONARY_GROUPS = [];
+import { Tr, ARTEXT } from '../../data/translations';
+import { adminTranslations } from '../../data/adminTranslations';
+
 const LANG = { ar: {}, en: {} };
+
+// Client translations
+if (Tr && Tr.en && Tr.ar) {
+  Object.keys(Tr.en).forEach(key => {
+    LANG.en[key] = Tr.en[key];
+    LANG.ar[key] = Tr.ar[key] || '';
+  });
+}
+if (ARTEXT) {
+  Object.keys(ARTEXT).forEach(key => {
+    LANG.en[key] = key;
+    LANG.ar[key] = ARTEXT[key] || '';
+  });
+}
+// Admin translations
+if (adminTranslations && adminTranslations.en && adminTranslations.ar) {
+  Object.keys(adminTranslations.en).forEach(key => {
+    LANG.en[key] = adminTranslations.en[key];
+    LANG.ar[key] = adminTranslations.ar[key] || '';
+  });
+}
+
+const DICTIONARY_GROUPS = [
+  {
+    id: 'general_ui',
+    titleKey: 'الواجهة العامة / General UI Words',
+    keys: Object.keys(ARTEXT || {}).filter(k => typeof LANG.ar[k] === 'string' && typeof LANG.en[k] === 'string')
+  },
+  {
+    id: 'nav_and_core',
+    titleKey: 'التنقل واللوحة الرئيسية / Navigation & Main Dashboard',
+    keys: Object.keys(Tr?.en || {}).filter(k => 
+      (k.startsWith('t-n-') || 
+      k.startsWith('t-s') || 
+      k.startsWith('t-g') || 
+      k.startsWith('t-qa') || 
+      k.startsWith('t-pg')) &&
+      typeof LANG.ar[k] === 'string' &&
+      typeof LANG.en[k] === 'string'
+    )
+  },
+  {
+    id: 'tools_and_views',
+    titleKey: 'أدوات وصفحات المبدعين / Creator Tools & Pages',
+    keys: Object.keys(Tr?.en || {}).filter(k => 
+      !(k.startsWith('t-n-') || 
+      k.startsWith('t-s') || 
+      k.startsWith('t-g') || 
+      k.startsWith('t-qa') || 
+      k.startsWith('t-pg') ||
+      k.startsWith('landing-')) &&
+      typeof LANG.ar[k] === 'string' &&
+      typeof LANG.en[k] === 'string'
+    )
+  },
+  {
+    id: 'landing_page',
+    titleKey: 'صفحة الهبوط / Landing Page Texts',
+    keys: Object.keys(Tr?.en || {}).filter(k => 
+      k.startsWith('landing-') &&
+      typeof LANG.ar[k] === 'string' &&
+      typeof LANG.en[k] === 'string'
+    )
+  },
+  {
+    id: 'admin_control',
+    titleKey: 'لوحة التحكم والمسؤولين / Admin Panel & Control',
+    keys: Object.keys(adminTranslations?.en || {}).filter(k => typeof LANG.ar[k] === 'string' && typeof LANG.en[k] === 'string')
+  }
+];
 
 const DEFAULT_PLAN = {
   visible: false,
-  name: 'الباقة الاحترافية',
-  price: '99',
-  currency: 'ج.م',
+  name: 'باقة المحترفين',
+  price: '29',
+  currency: '$',
   period: 'شهرياً',
   badge: 'الأكثر شعبية',
-  ctaText: 'اشترك الآن',
+  ctaText: 'ابدأ تجربة مجانية لمدة 14 يوم',
   features: [
-    'ابدأ من هنا — تأسيس ملفك الشخصي',
-    'التخصص والمهارات',
-    'رادار المنصات',
-    'حاسبة التسعير',
-    'مولد الاستراتيجية بالذكاء الاصطناعي',
-    'صياغة المهارات',
-    'معرض الأعمال',
-    'كاتب العروض الاحترافي',
-    'رادار المشاريع',
+    'كل شيء في الباقة المجانية',
+    'مساعد الذكاء الاصطناعي (غير محدود)',
+    'عملاء ومبيعات غير محدودة',
+    'نظام التسويق الذكي (8 أدوات)',
+    'مركز واتساب + وكيل الرد التلقائي',
+    'ذكاء النمو وتحليل المنافسين',
+    'مركز المنتجات الرقمية',
+    'التحكم عبر بوت تيليجرام',
+    'جميع التكاملات والربط'
   ],
   nameEn: 'Pro Plan',
   badgeEn: 'Most Popular',
-  currencyEn: 'EGP',
+  currencyEn: 'USD',
   periodEn: 'monthly',
-  ctaTextEn: 'Subscribe Now',
+  ctaTextEn: 'Start 14-Day Free Trial',
   featuresEn: [
-    'Start Here — Profile Foundation',
-    'Specialization & Skills',
-    'Platforms Radar',
-    'Pricing Calculator',
-    'AI Strategy Generator',
-    'Skills Pitching',
-    'Portfolio',
-    'Pro Proposal Writer',
-    'Projects Radar',
+    'Everything in Starter',
+    'AI Assistant (unlimited)',
+    'Unlimited CRM leads',
+    'Marketing OS (8 tools)',
+    'WhatsApp Hub + AI Agent',
+    'AI Growth Intelligence',
+    'Digital Products Hub',
+    'Telegram Bot Control',
+    'All integrations'
   ]
 };
 
 const DEFAULT_PLAN_ANNUAL = {
   visible: false,
-  name: 'الباقة السنوية',
-  price: '999',
-  currency: 'ج.م',
+  name: 'باقة المحترفين السنوية',
+  price: '290',
+  currency: '$',
   period: 'سنوياً',
   badge: 'أفضل قيمة',
-  ctaText: 'اشترك الآن',
+  ctaText: 'ابدأ تجربة سنوية',
   features: [
-    'ابدأ من هنا — تأسيس ملفك الشخصي',
-    'التخصص والمهارات',
-    'رادار المنصات',
-    'حاسبة التسعير',
-    'مولد الاستراتيجية بالذكاء الاصطناعي',
-    'صياغة المهارات',
-    'معرض الأعمال',
-    'كاتب العروض الاحترافي',
-    'رادار المشاريع',
+    'كل شيء في باقة المحترفين',
+    'توفير شهرين كاملين',
+    'دعم فني ذو أولوية',
+    'جميع الميزات اللامحدودة والتكاملات'
   ],
-  nameEn: 'Annual Plan',
+  nameEn: 'Annual Pro Plan',
   badgeEn: 'Best Value',
-  currencyEn: 'EGP',
+  currencyEn: 'USD',
   periodEn: 'yearly',
-  ctaTextEn: 'Subscribe Now',
+  ctaTextEn: 'Subscribe Annually',
   featuresEn: [
-    'Start Here — Profile Foundation',
-    'Specialization & Skills',
-    'Platforms Radar',
-    'Pricing Calculator',
-    'AI Strategy Generator',
-    'Skills Pitching',
-    'Portfolio',
-    'Pro Proposal Writer',
-    'Projects Radar',
+    'Everything in Pro Plan',
+    'Save 2 full months',
+    'Priority support',
+    'All unlimited features & integrations'
   ]
 };
 
 const DEFAULTS = {
-  appName: 'GigSniper Pro',
-  appNameEn: 'GigSniper Pro',
-  tagline: 'مساعدك الذكي للنجاح في الفريلانس',
-  taglineEn: 'Your Smart Assistant for Freelance Success',
-  primaryColor: '#3B82F6',
-  accentColor: '#1D4ED8',
-  bgColor: '#080C14',
-  panelColor: '#0F1628',
-  navBgColor: '#080C14',
-  sidebarBgColor: '#0F1628',
-  footerBgColor: '#080C14',
-  textColor: '#E8EDF5',
-  text2Color: '#8B96A8',
+  appName: 'UpKlick',
+  appNameEn: 'UpKlick',
+  tagline: 'نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
+  taglineEn: 'The AI OS for Arab Entrepreneurs',
+  primaryColor: '#FF6B35',
+  accentColor: '#6C35FF',
+  bgColor: '#08080f',
+  panelColor: '#101018',
+  navBgColor: '#08080f',
+  sidebarBgColor: '#101018',
+  footerBgColor: '#08080f',
+  textColor: '#f8f4ff',
+  text2Color: '#9090b0',
   btnTextColor: '#ffffff',
   logoUrl: '',
-  footerText: '© 2025 GigSniper Pro — مصنوع بـ ❤️ للفريلانسر العربي',
-  footerTextEn: '© 2025 GigSniper Pro — Made with ❤️ for Arab Freelancers',
-  heroBadge: 'الأداة الأولى عربياً للفريلانسر الذكي',
-  heroBadgeEn: 'The #1 Tool for the Smart Arab Freelancer',
-  heroSub: 'GigSniper Pro مش مجرد أداة — هو مرشدك الشخصي الكامل.',
-  heroSubEn: 'GigSniper Pro is not just a tool — it\'s your complete personal guide.',
+  footerText: '© 2025 UpKlick — مصنوع بـ ❤️ لرواد الأعمال العرب',
+  footerTextEn: '© 2025 UpKlick — Made with ❤️ for Arab Entrepreneurs',
+  heroBadge: '✦ نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
+  heroBadgeEn: '✦ The AI OS for Arab Entrepreneurs',
+  heroSub: 'CRM، تسويق، محتوى، مالية، واتساب — مدعومون بالذكاء الاصطناعي ومبني للمبدعين والكوتشز ورواد الأعمال العرب.',
+  heroSubEn: 'CRM, Marketing, Content, Finance, WhatsApp — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
   domain: '',
   plan: DEFAULT_PLAN,
   planAnnual: DEFAULT_PLAN_ANNUAL,
@@ -127,6 +189,7 @@ const BrandingSettings = () => {
   const iframeRef = useRef(null);
   const debounceRef = useRef(null);
   const [openGroup, setOpenGroup] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleOverrideChange = (lang, key, value) => {
     const currentOverrides = config.i18nOverrides || { ar: {}, en: {} };
@@ -164,19 +227,51 @@ const BrandingSettings = () => {
           }
         } catch (_) { }
         setConfig(prev => {
+          // If the loaded data has old GigSniper features, pricing details, or application name, migrate them to UpKlick defaults
+          const isOldGigSniperFeatures = (data.plan?.features || []).some(f => typeof f === 'string' && (f.includes('تأسيس ملفك الشخصي') || f.includes('المنصات'))) ||
+                                         (data.plan?.featuresEn || []).some(f => typeof f === 'string' && (f.includes('Profile Foundation') || f.includes('Platforms')));
+          const isOldPlanDetails = data.plan?.price === '99' && (data.plan?.currency === 'ج.م' || data.plan?.currencyEn === 'EGP');
+          
+          let planToUse = data.plan || {};
+          let planAnnualToUse = data.planAnnual || {};
+          
+          if (isOldGigSniperFeatures || isOldPlanDetails || data.appName === 'GigSniper Pro') {
+            planToUse = { ...prev.plan, visible: data.plan?.visible ?? false };
+            planAnnualToUse = { ...prev.planAnnual, visible: data.planAnnual?.visible ?? false };
+            data.appName = prev.appName;
+            data.appNameEn = prev.appNameEn;
+            data.tagline = prev.tagline;
+            data.taglineEn = prev.taglineEn;
+            data.primaryColor = prev.primaryColor;
+            data.accentColor = prev.accentColor;
+            data.bgColor = prev.bgColor;
+            data.panelColor = prev.panelColor;
+            data.navBgColor = prev.navBgColor;
+            data.sidebarBgColor = prev.sidebarBgColor;
+            data.footerBgColor = prev.footerBgColor;
+            data.textColor = prev.textColor;
+            data.text2Color = prev.text2Color;
+            data.footerText = prev.footerText;
+            data.footerTextEn = prev.footerTextEn;
+            data.heroBadge = prev.heroBadge;
+            data.heroBadgeEn = prev.heroBadgeEn;
+            data.heroSub = prev.heroSub;
+            data.heroSubEn = prev.heroSubEn;
+          }
+
           const mergedPlan = {
             ...prev.plan,
-            ...(data.plan || {}),
+            ...planToUse,
           };
-          if (!data.plan?.featuresEn) mergedPlan.featuresEn = prev.plan.featuresEn;
-          if (!data.plan?.features) mergedPlan.features = prev.plan.features;
+          if (!planToUse.featuresEn) mergedPlan.featuresEn = prev.plan.featuresEn;
+          if (!planToUse.features) mergedPlan.features = prev.plan.features;
 
           const mergedPlanAnnual = {
             ...prev.planAnnual,
-            ...(data.planAnnual || {}),
+            ...planAnnualToUse,
           };
-          if (!data.planAnnual?.featuresEn) mergedPlanAnnual.featuresEn = prev.planAnnual?.featuresEn || prev.plan.featuresEn;
-          if (!data.planAnnual?.features) mergedPlanAnnual.features = prev.planAnnual?.features || prev.plan.features;
+          if (!planAnnualToUse.featuresEn) mergedPlanAnnual.featuresEn = prev.planAnnual.featuresEn;
+          if (!planAnnualToUse.features) mergedPlanAnnual.features = prev.planAnnual.features;
 
           return {
             ...prev,
@@ -840,6 +935,123 @@ const BrandingSettings = () => {
           </div>
         </div>
 
+        {/* Advanced Overrides */}
+        <div className="card" style={{ marginBottom: '12px' }}>
+          <div style={sectionHeader}>
+            <Type size={16} />
+            <span>{isRTL ? 'تعديل جميع نصوص لوحة التحكم' : 'Dashboard Text Overrides'}</span>
+          </div>
+          <div style={{ fontSize: '12.5px', color: 'var(--text3)', marginBottom: '16px', lineHeight: '1.5' }}>
+            {isRTL 
+              ? 'يمكنك تعديل أي كلمة أو جملة تظهر للمستخدم في لوحة التحكم وتغييرها للعربية والإنجليزية.' 
+              : 'Edit any text or label visible to users in the dashboard in both Arabic and English.'}
+          </div>
+          
+          {/* Search Bar */}
+          <div style={{ marginBottom: '16px' }}>
+            <input
+              type="text"
+              placeholder={isRTL ? 'ابحث عن نص أو كلمة لتعديلها...' : 'Search text or key to edit...'}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {(() => {
+              const query = searchQuery.toLowerCase();
+              const filteredGroups = DICTIONARY_GROUPS.map(group => {
+                const matchedKeys = group.keys.filter(key => {
+                  const defAr = typeof LANG.ar[key] === 'string' ? LANG.ar[key] : String(LANG.ar[key] || '');
+                  const defEn = typeof LANG.en[key] === 'string' ? LANG.en[key] : String(LANG.en[key] || '');
+                  return (
+                    key.toLowerCase().includes(query) ||
+                    defAr.toLowerCase().includes(query) ||
+                    defEn.toLowerCase().includes(query)
+                  );
+                });
+                return { ...group, keys: matchedKeys };
+              }).filter(group => group.keys.length > 0);
+
+              if (filteredGroups.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '16px', fontSize: '13px' }}>
+                    {isRTL ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching translation keys found.'}
+                  </div>
+                );
+              }
+
+              return filteredGroups.map(group => {
+                const isOpen = openGroup === group.id || (searchQuery !== '' && group.keys.length > 0);
+                return (
+                  <div key={group.id} style={{ border: '1px solid var(--line2)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenGroup(openGroup === group.id ? null : group.id)}
+                      style={{ width: '100%', background: 'var(--bg3)', border: 'none', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: 'var(--text)', fontSize: '13px', fontWeight: '600' }}
+                    >
+                      <span>{group.titleKey}</span>
+                      <span style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text3)' }}>
+                        ▼
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: '16px', background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--line2)' }}>
+                        {group.keys.slice(0, 100).map(key => {
+                          const defaultAr = typeof LANG.ar[key] === 'string' ? LANG.ar[key] : String(LANG.ar[key] || '');
+                          const defaultEn = typeof LANG.en[key] === 'string' ? LANG.en[key] : String(LANG.en[key] || defaultAr);
+                          const valAr = config.i18nOverrides?.ar?.[key] || '';
+                          const valEn = config.i18nOverrides?.en?.[key] || '';
+                          return (
+                            <div key={key} style={{ borderBottom: '1px solid var(--line2)', paddingBottom: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text2)', marginBottom: '6px' }}>
+                                <span title={defaultAr.replace(/<[^>]*>?/gm, '')}>
+                                  {defaultAr.replace(/<[^>]*>?/gm, '').length > 50 ? defaultAr.replace(/<[^>]*>?/gm, '').substring(0, 50) + '...' : defaultAr.replace(/<[^>]*>?/gm, '')}
+                                </span>
+                                <span style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginInlineStart: '8px', fontWeight: 'normal' }}>
+                                  ({key})
+                                </span>
+                              </label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <input
+                                  type="text"
+                                  dir="rtl"
+                                  placeholder={defaultAr}
+                                  value={valAr}
+                                  onChange={e => handleOverrideChange('ar', key, e.target.value)}
+                                  style={{ ...inputStyle, fontSize: '12px', padding: '8px 12px' }}
+                                  title="عربي"
+                                />
+                                <input
+                                  type="text"
+                                  dir="ltr"
+                                  placeholder={defaultEn}
+                                  value={valEn}
+                                  onChange={e => handleOverrideChange('en', key, e.target.value)}
+                                  style={{ ...inputStyle, fontSize: '12px', padding: '8px 12px', textAlign: 'left' }}
+                                  title="English"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {group.keys.length > 100 && (
+                          <div style={{ fontSize: '11px', color: 'var(--text3)', textAlign: 'center', paddingTop: '8px' }}>
+                            {isRTL 
+                              ? `تم عرض أول 100 نتيجة من أصل ${group.keys.length}. يرجى استخدام البحث لتحديد نصوص معينة.` 
+                              : `Showing first 100 of ${group.keys.length} items. Use search to find specific items.`}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+
         {/* Actions */}
         <div style={{ display: 'flex', gap: '10px', paddingBottom: '20px' }}>
           <button
@@ -872,7 +1084,7 @@ const BrandingSettings = () => {
         </div>
         <iframe
           ref={iframeRef}
-          src="/gigsniper_v2.html?preview=true"
+          src="/landing-page.html?preview=true"
           onLoad={handleIframeLoad}
           style={{ flex: 1, border: 'none', width: '100%' }}
           title="Landing Page Preview"
