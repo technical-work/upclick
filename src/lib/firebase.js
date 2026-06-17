@@ -4,7 +4,7 @@ import { getAuth, setPersistence, browserSessionPersistence } from "firebase/aut
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-const firebaseConfig = {
+const prodConfig = {
   apiKey: "AIzaSyCsXbVORWhOgsC1EMRG_-CyGNFxwMwDftg",
   authDomain: "upklick-software.firebaseapp.com",
   projectId: "upklick-software",
@@ -13,6 +13,27 @@ const firebaseConfig = {
   appId: "1:74060817284:web:c3e7ef1d92200129f2f3d1",
   measurementId: "G-7VH0LGBENN"
 };
+
+const stagingConfig = {
+  apiKey: "AIzaSyCsXbVORWhOgsC1EMRG_-CyGNFxwMwDftg",
+  authDomain: "upklick-software.firebaseapp.com",
+  projectId: "upklick-software",
+  storageBucket: "upklick-software.firebasestorage.app",
+  messagingSenderId: "74060817284",
+  appId: "1:74060817284:web:8e2e15b345099028f2f3d1",
+  measurementId: "G-F5QDZ49Z3P"
+};
+
+// Resolve configuration based on hostname or build environment
+let firebaseConfig = prodConfig;
+if (typeof window !== "undefined") {
+  const host = window.location.hostname;
+  if (host.includes("staging") || host.includes("localhost") || host.includes("127.0.0.1")) {
+    firebaseConfig = stagingConfig;
+  }
+} else if (process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_APP_ENV === "staging") {
+  firebaseConfig = stagingConfig;
+}
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

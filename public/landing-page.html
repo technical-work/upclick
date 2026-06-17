@@ -3219,14 +3219,32 @@
 
   <script>
     // ── FIREBASE INITIALIZATION ──
-    var firebaseConfig = {
+    var prodConfig = {
       apiKey: "AIzaSyCsXbVORWhOgsC1EMRG_-CyGNFxwMwDftg",
       authDomain: "upklick-software.firebaseapp.com",
       projectId: "upklick-software",
       storageBucket: "upklick-software.firebasestorage.app",
       messagingSenderId: "74060817284",
-      appId: "1:74060817284:web:c3e7ef1d92200129f2f3d1"
+      appId: "1:74060817284:web:c3e7ef1d92200129f2f3d1",
+      measurementId: "G-7VH0LGBENN"
     };
+
+    var stagingConfig = {
+      apiKey: "AIzaSyCsXbVORWhOgsC1EMRG_-CyGNFxwMwDftg",
+      authDomain: "upklick-software.firebaseapp.com",
+      projectId: "upklick-software",
+      storageBucket: "upklick-software.firebasestorage.app",
+      messagingSenderId: "74060817284",
+      appId: "1:74060817284:web:8e2e15b345099028f2f3d1",
+      measurementId: "G-F5QDZ49Z3P"
+    };
+
+    var firebaseConfig = prodConfig;
+    var hostName = window.location.hostname;
+    if (hostName.indexOf("staging") !== -1 || hostName.indexOf("localhost") !== -1 || hostName.indexOf("127.0.0.1") !== -1) {
+      firebaseConfig = stagingConfig;
+    }
+
     firebase.initializeApp(firebaseConfig);
     var db = firebase.firestore();
 
