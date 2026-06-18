@@ -2,20 +2,76 @@
 
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
 import { callClaudeAPI } from '../../utils/ai';
 
 export default function TaskBoardView() {
-  const { lang, L, t, GC, toggleTask, deleteTask, setTaskModalOpen } = useBusiness();
+  const { lang, L, t, GC, saveGC, toggleTask, deleteTask, setTaskModalOpen, isTeamMember } = useBusiness();
+  const { userData } = useAuth();
   const [activeTab, setActiveTab] = useState('today');
   const [aiPrioritized, setAiPrioritized] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [draggedOverCol, setDraggedOverCol] = useState(null);
+  const [showMyTasks, setShowMyTasks] = useState(isTeamMember);
 
-  // Compute Task Stats
-  const items = GC.tasks.items || [];
+  const memberName = isTeamMember ? (userData?.name || '') : '';
+
+  const handleDragOver = (e, colKey) => {
+    e.preventDefault();
+    setDraggedOverCol(colKey);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverCol(null);
+  };
+
+  const handleDrop = (e, colKey) => {
+    setDraggedOverCol(null);
+    const taskIdStr = e.dataTransfer.getData('text/plain');
+    const taskId = parseInt(taskIdStr);
+    if (isNaN(taskId)) return;
+
+    const task = items.find(t => t.id === taskId);
+    if (!task) return;
+
+    let updatedTask = { ...task };
+    if (colKey === 'done') {
+      updatedTask.done = true;
+    } else {
+      updatedTask.done = false;
+      if (colKey === 'todo') {
+        updatedTask.priority = 'high';
+      } else if (colKey === 'in-progress') {
+        updatedTask.priority = 'medium';
+      } else if (colKey === 'backlog') {
+        updatedTask.priority = 'low';
+      }
+    }
+
+    const updatedItems = items.map(t => t.id === taskId ? updatedTask : t);
+    const updatedGC = {
+      ...GC,
+      tasks: {
+        ...GC.tasks,
+        items: updatedItems
+      }
+    };
+    saveGC(updatedGC);
+  };
+
+  // Compute Task Stats — include both GC.tasks.items and GC.team.tasks
+  const allItems = [
+    ...(GC.tasks.items || []),
+    ...(GC.team?.tasks || []).map(tk => ({ ...tk, title: tk.title, priority: tk.priority || 'medium', done: tk.done || false, due: tk.dueDate, assignee: tk.assignee, isTeamTask: true }))
+  ];
+  
+  // Filter by member name if showMyTasks is active
+  const items = showMyTasks && memberName ? allItems.filter(t => t.assignee && t.assignee.toLowerCase() === memberName.toLowerCase()) : allItems;
+  
   const totalTasks = items.length;
   const highPriority = items.filter(t => !t.done && t.priority === 'high').length;
   const completedToday = items.filter(t => t.done).length;
-  const overdueTasks = items.filter(t => !t.done && t.due && new Date(t.due) < new Date()).length;
+  const overdueTasks = items.filter(t => !t.done && (t.due || t.dueDate) && new Date(t.due || t.dueDate) < new Date()).length;
 
   const runAIPrioritization = async () => {
     setAiLoading(true);
@@ -97,10 +153,19 @@ Give me the top 3 tasks I must focus on today to make progress, and why. Be extr
       )}
 
       {/* Tabs */}
-      <div className="tabs-bar" id="task-tabs" style={{ marginBottom: '14px' }}>
+      <div className="tabs-bar" id="task-tabs" style={{ marginBottom: '14px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
         <button className={`tab-btn ${activeTab === 'today' ? 'on' : ''}`} onClick={() => setActiveTab('today')}>{L('Today', 'اليوم')}</button>
         <button className={`tab-btn ${activeTab === 'all' ? 'on' : ''}`} onClick={() => setActiveTab('all')}>{L('All Tasks', 'جميع المهام')}</button>
         <button className={`tab-btn ${activeTab === 'kanban' ? 'on' : ''}`} onClick={() => setActiveTab('kanban')}>{L('Kanban', 'كانبان')}</button>
+        {(isTeamMember || (GC.team?.members || []).length > 0) && (
+          <button
+            className={`tab-btn ${showMyTasks ? 'on' : ''}`}
+            onClick={() => setShowMyTasks(!showMyTasks)}
+            style={{ marginLeft: 'auto' }}
+          >
+            {showMyTasks ? L('👤 My Tasks', '👤 مهامي') : L('👥 All Tasks', '👥 كل المهام')}
+          </button>
+        )}
       </div>
 
       {/* List Panels */}
@@ -158,19 +223,44 @@ Give me the top 3 tasks I must focus on today to make progress, and why. Be extr
           {kanbanColumns.map(col => {
             const colTasks = items.filter(col.filter);
             return (
-              <div key={col.key} className="kanban-col" style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '12px' }}>
+              <div 
+                key={col.key} 
+                className="kanban-col" 
+                style={{ 
+                  background: draggedOverCol === col.key ? 'rgba(var(--a-rgb), 0.08)' : 'var(--surface)', 
+                  border: draggedOverCol === col.key ? '1px dashed var(--a)' : '1px solid var(--edge)', 
+                  borderRadius: '12px', 
+                  padding: '12px',
+                  transition: 'background-color 0.2s, border-color 0.2s'
+                }}
+                onDragOver={(e) => handleDragOver(e, col.key)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, col.key)}
+              >
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--t1)', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
                   <span>{col.label}</span>
                   <span style={{ background: 'var(--surface2)', borderRadius: '6px', padding: '1px 6px', fontSize: '11px' }}>{colTasks.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '300px' }}>
                   {colTasks.map(task => (
-                    <div key={task.id} style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', cursor: 'pointer' }}>
+                    <div 
+                      key={task.id} 
+                      draggable="true"
+                      onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
+                      style={{ 
+                        background: 'var(--surface2)', 
+                        border: '1px solid var(--edge)', 
+                        borderRadius: '9px', 
+                        padding: '10px', 
+                        cursor: 'grab' 
+                      }}
+                      onDragOver={(e) => e.stopPropagation()}
+                    >
                       <div style={{ fontSize: '12.5px', color: 'var(--t1)', marginBottom: '8px', textDecoration: task.done ? 'line-through' : 'none' }}>{task.title}</div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: getPriorityBadgeColor(task.priority) }} />
                         <div style={{ display: 'flex', gap: '4px' }}>
-                          <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} />
+                          <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
                           <button onClick={() => deleteTask(task.id)} style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer' }}>✕</button>
                         </div>
                       </div>

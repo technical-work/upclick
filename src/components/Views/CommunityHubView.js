@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
 export default function CommunityHubView() {
-  const { lang, L, t, GC } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
   const [postText, setPostText] = useState('');
-  const [feed, setFeed] = useState([
+  const communityData = GC.communityHub || {};
+
+  const [feed, setFeed] = useState(communityData.feed && communityData.feed.length ? communityData.feed : [
     {
       id: 1,
       author: 'Sara Hassan',
@@ -19,8 +21,28 @@ export default function CommunityHubView() {
     }
   ]);
 
-  const [membersCount, setMembersCount] = useState(124);
-  const [activeToday, setActiveToday] = useState(42);
+  const [membersCount, setMembersCount] = useState(communityData.membersCount ?? 124);
+  const [activeToday, setActiveToday] = useState(communityData.activeToday ?? 42);
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.communityHub) {
+      if (GC.communityHub.feed) setFeed(GC.communityHub.feed);
+      if (GC.communityHub.membersCount !== undefined) setMembersCount(GC.communityHub.membersCount);
+      if (GC.communityHub.activeToday !== undefined) setActiveToday(GC.communityHub.activeToday);
+    }
+  }, [GC.communityHub]);
+
+  const saveCommunityData = (updatedFields) => {
+    const updatedGC = {
+      ...GC,
+      communityHub: {
+        ...(GC.communityHub || {}),
+        ...updatedFields
+      }
+    };
+    saveGC(updatedGC);
+  };
 
   const handlePost = () => {
     if (!postText.trim()) return;
@@ -34,13 +56,17 @@ export default function CommunityHubView() {
       date: L('Just now', 'الآن')
     };
 
-    setFeed(prev => [newPost, ...prev]);
+    const newFeed = [newPost, ...feed];
+    setFeed(newFeed);
     setPostText('');
+    saveCommunityData({ feed: newFeed });
     alert(L('Posted successfully!', 'تم النشر بنجاح!'));
   };
 
   const handleLike = (id) => {
-    setFeed(prev => prev.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
+    const newFeed = feed.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p);
+    setFeed(newFeed);
+    saveCommunityData({ feed: newFeed });
   };
 
   return (

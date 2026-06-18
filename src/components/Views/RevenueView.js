@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { DB } from '../../data/mockData';
 
 export default function RevenueView() {
-  const { lang, L, t, formatMoney } = useBusiness();
+  const { lang, L, t, formatMoney, GC, saveGC } = useBusiness();
 
   // Tab state inside Revenue Hub
   const [activeSubTab, setActiveSubTab] = useState('rv-streams'); // 'rv-streams', 'rv-deals', 'rv-neg', etc.
@@ -13,13 +13,49 @@ export default function RevenueView() {
   // 1. Streams State
   const activeStreamsCount = DB.streamsLauncher[lang]?.filter(s => s.a).length || 4;
 
+  const revenueData = GC.revenue || {};
+
   // 2. Deals / Pipeline State
-  const [pipelineDeals, setPipelineDeals] = useState(DB.deals || {
+  const [pipelineDeals, setPipelineDeals] = useState(revenueData.deals && Object.keys(revenueData.deals).length ? revenueData.deals : (DB.deals || {
     Prospect: [],
     Negotiating: [],
     Contracted: [],
     Completed: []
-  });
+  }));
+
+  // 6. Affiliates State
+  const [affiliatesList, setAffiliatesList] = useState(revenueData.affiliates && revenueData.affiliates.length ? revenueData.affiliates : (DB.affLinks || []));
+
+  // 8. Email / Lead Magnets State
+  const [leadMagnets, setLeadMagnets] = useState(revenueData.leadMagnets && revenueData.leadMagnets.length ? revenueData.leadMagnets : (DB.leadMagnets[lang] || []));
+
+  // 9. Coaching Sessions State
+  const [coachingSessions, setCoachingSessions] = useState(revenueData.coachingSessions && revenueData.coachingSessions.length ? revenueData.coachingSessions : (DB.coachSessions[lang] || []));
+
+  // 10. Merch State
+  const [merchCatalog, setMerchCatalog] = useState(revenueData.merch && revenueData.merch.length ? revenueData.merch : (DB.merchItems || []));
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.revenue) {
+      if (GC.revenue.deals) setPipelineDeals(GC.revenue.deals);
+      if (GC.revenue.affiliates) setAffiliatesList(GC.revenue.affiliates);
+      if (GC.revenue.leadMagnets) setLeadMagnets(GC.revenue.leadMagnets);
+      if (GC.revenue.coachingSessions) setCoachingSessions(GC.revenue.coachingSessions);
+      if (GC.revenue.merch) setMerchCatalog(GC.revenue.merch);
+    }
+  }, [GC.revenue]);
+
+  const saveRevenueData = (updatedFields) => {
+    const updatedGC = {
+      ...GC,
+      revenue: {
+        ...(GC.revenue || {}),
+        ...updatedFields
+      }
+    };
+    saveGC(updatedGC);
+  };
 
   const handleAddDeal = () => {
     const brand = prompt(L('Enter Brand Name:', 'أدخل اسم البراند:'));
@@ -34,10 +70,13 @@ export default function RevenueView() {
       ty: { en: type, ar: type }
     };
 
-    setPipelineDeals(prev => ({
-      ...prev,
-      Prospect: [...prev.Prospect, newDeal]
-    }));
+    const newDeals = {
+      ...pipelineDeals,
+      Prospect: [...(pipelineDeals.Prospect || []), newDeal]
+    };
+
+    setPipelineDeals(newDeals);
+    saveRevenueData({ deals: newDeals });
     alert(L('Deal added to Prospect stage!', 'تمت إضافة الصفقة لمرحلة قيد البحث!'));
   };
 
@@ -62,7 +101,7 @@ export default function RevenueView() {
       rating = L('Too Low', 'منخفض جداً');
       icon = '⚠️';
     } else if (amount < fair * 0.9) {
-      rating = L('Fair', 'عادل');
+      rating = L('Paper', 'عادل');
       icon = '🟡';
     } else if (amount < fair * 1.2) {
       rating = L('Good', 'جيد');
@@ -116,8 +155,6 @@ export default function RevenueView() {
     alert(L('Product added! Check Shop layout.', 'تمت إضافة المنتج! تحقق من المتجر.'));
   };
 
-  // 6. Affiliates State
-  const [affiliatesList, setAffiliatesList] = useState(DB.affLinks || []);
   const handleAddAffLink = () => {
     const name = prompt(L('Enter Program Name:', 'اسم برنامج الأفيليت:'));
     if (!name) return;
@@ -130,15 +167,15 @@ export default function RevenueView() {
       cvr: '3%',
       earn: earnings
     };
-    setAffiliatesList(prev => [...prev, newAff]);
+    const newList = [...affiliatesList, newAff];
+    setAffiliatesList(newList);
+    saveRevenueData({ affiliates: newList });
   };
 
   // 7. Patreon Membership State
   const [patNiche, setPatNiche] = useState('Business & Finance');
   const patTiersList = (DB.patTiers && DB.patTiers[patNiche] && DB.patTiers[patNiche][lang]) || (DB.patTiers && DB.patTiers['Business & Finance'] && DB.patTiers['Business & Finance'][lang]) || [];
 
-  // 8. Email / Lead Magnets State
-  const [leadMagnets, setLeadMagnets] = useState(DB.leadMagnets[lang] || []);
   const handleGenLeadMagnet = () => {
     const newM = {
       e: '🧲',
@@ -146,11 +183,11 @@ export default function RevenueView() {
       subs: 0,
       cvr: '0%'
     };
-    setLeadMagnets(prev => [newM, ...prev]);
+    const newList = [newM, ...leadMagnets];
+    setLeadMagnets(newList);
+    saveRevenueData({ leadMagnets: newList });
   };
 
-  // 9. Coaching Sessions State
-  const [coachingSessions, setCoachingSessions] = useState(DB.coachSessions[lang] || []);
   const handleAddCoachingSession = () => {
     const name = prompt(L('Enter client name:', 'أدخل اسم العميل:'));
     if (!name) return;
@@ -162,11 +199,11 @@ export default function RevenueView() {
       s: 'bdo',
       sl: L('Pending', 'معلق')
     };
-    setCoachingSessions(prev => [newSession, ...prev]);
+    const newList = [newSession, ...coachingSessions];
+    setCoachingSessions(newList);
+    saveRevenueData({ coachingSessions: newList });
   };
 
-  // 10. Merch State
-  const [merchCatalog, setMerchCatalog] = useState(DB.merchItems || []);
   const handleAddMerch = () => {
     const name = prompt(L('Merch Item Name:', 'اسم منتج الميرش:'));
     if (!name) return;
@@ -178,7 +215,9 @@ export default function RevenueView() {
       s: 0,
       c: '#b060ff'
     };
-    setMerchCatalog(prev => [...prev, newMerch]);
+    const newList = [...merchCatalog, newMerch];
+    setMerchCatalog(newList);
+    saveRevenueData({ merch: newList });
   };
 
   return (

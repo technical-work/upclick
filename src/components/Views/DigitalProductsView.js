@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { callClaudeAPI } from '../../utils/ai';
 
 const MICRO_NICHES = {
   coaching: ['Business Coaching', 'Life Coaching', 'Career Coaching', 'Relationship Coaching', 'Health Coaching', 'Mindset & Productivity'],
@@ -15,7 +16,7 @@ const MICRO_NICHES = {
 };
 
 export default function DigitalProductsView() {
-  const { lang, L, t, setDpDetailOpen, setDpDetailIndex } = useBusiness();
+  const { lang, L, t, GC, saveGC, setDpDetailOpen, setDpDetailIndex } = useBusiness();
 
   // Tab state
   const [activeSubTab, setActiveSubTab] = useState('trending'); // 'trending', 'niche', 'builder', 'myproducts'
@@ -47,24 +48,17 @@ export default function DigitalProductsView() {
   const [currentPlanObject, setCurrentPlanObject] = useState(null);
 
   // My Products list state
-  const [myProducts, setMyProducts] = useState([]);
+  const myProducts = GC.digitalProducts?.products || [];
 
-  // Load My Products on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dp_my_products');
-      if (saved) {
-        try {
-          setMyProducts(JSON.parse(saved));
-        } catch (e) {}
-      }
-    }
-  }, []);
-
-  // Sync My Products to localStorage
+  // Sync My Products to context & database
   const saveMyProducts = (list) => {
-    setMyProducts(list);
-    localStorage.setItem('dp_my_products', JSON.stringify(list));
+    saveGC({
+      ...GC,
+      digitalProducts: {
+        ...GC.digitalProducts,
+        products: list
+      }
+    });
   };
 
   // Fallback trending data
@@ -86,29 +80,18 @@ export default function DigitalProductsView() {
     setHasLoadedTrends(true);
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          system: 'You are a digital product market researcher. Return ONLY a valid JSON array, no markdown or extra text.',
-          messages: [{
-            role: 'user',
-            content: `Generate 12 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}. Market: ${market}. ${typeFilter !== 'all' ? `Type filter: ${typeFilter}` : ''}. Each object must have: {title, type, platform, price(number), monthly_sales(number), rating(1-5 with decimal), demand_score(1-10), category, emoji, description(one line), opportunity_score(1-10), why_trending(one sentence), ai_tools(array of 3 tools to create it), sell_on(array of 3 platforms), creation_days(number)}. Focus on products relevant to Arab entrepreneurs and creators. Return JSON array ONLY.`
-          }]
-        })
-      });
-      const data = await res.json();
-      const rawText = data.content && data.content[0] ? data.content[0].text : '[]';
-      let cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const promptText = `Generate 12 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}. Market: ${market}. ${typeFilter !== 'all' ? `Type filter: ${typeFilter}` : ''}. Each object must have: {title, type, platform, price(number), monthly_sales(number), rating(1-5 with decimal), demand_score(1-10), category, emoji, description(one line), opportunity_score(1-10), why_trending(one sentence), ai_tools(array of 3 tools to create it), sell_on(array of 3 platforms), creation_days(number)}. Focus on products relevant to Arab entrepreneurs and creators. Return JSON array ONLY.`;
+      const systemText = 'You are a digital product market researcher. Return ONLY a valid JSON array, no markdown or extra text.';
+
+      const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
+      let cleaned = (rawText || '[]').replace(/```json/g, '').replace(/```/g, '').trim();
       if (cleaned.indexOf('[') > -1) {
         cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);
       }
       const parsed = JSON.parse(cleaned);
       setTrendingProducts(parsed);
     } catch (e) {
-      console.warn("Anthropic API failed in loadDPTrends, using fallback data.");
+      console.warn("API failed in loadDPTrends, using fallback data:", e);
       setTrendingProducts(getFallbackTrends());
     } finally {
       setLoadingTrends(false);
@@ -151,29 +134,18 @@ export default function DigitalProductsView() {
     setNicheProducts([]);
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: 'Digital product researcher. Return ONLY JSON array.',
-          messages: [{
-            role: 'user',
-            content: `Generate 6 digital product ideas for micro-niche: "${micro}" in the ${mainNiche} space. Target: Arab creators and entrepreneurs. Each: {title, type, price(number), monthly_sales(number), emoji, creation_days(number), description(one line)}. JSON only.`
-          }]
-        })
-      });
-      const data = await res.json();
-      const text = data.content && data.content[0] ? data.content[0].text : '[]';
-      let cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const promptText = `Generate 6 digital product ideas for micro-niche: "${micro}" in the ${mainNiche} space. Target: Arab creators and entrepreneurs. Each: {title, type, price(number), monthly_sales(number), emoji, creation_days(number), description(one line)}. JSON only.`;
+      const systemText = 'Digital product researcher. Return ONLY JSON array.';
+
+      const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
+      let cleaned = (rawText || '[]').replace(/```json/g, '').replace(/```/g, '').trim();
       if (cleaned.indexOf('[') > -1) {
         cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);
       }
       const parsed = JSON.parse(cleaned);
       setNicheProducts(parsed);
     } catch (e) {
-      console.warn("Anthropic API failed in loadMicroNicheProducts, using fallback.");
+      console.warn("API failed in loadMicroNicheProducts, using fallback:", e);
       // Fallback micro niche products
       setNicheProducts([
         { title: `Ultimate ${micro} Guidebook`, type: 'PDF Guide', price: 19, monthly_sales: 150, emoji: '📖', creation_days: 3, description: `Step-by-step workbook to dominate ${micro} space.` },
@@ -197,23 +169,12 @@ export default function DigitalProductsView() {
     setCurrentPlanObject(null);
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1200,
-          system: 'You are a digital product launch strategist specializing in the Arab creator economy. Be specific and realistic.',
-          messages: [{
-            role: 'user',
-            content: `Create a complete execution plan for this digital product:\nName: ${builderName}\nType: ${builderType}\nAudience: ${builderAudience || 'Arab entrepreneurs'}\nPrice: $${builderPrice}\nTime available: ${builderTime}\nProblem solved: ${builderProblem || 'not specified'}\n\nProvide:\n1. Expected Monthly Revenue estimate (be specific with numbers)\n2. Days to complete with specific daily tasks\n3. Required AI tools (with specific use for each)\n4. Best platforms to sell on (with reasoning)\n5. 3 marketing hooks/angles for launch\n6. One biggest risk and how to avoid it\n\nBe concrete and actionable.`
-          }]
-        })
-      });
-      const data = await res.json();
-      const reply = data.content && data.content[0] ? data.content[0].text : '';
+      const promptText = `Create a complete execution plan for this digital product:\nName: ${builderName}\nType: ${builderType}\nAudience: ${builderAudience || 'Arab entrepreneurs'}\nPrice: $${builderPrice}\nTime available: ${builderTime}\nProblem solved: ${builderProblem || 'not specified'}\n\nProvide:\n1. Expected Monthly Revenue estimate (be specific with numbers)\n2. Days to complete with specific daily tasks\n3. Required AI tools (with specific use for each)\n4. Best platforms to sell on (with reasoning)\n5. 3 marketing hooks/angles for launch\n6. One biggest risk and how to avoid it\n\nBe concrete and actionable.`;
+      const systemText = 'You are a digital product launch strategist specializing in the Arab creator economy. Be specific and realistic.';
 
-      setBuilderPlanText(reply);
+      const reply = await callClaudeAPI(promptText, systemText, lang, GC);
+
+      setBuilderPlanText(reply || '');
       setCurrentPlanObject({
         name: builderName,
         type: builderType,
@@ -224,7 +185,7 @@ export default function DigitalProductsView() {
         created: new Date().toISOString()
       });
     } catch (e) {
-      console.warn("Anthropic API failed in buildDPPlan, using fallback plan.");
+      console.warn("API failed in buildDPPlan, using fallback plan:", e);
       const fallbackText = `### ⚡ Execution Plan: ${builderName}\n\n**1. Expected Monthly Revenue:**\nEst. $950 - $2,500/month based on selling ~35-90 copies at $${builderPrice}.\n\n**2. Timeline (${builderTime}):**\n• Day 1: Brainstorm modules and outline details. Use Claude to draft the structure.\n• Day 2: Create assets in Canva/Notion.\n• Day 3: Build a simple landing page, write marketing copywriting and post on socials.\n\n**3. Required AI Tools:**\n• Claude.ai (Content structuring & Copywriting)\n• Canva AI (Visual cover templates)\n• UpKlick AI (Sales script generation)\n\n**4. Target Platforms:**\n• Gumroad (Easy setup & international payouts)\n• Payhip (Low transaction fees)\n\n**5. Marketing Hooks:**\n• "Stop wasting hours manually formatting. Get this plug-and-play template instead!"\n• "The exact framework I used to scale my ${builderType} workflow, now yours."`;
       setBuilderPlanText(fallbackText);
       setCurrentPlanObject({

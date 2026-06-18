@@ -1,34 +1,63 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
 export default function NicheStudioView() {
-  const { t, L, setAiPanelOpen } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC } = useBusiness();
   const [activeTab, setActiveTab] = useState('names'); // 'names', 'explorer'
   
+  const studioData = GC.nicheStudio || {};
+
   // Name Generator State
-  const [language, setLanguage] = useState('ar');
-  const [field, setField] = useState('coaching');
-  const [styles, setStyles] = useState(['catchy']);
-  const [wordCount, setWordCount] = useState(1);
-  const [keywords, setKeywords] = useState('');
-  const [audience, setAudience] = useState('Arab entrepreneurs');
+  const [language, setLanguage] = useState(studioData.language || 'ar');
+  const [field, setField] = useState(studioData.field || 'coaching');
+  const [styles, setStyles] = useState(studioData.styles || ['catchy']);
+  const [wordCount, setWordCount] = useState(studioData.wordCount ?? 1);
+  const [keywords, setKeywords] = useState(studioData.keywords || '');
+  const [audience, setAudience] = useState(studioData.audience || 'Arab entrepreneurs');
   
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedNames, setGeneratedNames] = useState([]);
-  const [savedNames, setSavedNames] = useState([]);
+  const [generatedNames, setGeneratedNames] = useState(studioData.generatedNames || []);
+  const [savedNames, setSavedNames] = useState(studioData.savedNames || []);
 
   // Niche Explorer State
-  const [selectedNiche, setSelectedNiche] = useState(null);
-  const [selectedMicro, setSelectedMicro] = useState(null);
+  const [selectedNiche, setSelectedNiche] = useState(studioData.selectedNiche || null);
+  const [selectedMicro, setSelectedMicro] = useState(studioData.selectedMicro || null);
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.nicheStudio) {
+      setLanguage(GC.nicheStudio.language || 'ar');
+      setField(GC.nicheStudio.field || 'coaching');
+      setStyles(GC.nicheStudio.styles || ['catchy']);
+      setWordCount(GC.nicheStudio.wordCount ?? 1);
+      setKeywords(GC.nicheStudio.keywords || '');
+      setAudience(GC.nicheStudio.audience || 'Arab entrepreneurs');
+      setGeneratedNames(GC.nicheStudio.generatedNames || []);
+      setSavedNames(GC.nicheStudio.savedNames || []);
+      setSelectedNiche(GC.nicheStudio.selectedNiche || null);
+      setSelectedMicro(GC.nicheStudio.selectedMicro || null);
+    }
+  }, [GC.nicheStudio]);
+
+  const saveStudioData = (updatedFields) => {
+    const updatedGC = {
+      ...GC,
+      nicheStudio: {
+        ...(GC.nicheStudio || {}),
+        ...updatedFields
+      }
+    };
+    saveGC(updatedGC);
+  };
 
   const toggleStyle = (styleId) => {
-    if (styles.includes(styleId)) {
-      setStyles(styles.filter(s => s !== styleId));
-    } else {
-      setStyles([...styles, styleId]);
-    }
+    const newStyles = styles.includes(styleId)
+      ? styles.filter(s => s !== styleId)
+      : [...styles, styleId];
+    setStyles(newStyles);
+    saveStudioData({ styles: newStyles });
   };
 
   const handleGenerate = () => {
@@ -38,25 +67,37 @@ export default function NicheStudioView() {
     // Simulate generation
     setTimeout(() => {
       setIsGenerating(false);
-      setGeneratedNames([
-        'UpKlick', 'Najah', 'GrowArabia', 'RiyadaHub', 'Numuw', 'FutureBiz'
-      ]);
+      const names = ['UpKlick', 'Najah', 'GrowArabia', 'RiyadaHub', 'Numuw', 'FutureBiz'];
+      setGeneratedNames(names);
+      saveStudioData({
+        language, field, styles, wordCount, keywords, audience,
+        generatedNames: names
+      });
     }, 1500);
   };
 
   const handleSaveName = (name) => {
     if (!savedNames.includes(name)) {
-      setSavedNames([...savedNames, name]);
+      const newSaved = [...savedNames, name];
+      setSavedNames(newSaved);
+      saveStudioData({ savedNames: newSaved });
     }
   };
 
   const handleClearSaved = () => {
     setSavedNames([]);
+    saveStudioData({ savedNames: [] });
   };
 
   const handleNicheSelect = (nicheId) => {
     setSelectedNiche(nicheId);
     setSelectedMicro(null);
+    saveStudioData({ selectedNiche: nicheId, selectedMicro: null });
+  };
+
+  const handleMicroSelect = (microId) => {
+    setSelectedMicro(microId);
+    saveStudioData({ selectedMicro: microId });
   };
 
   return (
@@ -116,15 +157,15 @@ export default function NicheStudioView() {
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>🌍 {L('Language', 'اللغة')}</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => setLanguage('ar')} style={{ flex: 1, padding: '9px', borderRadius: '9px', border: language === 'ar' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: language === 'ar' ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', fontWeight: language === 'ar' ? 700 : 600, cursor: 'pointer', color: language === 'ar' ? 'var(--orange)' : 'var(--t2)' }}>عربي 🇸🇦</button>
-                    <button onClick={() => setLanguage('en')} style={{ flex: 1, padding: '9px', borderRadius: '9px', border: language === 'en' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: language === 'en' ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', fontWeight: language === 'en' ? 700 : 600, cursor: 'pointer', color: language === 'en' ? 'var(--orange)' : 'var(--t2)' }}>English 🌐</button>
-                    <button onClick={() => setLanguage('mixed')} style={{ flex: 1, padding: '9px', borderRadius: '9px', border: language === 'mixed' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: language === 'mixed' ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', fontWeight: language === 'mixed' ? 700 : 600, cursor: 'pointer', color: language === 'mixed' ? 'var(--orange)' : 'var(--t2)' }}>{L('Mixed ✨', 'مزيج ✨')}</button>
+                    <button onClick={() => { setLanguage('ar'); saveStudioData({ language: 'ar' }); }} style={{ flex: 1, padding: '9px', borderRadius: '9px', border: language === 'ar' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: language === 'ar' ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', fontWeight: language === 'ar' ? 700 : 600, cursor: 'pointer', color: language === 'ar' ? 'var(--orange)' : 'var(--t2)' }}>عربي 🇸🇦</button>
+                    <button onClick={() => { setLanguage('en'); saveStudioData({ language: 'en' }); }} style={{ flex: 1, padding: '9px', borderRadius: '9px', border: language === 'en' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: language === 'en' ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', fontWeight: language === 'en' ? 700 : 600, cursor: 'pointer', color: language === 'en' ? 'var(--orange)' : 'var(--t2)' }}>English 🌐</button>
+                    <button onClick={() => { setLanguage('mixed'); saveStudioData({ language: 'mixed' }); }} style={{ flex: 1, padding: '9px', borderRadius: '9px', border: language === 'mixed' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: language === 'mixed' ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', fontWeight: language === 'mixed' ? 700 : 600, cursor: 'pointer', color: language === 'mixed' ? 'var(--orange)' : 'var(--t2)' }}>{L('Mixed ✨', 'مزيج ✨')}</button>
                   </div>
                 </div>
 
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>📦 {L('Business Type / Field', 'مجال العمل')}</label>
-                  <select className="inp" value={field} onChange={(e) => setField(e.target.value)}>
+                  <select className="inp" value={field} onChange={(e) => { setField(e.target.value); saveStudioData({ field: e.target.value }); }}>
                     <option value="coaching">🎓 Coaching & Training</option>
                     <option value="content">📱 Content Creation</option>
                     <option value="ecommerce">🛒 E-commerce / Products</option>
@@ -155,20 +196,20 @@ export default function NicheStudioView() {
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>📏 {L('Word Count', 'عدد الكلمات')}</label>
                   <div style={{ display: 'flex', gap: '7px' }}>
-                    <button onClick={() => setWordCount(1)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: wordCount === 1 ? '2px solid var(--orange)' : '1px solid var(--edge)', background: wordCount === 1 ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', cursor: 'pointer', color: wordCount === 1 ? 'var(--orange)' : 'var(--t2)', fontWeight: wordCount === 1 ? 700 : 400 }}>{L('1 Word', 'كلمة واحدة')}</button>
-                    <button onClick={() => setWordCount(2)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: wordCount === 2 ? '2px solid var(--orange)' : '1px solid var(--edge)', background: wordCount === 2 ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', cursor: 'pointer', color: wordCount === 2 ? 'var(--orange)' : 'var(--t2)', fontWeight: wordCount === 2 ? 700 : 400 }}>{L('2 Words', 'كلمتين')}</button>
-                    <button onClick={() => setWordCount(0)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: wordCount === 0 ? '2px solid var(--orange)' : '1px solid var(--edge)', background: wordCount === 0 ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', cursor: 'pointer', color: wordCount === 0 ? 'var(--orange)' : 'var(--t2)', fontWeight: wordCount === 0 ? 700 : 400 }}>{L('Any', 'أي')}</button>
+                    <button onClick={() => { setWordCount(1); saveStudioData({ wordCount: 1 }); }} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: wordCount === 1 ? '2px solid var(--orange)' : '1px solid var(--edge)', background: wordCount === 1 ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', cursor: 'pointer', color: wordCount === 1 ? 'var(--orange)' : 'var(--t2)', fontWeight: wordCount === 1 ? 700 : 400 }}>{L('1 Word', 'كلمة واحدة')}</button>
+                    <button onClick={() => { setWordCount(2); saveStudioData({ wordCount: 2 }); }} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: wordCount === 2 ? '2px solid var(--orange)' : '1px solid var(--edge)', background: wordCount === 2 ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', cursor: 'pointer', color: wordCount === 2 ? 'var(--orange)' : 'var(--t2)', fontWeight: wordCount === 2 ? 700 : 400 }}>{L('2 Words', 'كلمتين')}</button>
+                    <button onClick={() => { setWordCount(0); saveStudioData({ wordCount: 0 }); }} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: wordCount === 0 ? '2px solid var(--orange)' : '1px solid var(--edge)', background: wordCount === 0 ? 'var(--or-d)' : 'var(--surface2)', fontSize: '13px', cursor: 'pointer', color: wordCount === 0 ? 'var(--orange)' : 'var(--t2)', fontWeight: wordCount === 0 ? 700 : 400 }}>{L('Any', 'أي')}</button>
                   </div>
                 </div>
 
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>💡 {L('Keywords / Hint (optional)', 'كلمات دلالية (اختياري)')}</label>
-                  <input className="inp" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="e.g. growth, wealth, future, نجاح, ريادة..." />
+                  <input className="inp" value={keywords} onChange={e => setKeywords(e.target.value)} onBlur={e => saveStudioData({ keywords: e.target.value })} placeholder="e.g. growth, wealth, future, نجاح, ريادة..." />
                 </div>
 
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>🎯 {L('Target Audience', 'الجمهور المستهدف')}</label>
-                  <select className="inp" value={audience} onChange={e => setAudience(e.target.value)}>
+                  <select className="inp" value={audience} onChange={e => { setAudience(e.target.value); saveStudioData({ audience: e.target.value }); }}>
                     <option>Arab entrepreneurs</option>
                     <option>Arab women</option>
                     <option>Arab youth (18-30)</option>
@@ -274,8 +315,8 @@ export default function NicheStudioView() {
                 <div className="card">
                   <div className="sec-hd"><div className="sec-title">🔍 {L('Select Micro-Niche', 'اختر التخصص الدقيق')}</div></div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                    <button onClick={() => setSelectedMicro('micro1')} className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: selectedMicro === 'micro1' ? 'var(--surface3)' : 'none' }}>Specific sub-niche 1</button>
-                    <button onClick={() => setSelectedMicro('micro2')} className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: selectedMicro === 'micro2' ? 'var(--surface3)' : 'none' }}>Specific sub-niche 2</button>
+                    <button onClick={() => handleMicroSelect('micro1')} className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: selectedMicro === 'micro1' ? 'var(--surface3)' : 'none' }}>Specific sub-niche 1</button>
+                    <button onClick={() => handleMicroSelect('micro2')} className="btn btn-ghost" style={{ justifyContent: 'flex-start', background: selectedMicro === 'micro2' ? 'var(--surface3)' : 'none' }}>Specific sub-niche 2</button>
                   </div>
                 </div>
               )}

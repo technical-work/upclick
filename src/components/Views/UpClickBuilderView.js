@@ -8,29 +8,24 @@ export default function UpClickBuilderView() {
     lang,
     L,
     t,
-    setAiPanelOpen
+    setAiPanelOpen,
+    GC,
+    saveGC
   } = useBusiness();
 
-  const [funnels, setFunnels] = useState([]);
+  const funnels = GC.upclickFunnels?.funnels || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFunnelName, setNewFunnelName] = useState('');
   const [newFunnelType, setNewFunnelType] = useState('Lead Magnet');
 
-  // Load funnels from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('upklick_funnels');
-      if (saved) {
-        try {
-          setFunnels(JSON.parse(saved));
-        } catch (e) {}
-      }
-    }
-  }, []);
-
   const saveFunnels = (updatedFunnels) => {
-    setFunnels(updatedFunnels);
-    localStorage.setItem('upklick_funnels', JSON.stringify(updatedFunnels));
+    saveGC({
+      ...GC,
+      upclickFunnels: {
+        ...GC.upclickFunnels,
+        funnels: updatedFunnels
+      }
+    });
   };
 
   const handleCreateFunnel = (e) => {

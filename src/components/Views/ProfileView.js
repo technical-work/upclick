@@ -5,6 +5,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { callClaudeAPI } from '../../utils/ai';
 
 export default function ProfileView() {
   const {
@@ -146,19 +147,13 @@ export default function ProfileView() {
     const question = `Analyze this business profile: ${contextStr}. Give 3 specific insights and 3 next action steps.`;
     
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 800,
-          system: `You are Business Architect AI. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Be specific and actionable.`,
-          messages: [{ role: 'user', content: question }]
-        })
-      });
-      const data = await res.json();
-      const reply = data.content?.[0]?.text || L('Could not generate response.', 'تعذر توليد رد من الذكاء الاصطناعي.');
-      setAiAnalysis(reply);
+      const reply = await callClaudeAPI(
+        question, 
+        `You are Business Architect AI. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Be specific and actionable.`, 
+        lang, 
+        GC
+      );
+      setAiAnalysis(reply || L('Could not generate response.', 'تعذر توليد رد من الذكاء الاصطناعي.'));
     } catch (e) {
       setAiAnalysis(L('Connection error. Please try again.', 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.'));
     } finally {

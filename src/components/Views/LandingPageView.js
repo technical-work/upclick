@@ -10,19 +10,22 @@ export default function LandingPageView() {
     L,
     t,
     GC,
+    saveGC,
     updateProfile,
     setLpPreviewOpen,
     setLpPreviewHtml
   } = useBusiness();
 
-  const [name, setName] = useState(GC.profile.name || 'Sara Hassan');
-  const [niche, setNiche] = useState(GC.profile.niche || 'Fashion & Lifestyle');
-  const [offer, setOffer] = useState(GC.profile.offer?.name || 'Style Masterclass');
-  const [tagline, setTagline] = useState(L('Learn to grow on Instagram', 'تعلم كيفية النمو على انستجرام'));
-  const [color, setColor] = useState('#6c35ff');
-  const [template, setTemplate] = useState('bold');
-  const [price, setPrice] = useState(29);
-  const [lpCode, setLpCode] = useState('');
+  const lpData = GC.landingPage || {};
+
+  const [name, setName] = useState(lpData.name || GC.profile.name || 'Sara Hassan');
+  const [niche, setNiche] = useState(lpData.niche || GC.profile.niche || 'Fashion & Lifestyle');
+  const [offer, setOffer] = useState(lpData.offer || GC.profile.offer?.name || 'Style Masterclass');
+  const [tagline, setTagline] = useState(lpData.tagline || L('Learn to grow on Instagram', 'تعلم كيفية النمو على انستجرام'));
+  const [color, setColor] = useState(lpData.color || '#6c35ff');
+  const [template, setTemplate] = useState(lpData.template || 'bold');
+  const [price, setPrice] = useState(lpData.price ?? 29);
+  const [lpCode, setLpCode] = useState(lpData.lpCode || '');
 
   // Brand Color Palette Options
   const brandColors = [
@@ -43,15 +46,41 @@ export default function LandingPageView() {
     { key: 'arabic', name: L('Arabic Style', 'بنمط عربي') }
   ];
 
+  const saveLPData = (updatedFields) => {
+    const updatedGC = {
+      ...GC,
+      landingPage: {
+        ...(GC.landingPage || {}),
+        ...updatedFields
+      }
+    };
+    saveGC(updatedGC);
+  };
+
   const handleGenerate = () => {
     const code = buildFullLP(name, niche, offer, tagline, color, lang === 'ar', template, price);
     setLpCode(code);
     setLpPreviewHtml(code);
+    saveLPData({ name, niche, offer, tagline, color, template, price, lpCode: code });
   };
 
   useEffect(() => {
     handleGenerate();
   }, [name, niche, offer, tagline, color, template, price, lang]);
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.landingPage) {
+      setName(GC.landingPage.name || GC.profile.name || 'Sara Hassan');
+      setNiche(GC.landingPage.niche || GC.profile.niche || 'Fashion & Lifestyle');
+      setOffer(GC.landingPage.offer || GC.profile.offer?.name || 'Style Masterclass');
+      setTagline(GC.landingPage.tagline || L('Learn to grow on Instagram', 'تعلم كيفية النمو على انستجرام'));
+      setColor(GC.landingPage.color || '#6c35ff');
+      setTemplate(GC.landingPage.template || 'bold');
+      setPrice(GC.landingPage.price ?? 29);
+      setLpCode(GC.landingPage.lpCode || '');
+    }
+  }, [GC.landingPage]);
 
   const handleCopy = () => {
     if (!lpCode) return;
@@ -99,6 +128,7 @@ export default function LandingPageView() {
                 className="inp"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onBlur={(e) => saveLPData({ name: e.target.value })}
                 placeholder="Sara Hassan"
               />
             </div>
@@ -110,6 +140,7 @@ export default function LandingPageView() {
                 className="inp"
                 value={niche}
                 onChange={(e) => setNiche(e.target.value)}
+                onBlur={(e) => saveLPData({ niche: e.target.value })}
                 placeholder="Fashion & Lifestyle"
               />
             </div>
@@ -121,6 +152,7 @@ export default function LandingPageView() {
                 className="inp"
                 value={offer}
                 onChange={(e) => setOffer(e.target.value)}
+                onBlur={(e) => saveLPData({ offer: e.target.value })}
                 placeholder="Style Masterclass"
               />
             </div>
@@ -134,6 +166,7 @@ export default function LandingPageView() {
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
+                  onBlur={(e) => saveLPData({ price: parseInt(e.target.value) || 0 })}
                 />
               </div>
               <div>
@@ -143,7 +176,7 @@ export default function LandingPageView() {
                 <select
                   className="inp"
                   value={template}
-                  onChange={(e) => setTemplate(e.target.value)}
+                  onChange={(e) => { setTemplate(e.target.value); saveLPData({ template: e.target.value }); }}
                 >
                   {templates.map((t) => (
                     <option key={t.key} value={t.key}>
@@ -161,6 +194,7 @@ export default function LandingPageView() {
                 className="inp"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
+                onBlur={(e) => saveLPData({ tagline: e.target.value })}
                 placeholder="Learn to grow on Instagram"
               />
             </div>
@@ -172,7 +206,7 @@ export default function LandingPageView() {
                 {brandColors.map((c) => (
                   <button
                     key={c.code}
-                    onClick={() => setColor(c.code)}
+                    onClick={() => { setColor(c.code); saveLPData({ color: c.code }); }}
                     style={{
                       width: '28px',
                       height: '28px',
@@ -188,7 +222,7 @@ export default function LandingPageView() {
                 <input
                   type="color"
                   value={color}
-                  onChange={(e) => setColor(e.target.value)}
+                  onChange={(e) => { setColor(e.target.value); saveLPData({ color: e.target.value }); }}
                   style={{
                     width: '28px',
                     height: '28px',

@@ -6,18 +6,87 @@ import { DB, tvDB, soundsDB } from '../../data/mockData';
 import { callClaudeAPI } from '../../utils/ai';
 
 export default function ContentView() {
-  const { lang, L, t } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
   // Tab state inside Content Hub
   const [activeSubTab, setActiveSubTab] = useState('ct-cal'); // 'ct-cal', 'ct-ideas', etc.
 
   // 1. Calendar Tab States
-  const eventDays = [3, 5, 8, 10, 12, 15, 17, 19, 22, 24, 26, 28];
-  const calendarDays = Array.from({ length: 30 }, (_, i) => i + 1);
+  const events = GC.calendar?.events || [];
+
+  // Get dynamic today's date
+  const todayDate = new Date();
+  const tDay = todayDate.getDate();
+  const tMonth = todayDate.getMonth();
+  const tYear = todayDate.getFullYear();
+
+  const [currentMonth, setCurrentMonth] = useState(tMonth); 
+  const [currentYear, setCurrentYear] = useState(tYear);
+  const [selectedDay, setSelectedDay] = useState(tDay);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Form states
+  const [newPostTitle, setNewPostTitle] = useState('');
+  const [newPostDay, setNewPostDay] = useState(tDay);
+  const [newPostTime, setNewPostTime] = useState('6:00 PM');
+
+  useEffect(() => {
+    if (selectedDay) {
+      setNewPostDay(selectedDay);
+    }
+  }, [selectedDay]);
+
+  const getEventMonth = (ev) => ev.month !== undefined ? ev.month : 5;
+  const getEventYear = (ev) => ev.year !== undefined ? ev.year : 2026;
+
+  // Filter events for the currently visible month and year
+  const visibleEvents = events.filter(e => {
+    const m = getEventMonth(e);
+    const y = getEventYear(e);
+    return m === currentMonth && y === currentYear;
+  });
+
+  const eventDays = visibleEvents.filter(e => e.type === 'content').map(e => e.day);
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const startWeekday = new Date(currentYear, currentMonth, 1).getDay();
+
+  const paddingCells = Array.from({ length: startWeekday }, (_, i) => null);
+  const dayCells = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const gridCells = [...paddingCells, ...dayCells];
+
+  const monthNamesEn = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const monthNamesAr = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ];
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+    setSelectedDay(1);
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(prev => prev + 1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+    setSelectedDay(1);
+  };
 
   // 2. Ideas Tab States
   const [todayIdeas, setTodayIdeas] = useState([]);
-  const [savedIdeas, setSavedIdeas] = useState([]);
+  const savedIdeas = GC.contentHub?.savedIdeas || [];
 
   const handleGenIdeas = () => {
     setTodayIdeas(DB.ideas[lang] || []);
@@ -27,19 +96,48 @@ export default function ContentView() {
   const handleSaveIdea = (idea) => {
     if (savedIdeas.some(i => i.t === idea.t)) return;
     const updated = [idea, ...savedIdeas];
-    setSavedIdeas(updated);
-    localStorage.setItem('ct_saved_ideas', JSON.stringify(updated));
+    saveGC({
+      ...GC,
+      contentHub: {
+        ...GC.contentHub,
+        savedIdeas: updated
+      }
+    });
     alert(L('Idea saved! 📌', 'تم حفظ الفكرة! 📌'));
   };
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ct_saved_ideas');
-      if (saved) {
-        try { setSavedIdeas(JSON.parse(saved)); } catch (e) {}
+  const handleAddPostClick = (selectedDay = 15) => {
+    setSelectedDay(selectedDay);
+    setNewPostDay(selectedDay);
+    setShowAddModal(true);
+  };
+
+  const handleAddPostSubmit = (e) => {
+    if (e) e.preventDefault();
+    if (!newPostTitle.trim()) return;
+
+    const newEv = {
+      id: Date.now(),
+      title: newPostTitle,
+      day: parseInt(newPostDay) || 1,
+      month: currentMonth,
+      year: currentYear,
+      type: 'content',
+      time: newPostTime
+    };
+
+    saveGC({
+      ...GC,
+      calendar: {
+        ...GC.calendar,
+        events: [...events, newEv]
       }
-    }
-  }, []);
+    });
+
+    setNewPostTitle('');
+    setShowAddModal(false);
+    alert(L('Post scheduled successfully! 🚀', 'تمت جدولة المنشور بنجاح! 🚀'));
+  };
 
   // 3. Captions Tab States
   const [capInp, setCapInp] = useState('');
@@ -289,9 +387,15 @@ export default function ContentView() {
         <div className="tool-panel on" id="ct-cal">
           <div className="g21">
             <div className="card mb">
-              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div className="st">{L('June 2026', 'يونيو ٢٠٢٦')}</div>
-                <button className="btn btn-prime" style={{ padding: '5px 10px', fontSize: '11.5px' }} onClick={() => alert(L('Post added!', 'تمت إضافة المنشور!'))}>
+              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button className="btn-chevron" onClick={handlePrevMonth} title={L('Previous Month', 'الشهر السابق')}>◀</button>
+                  <div className="st" style={{ fontSize: '15px', fontWeight: 800, minWidth: '110px', textAlign: 'center' }}>
+                    {L(`${monthNamesEn[currentMonth]} ${currentYear}`, `${monthNamesAr[currentMonth]} ${currentYear}`)}
+                  </div>
+                  <button className="btn-chevron" onClick={handleNextMonth} title={L('Next Month', 'الشهر التالي')}>▶</button>
+                </div>
+                <button className="btn btn-prime" style={{ padding: '5px 12px', fontSize: '11.5px' }} onClick={() => handleAddPostClick(selectedDay)}>
                   + {L('Add Post', 'منشور جديد')}
                 </button>
               </div>
@@ -301,27 +405,100 @@ export default function ContentView() {
                 ))}
               </div>
               <div className="cald" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-                {calendarDays.map(day => {
-                  const hasEv = eventDays.includes(day);
-                  const isToday = day === 15;
+                {gridCells.map((day, idx) => {
+                  if (day === null) {
+                    return (
+                      <div 
+                        key={`empty-${idx}`} 
+                        style={{ 
+                          aspectRatio: '1', 
+                          background: 'transparent', 
+                          border: '1px dashed rgba(255, 255, 255, 0.05)',
+                          borderRadius: '6px'
+                        }} 
+                      />
+                    );
+                  }
+
+                  const dayEvents = visibleEvents.filter(e => e.day === day && e.type === 'content');
+                  const hasEv = dayEvents.length > 0;
+                  const isToday = day === tDay && currentMonth === tMonth && currentYear === tYear;
+                  const isSelected = day === selectedDay;
+
                   return (
                     <div 
-                      key={day}
-                      className={`cal-day ${hasEv ? 'has-event' : ''} ${isToday ? 'today' : ''}`}
+                      key={`day-${day}`}
+                      className={`cal-day cal-day-cell ${hasEv ? 'has-event' : ''} ${isToday ? 'today' : ''}`}
                       style={{
-                        padding: '12px 6px',
-                        borderRadius: '6px',
-                        background: isToday ? 'var(--orange-d)' : 'var(--surface2)',
-                        border: isToday ? '1.5px solid var(--orange)' : hasEv ? '1px solid var(--purple-d)' : '1px solid var(--edge)',
+                        aspectRatio: '1',
+                        padding: '8px 6px',
+                        borderRadius: '8px',
+                        background: isToday 
+                          ? 'linear-gradient(135deg, var(--orange-d), var(--purple-dim))' 
+                          : isSelected 
+                            ? 'var(--surface3)' 
+                            : 'var(--surface2)',
+                        border: isToday 
+                          ? '2px solid var(--orange)' 
+                          : isSelected 
+                            ? '2px solid var(--purple)' 
+                            : hasEv 
+                              ? '1px solid rgba(255,107,53,0.3)' 
+                              : '1px solid var(--edge)',
                         cursor: 'pointer',
-                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'flex-start',
+                        alignItems: 'stretch',
                         fontSize: '13px',
-                        fontWeight: isToday ? 700 : 500
+                        fontWeight: isToday || isSelected ? 700 : 500,
+                        color: isToday ? 'var(--orange)' : isSelected ? 'var(--purple)' : 'var(--t1)',
+                        boxShadow: isSelected ? '0 0 10px rgba(108, 53, 255, 0.25)' : 'none',
                       }}
-                      onClick={() => alert(L(`Day ${day} — Click to add event`, `يوم ${day} — اضغط لإضافة حدث`))}
+                      onClick={() => handleAddPostClick(day)}
                     >
-                      {day}
-                      {hasEv && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--purple)', margin: '4px auto 0' }}></div>}
+                      {/* Day Number Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700 }}>{day}</span>
+                        {isToday && (
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--orange)', boxShadow: '0 0 6px var(--orange)' }} />
+                        )}
+                      </div>
+                      
+                      {/* Event pills */}
+                      {hasEv && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%', overflow: 'hidden' }}>
+                          {dayEvents.slice(0, 2).map((ev, i) => (
+                            <div 
+                              key={ev.id} 
+                              style={{ 
+                                width: '100%', 
+                                fontSize: '9.5px', 
+                                padding: '2px 4px', 
+                                borderRadius: '4px', 
+                                background: 'rgba(108, 53, 255, 0.12)', 
+                                color: 'var(--purple)',
+                                borderLeft: '2.5px solid var(--purple)',
+                                textAlign: lang === 'ar' ? 'right' : 'left',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                boxSizing: 'border-box',
+                                lineHeight: '1.2'
+                              }}
+                              title={`${ev.time} - ${ev.title}`}
+                            >
+                              <span style={{ fontWeight: 700, marginRight: '3px' }}>{ev.time.replace(/ AM| PM/g, '')}</span>
+                              {ev.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 2 && (
+                            <div style={{ fontSize: '8.5px', color: 'var(--t3)', fontWeight: 700, paddingLeft: '4px', paddingTop: '1px' }}>
+                              +{dayEvents.length - 2} {L('more', 'المزيد')}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -331,16 +508,33 @@ export default function ContentView() {
               <div className="card mb">
                 <div className="sh"><div className="st">🕐 {L('Upcoming', 'القادم قريباً')}</div></div>
                 <div id="uplist" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(DB.upcoming || []).map((p, idx) => (
-                    <div className="row" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--edge)' }}>
-                      <div style={{ fontSize: '16px' }}>{p.e}</div>
-                      <div style={{ flex: 1 }}>
-                        <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{p.n[lang] || p.n.en}</div>
-                        <div className="rs" style={{ fontSize: '11px', color: 'var(--t2)' }}>{p.t[lang] || p.t.en}</div>
-                      </div>
-                      <span className={`badge ${p.b}`}>{L('Upcoming', 'قادم')}</span>
+                  {visibleEvents.filter(e => e.type === 'content').length === 0 ? (
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '12px' }}>
+                      {L('No posts scheduled yet.', 'لا توجد منشورات مجدولة بعد.')}
                     </div>
-                  ))}
+                  ) : (
+                    visibleEvents.filter(e => e.type === 'content').map((p, idx) => (
+                      <div className="row" key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--edge)' }}>
+                        <div style={{ fontSize: '16px' }}>📱</div>
+                        <div style={{ flex: 1 }}>
+                          <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{p.title}</div>
+                          <div className="rs" style={{ fontSize: '11px', color: 'var(--t2)' }}>
+                            {L(`Day ${p.day} @ ${p.time}`, `اليوم ${p.day} @ ${p.time}`)}
+                          </div>
+                        </div>
+                        <button 
+                          className="btn btn-ghost" 
+                          onClick={() => {
+                            const updatedEvents = events.filter(ev => ev.id !== p.id);
+                            saveGC({ ...GC, calendar: { ...GC.calendar, events: updatedEvents } });
+                          }}
+                          style={{ padding: '2px 6px', color: 'var(--red)', border: 'none', background: 'none', cursor: 'pointer' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
               <div className="card mb">
@@ -367,6 +561,69 @@ export default function ContentView() {
               </div>
             </div>
           </div>
+
+          {/* Content Post Scheduling Modal */}
+          {showAddModal && (
+            <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+              <div className="modal-box" style={{ maxWidth: '500px', padding: '24px' }} onClick={e => e.stopPropagation()}>
+                <button className="modal-close" onClick={() => setShowAddModal(false)}>✕</button>
+                
+                <div className="sec-hd" style={{ marginBottom: '16px', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
+                  <div className="sec-title" style={{ fontSize: '16px', fontWeight: 800 }}>
+                    ✍️ {L(`Schedule Post: ${monthNamesEn[currentMonth]} ${newPostDay}, ${currentYear}`, `جدولة منشور: ${newPostDay} ${monthNamesAr[currentMonth]}، ${currentYear}`)}
+                  </div>
+                </div>
+                
+                <form onSubmit={handleAddPostSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Post Title', 'عنوان المنشور')}</label>
+                    <input 
+                      className="inp" 
+                      value={newPostTitle} 
+                      onChange={e => setNewPostTitle(e.target.value)} 
+                      placeholder={L('e.g. 5 Content Calendar Tips', 'مثال: ٥ نصائح لتقويم المحتوى')} 
+                      required 
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L(`Day (1-${daysInMonth})`, `اليوم (١-${daysInMonth})`)}</label>
+                      <input 
+                        className="inp" 
+                        type="number" 
+                        min="1" 
+                        max={daysInMonth} 
+                        value={newPostDay} 
+                        onChange={e => setNewPostDay(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Posting Time', 'وقت النشر')}</label>
+                      <input 
+                        className="inp" 
+                        value={newPostTime} 
+                        onChange={e => setNewPostTime(e.target.value)} 
+                        placeholder="e.g. 6:00 PM" 
+                        required 
+                      />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => setShowAddModal(false)}>
+                      {L('Cancel', 'إلغاء')}
+                    </button>
+                    <button type="submit" className="btn btn-prime">
+                      + {L('Schedule Post', 'جدولة المنشور')}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

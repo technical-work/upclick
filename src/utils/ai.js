@@ -1,32 +1,82 @@
-'use client';
-
-// Central AI helper to interact with Anthropic Claude API, with rich fallback generators
 export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessContext = {}) {
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // In client-side direct request, this will require the key.
-        // If not present, we will catch and run the smart fallback generator.
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    if (data.content && data.content[0] && data.content[0].text) {
-      return data.content[0].text;
+  let gc = businessContext;
+  if (!gc || !gc.integrations) {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('ba_context');
+        if (saved) gc = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Error loading ba_context from localStorage in callClaudeAPI:", e);
     }
-  } catch (error) {
-    console.warn('Claude API request failed, using local smart generator:', error);
+  }
+
+  const claudeKey = gc?.integrations?.claudeKey;
+  const openaiKey = gc?.integrations?.openaiKey;
+  const claudeConnected = gc?.integrations?.claudeConnected;
+  const openaiConnected = gc?.integrations?.openaiConnected;
+
+  // Try Claude first if key is present
+  if (claudeKey && (claudeConnected || !openaiKey)) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': claudeKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-profiles-allowed': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 1200,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      if (data.content && data.content[0] && data.content[0].text) {
+        return data.content[0].text;
+      }
+      if (data.error) {
+        console.warn('Claude API error object:', data.error);
+      }
+    } catch (error) {
+      console.warn('Claude API request failed:', error);
+    }
+  }
+
+  // Try OpenAI if key is present
+  if (openaiKey && (openaiConnected || !claudeKey)) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+      const data = await res.json();
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        return data.choices[0].message.content;
+      }
+      if (data.error) {
+        console.warn('OpenAI API error object:', data.error);
+      }
+    } catch (error) {
+      console.warn('OpenAI API request failed:', error);
+    }
   }
 
   // Fallback engine
-  return generateSmartFallback(prompt, lang, businessContext);
+  return generateSmartFallback(prompt, lang, gc);
 }
 
 function generateSmartFallback(prompt, lang, context) {
@@ -40,13 +90,28 @@ function generateSmartFallback(prompt, lang, context) {
 
   // 1. Daily Brief
   if (normalized.includes('daily business brief') || normalized.includes('daily brief')) {
+    let userName = isAR ? 'سارة' : 'Sara';
+    let bizName = name || niche;
+
+    const userMatch = prompt.match(/User Personal Name:\s*([^,\n]+)/i);
+    if (userMatch) {
+      userName = userMatch[1].trim();
+    } else if (context?.bioLink?.displayName) {
+      userName = context.bioLink.displayName.split(' ')[0];
+    }
+
+    const bizMatch = prompt.match(/Business\/Company Name:\s*([^,\n\.]+)/i);
+    if (bizMatch) {
+      bizName = bizMatch[1].trim();
+    }
+
     if (isAR) {
-      return `صباح الخير سارة! ☀️ إليك ملخصك اليومي لـ ${niche}:
+      return `صباح الخير ${userName}! ☀️ إليك ملخصك اليومي لـ ${bizName}:
 • لديك عميلان جاهزان في مرحلة تقديم العروض، يفضل متابعتهم اليوم لضمان إغلاق الصفقة بنجاح.
 • نقاطك التفاعلية على تيك توك ارتفعت بنسبة 4.2٪ هذا الأسبوع بفضل ترند الروتين الصباحي.
 • نوصي بنشر ريلز تفاعلي اليوم عند الساعة 7 مساءً وتأجيل المهام الإدارية غير العاجلة.`;
     } else {
-      return `Good morning Sara! ☀️ Here is your daily update for ${niche}:
+      return `Good morning ${userName}! ☀️ Here is your daily update for ${bizName}:
 • You have 2 hot leads in the Proposal Sent stage; follow up with them today to finalize the contracts.
 • TikTok engagement is up 4.2% thanks to your recent morning routine format. Keep it up!
 • Recommended actions: Post a Reels Q&A today at 6 PM, and defer low-priority admin tasks until tomorrow.`;

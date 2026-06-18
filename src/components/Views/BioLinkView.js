@@ -4,27 +4,40 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
 export default function BioLinkView() {
-  const { lang, L, t } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
-  const [displayName, setDisplayName] = useState('Sara Hassan');
-  const [bioTagline, setBioTagline] = useState('Coach | Entrepreneur | Content Creator 🚀');
-  const [username, setUsername] = useState('sarahassan');
-  const [bioTheme, setBioTheme] = useState('dark'); // 'dark', 'purple', 'orange', 'white', 'green'
+  const bioData = GC.bioLink || {
+    displayName: 'Sara Hassan',
+    bioTagline: 'Coach | Entrepreneur | Content Creator 🚀',
+    username: 'sarahassan',
+    bioTheme: 'dark',
+    links: [
+      { title: 'My Website', url: 'https://sarahassan.com', icon: '🌐' },
+      { title: 'Free Course', url: 'https://upklick.bio/sarahassan/free', icon: '📚' },
+      { title: 'Book a Call', url: 'https://calendly.com/sarahassan', icon: '💬', highlighted: true }
+    ],
+    socials: { ig: '@sarahassan', tt: '@sarahassan', yt: 'Sarah Hassan', li: '', tg: '', wa: '' }
+  };
 
-  const [links, setLinks] = useState([
-    { title: 'My Website', url: 'https://sarahassan.com', icon: '🌐' },
-    { title: 'Free Course', url: 'https://upklick.bio/sarahassan/free', icon: '📚' },
-    { title: 'Book a Call', url: 'https://calendly.com/sarahassan', icon: '💬', highlighted: true }
-  ]);
+  const [displayName, setDisplayName] = useState(bioData.displayName || '');
+  const [bioTagline, setBioTagline] = useState(bioData.bioTagline || '');
+  const [username, setUsername] = useState(bioData.username || '');
+  const [bioTheme, setBioTheme] = useState(bioData.bioTheme || 'dark');
 
-  const [socials, setSocials] = useState({
-    ig: '@sarahassan',
-    tt: '@sarahassan',
-    yt: 'Sarah Hassan',
-    li: '',
-    tg: '',
-    wa: ''
-  });
+  const [links, setLinks] = useState(bioData.links || []);
+  const [socials, setSocials] = useState(bioData.socials || {});
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.bioLink) {
+      setDisplayName(GC.bioLink.displayName || '');
+      setBioTagline(GC.bioLink.bioTagline || '');
+      setUsername(GC.bioLink.username || '');
+      setBioTheme(GC.bioLink.bioTheme || 'dark');
+      setLinks(GC.bioLink.links || []);
+      setSocials(GC.bioLink.socials || {});
+    }
+  }, [GC.bioLink]);
 
   const addLink = () => {
     setLinks(prev => [...prev, { title: 'New Link', url: 'https://', icon: '🔗' }]);
@@ -44,7 +57,11 @@ export default function BioLinkView() {
 
   const saveBioLink = () => {
     const data = { displayName, bioTagline, username, bioTheme, links, socials };
-    localStorage.setItem('upklick_bio_data', JSON.stringify(data));
+    const updatedGC = {
+      ...GC,
+      bioLink: data
+    };
+    saveGC(updatedGC);
     alert(L('Bio link saved & published successfully!', 'تم حفظ ونشر رابط البايو بنجاح!'));
   };
 

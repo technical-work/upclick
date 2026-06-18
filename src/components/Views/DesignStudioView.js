@@ -1,23 +1,88 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
 export default function DesignStudioView() {
-  const { t, L, setAiPanelOpen } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC } = useBusiness();
   const [activeTab, setActiveTab] = useState('logo'); // 'logo', 'social', 'cover', 'card', 'gallery'
   
-  // Tab states for selection highlighting
-  const [logoStyle, setLogoStyle] = useState('modern');
-  const [logoType, setLogoType] = useState('wordmark');
-  const [logoColor, setLogoColor] = useState('orange-purple');
+  const designData = GC.designStudio || {};
+  const savedLogo = designData.logo || {};
+  const savedSocial = designData.social || {};
+  const savedCover = designData.cover || {};
+  const savedCard = designData.card || {};
+
+  // Logo maker fields
+  const [logoBrandName, setLogoBrandName] = useState(savedLogo.brandName || '');
+  const [logoTagline, setLogoTagline] = useState(savedLogo.tagline || '');
+  const [logoStyle, setLogoStyle] = useState(savedLogo.logoStyle || 'modern');
+  const [logoType, setLogoType] = useState(savedLogo.logoType || 'wordmark');
+  const [logoColor, setLogoColor] = useState(savedLogo.logoColor || 'orange-purple');
+  const [logoIndustry, setLogoIndustry] = useState(savedLogo.industry || 'coaching');
+
+  // Social fields
+  const [socialSize, setSocialSize] = useState(savedSocial.socialSize || '1080x1080');
+  const [socialHeadline, setSocialHeadline] = useState(savedSocial.headline || '');
+  const [socialSubtitle, setSocialSubtitle] = useState(savedSocial.subtitle || '');
+  const [socialStyle, setSocialStyle] = useState(savedSocial.socialStyle || 'gradient-dark');
+
+  // Cover fields
+  const [coverType, setCoverType] = useState(savedCover.coverType || 'linkedin');
+
+  // Card fields
+  const [cardFullName, setCardFullName] = useState(savedCard.fullName || '');
+  const [cardTitle, setCardTitle] = useState(savedCard.title || '');
+  const [cardStyle, setCardStyle] = useState(savedCard.cardStyle || 'dark-premium');
+
+  // Saved gallery
+  const [savedDesigns, setSavedDesigns] = useState(designData.savedDesigns || []);
+
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [socialSize, setSocialSize] = useState('1080x1080');
-  const [socialStyle, setSocialStyle] = useState('gradient-dark');
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.designStudio) {
+      const logo = GC.designStudio.logo || {};
+      const social = GC.designStudio.social || {};
+      const cover = GC.designStudio.cover || {};
+      const card = GC.designStudio.card || {};
 
-  const [coverType, setCoverType] = useState('linkedin');
-  const [cardStyle, setCardStyle] = useState('dark-premium');
+      setLogoBrandName(logo.brandName || '');
+      setLogoTagline(logo.tagline || '');
+      setLogoStyle(logo.logoStyle || 'modern');
+      setLogoType(logo.logoType || 'wordmark');
+      setLogoColor(logo.logoColor || 'orange-purple');
+      setLogoIndustry(logo.industry || 'coaching');
+
+      setSocialSize(social.socialSize || '1080x1080');
+      setSocialHeadline(social.headline || '');
+      setSocialSubtitle(social.subtitle || '');
+      setSocialStyle(social.socialStyle || 'gradient-dark');
+
+      setCoverType(cover.coverType || 'linkedin');
+
+      setCardFullName(card.fullName || '');
+      setCardTitle(card.title || '');
+      setCardStyle(card.cardStyle || 'dark-premium');
+
+      setSavedDesigns(GC.designStudio.savedDesigns || []);
+    }
+  }, [GC.designStudio]);
+
+  const saveDesignStudioData = (section, updatedFields) => {
+    const updatedGC = {
+      ...GC,
+      designStudio: {
+        ...(GC.designStudio || {}),
+        [section]: {
+          ...(GC.designStudio?.[section] || {}),
+          ...updatedFields
+        }
+      }
+    };
+    saveGC(updatedGC);
+  };
 
   const handleGenerate = () => {
     setIsGenerating(true);
@@ -74,13 +139,27 @@ export default function DesignStudioView() {
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">✍️ {L('Brand Name', 'اسم العلامة')}</div></div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <input className="inp" placeholder={L('Type your brand name...', 'اكتب اسم علامتك...')} style={{ flex: 1 }} />
+                  <input 
+                    className="inp" 
+                    value={logoBrandName} 
+                    onChange={(e) => setLogoBrandName(e.target.value)} 
+                    onBlur={(e) => saveDesignStudioData('logo', { brandName: e.target.value })} 
+                    placeholder={L('Type your brand name...', 'اكتب اسم علامتك...')} 
+                    style={{ flex: 1 }} 
+                  />
                   <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 12px', flexShrink: 0 }}>
                     ↗ {L('From Names', 'من الأسماء')}
                   </button>
                 </div>
                 <div style={{ marginTop: '8px' }}>
-                  <input className="inp" placeholder={L('Tagline (optional)', 'شعار لفظي (اختياري)')} style={{ fontSize: '12.5px' }} />
+                  <input 
+                    className="inp" 
+                    value={logoTagline} 
+                    onChange={(e) => setLogoTagline(e.target.value)} 
+                    onBlur={(e) => saveDesignStudioData('logo', { tagline: e.target.value })} 
+                    placeholder={L('Tagline (optional)', 'شعار لفظي (اختياري)')} 
+                    style={{ fontSize: '12.5px' }} 
+                  />
                 </div>
               </div>
 
@@ -98,7 +177,7 @@ export default function DesignStudioView() {
                   ].map(style => (
                     <div 
                       key={style.id}
-                      onClick={() => setLogoStyle(style.id)}
+                      onClick={() => { setLogoStyle(style.id); saveDesignStudioData('logo', { logoStyle: style.id }); }}
                       style={{ padding: '10px 12px', borderRadius: '10px', border: logoStyle === style.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: logoStyle === style.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', textAlign: 'center' }}
                     >
                       <div style={{ fontSize: '18px', marginBottom: '3px' }}>{style.icon}</div>
@@ -121,7 +200,7 @@ export default function DesignStudioView() {
                   ].map(type => (
                     <div 
                       key={type.id}
-                      onClick={() => setLogoType(type.id)}
+                      onClick={() => { setLogoType(type.id); saveDesignStudioData('logo', { logoType: type.id }); }}
                       style={{ padding: '8px 14px', borderRadius: '8px', border: logoType === type.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: logoType === type.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', fontSize: '12.5px', fontWeight: 600, color: logoType === type.id ? 'var(--orange)' : 'var(--t2)' }}
                     >
                       {type.label}
@@ -144,7 +223,7 @@ export default function DesignStudioView() {
                   ].map(color => (
                     <div 
                       key={color.id}
-                      onClick={() => setLogoColor(color.id)}
+                      onClick={() => { setLogoColor(color.id); saveDesignStudioData('logo', { logoColor: color.id }); }}
                       style={{ padding: '7px 12px', borderRadius: '8px', border: logoColor === color.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: logoColor === color.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: logoColor === color.id ? 'var(--orange)' : 'var(--t2)' }}
                     >
                       <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: color.gradient, display: 'inline-block' }}></span>
@@ -157,7 +236,7 @@ export default function DesignStudioView() {
               {/* Industry */}
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">🏢 {L('Industry', 'الصناعة')}</div></div>
-                <select className="inp">
+                <select className="inp" value={logoIndustry} onChange={(e) => { setLogoIndustry(e.target.value); saveDesignStudioData('logo', { industry: e.target.value }); }}>
                   <option value="coaching">Coaching & Training</option>
                   <option value="tech">Tech / AI / SaaS</option>
                   <option value="ecommerce">E-commerce</option>
@@ -215,7 +294,7 @@ export default function DesignStudioView() {
                   ].map(s => (
                     <div 
                       key={s.id}
-                      onClick={() => setSocialSize(s.id)}
+                      onClick={() => { setSocialSize(s.id); saveDesignStudioData('social', { socialSize: s.id }); }}
                       style={{ padding: '10px', borderRadius: '10px', border: socialSize === s.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: socialSize === s.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', textAlign: 'center' }}
                     >
                       <div style={{ fontSize: '15px', marginBottom: '3px' }}>{s.icon}</div>
@@ -229,8 +308,26 @@ export default function DesignStudioView() {
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">📝 {L('Content', 'المحتوى')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Title / Headline', 'العنوان الرئيسي')}</label><input className="inp" placeholder="e.g. 3 Ways to Double Your Income" /></div>
-                  <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Subtitle (optional)', 'عنوان فرعي')}</label><input className="inp" placeholder="e.g. Arabic Creator Edition 🔥" /></div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Title / Headline', 'العنوان الرئيسي')}</label>
+                    <input 
+                      className="inp" 
+                      value={socialHeadline} 
+                      onChange={(e) => setSocialHeadline(e.target.value)} 
+                      onBlur={(e) => saveDesignStudioData('social', { headline: e.target.value })} 
+                      placeholder="e.g. 3 Ways to Double Your Income" 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Subtitle (optional)', 'عنوان فرعي')}</label>
+                    <input 
+                      className="inp" 
+                      value={socialSubtitle} 
+                      onChange={(e) => setSocialSubtitle(e.target.value)} 
+                      onBlur={(e) => saveDesignStudioData('social', { subtitle: e.target.value })} 
+                      placeholder="e.g. Arabic Creator Edition 🔥" 
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -245,7 +342,7 @@ export default function DesignStudioView() {
                   ].map(s => (
                     <div 
                       key={s.id}
-                      onClick={() => setSocialStyle(s.id)}
+                      onClick={() => { setSocialStyle(s.id); saveDesignStudioData('social', { socialStyle: s.id }); }}
                       style={{ padding: '9px', borderRadius: '9px', border: socialStyle === s.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: socialStyle === s.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: socialStyle === s.id ? 'var(--orange)' : 'var(--t2)' }}
                     >
                       {s.icon} {s.label}
@@ -288,7 +385,7 @@ export default function DesignStudioView() {
                   ].map(c => (
                     <div 
                       key={c.id}
-                      onClick={() => setCoverType(c.id)}
+                      onClick={() => { setCoverType(c.id); saveDesignStudioData('cover', { coverType: c.id }); }}
                       style={{ padding: '10px 14px', borderRadius: '10px', border: coverType === c.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverType === c.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
                     >
                       <span style={{ fontSize: '18px' }}>{c.icon}</span>
@@ -327,8 +424,26 @@ export default function DesignStudioView() {
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">👤 {L('Your Info', 'بياناتك')}</div></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Full Name', 'الاسم')}</label><input className="inp" placeholder="Ahmed Al-Rashid" /></div>
-                  <div><label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Title / Role', 'المسمى الوظيفي')}</label><input className="inp" placeholder="Business Coach" /></div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Full Name', 'الاسم')}</label>
+                    <input 
+                      className="inp" 
+                      value={cardFullName} 
+                      onChange={(e) => setCardFullName(e.target.value)} 
+                      onBlur={(e) => saveDesignStudioData('card', { fullName: e.target.value })} 
+                      placeholder="Ahmed Al-Rashid" 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Title / Role', 'المسمى الوظيفي')}</label>
+                    <input 
+                      className="inp" 
+                      value={cardTitle} 
+                      onChange={(e) => setCardTitle(e.target.value)} 
+                      onBlur={(e) => saveDesignStudioData('card', { title: e.target.value })} 
+                      placeholder="Business Coach" 
+                    />
+                  </div>
                 </div>
               </div>
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>

@@ -1,68 +1,136 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 
 export default function AIGrowthIntelView() {
-  const { lang, L, t } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
   // Sub tab state
   const [activeTab, setActiveTab] = useState('agi-ads');
 
+  const intelData = GC.aiGrowthIntel || { inputs: {}, outputs: {} };
+  const savedInputs = intelData.inputs || {};
+  const savedOutputs = intelData.outputs || {};
+
   // Input states
-  const [adsNiche, setAdsNiche] = useState('');
-  const [adsPlatform, setAdsPlatform] = useState('Meta (Facebook/Instagram)');
-  const [adsType, setAdsType] = useState('All Types');
-  const [adsMarket, setAdsMarket] = useState('Arab Market (General)');
+  const [adsNiche, setAdsNiche] = useState(savedInputs.adsNiche ?? '');
+  const [adsPlatform, setAdsPlatform] = useState(savedInputs.adsPlatform ?? 'Meta (Facebook/Instagram)');
+  const [adsType, setAdsType] = useState(savedInputs.adsType ?? 'All Types');
+  const [adsMarket, setAdsMarket] = useState(savedInputs.adsMarket ?? 'Arab Market (General)');
 
-  const [funnelType, setFunnelType] = useState('Coaching / Consulting');
-  const [funnelKind, setFunnelKind] = useState('Lead Gen Funnel');
-  const [funnelPrice, setFunnelPrice] = useState('Low Ticket ($10-$100)');
+  const [funnelType, setFunnelType] = useState(savedInputs.funnelType ?? 'Coaching / Consulting');
+  const [funnelKind, setFunnelKind] = useState(savedInputs.funnelKind ?? 'Lead Gen Funnel');
+  const [funnelPrice, setFunnelPrice] = useState(savedInputs.funnelPrice ?? 'Low Ticket ($10-$100)');
 
-  const [compDomain, setCompDomain] = useState('');
-  const [compDepth, setCompDepth] = useState('Full Analysis (All)');
-  const [compContext, setCompContext] = useState('');
+  const [compDomain, setCompDomain] = useState(savedInputs.compDomain ?? '');
+  const [compDepth, setCompDepth] = useState(savedInputs.compDepth ?? 'Full Analysis (All)');
+  const [compContext, setCompContext] = useState(savedInputs.compContext ?? '');
 
-  const [offerIndustry, setOfferIndustry] = useState('');
-  const [offerCat, setOfferCat] = useState('All Offer Types');
-  const [offerMarket, setOfferMarket] = useState('B2C (Individuals)');
+  const [offerIndustry, setOfferIndustry] = useState(savedInputs.offerIndustry ?? '');
+  const [offerCat, setOfferCat] = useState(savedInputs.offerCat ?? 'All Offer Types');
+  const [offerMarket, setOfferMarket] = useState(savedInputs.offerMarket ?? 'B2C (Individuals)');
 
-  const [hlCat, setHlCat] = useState('SaaS / Software');
-  const [hlGoal, setHlGoal] = useState('Landing Page Hero');
-  const [hlLang, setHlLang] = useState('Arabic (Gulf)');
-  const [hlOffer, setHlOffer] = useState('');
+  const [hlCat, setHlCat] = useState(savedInputs.hlCat ?? 'SaaS / Software');
+  const [hlGoal, setHlGoal] = useState(savedInputs.hlGoal ?? 'Landing Page Hero');
+  const [hlLang, setHlLang] = useState(savedInputs.hlLang ?? 'Arabic (Gulf)');
+  const [hlOffer, setHlOffer] = useState(savedInputs.hlOffer ?? '');
 
-  const [lpUrl, setLpUrl] = useState('');
-  const [lpType, setLpType] = useState('High-ticket coaching');
-  const [lpFocus, setLpFocus] = useState('Full analysis');
+  const [lpUrl, setLpUrl] = useState(savedInputs.lpUrl ?? '');
+  const [lpType, setLpType] = useState(savedInputs.lpType ?? 'High-ticket coaching');
+  const [lpFocus, setLpFocus] = useState(savedInputs.lpFocus ?? 'Full analysis');
 
-  const [techDomain, setTechDomain] = useState('');
-  const [techFocus, setTechFocus] = useState('Full Stack');
+  const [techDomain, setTechDomain] = useState(savedInputs.techDomain ?? '');
+  const [techFocus, setTechFocus] = useState(savedInputs.techFocus ?? 'Full Stack');
 
-  const [mktIndustry, setMktIndustry] = useState('');
-  const [mktCountry, setMktCountry] = useState('Arab World (All)');
-  const [mktAudience, setMktAudience] = useState('');
-  const [mktType, setMktType] = useState('Top 10 Opportunities');
+  const [mktIndustry, setMktIndustry] = useState(savedInputs.mktIndustry ?? '');
+  const [mktCountry, setMktCountry] = useState(savedInputs.mktCountry ?? 'Arab World (All)');
+  const [mktAudience, setMktAudience] = useState(savedInputs.mktAudience ?? '');
+  const [mktType, setMktType] = useState(savedInputs.mktType ?? 'Top 10 Opportunities');
 
-  const [revUrl, setRevUrl] = useState('');
-  const [revDesc, setRevDesc] = useState('');
-  const [revFocus, setRevFocus] = useState('Everything');
+  const [revUrl, setRevUrl] = useState(savedInputs.revUrl ?? '');
+  const [revDesc, setRevDesc] = useState(savedInputs.revDesc ?? '');
+  const [revFocus, setRevFocus] = useState(savedInputs.revFocus ?? 'Everything');
 
   // Output outputs
   const [loading, setLoading] = useState(false);
   const [outputs, setOutputs] = useState({
-    'agi-ads': '',
-    'agi-funnel': '',
-    'agi-competitor': '',
-    'agi-offer': '',
-    'agi-headlines': '',
-    'agi-lp': '',
-    'agi-tech': '',
-    'agi-market': '',
-    'agi-reverse': '',
-    'agi-insights': ''
+    'agi-ads': savedOutputs['agi-ads'] ?? '',
+    'agi-funnel': savedOutputs['agi-funnel'] ?? '',
+    'agi-competitor': savedOutputs['agi-competitor'] ?? '',
+    'agi-offer': savedOutputs['agi-offer'] ?? '',
+    'agi-headlines': savedOutputs['agi-headlines'] ?? '',
+    'agi-lp': savedOutputs['agi-lp'] ?? '',
+    'agi-tech': savedOutputs['agi-tech'] ?? '',
+    'agi-market': savedOutputs['agi-market'] ?? '',
+    'agi-reverse': savedOutputs['agi-reverse'] ?? '',
+    'agi-insights': savedOutputs['agi-insights'] ?? ''
   });
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.aiGrowthIntel) {
+      const inputs = GC.aiGrowthIntel.inputs || {};
+      const outs = GC.aiGrowthIntel.outputs || {};
+      setAdsNiche(inputs.adsNiche ?? '');
+      setAdsPlatform(inputs.adsPlatform ?? 'Meta (Facebook/Instagram)');
+      setAdsType(inputs.adsType ?? 'All Types');
+      setAdsMarket(inputs.adsMarket ?? 'Arab Market (General)');
+      setFunnelType(inputs.funnelType ?? 'Coaching / Consulting');
+      setFunnelKind(inputs.funnelKind ?? 'Lead Gen Funnel');
+      setFunnelPrice(inputs.funnelPrice ?? 'Low Ticket ($10-$100)');
+      setCompDomain(inputs.compDomain ?? '');
+      setCompDepth(inputs.compDepth ?? 'Full Analysis (All)');
+      setCompContext(inputs.compContext ?? '');
+      setOfferIndustry(inputs.offerIndustry ?? '');
+      setOfferCat(inputs.offerCat ?? 'All Offer Types');
+      setOfferMarket(inputs.offerMarket ?? 'B2C (Individuals)');
+      setHlCat(inputs.hlCat ?? 'SaaS / Software');
+      setHlGoal(inputs.hlGoal ?? 'Landing Page Hero');
+      setHlLang(inputs.hlLang ?? 'Arabic (Gulf)');
+      setHlOffer(inputs.hlOffer ?? '');
+      setLpUrl(inputs.lpUrl ?? '');
+      setLpType(inputs.lpType ?? 'High-ticket coaching');
+      setLpFocus(inputs.lpFocus ?? 'Full analysis');
+      setTechDomain(inputs.techDomain ?? '');
+      setTechFocus(inputs.techFocus ?? 'Full Stack');
+      setMktIndustry(inputs.mktIndustry ?? '');
+      setMktCountry(inputs.mktCountry ?? 'Arab World (All)');
+      setMktAudience(inputs.mktAudience ?? '');
+      setMktType(inputs.mktType ?? 'Top 10 Opportunities');
+      setRevUrl(inputs.revUrl ?? '');
+      setRevDesc(inputs.revDesc ?? '');
+      setRevFocus(inputs.revFocus ?? 'Everything');
+
+      setOutputs({
+        'agi-ads': outs['agi-ads'] ?? '',
+        'agi-funnel': outs['agi-funnel'] ?? '',
+        'agi-competitor': outs['agi-competitor'] ?? '',
+        'agi-offer': outs['agi-offer'] ?? '',
+        'agi-headlines': outs['agi-headlines'] ?? '',
+        'agi-lp': outs['agi-lp'] ?? '',
+        'agi-tech': outs['agi-tech'] ?? '',
+        'agi-market': outs['agi-market'] ?? '',
+        'agi-reverse': outs['agi-reverse'] ?? '',
+        'agi-insights': outs['agi-insights'] ?? ''
+      });
+    }
+  }, [GC.aiGrowthIntel]);
+
+  const updateGCInput = (key, value) => {
+    const updatedGC = {
+      ...GC,
+      aiGrowthIntel: {
+        ...GC.aiGrowthIntel,
+        inputs: {
+          ...(GC.aiGrowthIntel?.inputs || {}),
+          [key]: value
+        }
+      }
+    };
+    saveGC(updatedGC);
+  };
 
   const handleRunAnalysis = async (toolKey) => {
     setLoading(true);
@@ -94,10 +162,33 @@ export default function AIGrowthIntelView() {
 
     try {
       const reply = await callClaudeAPI(prompt, systemPrompt, lang);
-      setOutputs(prev => ({
-        ...prev,
-        [toolKey === 'weekly-insights' ? 'agi-insights' : activeTab]: reply
-      }));
+      const outKey = toolKey === 'weekly-insights' ? 'agi-insights' : activeTab;
+      
+      const newOutputs = {
+        ...outputs,
+        [outKey]: reply
+      };
+      setOutputs(newOutputs);
+
+      const updatedGC = {
+        ...GC,
+        aiGrowthIntel: {
+          ...GC.aiGrowthIntel,
+          inputs: {
+            adsNiche, adsPlatform, adsType, adsMarket,
+            funnelType, funnelKind, funnelPrice,
+            compDomain, compDepth, compContext,
+            offerIndustry, offerCat, offerMarket,
+            hlCat, hlGoal, hlLang, hlOffer,
+            lpUrl, lpType, lpFocus,
+            techDomain, techFocus,
+            mktIndustry, mktCountry, mktAudience, mktType,
+            revUrl, revDesc, revFocus
+          },
+          outputs: newOutputs
+        }
+      };
+      saveGC(updatedGC);
     } catch (e) {
       alert('Analysis failed, check console.');
     } finally {
@@ -160,11 +251,11 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Industry / Niche', 'المجال / النيش')}</label>
-                  <input className="inp" value={adsNiche} onChange={(e) => setAdsNiche(e.target.value)} placeholder="Business coaching, fitness, e-commerce..." />
+                  <input className="inp" value={adsNiche} onChange={(e) => setAdsNiche(e.target.value)} onBlur={(e) => updateGCInput('adsNiche', e.target.value)} placeholder="Business coaching, fitness, e-commerce..." />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Platform', 'المنصة')}</label>
-                  <select className="inp" value={adsPlatform} onChange={(e) => setAdsPlatform(e.target.value)}>
+                  <select className="inp" value={adsPlatform} onChange={(e) => { setAdsPlatform(e.target.value); updateGCInput('adsPlatform', e.target.value); }}>
                     <option>Meta (Facebook/Instagram)</option>
                     <option>Google</option>
                     <option>TikTok</option>
@@ -174,7 +265,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Ad Type', 'نوع الإعلان')}</label>
-                  <select className="inp" value={adsType} onChange={(e) => setAdsType(e.target.value)}>
+                  <select className="inp" value={adsType} onChange={(e) => { setAdsType(e.target.value); updateGCInput('adsType', e.target.value); }}>
                     <option>All Types</option>
                     <option>Video Ads</option>
                     <option>Image Ads</option>
@@ -184,7 +275,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Market', 'السوق المستهدف')}</label>
-                  <select className="inp" value={adsMarket} onChange={(e) => setAdsMarket(e.target.value)}>
+                  <select className="inp" value={adsMarket} onChange={(e) => { setAdsMarket(e.target.value); updateGCInput('adsMarket', e.target.value); }}>
                     <option>Arab Market (General)</option>
                     <option>Gulf (GCC)</option>
                     <option>Egypt</option>
@@ -223,7 +314,7 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Type', 'نوع العمل')}</label>
-                  <select className="inp" value={funnelType} onChange={(e) => setFunnelType(e.target.value)}>
+                  <select className="inp" value={funnelType} onChange={(e) => { setFunnelType(e.target.value); updateGCInput('funnelType', e.target.value); }}>
                     <option>Coaching / Consulting</option>
                     <option>SaaS / Software</option>
                     <option>E-commerce</option>
@@ -234,7 +325,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Funnel Type', 'نوع المسار')}</label>
-                  <select className="inp" value={funnelKind} onChange={(e) => setFunnelKind(e.target.value)}>
+                  <select className="inp" value={funnelKind} onChange={(e) => { setFunnelKind(e.target.value); updateGCInput('funnelKind', e.target.value); }}>
                     <option>Lead Gen Funnel</option>
                     <option>Webinar Funnel</option>
                     <option>Sales Funnel</option>
@@ -244,7 +335,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Price Point', 'نقطة السعر')}</label>
-                  <select className="inp" value={funnelPrice} onChange={(e) => setFunnelPrice(e.target.value)}>
+                  <select className="inp" value={funnelPrice} onChange={(e) => { setFunnelPrice(e.target.value); updateGCInput('funnelPrice', e.target.value); }}>
                     <option>Low Ticket ($10-$100)</option>
                     <option>Mid Ticket ($100-$1K)</option>
                     <option>High Ticket ($1K+)</option>
@@ -280,11 +371,11 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Competitor Domain or Name', 'موقع المنافس أو اسمه')}</label>
-                  <input className="inp" value={compDomain} onChange={(e) => setCompDomain(e.target.value)} placeholder="competitor.com or Company Name" />
+                  <input className="inp" value={compDomain} onChange={(e) => setCompDomain(e.target.value)} onBlur={(e) => updateGCInput('compDomain', e.target.value)} placeholder="competitor.com or Company Name" />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Analysis Depth', 'عمق التحليل')}</label>
-                  <select className="inp" value={compDepth} onChange={(e) => setCompDepth(e.target.value)}>
+                  <select className="inp" value={compDepth} onChange={(e) => { setCompDepth(e.target.value); updateGCInput('compDepth', e.target.value); }}>
                     <option>Full Analysis (All)</option>
                     <option>Offers & Pricing Only</option>
                     <option>Ads & Marketing Only</option>
@@ -294,7 +385,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your business context', 'تفاصيل بيزنسك للحصول على مقارنة')}</label>
-                  <textarea className="inp" value={compContext} onChange={(e) => setCompContext(e.target.value)} rows="2" placeholder="I sell coaching services targeting Arab entrepreneurs..."></textarea>
+                  <textarea className="inp" value={compContext} onChange={(e) => setCompContext(e.target.value)} onBlur={(e) => updateGCInput('compContext', e.target.value)} rows="2" placeholder="I sell coaching services targeting Arab entrepreneurs..."></textarea>
                 </div>
                 <button className="btn btn-prime" onClick={() => handleRunAnalysis('agi-competitor')} style={{ width: '100%', justifyContent: 'center' }}>
                   🕵️ {L('Analyze Competitor', 'حلل المنافس')}
@@ -326,11 +417,11 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Industry', 'المجال')}</label>
-                  <input className="inp" value={offerIndustry} onChange={(e) => setOfferIndustry(e.target.value)} placeholder="Business coaching, e-commerce, fitness..." />
+                  <input className="inp" value={offerIndustry} onChange={(e) => setOfferIndustry(e.target.value)} onBlur={(e) => updateGCInput('offerIndustry', e.target.value)} placeholder="Business coaching, e-commerce, fitness..." />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Offer Category', 'فئة العرض')}</label>
-                  <select className="inp" value={offerCat} onChange={(e) => setOfferCat(e.target.value)}>
+                  <select className="inp" value={offerCat} onChange={(e) => { setOfferCat(e.target.value); updateGCInput('offerCat', e.target.value); }}>
                     <option>All Offer Types</option>
                     <option>Free Trial</option>
                     <option>Free Consultation</option>
@@ -343,7 +434,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Market', 'السوق المستهدف')}</label>
-                  <select className="inp" value={offerMarket} onChange={(e) => setOfferMarket(e.target.value)}>
+                  <select className="inp" value={offerMarket} onChange={(e) => { setOfferMarket(e.target.value); updateGCInput('offerMarket', e.target.value); }}>
                     <option>B2C (Individuals)</option>
                     <option>B2B (Businesses)</option>
                     <option>Both</option>
@@ -379,7 +470,7 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Category', 'تصنيف العمل')}</label>
-                  <select className="inp" value={hlCat} onChange={(e) => setHlCat(e.target.value)}>
+                  <select className="inp" value={hlCat} onChange={(e) => { setHlCat(e.target.value); updateGCInput('hlCat', e.target.value); }}>
                     <option>SaaS / Software</option>
                     <option>Agencies</option>
                     <option>E-commerce</option>
@@ -390,7 +481,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Headline Goal', 'الهدف من العنوان')}</label>
-                  <select className="inp" value={hlGoal} onChange={(e) => setHlGoal(e.target.value)}>
+                  <select className="inp" value={hlGoal} onChange={(e) => { setHlGoal(e.target.value); updateGCInput('hlGoal', e.target.value); }}>
                     <option>Landing Page Hero</option>
                     <option>Ad Headline</option>
                     <option>Email Subject</option>
@@ -400,7 +491,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Language', 'اللغة')}</label>
-                  <select className="inp" value={hlLang} onChange={(e) => setHlLang(e.target.value)}>
+                  <select className="inp" value={hlLang} onChange={(e) => { setHlLang(e.target.value); updateGCInput('hlLang', e.target.value); }}>
                     <option>Arabic (Gulf)</option>
                     <option>Arabic (Egyptian)</option>
                     <option>English</option>
@@ -409,7 +500,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your main offer/product', 'عرضك الرئيسي / اسم منتجك')}</label>
-                  <input className="inp" value={hlOffer} onChange={(e) => setHlOffer(e.target.value)} placeholder="Business coaching program, SaaS tool..." />
+                  <input className="inp" value={hlOffer} onChange={(e) => setHlOffer(e.target.value)} onBlur={(e) => updateGCInput('hlOffer', e.target.value)} placeholder="Business coaching program, SaaS tool..." />
                 </div>
                 <button className="btn btn-prime" onClick={() => handleRunAnalysis('agi-headlines')} style={{ width: '100%', justifyContent: 'center' }}>
                   ✍️ {L('Generate Headline Library', 'توليد مكتبة العناوين')}
@@ -441,11 +532,11 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Page URL (to analyze)', 'رابط الصفحة للتحليل')}</label>
-                  <input className="inp" value={lpUrl} onChange={(e) => setLpUrl(e.target.value)} placeholder="https://competitor.com/landing" />
+                  <input className="inp" value={lpUrl} onChange={(e) => setLpUrl(e.target.value)} onBlur={(e) => updateGCInput('lpUrl', e.target.value)} placeholder="https://competitor.com/landing" />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Or describe the page type', 'أو اختر نوع الصفحة')}</label>
-                  <select className="inp" value={lpType} onChange={(e) => setLpType(e.target.value)}>
+                  <select className="inp" value={lpType} onChange={(e) => { setLpType(e.target.value); updateGCInput('lpType', e.target.value); }}>
                     <option>High-ticket coaching</option>
                     <option>SaaS free trial</option>
                     <option>Webinar registration</option>
@@ -455,7 +546,7 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What to analyze', 'تركيز التحليل')}</label>
-                  <select className="inp" value={lpFocus} onChange={(e) => setLpFocus(e.target.value)}>
+                  <select className="inp" value={lpFocus} onChange={(e) => { setLpFocus(e.target.value); updateGCInput('lpFocus', e.target.value); }}>
                     <option>Full analysis</option>
                     <option>Hero section only</option>
                     <option>CTA strategy</option>
@@ -493,11 +584,11 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Domain to analyze', 'الموقع المطلوب فحصه')}</label>
-                  <input className="inp" value={techDomain} onChange={(e) => setTechDomain(e.target.value)} placeholder="competitor.com" />
+                  <input className="inp" value={techDomain} onChange={(e) => setTechDomain(e.target.value)} onBlur={(e) => updateGCInput('techDomain', e.target.value)} placeholder="competitor.com" />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What interests you?', 'ما الذي تهتم به؟')}</label>
-                  <select className="inp" value={techFocus} onChange={(e) => setTechFocus(e.target.value)}>
+                  <select className="inp" value={techFocus} onChange={(e) => { setTechFocus(e.target.value); updateGCInput('techFocus', e.target.value); }}>
                     <option>Full Stack</option>
                     <option>CRM & Sales Tools</option>
                     <option>Analytics & Tracking</option>
@@ -539,11 +630,11 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Industry', 'القطاع')}</label>
-                  <input className="inp" value={mktIndustry} onChange={(e) => setMktIndustry(e.target.value)} placeholder="Online education, e-commerce, fintech..." />
+                  <input className="inp" value={mktIndustry} onChange={(e) => setMktIndustry(e.target.value)} onBlur={(e) => updateGCInput('mktIndustry', e.target.value)} placeholder="Online education, e-commerce, fintech..." />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Country / Region', 'الدولة / المنطقة')}</label>
-                  <select className="inp" value={mktCountry} onChange={(e) => setMktCountry(e.target.value)}>
+                  <select className="inp" value={mktCountry} onChange={(e) => { setMktCountry(e.target.value); updateGCInput('mktCountry', e.target.value); }}>
                     <option>Arab World (All)</option>
                     <option>Saudi Arabia</option>
                     <option>UAE</option>
@@ -554,11 +645,11 @@ export default function AIGrowthIntelView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Audience', 'الفئة المستهدفة')}</label>
-                  <input className="inp" value={mktAudience} onChange={(e) => setMktAudience(e.target.value)} placeholder="SMB owners, young professionals, women..." />
+                  <input className="inp" value={mktAudience} onChange={(e) => setMktAudience(e.target.value)} onBlur={(e) => updateGCInput('mktAudience', e.target.value)} placeholder="SMB owners, young professionals, women..." />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Analysis Type', 'طريقة التحليل')}</label>
-                  <select className="inp" value={mktType} onChange={(e) => setMktType(e.target.value)}>
+                  <select className="inp" value={mktType} onChange={(e) => { setMktType(e.target.value); updateGCInput('mktType', e.target.value); }}>
                     <option>Top 10 Opportunities</option>
                     <option>Market Gaps</option>
                     <option>Underserved Niches</option>
@@ -596,15 +687,15 @@ export default function AIGrowthIntelView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('URL to reverse engineer', 'الرابط المطلوب تفكيكه')}</label>
-                  <input className="inp" value={revUrl} onChange={(e) => setRevUrl(e.target.value)} placeholder="https://successful-page.com" />
+                  <input className="inp" value={revUrl} onChange={(e) => setRevUrl(e.target.value)} onBlur={(e) => updateGCInput('revUrl', e.target.value)} placeholder="https://successful-page.com" />
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Describe what you see (if no URL)', 'أو صف ما تراه (في حال غياب الرابط)')}</label>
-                  <textarea className="inp" value={revDesc} onChange={(e) => setRevDesc(e.target.value)} rows="3" placeholder="The page has a big headline promising X result in Y days, then shows 3 testimonials, then a CTA button..."></textarea>
+                  <textarea className="inp" value={revDesc} onChange={(e) => setRevDesc(e.target.value)} onBlur={(e) => updateGCInput('revDesc', e.target.value)} rows="3" placeholder="The page has a big headline promising X result in Y days, then shows 3 testimonials, then a CTA button..."></textarea>
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What to reverse engineer', 'التركيز الأساسي')}</label>
-                  <select className="inp" value={revFocus} onChange={(e) => setRevFocus(e.target.value)}>
+                  <select className="inp" value={revFocus} onChange={(e) => { setRevFocus(e.target.value); updateGCInput('revFocus', e.target.value); }}>
                     <option>Everything</option>
                     <option>Sales Psychology</option>
                     <option>Copywriting Framework</option>

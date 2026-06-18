@@ -5,33 +5,34 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 
 export default function OpsHubView() {
-  const { lang, L, t } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
   // Tab state inside Ops Hub
   const [activeSubTab, setActiveSubTab] = useState('ops-automations');
+  const [generatingSOP, setGeneratingSOP] = useState(false);
 
-  // Automations state
-  const [automations, setAutomations] = useState({
+  // Bind to GC values
+  const automations = GC.opsHub?.automations || {
     welcome: false,
     followup: false,
     report: false,
     invoice: false
-  });
-
-  // SOPs state
-  const [sopsList, setSopsList] = useState([]);
-  const [generatingSOP, setGeneratingSOP] = useState(false);
-
-  // Team state
-  const [teamList, setTeamList] = useState([
-    { name: 'Sara Hassan', role: L('Owner', 'المالك'), status: 'active', email: 'sara@upklick.com' }
-  ]);
+  };
+  const sopsList = GC.opsHub?.sopsList || [];
+  const teamList = GC.team?.members || [];
 
   const toggleAutomation = (key) => {
-    setAutomations(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    const updatedAutomations = {
+      ...automations,
+      [key]: !automations[key]
+    };
+    saveGC({
+      ...GC,
+      opsHub: {
+        ...GC.opsHub,
+        automations: updatedAutomations
+      }
+    });
     alert(L('Automation status updated!', 'تم تحديث حالة الأتمتة!'));
   };
 
@@ -47,11 +48,31 @@ export default function OpsHubView() {
         title: L('Onboarding New Coaching Client', 'تهيئة عميل كوتشينج جديد'),
         content: reply
       };
-      setSopsList(prev => [newSOP, ...prev]);
+      const updatedSops = [newSOP, ...sopsList];
+      saveGC({
+        ...GC,
+        opsHub: {
+          ...GC.opsHub,
+          sopsList: updatedSops
+        }
+      });
     } catch (e) {
       alert('Failed to generate SOP.');
     } finally {
       setGeneratingSOP(false);
+    }
+  };
+
+  const handleDeleteSOP = (id) => {
+    if (confirm(L('Are you sure you want to delete this SOP?', 'هل أنت متأكد من حذف دليل التشغيل هذا؟'))) {
+      const updatedSops = sopsList.filter(s => s.id !== id);
+      saveGC({
+        ...GC,
+        opsHub: {
+          ...GC.opsHub,
+          sopsList: updatedSops
+        }
+      });
     }
   };
 
@@ -61,7 +82,54 @@ export default function OpsHubView() {
     const role = prompt(L('Enter Role (e.g. Assistant VA):', 'أدخل الدور الوظيفي:'), 'VA Assistant');
     if (!role) return;
 
-    setTeamList(prev => [...prev, { name, role, status: 'active', email: `${name.toLowerCase().replace(/\s/g, '')}@upklick.com` }]);
+    const newMember = {
+      name,
+      role,
+      status: 'active',
+      email: `${name.toLowerCase().replace(/\s/g, '')}@upklick.com`,
+      phone: '',
+      department: 'Operations',
+      salary: 1000,
+      contractType: 'Full-time',
+      joinDate: new Date().toLocaleDateString('en-GB'),
+      permissions: ['dashboard']
+    };
+
+    const updatedMembers = [...teamList, newMember];
+    const newLog = {
+      id: Date.now(),
+      action: L(`Added team member ${name}`, `تم إضافة عضو الفريق ${name}`),
+      date: new Date().toLocaleString()
+    };
+    
+    saveGC({
+      ...GC,
+      team: {
+        ...GC.team,
+        members: updatedMembers,
+        logs: [newLog, ...(GC.team?.logs || [])]
+      }
+    });
+  };
+
+  const handleDeleteTeamMember = (index) => {
+    if (confirm(L('Are you sure you want to remove this member?', 'هل أنت متأكد من إزالة هذا العضو؟'))) {
+      const removed = teamList[index];
+      const updatedMembers = teamList.filter((_, i) => i !== index);
+      const newLog = {
+        id: Date.now(),
+        action: L(`Removed team member ${removed.name}`, `تم إزالة عضو الفريق ${removed.name}`),
+        date: new Date().toLocaleString()
+      };
+      saveGC({
+        ...GC,
+        team: {
+          ...GC.team,
+          members: updatedMembers,
+          logs: [newLog, ...(GC.team?.logs || [])]
+        }
+      });
+    }
   };
 
   const activeAutomationsCount = Object.values(automations).filter(Boolean).length;
@@ -188,7 +256,14 @@ export default function OpsHubView() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {sopsList.map(sop => (
-                  <div key={sop.id} style={{ background: 'var(--surface2)', padding: '15px', borderRadius: '10px', border: '1px solid var(--edge)' }}>
+                  <div key={sop.id} style={{ background: 'var(--surface2)', padding: '15px', borderRadius: '10px', border: '1px solid var(--edge)', position: 'relative' }}>
+                    <button 
+                      className="btn btn-ghost" 
+                      style={{ position: 'absolute', top: '10px', right: lang === 'ar' ? 'auto' : '10px', left: lang === 'ar' ? '10px' : 'auto', padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
+                      onClick={() => handleDeleteSOP(sop.id)}
+                    >
+                      {L('Delete', 'حذف')}
+                    </button>
                     <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '8px', color: 'var(--orange)' }}>
                       {sop.title}
                     </div>
@@ -214,18 +289,31 @@ export default function OpsHubView() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {teamList.map((member, index) => (
-                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: 'var(--orange)' }}>
-                    {member.name[0].toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '13px' }}>{member.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{member.role} · {member.email}</div>
-                  </div>
-                  <span className="badge b-green">{L('Active', 'نشط')}</span>
+              {teamList.length === 0 ? (
+                <div className="empty-state" style={{ padding: '20px' }}>
+                  <div className="es-sub">{L('No team members yet', 'لا يوجد أعضاء في الفريق بعد')}</div>
                 </div>
-              ))}
+              ) : (
+                teamList.map((member, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: 'var(--orange)' }}>
+                      {member.name[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{member.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{member.role} · {member.email}</div>
+                    </div>
+                    <span className="badge b-green" style={{ marginRight: '8px', marginLeft: '8px' }}>{L('Active', 'نشط')}</span>
+                    <button 
+                      className="btn btn-ghost" 
+                      style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
+                      onClick={() => handleDeleteTeamMember(index)}
+                    >
+                      {L('Remove', 'إزالة')}
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

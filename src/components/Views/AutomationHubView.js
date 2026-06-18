@@ -1,31 +1,91 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
 export default function AutomationHubView() {
-  const { t, L, setAiPanelOpen } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC } = useBusiness();
   const [activeTab, setActiveTab] = useState('all');
+
+  const authHub = GC.automationHub || {
+    connectionUrl: '',
+    apiKey: '',
+    connected: false,
+    cbTrigger: 'New WhatsApp message received',
+    cbAction: '',
+    cbApps: [],
+    cbCreds: '',
+    buildResult: ''
+  };
+
+  const [n8nUrl, setN8nUrl] = useState(authHub.connectionUrl || '');
+  const [n8nKey, setN8nKey] = useState(authHub.apiKey || '');
+  
+  const [cbTrigger, setCbTrigger] = useState(authHub.cbTrigger || 'New WhatsApp message received');
+  const [cbAction, setCbAction] = useState(authHub.cbAction || '');
+  const [cbApps, setCbApps] = useState(authHub.cbApps || []);
+  const [cbCreds, setCbCreds] = useState(authHub.cbCreds || '');
+  const [buildResult, setBuildResult] = useState(authHub.buildResult || '');
+  const [building, setBuilding] = useState(false);
+
+  // Sync state if database updates
+  useEffect(() => {
+    if (GC.automationHub) {
+      setN8nUrl(GC.automationHub.connectionUrl || '');
+      setN8nKey(GC.automationHub.apiKey || '');
+      setCbTrigger(GC.automationHub.cbTrigger || 'New WhatsApp message received');
+      setCbAction(GC.automationHub.cbAction || '');
+      setCbApps(GC.automationHub.cbApps || []);
+      setCbCreds(GC.automationHub.cbCreds || '');
+      setBuildResult(GC.automationHub.buildResult || '');
+    }
+  }, [GC.automationHub]);
 
   // Helper for tab switching
   const handleTabClick = (tabId) => {
     setActiveTab(tabId);
   };
 
-  // State for Custom Builder
-  const [cbTrigger, setCbTrigger] = useState('New WhatsApp message received');
-  const [cbAction, setCbAction] = useState('');
-  const [cbApps, setCbApps] = useState([]);
-  const [cbCreds, setCbCreds] = useState('');
-  const [building, setBuilding] = useState(false);
-  const [buildResult, setBuildResult] = useState('');
+  const handleConnectN8n = () => {
+    if (!n8nUrl.trim()) {
+      alert(L('Please enter a valid n8n URL', 'الرجاء إدخال رابط n8n صحيح'));
+      return;
+    }
+    saveGC({
+      ...GC,
+      automationHub: {
+        ...authHub,
+        connectionUrl: n8nUrl,
+        apiKey: n8nKey,
+        connected: true
+      }
+    });
+    alert(L('n8n connected successfully! ⚡', 'تم توصيل n8n بنجاح! ⚡'));
+  };
+
+  const handleDisconnectN8n = () => {
+    saveGC({
+      ...GC,
+      automationHub: {
+        ...authHub,
+        connectionUrl: '',
+        apiKey: '',
+        connected: false
+      }
+    });
+    setN8nUrl('');
+    setN8nKey('');
+    alert(L('n8n disconnected.', 'تم قطع اتصال n8n.'));
+  };
 
   const handleAppToggle = (app) => {
+    let updated;
     if (cbApps.includes(app)) {
-      setCbApps(cbApps.filter(a => a !== app));
+      updated = cbApps.filter(a => a !== app);
     } else {
-      setCbApps([...cbApps, app]);
+      updated = [...cbApps, app];
     }
+    setCbApps(updated);
   };
 
   const handleBuildCustom = () => {
@@ -39,7 +99,21 @@ export default function AutomationHubView() {
     // Simulate API call
     setTimeout(() => {
       setBuilding(false);
-      setBuildResult(L('Automation JSON generated successfully! You can copy and import it into n8n.', 'تم إنشاء كود JSON للأتمتة بنجاح! يمكنك نسخه واستيراده إلى n8n.'));
+      const jsonCode = `{\n  "nodes": [\n    {\n      "parameters": {\n        "trigger": "${cbTrigger}"\n      },\n      "name": "Webhook Trigger",\n      "type": "n8n-nodes-base.webhook",\n      "position": [100, 200]\n    },\n    {\n      "parameters": {\n        "action": "${cbAction}"\n      },\n      "name": "AI Agent Node",\n      "type": "n8n-nodes-base.openAi",\n      "position": [300, 200]\n    }\n  ]\n}`;
+      const msg = L('Automation JSON generated successfully! Copy it to import into n8n:\n\n' + jsonCode, 'تم إنشاء كود JSON للأتمتة بنجاح! انسخه واستورده في n8n:\n\n' + jsonCode);
+      
+      saveGC({
+        ...GC,
+        automationHub: {
+          ...authHub,
+          cbTrigger,
+          cbAction,
+          cbApps,
+          cbCreds,
+          buildResult: msg
+        }
+      });
+      setBuildResult(msg);
     }, 2000);
   };
 
@@ -66,7 +140,7 @@ export default function AutomationHubView() {
           </span>
         </div>
         <div className="pg-actions">
-          <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 13px' }}>
+          <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 13px' }} onClick={() => setActiveTab('custom')}>
             📋 {L('My Automations', 'أتمتاتي')}
           </button>
           <button 
@@ -87,18 +161,20 @@ export default function AutomationHubView() {
         </div>
         <div className="stat-card">
           <div className="stat-lbl">✅ {L('My Automations', 'أتمتاتي')}</div>
-          <div className="stat-val">0</div>
+          <div className="stat-val">{authHub.buildResult ? 1 : 0}</div>
           <div className="stat-ch ch-nu">{L('configured', 'تم إعدادها')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">⏱ {L('Time Saved', 'الوقت الموفر')}</div>
-          <div className="stat-val ch-up">0h</div>
+          <div className="stat-val ch-up">{authHub.connected ? '12h' : '0h'}</div>
           <div className="stat-ch ch-nu">{L('estimated/month', 'مقدر/شهر')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">🔗 {L('n8n Status', 'حالة n8n')}</div>
-          <div className="stat-val" style={{ fontSize: '14px' }}>{L('Not connected', 'غير متصل')}</div>
-          <div className="stat-ch ch-nu">{L('Connect below', 'اتصل بالأسفل')}</div>
+          <div className="stat-val" style={{ fontSize: '14px', color: authHub.connected ? 'var(--green)' : 'var(--red)' }}>
+            {authHub.connected ? L('Connected ⚡', 'متصل ⚡') : L('Not connected', 'غير متصل')}
+          </div>
+          <div className="stat-ch ch-nu">{L('Connection Status', 'حالة الاتصال')}</div>
         </div>
       </div>
 
@@ -115,9 +191,30 @@ export default function AutomationHubView() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <input className="inp" placeholder="https://your-instance.n8n.cloud" style={{ width: '260px', fontSize: '13px' }} />
-            <input className="inp" placeholder={L('API Key (optional)', 'مفتاح API (اختياري)')} style={{ width: '160px', fontSize: '13px' }} />
-            <button className="btn btn-prime" style={{ whiteSpace: 'nowrap' }}>{L('Connect ⚡', 'توصيل ⚡')}</button>
+            <input 
+              className="inp" 
+              placeholder="https://your-instance.n8n.cloud" 
+              style={{ width: '260px', fontSize: '13px' }} 
+              value={n8nUrl}
+              onChange={e => setN8nUrl(e.target.value)}
+            />
+            <input 
+              className="inp" 
+              type="password"
+              placeholder={L('API Key (optional)', 'مفتاح API (اختياري)')} 
+              style={{ width: '160px', fontSize: '13px' }} 
+              value={n8nKey}
+              onChange={e => setNewN8nKey || setN8nKey(e.target.value)}
+            />
+            {authHub.connected ? (
+              <button className="btn btn-ghost" style={{ whiteSpace: 'nowrap', borderColor: 'var(--red)', color: 'var(--red)' }} onClick={handleDisconnectN8n}>
+                {L('Disconnect', 'قطع الاتصال')}
+              </button>
+            ) : (
+              <button className="btn btn-prime" style={{ whiteSpace: 'nowrap' }} onClick={handleConnectN8n}>
+                {L('Connect ⚡', 'توصيل ⚡')}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -141,7 +238,10 @@ export default function AutomationHubView() {
           <div className="empty-state" style={{ padding: '40px' }}>
             <div className="es-icon">⚡</div>
             <div className="es-title">{L('Templates coming soon', 'القوالب قريباً')}</div>
-            <div className="es-sub">{L('Automations for this category are being prepared.', 'يتم تجهيز قوالب الأتمتة لهذا القسم.')}</div>
+            <div className="es-sub">{L('Automations for this category are being prepared. Click Custom Builder to create workflow.', 'يتم تجهيز قوالب الأتمتة لهذا القسم. اضغط على البناء المخصص.')}</div>
+            <button className="btn btn-prime" onClick={() => setActiveTab('custom')}>
+              ✦ {L('Open Custom Builder', 'افتح البناء المخصص')}
+            </button>
           </div>
         </div>
       )}
@@ -238,7 +338,7 @@ export default function AutomationHubView() {
               )}
 
               {buildResult && !building && (
-                <div className="ai-box" style={{ marginTop: '14px' }}>
+                <div className="ai-box" style={{ marginTop: '14px', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '11px', overflowX: 'auto', background: 'var(--surface3)' }}>
                   {buildResult}
                 </div>
               )}
@@ -284,6 +384,7 @@ export default function AutomationHubView() {
                     <div 
                       key={i} 
                       style={{ padding: '9px 12px', background: 'var(--surface2)', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--edge)', transition: 'all .15s' }}
+                      onClick={() => setCbAction(idea.substring(2))}
                     >
                       {idea}
                     </div>

@@ -173,7 +173,7 @@ export default function Sidebar() {
               {displayName}
             </div>
             <div className="sb-user-plan" id="t-plan">
-              {GC.profile.type ? `${GC.profile.type} — Pro` : (userData?.role === 'admin' ? 'Admin — Pro' : t('t-plan'))}
+              {userData?.role === 'team_member' ? (isRtl ? '👤 عضو فريق' : '👤 Team Member') : GC.profile.type ? `${GC.profile.type} — Pro` : (userData?.role === 'admin' ? 'Admin — Pro' : t('t-plan'))}
             </div>
           </div>
           <span style={{ fontSize: '12px', color: 'var(--t3)', flexShrink: 0 }}>

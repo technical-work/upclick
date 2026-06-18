@@ -5,7 +5,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 
 export default function MarketingView() {
-  const { lang, L, t, GC, formatMoney } = useBusiness();
+  const { lang, L, t, GC, saveGC, formatMoney } = useBusiness();
   const [activeTab, setActiveTab] = useState('research');
 
   const [competitorsCount, setCompetitorsCount] = useState(0);
@@ -13,14 +13,9 @@ export default function MarketingView() {
   const [trendsCount, setTrendsCount] = useState(0);
   const [personasCount, setPersonasCount] = useState(0);
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setCompetitorsCount(parseInt(localStorage.getItem('mkt_competitors_count') || '0'));
-      setAudienceCount(parseInt(localStorage.getItem('mkt_audience_count') || '0'));
-      setTrendsCount(parseInt(localStorage.getItem('mkt_trends_count') || '0'));
-      setPersonasCount(parseInt(localStorage.getItem('mkt_personas_count') || '0'));
-    }
-  }, []);
+  const [savedReports, setSavedReports] = useState([]);
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Sub-tabs states
   const [resTab, setResTab] = useState('comp');
@@ -81,19 +76,182 @@ export default function MarketingView() {
     leadAud: '', leadMethod: 'Organic content + DM', leadGoal: '',
     roiSpend: '', roiLeads: '', roiClosed: '', roiRev: '',
 
+    // One-Click Campaign Launcher
+    launchName: '', launchProduct: '', launchAudience: '', launchGoal: 'Sales / Conversions',
+
     // AI Consultant
     aiInp: ''
   });
+
+  // Sync state from Firebase GC.marketing when GC changes
+  React.useEffect(() => {
+    if (GC?.marketing) {
+      const m = GC.marketing;
+      if (m.counts) {
+        setCompetitorsCount(m.counts.competitors || 0);
+        setAudienceCount(m.counts.audience || 0);
+        setTrendsCount(m.counts.trends || 0);
+        setPersonasCount(m.counts.personas || 0);
+      }
+      if (m.outputs) {
+        setOutputs(m.outputs);
+      }
+      if (m.savedReports) {
+        setSavedReports(m.savedReports);
+      }
+      if (m.inputs) {
+        setInputs(prev => ({ ...prev, ...m.inputs }));
+      }
+    }
+  }, [GC]);
 
   const handleInputChange = (key, value) => {
     setInputs(prev => ({ ...prev, [key]: value }));
   };
 
-  const triggerAI = async (toolKey, outputId, promptText, systemText) => {
+  const saveAllProgress = () => {
+    const updatedGC = {
+      ...GC,
+      marketing: {
+        ...(GC?.marketing || {}),
+        inputs: inputs,
+        outputs: outputs,
+        counts: {
+          competitors: competitorsCount,
+          audience: audienceCount,
+          trends: trendsCount,
+          personas: personasCount
+        },
+        savedReports: savedReports
+      }
+    };
+    saveGC(updatedGC);
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.innerText = L('Progress saved successfully!', 'تم حفظ التقدم بنجاح!');
+      toast.className = 'toast show';
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+  };
+
+  const handleSaveToLibrary = (category, content) => {
+    if (!content) return;
+    const defaultTitle = `${category} - ${new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}`;
+    const title = prompt(
+      L('Enter a title for this report:', 'أدخل عنواناً لهذا التقرير:'),
+      defaultTitle
+    );
+    if (title === null) return;
+    const finalTitle = title.trim() || defaultTitle;
+    const newReport = {
+      id: 'rep_' + Date.now(),
+      title: finalTitle,
+      category: category,
+      content: content,
+      date: new Date().toISOString()
+    };
+    const updatedReports = [newReport, ...savedReports];
+    setSavedReports(updatedReports);
+    
+    const updatedGC = {
+      ...GC,
+      marketing: {
+        ...(GC?.marketing || {}),
+        savedReports: updatedReports
+      }
+    };
+    saveGC(updatedGC);
+    
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.innerText = L('Report saved to library!', 'تم حفظ التقرير في المكتبة!');
+      toast.className = 'toast show';
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+  };
+
+  const handleDeleteReport = (id) => {
+    if (!confirm(L('Are you sure you want to delete this report?', 'هل أنت متأكد من حذف هذا التقرير؟'))) return;
+    const updated = savedReports.filter(r => r.id !== id);
+    setSavedReports(updated);
+    if (selectedReportId === id) setSelectedReportId(null);
+    
+    const updatedGC = {
+      ...GC,
+      marketing: {
+        ...(GC?.marketing || {}),
+        savedReports: updated
+      }
+    };
+    saveGC(updatedGC);
+  };
+
+  const handleCopyText = (text) => {
+    navigator.clipboard.writeText(text);
+    const toast = document.getElementById('toast');
+    if (toast) {
+      toast.innerText = L('Copied to clipboard!', 'تم النسخ إلى الحافظة!');
+      toast.className = 'toast show';
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+  };
+
+  const renderResultCard = (titleAr, titleEn, outputId, loadingMsgAr, loadingMsgEn, placeholderAr, placeholderEn, category) => {
+    const title = L(titleEn, titleAr);
+    const loadingMsg = L(loadingMsgEn, loadingMsgAr);
+    const placeholder = L(placeholderEn, placeholderAr);
+    const content = outputs[outputId];
+    const isLoading = loading[outputId];
+
+    return (
+      <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="sec-title">{title}</div>
+          {content && !isLoading && (
+            <button 
+              className="btn btn-sm btn-ghost"
+              onClick={() => handleSaveToLibrary(category, content)}
+              style={{ fontSize: '11px', padding: '4px 8px' }}
+            >
+              💾 {L('Save to Library', 'حفظ للمكتبة')}
+            </button>
+          )}
+        </div>
+        <div className="ai-box" style={{ whiteSpace: 'pre-line', flex: 1 }}>
+          {isLoading ? loadingMsg : (content || placeholder)}
+        </div>
+      </div>
+    );
+  };
+
+  const triggerAI = async (toolKey, outputId, promptText, systemText, extraCounts = {}) => {
     setLoading(prev => ({ ...prev, [outputId]: true }));
     try {
       const response = await callClaudeAPI(promptText, systemText, lang, GC);
+      
+      // Update local state cleanly (pure function)
       setOutputs(prev => ({ ...prev, [outputId]: response }));
+
+      // Save to Firebase/GC outside the state update callback
+      const nextOutputs = { ...outputs, [outputId]: response };
+      const currentCounts = {
+        competitors: competitorsCount,
+        audience: audienceCount,
+        trends: trendsCount,
+        personas: personasCount,
+        ...extraCounts
+      };
+
+      const updatedGC = {
+        ...GC,
+        marketing: {
+          ...(GC?.marketing || {}),
+          inputs: inputs,
+          outputs: nextOutputs,
+          counts: currentCounts
+        }
+      };
+      saveGC(updatedGC);
     } catch (err) {
       setOutputs(prev => ({ ...prev, [outputId]: L('Error generating report. Please try again.', 'حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.') }));
     }
@@ -104,12 +262,9 @@ export default function MarketingView() {
   const runCompetitorFinder = () => {
     const prompt = `Find and analyze competitors for: Niche: "${inputs.compNiche}", Country: "${inputs.compCountry}", Product Type: "${inputs.compType}". Identify 3-4 competitor brands or types of businesses, pricing, positioning and gaps we can exploit.`;
     const system = `You are an expert market analyst. Provide direct actionable findings.`;
-    triggerAI('competitor-finder', 'comp-out', prompt, system);
-    setCompetitorsCount(prev => {
-      const next = prev + 1;
-      localStorage.setItem('mkt_competitors_count', String(next));
-      return next;
-    });
+    const nextCount = competitorsCount + 1;
+    setCompetitorsCount(nextCount);
+    triggerAI('competitor-finder', 'comp-out', prompt, system, { competitors: nextCount });
   };
 
   const runCompetitorAds = () => {
@@ -121,34 +276,25 @@ export default function MarketingView() {
   const runAudienceResearch = () => {
     const prompt = `Research target audience: Customer description: "${inputs.audDesc}", Core problem solved: "${inputs.audProblem}". Outline demographic details, psychological traits, 5 biggest pain points, desires, buying triggers, and objections.`;
     const system = `You are a customer psychologist.`;
-    triggerAI('audience-research', 'aud-out', prompt, system);
-    setAudienceCount(prev => {
-      const next = prev + 1;
-      localStorage.setItem('mkt_audience_count', String(next));
-      return next;
-    });
+    const nextCount = audienceCount + 1;
+    setAudienceCount(nextCount);
+    triggerAI('audience-research', 'aud-out', prompt, system, { audience: nextCount });
   };
 
   const runBuyerPersona = () => {
     const prompt = `Build detailed Buyer Personas for: Product "${inputs.personaProduct}", Target market: "${inputs.personaMarket}", Age range: "${inputs.personaAge}", Gender: "${inputs.personaGender}". Provide profile name, background, goals, struggles, and buying triggers.`;
     const system = `You are a master brand strategist.`;
-    triggerAI('buyer-persona', 'persona-out', prompt, system);
-    setPersonasCount(prev => {
-      const next = prev + 1;
-      localStorage.setItem('mkt_personas_count', String(next));
-      return next;
-    });
+    const nextCount = personasCount + 1;
+    setPersonasCount(nextCount);
+    triggerAI('buyer-persona', 'persona-out', prompt, system, { personas: nextCount });
   };
 
   const runTrendDiscovery = () => {
     const prompt = `Discover current trends in niche: "${inputs.trendNiche}", Region: "${inputs.trendRegion}", Trend Type: "${inputs.trendType}". Highlight 3 rising trends, viral content formats, and immediate marketing opportunities.`;
     const system = `You are a viral trend analyst.`;
-    triggerAI('trends', 'trends-out', prompt, system);
-    setTrendsCount(prev => {
-      const next = prev + 1;
-      localStorage.setItem('mkt_trends_count', String(next));
-      return next;
-    });
+    const nextCount = trendsCount + 1;
+    setTrendsCount(nextCount);
+    triggerAI('trends', 'trends-out', prompt, system, { trends: nextCount });
   };
 
   // ── 2. STRATEGY SUB-ACTIONS ──
@@ -174,6 +320,25 @@ export default function MarketingView() {
     const prompt = `Analyze this SWOT matrix: Strengths: "${inputs.swotS}", Weaknesses: "${inputs.swotW}", Opportunities: "${inputs.swotO}", Threats: "${inputs.swotT}". Provide strategic takeaways on how to maximize strengths, fix weaknesses, capture opportunities, and mitigate threats.`;
     const system = `You are a strategic SWOT consultant.`;
     triggerAI('swot', 'swot-out', prompt, system);
+  };
+
+  const runCampaignLauncher = () => {
+    const prompt = `Create a complete marketing campaign launcher bundle for the campaign: "${inputs.launchName}".
+Product/Service to promote: "${inputs.launchProduct}"
+Target Audience: "${inputs.launchAudience}"
+Campaign Goal: "${inputs.launchGoal}"
+
+Provide a comprehensive and highly cohesive launch bundle structured exactly as follows:
+1. TARGET AUDIENCE & ICP PROFILE: A detailed breakdown of our ideal customer profile, their psychographics, and top 3 purchase triggers.
+2. AD HOOKS CATALOG: 3 viral hook options customized for this product.
+3. AD COPY BUNDLE:
+   - Meta Ads (Facebook/Instagram) Primary Text & Headlines
+   - TikTok Video script concept (with visual guidelines)
+   - Google Search Ads Headlines (3 variations)
+4. FOLLOW-UP SEQUENCE: A 3-step sequence of WhatsApp or Email outreach templates designed to convert leads into sales.`;
+
+    const system = `You are a growth marketing architect. Provide highly detailed, directly copy-pasteable marketing materials and copy.`;
+    triggerAI('campaign-launcher', 'launcher-out', prompt, system);
   };
 
   // ── 3. OFFERS SUB-ACTIONS ──
@@ -365,7 +530,7 @@ export default function MarketingView() {
 
       {/* Main Tabs */}
       <div className="tabs-bar" id="mkt-tabs" style={{ marginBottom: '20px' }}>
-        {['research', 'strategy', 'offers', 'ads', 'content', 'funnels', 'analytics', 'ai'].map(tab => (
+        {['research', 'strategy', 'offers', 'ads', 'content', 'funnels', 'analytics', 'saved', 'ai'].map(tab => (
           <button
             key={tab}
             className={`tab-btn ${activeTab === tab ? 'on' : ''}`}
@@ -378,6 +543,7 @@ export default function MarketingView() {
             {tab === 'content' && `✍️ ${L('Content', 'المحتوى')}`}
             {tab === 'funnels' && `🔄 ${L('Funnels', 'المسارات')}`}
             {tab === 'analytics' && `📊 ${L('Analytics', 'التحليلات')}`}
+            {tab === 'saved' && `💾 ${L('Saved Reports', 'التقارير المحفوظة')}`}
             {tab === 'ai' && `✦ ${L('AI Consultant', 'مستشار AI')}`}
           </button>
         ))}
@@ -455,12 +621,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Results', 'النتائج')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['comp-out'] ? L('Scanning competitors...', 'جاري البحث عن المنافسين...') : (outputs['comp-out'] || L('Find competitor lists, pricing strategies, and marketing positioning.', 'ابحث عن المنافسين واستراتيجيات التسعير والتموضع.'))}
-                </div>
-              </div>
+              {renderResultCard('النتائج', 'Results', 'comp-out', 'جاري البحث عن المنافسين...', 'Scanning competitors...', 'ابحث عن المنافسين واستراتيجيات التسعير والتموضع.', 'Find competitor lists, pricing strategies, and marketing positioning.', 'Competitor Finder')}
             </div>
           )}
 
@@ -484,12 +645,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Ad Intelligence', 'ذكاء الإعلانات')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['comp-ads-out'] ? L('Analyzing ads...', 'جاري تحليل الإعلانات...') : (outputs['comp-ads-out'] || L('Discover hooks, creatives, and strategies.', 'اكتشف الخطافات والإعلانات والاستراتيجيات.'))}
-                </div>
-              </div>
+              {renderResultCard('ذكاء الإعلانات', 'Ad Intelligence', 'comp-ads-out', 'جاري تحليل الإعلانات...', 'Analyzing ads...', 'اكتشف الخطافات والإعلانات والاستراتيجيات.', 'Discover hooks, creatives, and strategies.', 'Competitor Ads Research')}
             </div>
           )}
 
@@ -511,12 +667,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Audience Intelligence', 'رؤى الجمهور')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['aud-out'] ? L('Analyzing audience...', 'جاري تحليل الجمهور...') : (outputs['aud-out'] || L('Target demographics, objections, and buying triggers.', 'الديموغرافيا المستهدفة والاعتراضات ومحفزات الشراء.'))}
-                </div>
-              </div>
+              {renderResultCard('رؤى الجمهور', 'Audience Intelligence', 'aud-out', 'جاري تحليل الجمهور...', 'Analyzing audience...', 'الديموغرافيا المستهدفة والاعتراضات ومحفزات الشراء.', 'Target demographics, objections, and buying triggers.', 'Audience Research')}
             </div>
           )}
 
@@ -550,12 +701,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Buyer Persona', 'شخصية المشتري')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['persona-out'] ? L('Building buyer personas...', 'جاري بناء شخصية المشتري...') : (outputs['persona-out'] || L('Complete profile of your buyer persona.', 'الملف الكامل لشخصية المشتري الخاصة بك.'))}
-                </div>
-              </div>
+              {renderResultCard('شخصية المشتري', 'Buyer Persona', 'persona-out', 'جاري بناء شخصية المشتري...', 'Building buyer personas...', 'الملف الكامل لشخصية المشتري الخاصة بك.', 'Complete profile of your buyer persona.', 'Buyer Persona Builder')}
             </div>
           )}
 
@@ -579,12 +725,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Trend Report', 'تقرير الاتجاهات')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['trends-out'] ? L('Scanning trends...', 'جاري مسح الترندات...') : (outputs['trends-out'] || L('Discover what topics and formats are trending.', 'اكتشف الموضوعات والصيغ الرائجة.'))}
-                </div>
-              </div>
+              {renderResultCard('تقرير الاتجاهات', 'Trend Report', 'trends-out', 'جاري مسح الترندات...', 'Scanning trends...', 'اكتشف الموضوعات والصيغ الرائجة.', 'Discover what topics and formats are trending.', 'Trend Discovery')}
             </div>
           )}
         </div>
@@ -594,7 +735,7 @@ export default function MarketingView() {
       {activeTab === 'strategy' && (
         <div className="mkt-section on">
           <div className="tabs-bar" style={{ marginBottom: '14px' }}>
-            {['plan', 'launch', 'roadmap', 'swot'].map(sub => (
+            {['plan', 'launch', 'roadmap', 'swot', 'launcher'].map(sub => (
               <button
                 key={sub}
                 className={`tab-btn ${stratTab === sub ? 'on' : ''}`}
@@ -605,6 +746,7 @@ export default function MarketingView() {
                 {sub === 'launch' && `🚀 ${L('Launch Planner', 'مخطط الإطلاق')}`}
                 {sub === 'roadmap' && `🗺️ ${L('Growth Roadmap', 'خارطة الطريق')}`}
                 {sub === 'swot' && `⚔️ SWOT`}
+                {sub === 'launcher' && `⚡ ${L('Campaign Launcher', 'مطلق الحملات السريع')}`}
               </button>
             ))}
           </div>
@@ -637,12 +779,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Your Marketing Strategy', 'استراتيجيتك التسويقية')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['strat-plan-out'] ? L('Building strategy...', 'جاري بناء الاستراتيجية...') : (outputs['strat-plan-out'] || L('Complete marketing channels, timelines, and budgets blueprint.', 'استراتيجية كاملة للقنوات الإعلانية، الميزانية، والجدول الزمني.'))}
-                </div>
-              </div>
+              {renderResultCard('استراتيجيتك التسويقية', 'Your Marketing Strategy', 'strat-plan-out', 'جاري بناء الاستراتيجية...', 'Building strategy...', 'استراتيجية كاملة للقنوات الإعلانية، الميزانية، والجدول الزمني.', 'Complete marketing channels, timelines, and budgets blueprint.', 'Marketing Strategy')}
             </div>
           )}
 
@@ -682,12 +819,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Your Launch Plan', 'خطة الإطلاق')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['launch-out'] ? L('Planning launch...', 'جاري التخطيط للإطلاق...') : (outputs['launch-out'] || L('Week-by-week checklist and promotional strategy.', 'المهام الأسبوعية واستراتيجية الترويج للإطلاق.'))}
-                </div>
-              </div>
+              {renderResultCard('خطة الإطلاق', 'Your Launch Plan', 'launch-out', 'جاري التخطيط للإطلاق...', 'Planning launch...', 'المهام الأسبوعية واستراتيجية الترويج للإطلاق.', 'Week-by-week checklist and promotional strategy.', 'Launch Planner')}
             </div>
           )}
 
@@ -715,12 +847,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Your Growth Roadmap', 'خارطة طريق النمو')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['rm-out'] ? L('Building roadmap...', 'جاري بناء خارطة الطريق...') : (outputs['rm-out'] || L('90-day execution milestones and weekly tasks.', 'المعالم الأسبوعية لخارطة طريق النمو لمدة ٩٠ يوماً.'))}
-                </div>
-              </div>
+              {renderResultCard('خارطة طريق النمو', 'Your Growth Roadmap', 'rm-out', 'جاري بناء خارطة الطريق...', 'Building roadmap...', 'المعالم الأسبوعية لخارطة طريق النمو لمدة ٩٠ يوماً.', '90-day execution milestones and weekly tasks.', 'Growth Roadmap')}
             </div>
           )}
 
@@ -733,7 +860,7 @@ export default function MarketingView() {
                     <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--green)', marginBottom: '5px' }}>💪 STRENGTHS</div>
                     <textarea className="inp" rows="3" placeholder="Advantages..." style={{ background: 'transparent', border: 'none', padding: 0 }} value={inputs.swotS} onChange={e => handleInputChange('swotS', e.target.value)} />
                   </div>
-                  <div style={{ background: 'var(--red-d)', border: '1px solid rgba(244,63,94,.2)', borderRadius: '10px', padding: '11px' }}>
+                  <div style={{ background: 'var(--red-d)', border: '1px solid rgba(255,61,110,.2)', borderRadius: '10px', padding: '11px' }}>
                     <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--red)', marginBottom: '5px' }}>⚠️ WEAKNESSES</div>
                     <textarea className="inp" rows="3" placeholder="Gaps..." style={{ background: 'transparent', border: 'none', padding: 0 }} value={inputs.swotW} onChange={e => handleInputChange('swotW', e.target.value)} />
                   </div>
@@ -750,12 +877,39 @@ export default function MarketingView() {
                   ⚔️ {L('Analyze SWOT Strategy', 'حلل استراتيجية SWOT')}
                 </button>
               </div>
+              {renderResultCard('رؤى SWOT', 'SWOT Insights', 'swot-out', 'جاري تحليل SWOT...', 'Analyzing SWOT...', 'توصيات استراتيجية بناءً على مصفوفة SWOT.', 'AI generated SWOT takeaways.', 'SWOT Analysis')}
+            </div>
+          )}
+
+          {stratTab === 'launcher' && (
+            <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('SWOT Insights', 'رؤى SWOT')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['swot-out'] ? L('Analyzing SWOT...', 'جاري تحليل SWOT...') : (outputs['swot-out'] || L('AI generated SWOT takeaways.', 'توصيات استراتيجية بناءً على مصفوفة SWOT.'))}
+                <div className="sec-hd"><div className="sec-title">⚡ {L('One-Click Campaign Launcher', 'مُطلق الحملات التسويقية السريع')}</div></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Name', 'اسم الحملة')}</label>
+                    <input className="inp" placeholder="e.g. Summer Special 2026" value={inputs.launchName} onChange={e => handleInputChange('launchName', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product / Service Name', 'اسم المنتج أو الخدمة')}</label>
+                    <input className="inp" placeholder="e.g. 1-on-1 Fitness Transformation" value={inputs.launchProduct} onChange={e => handleInputChange('launchProduct', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Audience', 'الجمهور المستهدف بالتفصيل')}</label>
+                    <textarea className="inp" rows="2" placeholder="e.g. Busy professionals aged 30-45 wanting to lose weight..." value={inputs.launchAudience} onChange={e => handleInputChange('launchAudience', e.target.value)}></textarea>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Primary Goal', 'الهدف الأساسي للحملة')}</label>
+                    <select className="inp" value={inputs.launchGoal} onChange={e => handleInputChange('launchGoal', e.target.value)}>
+                      <option>Sales / Conversions</option><option>Lead Generation</option><option>Brand Awareness</option><option>Webinar Attendees</option>
+                    </select>
+                  </div>
+                  <button className="btn btn-prime" onClick={runCampaignLauncher} style={{ width: '100%', justifyContent: 'center' }}>
+                    ⚡ {L('Generate Complete Campaign Bundle', 'ولّد حزمة الحملة المتكاملة')}
+                  </button>
                 </div>
               </div>
+              {renderResultCard('مخرجات حزمة الحملة', 'Campaign Bundle Output', 'launcher-out', 'جاري توليد حزمة الحملة...', 'Generating campaign bundle...', 'قم بتوليد تفاصيل العميل، نصوص الإعلانات، والرسائل التتبعية بضغطة زر واحدة.', 'Generate your ICP details, ad hooks, copy, and follow-up templates in one go.', 'Campaign Launcher')}
             </div>
           )}
         </div>
@@ -807,12 +961,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Your Offer Structure', 'هيكل العرض الخاص بك')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['offer-out'] ? L('Building offer...', 'جاري بناء العرض...') : (outputs['offer-out'] || L('Complete offer framework with core, bonuses, guarantee, and urgency.', 'مكونات العرض، البونصات المرفقة، الضمان وعوامل الاستعجال.'))}
-                </div>
-              </div>
+              {renderResultCard('هيكل العرض الخاص بك', 'Your Offer Structure', 'offer-out', 'جاري بناء العرض...', 'Building offer...', 'مكونات العرض، البونصات المرفقة، الضمان وعوامل الاستعجال.', 'Complete offer framework with core, bonuses, guarantee, and urgency.', 'Offer Builder')}
             </div>
           )}
 
@@ -848,12 +997,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Pricing Strategy', 'استراتيجية التسعير')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['pricing-out'] ? L('Optimizing prices...', 'جاري تحسين الأسعار...') : (outputs['pricing-out'] || L('Tiered pricing tiers and psychology logic.', 'توزيع الباقات والأسعار النفسية المقترحة.'))}
-                </div>
-              </div>
+              {renderResultCard('استراتيجية التسعير', 'Pricing Strategy', 'pricing-out', 'جاري تحسين الأسعار...', 'Optimizing prices...', 'توزيع الباقات والأسعار النفسية المقترحة.', 'Tiered pricing tiers and psychology logic.', 'Pricing Optimizer')}
             </div>
           )}
 
@@ -879,12 +1023,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Upsell Strategy', 'استراتيجية البيع الإضافي')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['upsell-out'] ? L('Building upsell ladder...', 'جاري بناء سلم البيع الإضافي...') : (outputs['upsell-out'] || L('Order bump, one-click upsell, and high-ticket options.', 'العروض المضافة وخيارات ترقية الشراء.'))}
-                </div>
-              </div>
+              {renderResultCard('استراتيجية البيع الإضافي', 'Upsell Strategy', 'upsell-out', 'جاري بناء سلم البيع الإضافي...', 'Building upsell ladder...', 'العروض المضافة وخيارات ترقية الشراء.', 'Order bump, one-click upsell, and high-ticket options.', 'Upsell Builder')}
             </div>
           )}
         </div>
@@ -941,12 +1080,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Campaign Structure', 'هيكل الحملة')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['meta-out'] ? L('Building Meta campaign...', 'جاري بناء الحملة...') : (outputs['meta-out'] || L('Campaign structure, ad sets, and optimization settings.', 'الجمهور المستهدف والمجموعات الإعلانية المقترحة.'))}
-                </div>
-              </div>
+              {renderResultCard('هيكل الحملة', 'Campaign Structure', 'meta-out', 'جاري بناء الحملة...', 'Building Meta campaign...', 'الجمهور المستهدف والمجموعات الإعلانية المقترحة.', 'Campaign structure, ad sets, and optimization settings.', 'Meta Ads Planner')}
             </div>
           )}
 
@@ -974,12 +1108,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Google Campaign Plan', 'خطة حملة Google')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['google-out'] ? L('Building Google campaign...', 'جاري بناء حملة Google...') : (outputs['google-out'] || L('Keywords, bid strategy, and responsive search ads drafts.', 'الكلمات المفتاحية المستهدفة، استراتيجية المزايدة ونصوص الإعلانات.'))}
-                </div>
-              </div>
+              {renderResultCard('خطة حملة Google', 'Google Campaign Plan', 'google-out', 'جاري بناء حملة Google...', 'Building Google campaign...', 'الكلمات المفتاحية المستهدفة، استراتيجية المزايدة ونصوص الإعلانات.', 'Keywords, bid strategy, and responsive search ads drafts.', 'Google Ads Planner')}
             </div>
           )}
 
@@ -1011,12 +1140,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('TikTok Campaign Plan', 'خطة حملة TikTok')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['tiktok-out'] ? L('Building TikTok campaign...', 'جاري بناء حملة TikTok...') : (outputs['tiktok-out'] || L('TikTok video hooks, UGC brief, and ad setups.', 'أفكار الفيديوهات الإبداعية، استهداف الجمهور وإعداد الحملة.'))}
-                </div>
-              </div>
+              {renderResultCard('خطة حملة TikTok', 'TikTok Campaign Plan', 'tiktok-out', 'جاري بناء حملة TikTok...', 'Building TikTok campaign...', 'أفكار الفيديوهات الإبداعية، استهداف الجمهور وإعداد الحملة.', 'TikTok video hooks, UGC brief, and ad setups.', 'TikTok Ads Planner')}
             </div>
           )}
 
@@ -1058,12 +1182,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Generated Ad Copy', 'النصوص المولّدة')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['copy-out'] ? L('Generating copy...', 'جاري توليد النصوص...') : (outputs['copy-out'] || L('5 variations of hooks, primary text, and CTAs.', '٥ نماذج تسويقية من نصوص الإعلانات والخطافات.'))}
-                </div>
-              </div>
+              {renderResultCard('النصوص المولّدة', 'Generated Ad Copy', 'copy-out', 'جاري توليد النصوص...', 'Generating copy...', '٥ نماذج تسويقية من نصوص الإعلانات والخطافات.', '5 variations of hooks, primary text, and CTAs.', 'Ad Copy Generator')}
             </div>
           )}
 
@@ -1081,7 +1200,7 @@ export default function MarketingView() {
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Hook Style', 'نمط الخطاف')}</label>
                     <select className="inp" value={inputs.creativeHook} onChange={e => handleInputChange('creativeHook', e.target.value)}>
-                      <option>Problem-based ("If you're struggling with...")</option><option>Curiosity ("What nobody tells you about...")</option><option>Results ("How I made $X in Y days")</option>
+                      <option>Problem-based ("If you\'re struggling with...")</option><option>Curiosity ("What nobody tells you about...")</option><option>Results ("How I made $X in Y days")</option>
                     </select>
                   </div>
                   <div>
@@ -1093,12 +1212,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Creative Brief', 'مخطط الإبداع')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['creative-out'] ? L('Generating brief...', 'جاري التوليد...') : (outputs['creative-out'] || L('Complete visual guide, script and UGC briefing.', 'دليل المشاهد البصرية، الحوار، وإرشادات التصوير.'))}
-                </div>
-              </div>
+              {renderResultCard('مخطط الإبداع', 'Creative Brief', 'creative-out', 'جاري التوليد...', 'Generating brief...', 'دليل المشاهد البصرية، الحوار، وإرشادات التصوير.', 'Complete visual guide, script and UGC briefing.', 'Creative Brief')}
             </div>
           )}
 
@@ -1134,12 +1248,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Budget Allocation Plan', 'خطة توزيع الميزانية')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['budget-out'] ? L('Planning budget...', 'جاري التخطيط...') : (outputs['budget-out'] || L('Budget allocation and expected acquisition costs.', 'توزيع الميزانية وتكلفة الاستحواذ المقدرة.'))}
-                </div>
-              </div>
+              {renderResultCard('خطة توزيع الميزانية', 'Budget Allocation Plan', 'budget-out', 'جاري التخطيط...', 'Planning budget...', 'توزيع الميزانية وتكلفة الاستحواذ المقدرة.', 'Budget allocation and expected acquisition costs.', 'Budget Planner')}
             </div>
           )}
         </div>
@@ -1200,12 +1309,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Your Content Plan', 'خطة المحتوى الخاصة بك')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['plan-out'] ? L('Generating content plan...', 'جاري توليد خطة المحتوى...') : (outputs['plan-out'] || L('30-day content calendar with topics, formats, and CTAs.', 'جدول نشر لـ ٣٠ يوماً مع الخطافات والدعوات لإجراء.'))}
-                </div>
-              </div>
+              {renderResultCard('خطة المحتوى الخاصة بك', 'Your Content Plan', 'plan-out', 'جاري توليد خطة المحتوى...', 'Generating content plan...', 'جدول نشر لـ ٣٠ يوماً مع الخطافات والدعوات لإجراء.', '30-day content calendar with topics, formats, and CTAs.', 'Content Planner')}
             </div>
           )}
 
@@ -1243,12 +1347,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Generated Hooks', 'الخطافات المولّدة')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['hooks-out'] ? L('Generating hooks...', 'جاري التوليد...') : (outputs['hooks-out'] || L('Stop-the-scroll opening lines that grab attention.', 'جمل افتتاحية تخطف انتباه المشاهد فوراً.'))}
-                </div>
-              </div>
+              {renderResultCard('الخطافات المولّدة', 'Generated Hooks', 'hooks-out', 'جاري التوليد...', 'Generating hooks...', 'جمل افتتاحية تخطف انتباه المشاهد فوراً.', 'Stop-the-scroll opening lines that grab attention.', 'Viral Hooks')}
             </div>
           )}
 
@@ -1278,12 +1377,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Content Ideas', 'أفكار المحتوى')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['ideas-out'] ? L('Generating ideas...', 'جاري التوليد...') : (outputs['ideas-out'] || L('30 creative video and carousel ideas.', 'أفكار تسويقية مميزة للفيديو والمنشورات.'))}
-                </div>
-              </div>
+              {renderResultCard('أفكار المحتوى', 'Content Ideas', 'ideas-out', 'جاري التوليد...', 'Generating ideas...', 'أفكار تسويقية مميزة للفيديو والمنشورات.', '30 creative video and carousel ideas.', 'Content Ideas')}
             </div>
           )}
 
@@ -1307,12 +1401,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">{L('Competitor Content Intelligence', 'ذكاء محتوى المنافسين')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['comp-content-out'] ? L('Analyzing content...', 'جاري تحليل المحتوى...') : (outputs['comp-content-out'] || L('Discover what topics and formats are winning for them.', 'اكتشف أفضل صيغ المنشورات والموضوعات والفرص المتاحة لديهم.'))}
-                </div>
-              </div>
+              {renderResultCard('ذكاء محتوى المنافسين', 'Competitor Content Intelligence', 'comp-content-out', 'جاري تحليل المحتوى...', 'Analyzing content...', 'اكتشف أفضل صيغ المنشورات والموضوعات والفرص المتاحة لديهم.', 'Discover what topics and formats are winning for them.', 'Competitor Content')}
             </div>
           )}
         </div>
@@ -1369,12 +1458,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Funnel Structure', 'هيكل المسار')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['funnel-out'] ? L('Building funnel structure...', 'جاري بناء هيكل المسار...') : (outputs['funnel-out'] || L('Complete funnel steps and trigger maps.', 'مراحل رحلة العميل وخريطة رسائل البريد الإلكتروني التلقائية.'))}
-                </div>
-              </div>
+              {renderResultCard('هيكل المسار', 'Funnel Structure', 'funnel-out', 'جاري بناء هيكل المسار...', 'Building funnel structure...', 'مراحل رحلة العميل وخريطة رسائل البريد الإلكتروني التلقائية.', 'Complete funnel steps and trigger maps.', 'Funnel Builder')}
             </div>
           )}
 
@@ -1402,12 +1486,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Lead Magnet Plan', 'خطة مغناطيس العملاء')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['magnet-out'] ? L('Building magnet plan...', 'جاري التخطيط...') : (outputs['magnet-out'] || L('Title ideas, structural outline, and followup sequence.', 'مخطط الهيكل، مقترح العنوان، وسلسلة رسائل المتابعة.'))}
-                </div>
-              </div>
+              {renderResultCard('خطة مغناطيس العملاء', 'Lead Magnet Plan', 'magnet-out', 'جاري التخطيط...', 'Building magnet plan...', 'مخطط الهيكل، مقترح العنوان، وسلسلة رسائل المتابعة.', 'Title ideas, structural outline, and followup sequence.', 'Lead Magnet')}
             </div>
           )}
 
@@ -1439,12 +1518,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Landing Page Blueprint', 'هيكل صفحة الهبوط')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['lp-plan-out'] ? L('Planning landing page...', 'جاري التخطيط...') : (outputs['lp-plan-out'] || L('Section-by-section blueprint with copy templates.', 'توزيع الأقسام ونصوص الإقناع المقترحة.'))}
-                </div>
-              </div>
+              {renderResultCard('هيكل صفحة الهبوط', 'Landing Page Blueprint', 'lp-plan-out', 'جاري التخطيط...', 'Planning landing page...', 'توزيع الأقسام ونصوص الإقناع المقترحة.', 'Section-by-section blueprint with copy templates.', 'Landing Page Blueprint')}
             </div>
           )}
 
@@ -1472,12 +1546,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Conversion Analysis', 'تحليل معدلات التحويل')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['conv-out'] ? L('Analyzing conversions...', 'جاري التحليل...') : (outputs['conv-out'] || L('Identify bottlenecks and get optimization ideas.', 'تحديد نقاط التسريب والاختناقات في مسار البيع.'))}
-                </div>
-              </div>
+              {renderResultCard('تحليل معدلات التحويل', 'Conversion Analysis', 'conv-out', 'جاري التحليل...', 'Analyzing conversions...', 'تحديد نقاط التسريب والاختناقات في مسار البيع.', 'Identify bottlenecks and get optimization ideas.', 'Conversion Optimizer')}
             </div>
           )}
         </div>
@@ -1530,12 +1599,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Your KPIs', 'مؤشرات الأداء الخاصة بك')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['kpi-out'] ? L('Building KPIs...', 'جاري إعداد المؤشرات...') : (outputs['kpi-out'] || L('Define metrics to track daily, weekly, and monthly.', 'المؤشرات الأساسية للمتابعة اليومية والأسبوعية.'))}
-                </div>
-              </div>
+              {renderResultCard('مؤشرات الأداء الخاصة بك', 'Your KPIs', 'kpi-out', 'جاري إعداد المؤشرات...', 'Building KPIs...', 'المؤشرات الأساسية للمتابعة اليومية والأسبوعية.', 'Define metrics to track daily, weekly, and monthly.', 'KPI Planner')}
             </div>
           )}
 
@@ -1571,12 +1635,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Revenue Projections', 'التوقعات المالية')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['rev-forecast-out'] ? L('Forecasting revenue...', 'جاري الاحتساب...') : (outputs['rev-forecast-out'] || L('30, 60, 90 day projections under different scenarios.', 'النمذجة المالية وتوقعات ٣٠ و ٦٠ و ٩٠ يوماً.'))}
-                </div>
-              </div>
+              {renderResultCard('التوقعات المالية', 'Revenue Projections', 'rev-forecast-out', 'جاري الاحتساب...', 'Forecasting revenue...', 'النمذجة المالية وتوقعات ٣٠ و ٦٠ و ٩٠ يوماً.', '30, 60, 90 day projections under different scenarios.', 'Revenue Forecast')}
             </div>
           )}
 
@@ -1604,12 +1663,7 @@ export default function MarketingView() {
                   </button>
                 </div>
               </div>
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('Lead Projections', 'توقعات نمو العملاء')}</div></div>
-                <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                  {loading['lead-forecast-out'] ? L('Forecasting leads...', 'جاري الاحتساب...') : (outputs['lead-forecast-out'] || L('Monthly lead projections and traffic required.', 'تقدير حركة الزيارات المطلوبة للوصول لأهداف العملاء.'))}
-                </div>
-              </div>
+              {renderResultCard('توقعات نمو العملاء', 'Lead Projections', 'lead-forecast-out', 'جاري الاحتساب...', 'Forecasting leads...', 'تقدير حركة الزيارات المطلوبة للوصول لأهداف العملاء.', 'Monthly lead projections and traffic required.', 'Lead Forecast')}
             </div>
           )}
 
@@ -1715,6 +1769,156 @@ export default function MarketingView() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── TAB 9: SAVED REPORTS ── */}
+      {activeTab === 'saved' && (
+        <div className="mkt-section on">
+          <div className="card" style={{ marginBottom: '14px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input
+                className="inp"
+                placeholder={L('Search saved reports...', 'ابحث في التقارير المحفوظة...')}
+                style={{ flex: 1 }}
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button className="btn btn-ghost" onClick={() => setSearchTerm('')}>
+                  {L('Clear', 'مسح')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {savedReports.length === 0 ? (
+            <div className="empty-state card" style={{ padding: '40px 0', textAlign: 'center' }}>
+              <div className="es-icon" style={{ fontSize: '40px', marginBottom: '10px' }}>💾</div>
+              <div className="es-title" style={{ fontSize: '18px', fontWeight: 600, color: 'var(--t1)', marginBottom: '6px' }}>
+                {L('No saved reports yet', 'لا توجد تقارير محفوظة بعد')}
+              </div>
+              <div className="es-sub" style={{ fontSize: '13px', color: 'var(--t3)', maxWidth: '400px', margin: '0 auto 14px' }}>
+                {L('Generate any analysis in the other tabs and click "Save to Library" to keep it here.', 'قم بتوليد أي تحليل في التبويبات الأخرى واضغط على "حفظ للمكتبة" لحفظها هنا.')}
+              </div>
+            </div>
+          ) : (
+            <div className="g2">
+              {/* Reports List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '600px', overflowY: 'auto' }}>
+                {savedReports
+                  .filter(r => 
+                    r.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    r.category.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map(report => {
+                    const isSelected = selectedReportId === report.id;
+                    return (
+                      <div 
+                        key={report.id}
+                        className={`card ${isSelected ? 'selected-card' : ''}`}
+                        onClick={() => setSelectedReportId(report.id)}
+                        style={{ 
+                          cursor: 'pointer', 
+                          border: isSelected ? '1px solid var(--a)' : '1px solid var(--edge)',
+                          background: isSelected ? 'var(--orange-dim)' : 'var(--surface)',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--t1)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                            {report.title}
+                          </div>
+                          <span 
+                            className="badge" 
+                            style={{ 
+                              fontSize: '10px',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(108,53,255,0.3)',
+                              background: 'rgba(108,53,255,0.1)',
+                              color: 'var(--purple)',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {report.category}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t3)' }}>
+                          📅 {new Date(report.date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }} onClick={e => e.stopPropagation()}>
+                          <button 
+                            className="btn btn-ghost" 
+                            style={{ fontSize: '11px', padding: '3px 8px', flex: 1 }}
+                            onClick={() => setSelectedReportId(report.id)}
+                          >
+                            👁️ {L('View', 'عرض')}
+                          </button>
+                          <button 
+                            className="btn btn-ghost" 
+                            style={{ fontSize: '11px', padding: '3px 8px', flex: 1 }}
+                            onClick={() => handleCopyText(report.content)}
+                          >
+                            📋 {L('Copy', 'نسخ')}
+                          </button>
+                          <button 
+                            className="btn btn-ghost" 
+                            style={{ fontSize: '11px', padding: '3px 8px', color: 'var(--red)', borderColor: 'var(--red)', flex: 1 }}
+                            onClick={() => handleDeleteReport(report.id)}
+                          >
+                            🗑️ {L('Delete', 'حذف')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Report Detail */}
+              <div>
+                {selectedReportId ? (
+                  (() => {
+                    const report = savedReports.find(r => r.id === selectedReportId);
+                    if (!report) return null;
+                    return (
+                      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--t1)' }}>{report.title}</h3>
+                            <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '4px' }}>
+                              Category: {report.category} | 📅 {new Date(report.date).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => handleCopyText(report.content)}>
+                              📋 {L('Copy Content', 'نسخ المحتوى')}
+                            </button>
+                            <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 12px', color: 'var(--red)', borderColor: 'var(--red)' }} onClick={() => handleDeleteReport(report.id)}>
+                              🗑️ {L('Delete', 'حذف')}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ai-box" style={{ whiteSpace: 'pre-line', overflowY: 'auto', maxHeight: '450px', background: 'var(--surface2)', padding: '14px', borderRadius: '8px' }}>
+                          {report.content}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: 'var(--t3)' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '30px', marginBottom: '8px' }}>👁️</div>
+                      <div>{L('Select a report from the list to view its contents', 'اختر تقريراً من القائمة لعرض محتوياته')}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

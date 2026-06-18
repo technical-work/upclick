@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import { GUIDE_FLOWS } from '../data/mockData';
+import { callClaudeAPI } from '../utils/ai';
 
 export default function AIPanel() {
   const {
@@ -117,19 +118,9 @@ Be concise, specific, and actionable. No generic advice. Reference their actual 
 Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 600,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: question }]
-        })
-      });
-      const data = await res.json();
-      const reply = data.content?.[0]?.text || L('I encountered an issue. Please try again.', 'حدث خطأ. يرجى المحاولة مرة أخرى.');
-      setMessages(prev => [...prev, { sender: 'ai', text: reply }]);
+      const reply = await callClaudeAPI(question, systemPrompt, lang, GC);
+      const finalReply = reply || L('I encountered an issue. Please try again.', 'حدث خطأ. يرجى المحاولة مرة أخرى.');
+      setMessages(prev => [...prev, { sender: 'ai', text: finalReply }]);
     } catch (e) {
       setMessages(prev => [...prev, { sender: 'ai', text: L('Could not reach AI. Check connection.', 'لم نتمكن من الوصول للذكاء الاصطناعي. تحقق من الاتصال.') }]);
     } finally {

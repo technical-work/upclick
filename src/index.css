@@ -816,3 +816,33 @@
     overflow-y: visible !important;
   }
 }
+
+/* TikTok Play Icon Hover Styles */
+.trend-thumbnail-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.trend-thumbnail-container .hover-play-btn {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+.trend-thumbnail-container:hover .hover-play-btn {
+  opacity: 1;
+}
+
+.trend-thumbnail-container:hover .trend-music-icon {
+  transform: scale(1.15);
+}
+
+.trend-music-icon {
+  transition: transform 0.2s ease;
+}

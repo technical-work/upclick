@@ -5,7 +5,7 @@ import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
 
 const BusinessContext = createContext();
 
@@ -27,6 +27,154 @@ const initialGC = {
   finance: { entries: [], subscriptions: [] },
   calendar: { events: [] },
   creator: { followers: '284K', engagement: '6.8%', revenue_monthly: '$4,320' },
+  marketing: {
+    inputs: {},
+    outputs: {},
+    counts: { competitors: 0, audience: 0, trends: 0, personas: 0 },
+    savedReports: []
+  },
+  integrations: {
+    claudeKey: '',
+    openaiKey: '',
+    stripeKey: '',
+    tapKey: '',
+    telegramBotToken: '',
+    telegramChatId: '',
+    stripeConnected: false,
+    tapConnected: false,
+    claudeConnected: false,
+    openaiConnected: false,
+    telegramConnected: false,
+    mailchimpConnected: false,
+    apifyConnected: false,
+    apifyToken: ''
+  },
+  bioLink: {
+    displayName: 'Sara Hassan',
+    bioTagline: 'Coach | Entrepreneur | Content Creator 🚀',
+    username: 'sarahassan',
+    bioTheme: 'dark',
+    links: [
+      { title: 'My Website', url: 'https://sarahassan.com', icon: '🌐' },
+      { title: 'Free Course', url: 'https://upklick.bio/sarahassan/free', icon: '📚' },
+      { title: 'Book a Call', url: 'https://calendly.com/sarahassan', icon: '💬', highlighted: true }
+    ],
+    socials: { ig: '@sarahassan', tt: '@sarahassan', yt: 'Sarah Hassan', li: '', tg: '', wa: '' }
+  },
+  digitalProducts: {
+    products: []
+  },
+  contentHub: {
+    savedIdeas: []
+  },
+  automationHub: {
+    connectionUrl: '',
+    apiKey: '',
+    connected: false,
+    cbTrigger: 'New WhatsApp message received',
+    cbAction: '',
+    cbApps: [],
+    cbCreds: '',
+    buildResult: ''
+  },
+  aiGrowthIntel: {
+    inputs: {},
+    outputs: {}
+  },
+  revenue: {
+    deals: { Prospect: [], Negotiating: [], Contracted: [], Completed: [] },
+    affiliates: [],
+    leadMagnets: [],
+    coachingSessions: [],
+    merch: []
+  },
+  socialAccounts: {
+    connected: { instagram: true, tiktok: true, youtube: false, snapchat: false, x: false },
+    aiAnalysis: ''
+  },
+  socialTrends: {
+    filters: { platform: 'tiktok', niche: '', region: 'AR', sortBy: 'plays', period: '7' },
+    trends: []
+  },
+  landingPage: {
+    name: '',
+    niche: '',
+    offer: '',
+    tagline: 'Learn to grow on Instagram',
+    color: '#6c35ff',
+    template: 'bold',
+    price: 29,
+    lpCode: ''
+  },
+  nicheStudio: {
+    language: 'ar',
+    field: 'coaching',
+    styles: ['catchy'],
+    wordCount: 1,
+    keywords: '',
+    audience: 'Arab entrepreneurs',
+    generatedNames: [],
+    savedNames: [],
+    selectedNiche: null,
+    selectedMicro: null
+  },
+  communityHub: {
+    feed: [
+      {
+        id: 1,
+        author: 'Sara Hassan',
+        role: 'Owner',
+        content: 'Welcome to our new community channel! Let\'s use this space to share wins and strategies.',
+        likes: 12,
+        commentsCount: 3,
+        date: '2h ago'
+      }
+    ],
+    membersCount: 124,
+    activeToday: 42
+  },
+  designStudio: {
+    logo: { brandName: '', tagline: '', logoStyle: 'modern', logoType: 'wordmark', logoColor: 'orange-purple', industry: 'coaching', generated: [], saved: [] },
+    social: { socialSize: '1080x1080', headline: '', subtitle: '', socialStyle: 'gradient-dark', generated: [], saved: [] },
+    cover: { coverType: 'linkedin', generated: [], saved: [] },
+    card: { fullName: '', title: '', cardStyle: 'dark-premium', generated: [], saved: [] },
+    savedDesigns: []
+  },
+  upclickFunnels: {
+    funnels: []
+  },
+  opsHub: {
+    automations: { welcome: false, followup: false, report: false, invoice: false },
+    sopsList: []
+  },
+  team: {
+    members: [],
+    tasks: [],
+    logs: []
+  },
+  teamChat: {
+    channels: [
+      { id: 'general', name: 'general', type: 'public', desc: 'General discussion' },
+      { id: 'marketing', name: 'marketing', type: 'public', desc: 'Marketing discussion' }
+    ],
+    messages: {
+      general: [
+        { id: 1, author: 'Sara Hassan', content: 'Welcome to the team chat general channel!', date: '1d ago' }
+      ]
+    }
+  },
+  whatsAppHub: {
+    agentName: '',
+    agentStyle: 'Professional & Friendly',
+    agentGoal: 'Qualify Leads',
+    agentBiz: '',
+    agentOutput: '',
+    tmplType: 'Sales Script',
+    tmplLang: 'Arabic (Gulf)',
+    tmplCtx: '',
+    tmplOutput: '',
+    broadcasts: []
+  },
   _lastSaved: null
 };
 
@@ -52,6 +200,10 @@ export function BusinessProvider({ children }) {
   const [supportOpen, setSupportOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Team member detection
+  const isTeamMember = userData?.role === 'team_member';
+  const ownerUid = userData?.ownerUid || null;
 
   // Close mobile sidebar on page navigation
   useEffect(() => {
@@ -186,12 +338,24 @@ export function BusinessProvider({ children }) {
   }, [tenantConfig]);
 
   // Sync GC from Firebase if available
+  // For team members, load the OWNER's GC so they share the same workspace
   useEffect(() => {
-    if (userData?.GC) {
+    if (isTeamMember && ownerUid) {
+      // Real-time listener on the owner's user document for GC data
+      const unsub = onSnapshot(doc(db, 'users', ownerUid), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().GC) {
+          setGC(docSnap.data().GC);
+          localStorage.setItem('ba_context', JSON.stringify(docSnap.data().GC));
+        }
+      }, (err) => {
+        console.error('Error loading owner GC for team member:', err);
+      });
+      return () => unsub();
+    } else if (userData?.GC) {
       setGC(userData.GC);
       localStorage.setItem('ba_context', JSON.stringify(userData.GC));
     }
-  }, [userData?.GC]);
+  }, [userData?.GC, isTeamMember, ownerUid]);
 
   // Sync language attributes to HTML
   useEffect(() => {
@@ -232,13 +396,15 @@ export function BusinessProvider({ children }) {
   }, [theme]);
 
   // Sync GC to localStorage and Firebase
+  // For team members, save to the OWNER's document so the workspace stays shared
   const saveGC = (updatedGC) => {
     const gcWithSaved = { ...updatedGC, _lastSaved: new Date().toISOString() };
     setGC(gcWithSaved);
     localStorage.setItem('ba_context', JSON.stringify(gcWithSaved));
     
-    if (authContext?.user?.uid) {
-      setDoc(doc(db, 'users', authContext.user.uid), { GC: gcWithSaved }, { merge: true }).catch((err) => {
+    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (targetUid) {
+      setDoc(doc(db, 'users', targetUid), { GC: gcWithSaved }, { merge: true }).catch((err) => {
         console.error("Error saving GC to Firebase:", err);
       });
     }
@@ -584,7 +750,8 @@ export function BusinessProvider({ children }) {
         setDpDetailOpen,
         dpDetailIndex,
         setDpDetailIndex,
-        tenantConfig
+        tenantConfig,
+        isTeamMember
       }}
     >
       {children}

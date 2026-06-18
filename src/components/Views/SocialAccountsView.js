@@ -1,14 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { DB } from '../../data/mockData';
 
 export default function SocialAccountsView() {
-  const { lang, L, t, GC } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
-  const [connected, setConnected] = useState({
+  const socialData = GC.socialAccounts || {
+    connected: { instagram: true, tiktok: true, youtube: false, snapchat: false, x: false },
+    aiAnalysis: ''
+  };
+
+  const [connected, setConnected] = useState(socialData.connected || {
     instagram: true,
     tiktok: true,
     youtube: false,
@@ -17,13 +22,30 @@ export default function SocialAccountsView() {
   });
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [aiAnalysisText, setAiAnalysisText] = useState('');
+  const [aiAnalysisText, setAiAnalysisText] = useState(socialData.aiAnalysis || '');
+
+  // Sync state if GC updates
+  useEffect(() => {
+    if (GC.socialAccounts) {
+      if (GC.socialAccounts.connected) setConnected(GC.socialAccounts.connected);
+      if (GC.socialAccounts.aiAnalysis !== undefined) setAiAnalysisText(GC.socialAccounts.aiAnalysis);
+    }
+  }, [GC.socialAccounts]);
 
   const toggleConnection = (platform) => {
-    setConnected(prev => ({
-      ...prev,
-      [platform]: !prev[platform]
-    }));
+    const newConnected = {
+      ...connected,
+      [platform]: !connected[platform]
+    };
+    setConnected(newConnected);
+    const updatedGC = {
+      ...GC,
+      socialAccounts: {
+        ...GC.socialAccounts,
+        connected: newConnected
+      }
+    };
+    saveGC(updatedGC);
   };
 
   const handleAnalyzeAll = async () => {
@@ -36,8 +58,25 @@ export default function SocialAccountsView() {
     try {
       const reply = await callClaudeAPI(prompt, sysPrompt, lang);
       setAiAnalysisText(reply);
+      const updatedGC = {
+        ...GC,
+        socialAccounts: {
+          ...GC.socialAccounts,
+          aiAnalysis: reply
+        }
+      };
+      saveGC(updatedGC);
     } catch (e) {
-      setAiAnalysisText(L('Analysis complete. Highlight Reels & short video formats.', 'اكتمل التحليل. ركزي على الفيديوهات القصيرة والريلز.'));
+      const fallback = L('Analysis complete. Highlight Reels & short video formats.', 'اكتمل التحليل. ركزي على الفيديوهات القصيرة والريلز.');
+      setAiAnalysisText(fallback);
+      const updatedGC = {
+        ...GC,
+        socialAccounts: {
+          ...GC.socialAccounts,
+          aiAnalysis: fallback
+        }
+      };
+      saveGC(updatedGC);
     } finally {
       setAnalyzing(false);
     }
