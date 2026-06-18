@@ -26,9 +26,9 @@ jobs:
         run: npm run build
 
       - name: Enable Firebase Web Frameworks Experiment
-        run: firebase use staging
+        run: npx firebase-tools use staging
 
       - name: Deploy to Firebase Staging
-        run: firebase hosting:channel:deploy staging
+        run: npx firebase-tools hosting:channel:deploy staging
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
