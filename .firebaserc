@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "staging": "up-klick",
+    "production": "upklick-software"
+  }
+}

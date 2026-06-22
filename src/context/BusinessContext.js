@@ -1,0 +1,777 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Tr, ARTEXT, ENTEXT } from '../data/translations';
+import { CURRENCIES, PAGE_META } from '../data/mockData';
+import { useAuth } from './AuthContext';
+import { db } from '../lib/firebase';
+import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+
+const BusinessContext = createContext();
+
+const initialGC = {
+  profile: {
+    name: '',
+    desc: '',
+    niche: '',
+    stage: 'Idea',
+    type: 'Content Creator',
+    level: 'beginner',
+    challenge: '',
+    offer: { name: '', price: '', transform: '', duration: '', market: '' },
+    goal: ''
+  },
+  strategy: { idea_analysis: '', icp: '', swot: { s: '', w: '', o: '', t: '' }, roadmap: '' },
+  crm: { leads: [] },
+  tasks: { items: [] },
+  finance: { entries: [], subscriptions: [] },
+  calendar: { events: [] },
+  creator: { followers: '284K', engagement: '6.8%', revenue_monthly: '$4,320' },
+  marketing: {
+    inputs: {},
+    outputs: {},
+    counts: { competitors: 0, audience: 0, trends: 0, personas: 0 },
+    savedReports: []
+  },
+  integrations: {
+    claudeKey: '',
+    openaiKey: '',
+    stripeKey: '',
+    tapKey: '',
+    telegramBotToken: '',
+    telegramChatId: '',
+    stripeConnected: false,
+    tapConnected: false,
+    claudeConnected: false,
+    openaiConnected: false,
+    telegramConnected: false,
+    mailchimpConnected: false,
+    apifyConnected: false,
+    apifyToken: ''
+  },
+  bioLink: {
+    displayName: 'Sara Hassan',
+    bioTagline: 'Coach | Entrepreneur | Content Creator 🚀',
+    username: 'sarahassan',
+    bioTheme: 'dark',
+    links: [
+      { title: 'My Website', url: 'https://sarahassan.com', icon: '🌐' },
+      { title: 'Free Course', url: 'https://upklick.bio/sarahassan/free', icon: '📚' },
+      { title: 'Book a Call', url: 'https://calendly.com/sarahassan', icon: '💬', highlighted: true }
+    ],
+    socials: { ig: '@sarahassan', tt: '@sarahassan', yt: 'Sarah Hassan', li: '', tg: '', wa: '' }
+  },
+  digitalProducts: {
+    products: []
+  },
+  contentHub: {
+    savedIdeas: []
+  },
+  automationHub: {
+    connectionUrl: '',
+    apiKey: '',
+    connected: false,
+    cbTrigger: 'New WhatsApp message received',
+    cbAction: '',
+    cbApps: [],
+    cbCreds: '',
+    buildResult: ''
+  },
+  aiGrowthIntel: {
+    inputs: {},
+    outputs: {}
+  },
+  revenue: {
+    deals: { Prospect: [], Negotiating: [], Contracted: [], Completed: [] },
+    affiliates: [],
+    leadMagnets: [],
+    coachingSessions: [],
+    merch: []
+  },
+  socialAccounts: {
+    connected: { instagram: true, tiktok: true, youtube: false, snapchat: false, x: false },
+    aiAnalysis: ''
+  },
+  socialTrends: {
+    filters: { platform: 'tiktok', niche: '', region: 'AR', sortBy: 'plays', period: '7' },
+    trends: []
+  },
+  landingPage: {
+    name: '',
+    niche: '',
+    offer: '',
+    tagline: 'Learn to grow on Instagram',
+    color: '#6c35ff',
+    template: 'bold',
+    price: 29,
+    lpCode: ''
+  },
+  nicheStudio: {
+    language: 'ar',
+    field: 'coaching',
+    styles: ['catchy'],
+    wordCount: 1,
+    keywords: '',
+    audience: 'Arab entrepreneurs',
+    generatedNames: [],
+    savedNames: [],
+    selectedNiche: null,
+    selectedMicro: null
+  },
+  communityHub: {
+    feed: [
+      {
+        id: 1,
+        author: 'Sara Hassan',
+        role: 'Owner',
+        content: 'Welcome to our new community channel! Let\'s use this space to share wins and strategies.',
+        likes: 12,
+        commentsCount: 3,
+        date: '2h ago'
+      }
+    ],
+    membersCount: 124,
+    activeToday: 42
+  },
+  designStudio: {
+    logo: { brandName: '', tagline: '', logoStyle: 'modern', logoType: 'wordmark', logoColor: 'orange-purple', industry: 'coaching', generated: [], saved: [] },
+    social: { socialSize: '1080x1080', headline: '', subtitle: '', socialStyle: 'gradient-dark', generated: [], saved: [] },
+    cover: { coverType: 'linkedin', generated: [], saved: [] },
+    card: { fullName: '', title: '', cardStyle: 'dark-premium', generated: [], saved: [] },
+    savedDesigns: []
+  },
+  upclickFunnels: {
+    funnels: []
+  },
+  opsHub: {
+    automations: { welcome: false, followup: false, report: false, invoice: false },
+    sopsList: []
+  },
+  team: {
+    members: [],
+    tasks: [],
+    logs: []
+  },
+  teamChat: {
+    channels: [
+      { id: 'general', name: 'general', type: 'public', desc: 'General discussion' },
+      { id: 'marketing', name: 'marketing', type: 'public', desc: 'Marketing discussion' }
+    ],
+    messages: {
+      general: [
+        { id: 1, author: 'Sara Hassan', content: 'Welcome to the team chat general channel!', date: '1d ago' }
+      ]
+    }
+  },
+  telegramHub: {
+    agentName: '',
+    agentStyle: 'Professional & Friendly',
+    agentGoal: 'Qualify Leads',
+    agentBiz: '',
+    agentOutput: '',
+    tmplType: 'Sales Script',
+    tmplLang: 'Arabic (Gulf)',
+    tmplCtx: '',
+    tmplOutput: '',
+    broadcasts: []
+  },
+  _lastSaved: null
+};
+
+const themeColors = {
+  dark: '#FF6B35',
+  light: '#6C35FF',
+  neon: '#00F0B4',
+  cosmic: '#FF007F'
+};
+
+export function BusinessProvider({ children }) {
+  const [lang, setLang] = useState('en');
+  const [theme, setTheme] = useState('dark');
+  const [currentPage, setCurrentPage] = useState('home');
+  const [currency, setCurrencyState] = useState({ code: 'USD', name: 'US Dollar', symbol: '$', flag: '🇺🇸' });
+  const [GC, setGC] = useState(initialGC);
+  const [savedNotes, setSavedNotes] = useState([]);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [tenantConfig, setTenantConfig] = useState(null);
+  
+  const authContext = useAuth();
+  const userData = authContext?.userData;
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Team member detection
+  const isTeamMember = userData?.role === 'team_member';
+  const ownerUid = userData?.ownerUid || null;
+
+  // Close mobile sidebar on page navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [currentPage]);
+
+  // Modal control states
+  const [leadModalOpen, setLeadModalOpen] = useState(false);
+  const [leadModalStage, setLeadModalStage] = useState('new');
+  const [editingLead, setEditingLead] = useState(null);
+  const [aiQuery, setAiQuery] = useState('');
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [financeModalOpen, setFinanceModalOpen] = useState(false);
+  const [financeModalType, setFinanceModalType] = useState('income');
+  const [lpPreviewOpen, setLpPreviewOpen] = useState(false);
+  const [lpPreviewHtml, setLpPreviewHtml] = useState('');
+  const [dpDetailOpen, setDpDetailOpen] = useState(false);
+  const [dpDetailIndex, setDpDetailIndex] = useState(null);
+
+  // Load state from local storage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('upklick_lang');
+      if (savedLang) setLang(savedLang);
+
+      const savedTheme = localStorage.getItem('upklick_theme');
+      if (savedTheme) setTheme(savedTheme);
+
+      const savedCurr = localStorage.getItem('upklick_currency');
+      if (savedCurr) {
+        try {
+          setCurrencyState(JSON.parse(savedCurr));
+        } catch (e) {}
+      }
+
+      const savedGC = localStorage.getItem('ba_context');
+      if (savedGC) {
+        try {
+          setGC(JSON.parse(savedGC));
+        } catch (e) {}
+      }
+
+      const savedNotesData = localStorage.getItem('ba_notes');
+      if (savedNotesData) {
+        try {
+          setSavedNotes(JSON.parse(savedNotesData));
+        } catch (e) {}
+      }
+
+      const onboardDone = localStorage.getItem('ba_onboard_done');
+      setOnboardingDone(onboardDone === '1');
+    }
+  }, []);
+
+  // Sync lang/theme from Firebase if available
+  useEffect(() => {
+    if (userData?.lang) setLang(userData.lang);
+    if (userData?.theme) setTheme(userData.theme);
+  }, [userData]);
+
+  // Real-time listen to tenant branding configurations
+  useEffect(() => {
+    if (userData?.adminId) {
+      const unsub = onSnapshot(doc(db, 'tenants', userData.adminId), (docSnap) => {
+        if (docSnap.exists()) {
+          setTenantConfig(docSnap.data());
+        } else {
+          setTenantConfig(null);
+        }
+      }, (err) => {
+        console.error("Error listening to tenant config:", err);
+      });
+      return () => unsub();
+    } else {
+      // Fallback: search by domain match
+      if (typeof window === 'undefined') return;
+      const currentHost = window.location.hostname;
+      const q = query(collection(db, 'tenants'), where('domain', '==', currentHost));
+      getDocs(q).then((snap) => {
+        if (!snap.empty) {
+          setTenantConfig(snap.docs[0].data());
+        } else {
+          setTenantConfig(null);
+        }
+      }).catch(err => {
+        console.error("Error fetching fallback tenant by domain:", err);
+        setTenantConfig(null);
+      });
+    }
+  }, [userData?.adminId]);
+
+  // Apply tenant branding styles to CSS variables dynamically
+  useEffect(() => {
+    if (!tenantConfig) return;
+    const root = document.documentElement;
+
+    if (tenantConfig.primaryColor) {
+      root.style.setProperty('--orange', tenantConfig.primaryColor);
+      root.style.setProperty('--a', tenantConfig.primaryColor);
+      
+      const hx = tenantConfig.primaryColor.replace('#', '');
+      if (hx.length === 6) {
+        const r = parseInt(hx.slice(0, 2), 16);
+        const g = parseInt(hx.slice(2, 4), 16);
+        const b = parseInt(hx.slice(4, 6), 16);
+        if (!isNaN(r)) {
+          root.style.setProperty('--a-rgb', `${r},${g},${b}`);
+          root.style.setProperty('--orange-d', `rgba(${r}, ${g}, ${b}, 0.14)`);
+          root.style.setProperty('--orange-dim', `rgba(${r}, ${g}, ${b}, 0.07)`);
+        }
+      }
+    }
+    if (tenantConfig.accentColor) {
+      root.style.setProperty('--purple', tenantConfig.accentColor);
+      
+      const hx = tenantConfig.accentColor.replace('#', '');
+      if (hx.length === 6) {
+        const r = parseInt(hx.slice(0, 2), 16);
+        const g = parseInt(hx.slice(2, 4), 16);
+        const b = parseInt(hx.slice(4, 6), 16);
+        if (!isNaN(r)) {
+          root.style.setProperty('--purple-d', `rgba(${r}, ${g}, ${b}, 0.14)`);
+          root.style.setProperty('--purple-dim', `rgba(${r}, ${g}, ${b}, 0.07)`);
+        }
+      }
+    }
+    if (tenantConfig.bgColor) {
+      root.style.setProperty('--ink', tenantConfig.bgColor);
+    }
+    if (tenantConfig.panelColor) {
+      root.style.setProperty('--surface', tenantConfig.panelColor);
+    }
+    if (tenantConfig.sidebarBgColor) {
+      root.style.setProperty('--surface2', tenantConfig.sidebarBgColor);
+    }
+    if (tenantConfig.navBgColor) {
+      root.style.setProperty('--surface3', tenantConfig.navBgColor);
+    }
+    if (tenantConfig.textColor) {
+      root.style.setProperty('--t1', tenantConfig.textColor);
+    }
+    if (tenantConfig.text2Color) {
+      root.style.setProperty('--t2', tenantConfig.text2Color);
+    }
+  }, [tenantConfig]);
+
+  // Sync GC from Firebase if available
+  // For team members, load the OWNER's GC so they share the same workspace
+  useEffect(() => {
+    if (isTeamMember && ownerUid) {
+      // Real-time listener on the owner's user document for GC data
+      const unsub = onSnapshot(doc(db, 'users', ownerUid), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().GC) {
+          setGC(docSnap.data().GC);
+          localStorage.setItem('ba_context', JSON.stringify(docSnap.data().GC));
+        }
+      }, (err) => {
+        console.error('Error loading owner GC for team member:', err);
+      });
+      return () => unsub();
+    } else if (userData?.GC) {
+      setGC(userData.GC);
+      localStorage.setItem('ba_context', JSON.stringify(userData.GC));
+    }
+  }, [userData?.GC, isTeamMember, ownerUid]);
+
+  // Sync language attributes to HTML
+  useEffect(() => {
+    document.documentElement.setAttribute('lang', lang);
+    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    localStorage.setItem('upklick_lang', lang);
+
+    if (authContext?.user?.uid) {
+      setDoc(doc(db, 'users', authContext.user.uid), { lang }, { merge: true }).catch(() => {});
+    }
+  }, [lang, authContext?.user?.uid]);
+
+  // Sync theme attributes to HTML
+  useEffect(() => {
+    document.body.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('upklick_theme', theme);
+
+    if (authContext?.user?.uid) {
+      setDoc(doc(db, 'users', authContext.user.uid), { theme }, { merge: true }).catch(() => {});
+    }
+
+    // Apply color accents
+    const color = themeColors[theme] || '#FF6B35';
+    document.documentElement.style.setProperty('--a', color);
+
+    const hx = color.replace('#', '');
+    if (hx.length === 6) {
+      const r = parseInt(hx.slice(0, 2), 16);
+      const g = parseInt(hx.slice(2, 4), 16);
+      const b = parseInt(hx.slice(4, 6), 16);
+      if (!isNaN(r)) {
+        document.documentElement.style.setProperty('--a-rgb', `${r},${g},${b}`);
+        document.documentElement.style.setProperty('--orange', color);
+        document.documentElement.style.setProperty('--lime', color);
+      }
+    }
+  }, [theme]);
+
+  // Sync GC to localStorage and Firebase
+  // For team members, save to the OWNER's document so the workspace stays shared
+  const saveGC = (updatedGC) => {
+    const gcWithSaved = { ...updatedGC, _lastSaved: new Date().toISOString() };
+    setGC(gcWithSaved);
+    localStorage.setItem('ba_context', JSON.stringify(gcWithSaved));
+    
+    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (targetUid) {
+      setDoc(doc(db, 'users', targetUid), { GC: gcWithSaved }, { merge: true }).catch((err) => {
+        console.error("Error saving GC to Firebase:", err);
+      });
+    }
+  };
+
+  // Translation function
+  const t = (keyOrText) => {
+    const override = tenantConfig?.i18nOverrides?.[lang]?.[keyOrText];
+    if (override) {
+      return override;
+    }
+    if (Tr[lang] && Tr[lang][keyOrText]) {
+      return Tr[lang][keyOrText];
+    }
+    if (lang === 'ar' && ARTEXT[keyOrText]) {
+      return ARTEXT[keyOrText];
+    }
+    return keyOrText;
+  };
+
+  // Mirror text check (L function)
+  const L = (en, ar) => (lang === 'ar' ? ar : en);
+
+  // Toast notification
+  const showToast = (msg) => {
+    const el = document.getElementById('toast');
+    if (el) {
+      el.innerText = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+  };
+
+  // Standardize dates to English DD/MM/YYYY
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB'); // en-GB always gives DD/MM/YYYY in English numerals
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Currency switcher
+  const setCurrency = (code) => {
+    const cur = CURRENCIES.find((c) => c.code === code);
+    if (cur) {
+      setCurrencyState(cur);
+      localStorage.setItem('upklick_currency', JSON.stringify(cur));
+    }
+  };
+
+  // Money formatter
+  const formatMoney = (amount) => {
+    const amt = parseFloat(amount) || 0;
+    return `${currency.symbol}${amt.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency.code}`;
+  };
+
+  // Profile management
+  const updateProfile = (profileUpdates) => {
+    const updated = {
+      ...GC,
+      profile: { ...GC.profile, ...profileUpdates }
+    };
+    saveGC(updated);
+  };
+
+  // AI query trigger helper
+  const openAIFor = (tool) => {
+    const prompts = {
+      dashboard: L(
+        `Review my business dashboard. Context: ${GC.profile.name || 'Unnamed'} | Niche: ${GC.profile.niche || 'Not set'} | Stage: ${GC.profile.stage}. Give me 3 specific actionable insights.`,
+        `قم بمراجعة لوحة معلومات أعمالي. السياق: الاسم: ${GC.profile.name || 'غير محدد'}، المجال: ${GC.profile.niche || 'غير محدد'}، المرحلة: ${GC.profile.stage}. أعطني 3 نصائح محددة وقابلة للتنفيذ.`
+      ),
+      strategy: L(
+        `Analyze my strategy. Business: ${GC.profile.name || 'unnamed'}, Niche: ${GC.profile.niche || 'not set'}, Stage: ${GC.profile.stage}. What are the 3 most important things to focus on?`,
+        `حلل استراتيجيتي. العمل: ${GC.profile.name || 'غير محدد'}، المجال: ${GC.profile.niche || 'غير محدد'}، المرحلة: ${GC.profile.stage}. ما هي أهم 3 أمور يجب التركيز عليها؟`
+      ),
+      crm: L(
+        `I have ${GC.crm.leads.length} leads in my CRM. ${GC.crm.leads.filter(l => l.stage === 'qualified').length} are qualified. Suggest specific follow-up actions.`,
+        `لدي ${GC.crm.leads.length} عملاء في نظام إدارة علاقات العملاء (CRM). ${GC.crm.leads.filter(l => l.stage === 'qualified').length} منهم مؤهلين. اقترح إجراءات متابعة محددة.`
+      ),
+      tasks: L(
+        `I have ${GC.tasks.items.filter(t => !t.done).length} open tasks. Suggest how to prioritize them today.`,
+        `لدي ${GC.tasks.items.filter(t => !t.done).length} مهام مفتوحة. اقترح كيفية ترتيب أولوياتها اليوم.`
+      ),
+      finance: L(
+        `My income this month: $${GC.finance.entries.filter(e => e.type === 'income').reduce((a, b) => a + b.amount, 0)}, expenses: $${GC.finance.entries.filter(e => e.type === 'expense').reduce((a, b) => a + b.amount, 0)}. Give me financial insights and warnings.`,
+        `دخلي هذا الشهر: $${GC.finance.entries.filter(e => e.type === 'income').reduce((a, b) => a + b.amount, 0)}، ومصاريفي: $${GC.finance.entries.filter(e => e.type === 'expense').reduce((a, b) => a + b.amount, 0)}. أعطني تحليلات وتحذيرات مالية.`
+      ),
+      launchpad: L(
+        `Help me plan a business launch. Business type: ${GC.profile.type || 'not set'}, Stage: ${GC.profile.stage}.`,
+        `ساعدني في التخطيط لإطلاق مشروعي. نوع العمل: ${GC.profile.type || 'غير محدد'}، المرحلة: ${GC.profile.stage}.`
+      ),
+      calendar: L(
+        `Review my schedule and suggest how to optimize it for maximum productivity.`,
+        `راجع جدولي واقترح كيفية تحسينه لتحقيق أقصى قدر من الإنتاجية.`
+      )
+    };
+    const prompt = prompts[tool] || `Help me with ${tool}`;
+    setAiQuery(prompt);
+  };
+
+  // CRM management
+  const addLead = (lead) => {
+    const newLead = {
+      id: Date.now(),
+      name: lead.name || 'Unnamed Lead',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      value: parseFloat(lead.value) || 0,
+      stage: lead.stage || 'Prospect',
+      followupDate: lead.followupDate || '',
+      created: new Date().toISOString()
+    };
+    const updated = {
+      ...GC,
+      crm: {
+        ...GC.crm,
+        leads: [...GC.crm.leads, newLead]
+      }
+    };
+    saveGC(updated);
+  };
+
+  const updateLeadStage = (leadId, stage) => {
+    const updated = {
+      ...GC,
+      crm: {
+        ...GC.crm,
+        leads: GC.crm.leads.map((l) => (l.id === leadId ? { ...l, stage } : l))
+      }
+    };
+    saveGC(updated);
+  };
+
+  const updateLead = (leadId, updates) => {
+    const updated = {
+      ...GC,
+      crm: {
+        ...GC.crm,
+        leads: GC.crm.leads.map((l) => (l.id === leadId ? { ...l, ...updates } : l))
+      }
+    };
+    saveGC(updated);
+  };
+
+  const deleteLead = (leadId) => {
+    const updated = {
+      ...GC,
+      crm: {
+        ...GC.crm,
+        leads: GC.crm.leads.filter((l) => l.id !== leadId)
+      }
+    };
+    saveGC(updated);
+  };
+
+  // Tasks management
+  const addTask = (title, priority = 'medium') => {
+    const newTask = {
+      id: Date.now(),
+      title,
+      priority,
+      done: false,
+      created: new Date().toISOString()
+    };
+    const updated = {
+      ...GC,
+      tasks: {
+        ...GC.tasks,
+        items: [...GC.tasks.items, newTask]
+      }
+    };
+    saveGC(updated);
+  };
+
+  const toggleTask = (taskId) => {
+    const updated = {
+      ...GC,
+      tasks: {
+        ...GC.tasks,
+        items: GC.tasks.items.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t))
+      }
+    };
+    saveGC(updated);
+  };
+
+  const deleteTask = (taskId) => {
+    const updated = {
+      ...GC,
+      tasks: {
+        ...GC.tasks,
+        items: GC.tasks.items.filter((t) => t.id !== taskId)
+      }
+    };
+    saveGC(updated);
+  };
+
+  // Finance management
+  const addFinanceEntry = (type, amount, desc, category) => {
+    const newEntry = {
+      id: Date.now(),
+      type, // 'income' or 'expense'
+      amount: parseFloat(amount) || 0,
+      desc: desc || '',
+      category: category || 'General',
+      date: new Date().toLocaleDateString('en-US')
+    };
+    const updated = {
+      ...GC,
+      finance: {
+        ...GC.finance,
+        entries: [...GC.finance.entries, newEntry]
+      }
+    };
+    saveGC(updated);
+  };
+
+  const addSubscription = (name, amount) => {
+    const newSub = {
+      id: Date.now(),
+      name,
+      amount: parseFloat(amount) || 0
+    };
+    const updated = {
+      ...GC,
+      finance: {
+        ...GC.finance,
+        subscriptions: [...GC.finance.subscriptions, newSub]
+      }
+    };
+    saveGC(updated);
+  };
+
+  const deleteSubscription = (subId) => {
+    const updated = {
+      ...GC,
+      finance: {
+        ...GC.finance,
+        subscriptions: GC.finance.subscriptions.filter((s) => s.id !== subId)
+      }
+    };
+    saveGC(updated);
+  };
+
+  // Notes management
+  const addNote = (noteContent) => {
+    const updatedNotes = [...savedNotes, { text: noteContent, date: new Date().toLocaleDateString('en-US') }];
+    setSavedNotes(updatedNotes);
+    localStorage.setItem('ba_notes', JSON.stringify(updatedNotes));
+  };
+
+  const clearNotes = () => {
+    setSavedNotes([]);
+    localStorage.removeItem('ba_notes');
+  };
+
+  // Onboarding completion
+  const finishOnboarding = (type, level, challenge) => {
+    const updated = {
+      ...GC,
+      profile: {
+        ...GC.profile,
+        type,
+        level,
+        challenge
+      }
+    };
+    saveGC(updated);
+    setOnboardingDone(true);
+    localStorage.setItem('ba_onboard_done', '1');
+  };
+
+  const resetOnboarding = () => {
+    localStorage.removeItem('ba_onboard_done');
+    setOnboardingDone(false);
+  };
+
+  return (
+    <BusinessContext.Provider
+      value={{
+        lang,
+        setLang,
+        theme,
+        setTheme,
+        currentPage,
+        setCurrentPage,
+        currency,
+        setCurrency,
+        formatMoney,
+        GC,
+        saveGC,
+        t,
+        L,
+        showToast,
+        formatDate,
+        updateProfile,
+        addLead,
+        updateLead,
+        updateLeadStage,
+        deleteLead,
+        addTask,
+        toggleTask,
+        deleteTask,
+        addFinanceEntry,
+        addSubscription,
+        deleteSubscription,
+        savedNotes,
+        addNote,
+        clearNotes,
+        aiPanelOpen,
+        setAiPanelOpen,
+        supportOpen,
+        setSupportOpen,
+        onboardingDone,
+        mobileMenuOpen,
+        setMobileMenuOpen,
+        finishOnboarding,
+        resetOnboarding,
+        leadModalOpen,
+        setLeadModalOpen,
+        leadModalStage,
+        setLeadModalStage,
+        editingLead,
+        setEditingLead,
+        aiQuery,
+        setAiQuery,
+        openAIFor,
+        taskModalOpen,
+        setTaskModalOpen,
+        financeModalOpen,
+        setFinanceModalOpen,
+        financeModalType,
+        setFinanceModalType,
+        lpPreviewOpen,
+        setLpPreviewOpen,
+        lpPreviewHtml,
+        setLpPreviewHtml,
+        dpDetailOpen,
+        setDpDetailOpen,
+        dpDetailIndex,
+        setDpDetailIndex,
+        tenantConfig,
+        isTeamMember
+      }}
+    >
+      {children}
+    </BusinessContext.Provider>
+  );
+}
+
+export function useBusiness() {
+  return useContext(BusinessContext);
+}

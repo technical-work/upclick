@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Helper function to check if the requesting user is an admin or super_admin
+    function isAdmin() {
+      return request.auth != null && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin'));
+    }
+
+    // Helper function to check if the requesting user is a super_admin
+    function isSuperAdmin() {
+      return request.auth != null && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Allow users to read their own profile, or admins to read everything
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Allow users to create their own document, or admins to create any user document
+      allow create: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Allow updates by the user themselves (preventing them from modifying role permissions), or by admins
+      allow update: if request.auth != null && 
+        (isAdmin() || 
+         (request.auth.uid == userId && 
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'adminId']))));
+          
+      // Allow deletion by admins/super_admins
+      allow delete: if isAdmin();
+    }
+
+    // Tenants Collection (branding details)
+    match /tenants/{tenantId} {
+      allow read: if true; // Publicly readable for domain-based branding loading
+      allow write: if request.auth != null && (request.auth.uid == tenantId || isAdmin());
+    }
+
+    // Payments Collection (subscription receipts)
+    match /payments/{paymentId} {
+      allow create: if request.auth != null; // Authenticated users can upload receipts
+      allow read, write: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Sales Collection (earnings history log)
+    match /sales/{saleId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Projects Collection
+    match /projects/{projectId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Static Data Collection (library books, etc.)
+    match /static_data/{docId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+  }
+}
