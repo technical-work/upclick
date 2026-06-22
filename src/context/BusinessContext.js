@@ -5,7 +5,7 @@ import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 const BusinessContext = createContext();
 
@@ -266,20 +266,33 @@ export function BusinessProvider({ children }) {
 
   // Real-time listen to tenant branding configurations
   useEffect(() => {
-    if (!userData?.adminId) {
-      setTenantConfig(null);
-      return;
-    }
-    const unsub = onSnapshot(doc(db, 'tenants', userData.adminId), (docSnap) => {
-      if (docSnap.exists()) {
-        setTenantConfig(docSnap.data());
-      } else {
+    if (userData?.adminId) {
+      const unsub = onSnapshot(doc(db, 'tenants', userData.adminId), (docSnap) => {
+        if (docSnap.exists()) {
+          setTenantConfig(docSnap.data());
+        } else {
+          setTenantConfig(null);
+        }
+      }, (err) => {
+        console.error("Error listening to tenant config:", err);
+      });
+      return () => unsub();
+    } else {
+      // Fallback: search by domain match
+      if (typeof window === 'undefined') return;
+      const currentHost = window.location.hostname;
+      const q = query(collection(db, 'tenants'), where('domain', '==', currentHost));
+      getDocs(q).then((snap) => {
+        if (!snap.empty) {
+          setTenantConfig(snap.docs[0].data());
+        } else {
+          setTenantConfig(null);
+        }
+      }).catch(err => {
+        console.error("Error fetching fallback tenant by domain:", err);
         setTenantConfig(null);
-      }
-    }, (err) => {
-      console.error("Error listening to tenant config:", err);
-    });
-    return () => unsub();
+      });
+    }
   }, [userData?.adminId]);
 
   // Apply tenant branding styles to CSS variables dynamically

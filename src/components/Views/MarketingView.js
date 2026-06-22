@@ -839,7 +839,12 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Channel', 'القناة الأساسية')}</label>
                     <select className="inp" value={inputs.rmChannel} onChange={e => handleInputChange('rmChannel', e.target.value)}>
-                      <option>Instagram</option><option>LinkedIn</option><option>YouTube</option><option>TikTok</option><option>Paid Ads</option>
+                      <option>Instagram</option>
+                      <option>TikTok</option>
+                      <option>Facebook</option>
+                      <option>LinkedIn</option>
+                      <option>YouTube</option>
+                      <option>Paid Ads</option>
                     </select>
                   </div>
                   <button className="btn btn-prime" onClick={runGrowthRoadmap} style={{ width: '100%', justifyContent: 'center' }}>

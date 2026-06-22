@@ -391,6 +391,8 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Growth Channel', 'قناة النمو التسويقية الأساسية')}</label>
                 <select className="inp" value={rmChannel} onChange={e => setRmChannel(e.target.value)}>
                   <option>Instagram / Social Media</option>
+                  <option>TikTok</option>
+                  <option>Facebook</option>
                   <option>LinkedIn</option>
                   <option>YouTube</option>
                   <option>Paid Ads</option>

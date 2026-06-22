@@ -96,10 +96,15 @@ export default function AIPanel() {
   );
 
   const getContextSummary = () => {
-    const revenue = GC.finance.entries
-      .filter(e => e.type === 'income')
-      .reduce((a, b) => a + b.amount, 0);
-    return `Business: ${GC.profile.name || 'Unnamed'} | Niche: ${GC.profile.niche || 'Not set'} | Stage: ${GC.profile.stage} | Leads: ${GC.crm.leads.length} | Tasks: ${GC.tasks.items.length} | Monthly Revenue: $${revenue}`;
+    try {
+      const entries = GC?.finance?.entries || [];
+      const revenue = entries
+        .filter(e => e && e.type === 'income')
+        .reduce((a, b) => a + Number(b.amount || 0), 0);
+      return `Business: ${GC?.profile?.name || 'Unnamed'} | Niche: ${GC?.profile?.niche || 'Not set'} | Stage: ${GC?.profile?.stage || 'Idea'} | Leads: ${(GC?.crm?.leads || []).length} | Tasks: ${(GC?.tasks?.items || []).length} | Monthly Revenue: $${revenue}`;
+    } catch (e) {
+      return 'Business context loading...';
+    }
   };
 
   const askAI = async (question) => {
@@ -110,18 +115,21 @@ export default function AIPanel() {
     setMessages(newMsgs);
     setLoading(true);
 
-    const context = getContextSummary();
-    const systemPrompt = `You are Business Architect AI, a premium business operating system assistant.
+    try {
+      const context = getContextSummary();
+      const leadsCount = (GC?.crm?.leads || []).length;
+      const tasksCount = (GC?.tasks?.items || []).length;
+      const systemPrompt = `You are Business Architect AI, a premium business operating system assistant.
 Context about this user: ${context}
-You have access to their CRM (${GC.crm.leads.length} leads), tasks (${GC.tasks.items.length} tasks), and finance data.
+You have access to their CRM (${leadsCount} leads), tasks (${tasksCount} tasks), and finance data.
 Be concise, specific, and actionable. No generic advice. Reference their actual data when available.
 Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
-    try {
       const reply = await callClaudeAPI(question, systemPrompt, lang, GC);
       const finalReply = reply || L('I encountered an issue. Please try again.', 'حدث خطأ. يرجى المحاولة مرة أخرى.');
       setMessages(prev => [...prev, { sender: 'ai', text: finalReply }]);
     } catch (e) {
+      console.error('AI Panel askAI error:', e);
       setMessages(prev => [...prev, { sender: 'ai', text: L('Could not reach AI. Check connection.', 'لم نتمكن من الوصول للذكاء الاصطناعي. تحقق من الاتصال.') }]);
     } finally {
       setLoading(false);

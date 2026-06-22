@@ -331,6 +331,8 @@ export default function CalendarView() {
                       fontWeight: isTodayCell || isSelectedCell ? 700 : 500,
                       color: isTodayCell ? 'var(--orange)' : isSelectedCell ? 'var(--purple)' : 'var(--t1)',
                       boxShadow: isSelectedCell ? '0 0 10px rgba(108, 53, 255, 0.25)' : 'none',
+                      minWidth: 0,
+                      overflow: 'hidden'
                     }}
                     onClick={() => handleDayClick(day)}
                   >
@@ -539,7 +541,15 @@ export default function CalendarView() {
                   const evYear = getEventYear(e);
                   return (
                     <div className="row" key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--edge)' }}>
-                      <div className="rn" style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                      <div className="rn" style={{ 
+                        fontSize: '12.5px', 
+                        fontWeight: 600,
+                        display: '-webkit-box',
+                        WebkitLineClamp: '2',
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
                         {L(
                           `Day ${e.day} (${monthNamesEn[evMonth]} ${evYear}) @ ${e.time} — ${e.title}`, 
                           `يوم ${e.day} (${monthNamesAr[evMonth]} ${evYear}) @ ${e.time} — ${e.title}`
@@ -568,7 +578,15 @@ export default function CalendarView() {
                   return (
                     <div className="row" key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--edge)' }}>
                       <div style={{ flex: 1 }}>
-                        <div className="rn" style={{ fontSize: '12.5px', fontWeight: 600 }}>
+                        <div className="rn" style={{ 
+                          fontSize: '12.5px', 
+                          fontWeight: 600,
+                          display: '-webkit-box',
+                          WebkitLineClamp: '2',
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
                           {L(
                             `Day ${e.day} (${monthNamesEn[evMonth]} ${evYear}) @ ${e.time} — ${e.title}`, 
                             `يوم ${e.day} (${monthNamesAr[evMonth]} ${evYear}) @ ${e.time} — ${e.title}`

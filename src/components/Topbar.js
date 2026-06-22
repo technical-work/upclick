@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 
 export default function Topbar() {
   const {
@@ -15,8 +16,20 @@ export default function Topbar() {
     setCurrency,
     t,
     setAiPanelOpen,
-    setMobileMenuOpen
+    setMobileMenuOpen,
+    tenantConfig
   } = useBusiness();
+
+  const { userData } = useAuth();
+
+  const getTrialDaysLeft = () => {
+    if (!userData?.trialStartedAt) return 0;
+    const trialDays = tenantConfig?.freeTrial?.days || 7;
+    const startMs = new Date(userData.trialStartedAt).getTime();
+    const expiresMs = startMs + trialDays * 86400000;
+    const diff = expiresMs - Date.now();
+    return Math.max(0, Math.ceil(diff / 86400000));
+  };
 
   const [currOpen, setCurrOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -63,7 +76,7 @@ export default function Topbar() {
       <button className="tb-menu-toggle" onClick={() => setMobileMenuOpen(true)}>
         ☰
       </button>
-      <div className="tb-breadcrumb">
+      <div className="tb-breadcrumb" style={{ display: 'flex', alignItems: 'center' }}>
         <span className="bc-section" id="tb-section">
           {t(meta.section)}
         </span>
@@ -71,6 +84,26 @@ export default function Topbar() {
         <span className="bc-page" id="tb-page">
           {t(meta.page)}
         </span>
+
+        {userData?.isTrial && getTrialDaysLeft() > 0 && (
+          <div style={{
+            background: 'rgba(255, 107, 53, 0.1)',
+            border: '1px solid var(--orange, #FF6B35)',
+            color: 'var(--orange, #FF6B35)',
+            fontSize: '11px',
+            fontWeight: '800',
+            padding: '4px 10px',
+            borderRadius: '20px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            marginLeft: lang === 'ar' ? '0' : '14px',
+            marginRight: lang === 'ar' ? '14px' : '0',
+            direction: 'rtl'
+          }}>
+            <span>🔥 {lang === 'ar' ? 'فترة تجريبية' : 'Trial Period'}: {getTrialDaysLeft()} {lang === 'ar' ? 'أيام متبقية' : 'days left'}</span>
+          </div>
+        )}
       </div>
 
       <div className="tb-actions">

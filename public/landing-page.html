@@ -614,6 +614,15 @@
       box-shadow: 0 0 0 1px var(--or), 0 20px 60px rgba(255, 107, 53, .2)
     }
 
+    .screen-title {
+      color: var(--t2);
+      transition: color .25s
+    }
+
+    .screen-card.active .screen-title {
+      color: var(--or) !important
+    }
+
     .screen-bar {
       background: var(--s2);
       padding: 8px 12px;
@@ -2323,7 +2332,7 @@
         <a href="#roadmap" data-t="landing-nav-roadmap">Roadmap</a>
       </nav>
       <div class="hdr-btns"><button class="btn btn-ghost" onclick="toggleLang(this)"
-          style="padding:7px 14px;font-size:13px">عربي</button>
+          style="padding:7px 14px;font-size:13px" data-t="landing-btn-lang">عربي</button>
         <a href="/login" class="btn btn-ghost" data-t="landing-nav-signin">Sign In</a>
         <a href="/login" class="btn btn-prime" data-t="landing-nav-startfree">Start Free →</a>
         <button class="mob-menu-btn" onclick="document.getElementById('mob-nav').classList.toggle('open')"
@@ -2335,11 +2344,16 @@
   <!-- Mobile Navigation Overlay -->
   <div id="mob-nav">
     <button class="mob-close" onclick="document.getElementById('mob-nav').classList.remove('open')">✕</button>
-    <a href="#preview" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-dashboard">Dashboard</a>
-    <a href="#tools" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-tools">Tools</a>
-    <a href="#who" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-forwho">For Who</a>
-    <a href="#pricing" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-pricing">Pricing</a>
-    <a href="#roadmap" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-roadmap">Roadmap</a>
+    <a href="#preview" onclick="document.getElementById('mob-nav').classList.remove('open')"
+      data-t="landing-nav-dashboard">Dashboard</a>
+    <a href="#tools" onclick="document.getElementById('mob-nav').classList.remove('open')"
+      data-t="landing-nav-tools">Tools</a>
+    <a href="#who" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-forwho">For
+      Who</a>
+    <a href="#pricing" onclick="document.getElementById('mob-nav').classList.remove('open')"
+      data-t="landing-nav-pricing">Pricing</a>
+    <a href="#roadmap" onclick="document.getElementById('mob-nav').classList.remove('open')"
+      data-t="landing-nav-roadmap">Roadmap</a>
     <a href="/login" class="btn btn-prime btn-xl" style="margin-top:8px" data-t="landing-nav-startfree">Start Free →</a>
   </div>
 
@@ -2347,13 +2361,21 @@
   <section id="hero">
     <div class="hero-wrap">
       <div>
-        <div class="hero-eyebrow"><span>✦</span> <span data-t="landing-hero-badge">The AI OS for Arab Entrepreneurs</span></div>
+        <div class="hero-eyebrow"><span>✦</span> <span data-t="landing-hero-badge">The AI OS for Arab
+            Entrepreneurs</span></div>
         <h1 class="hero-h1" data-t="landing-hero-title">
           Run your entire<br>
           <span class="grd">business</span> from<br>
           one dashboard
         </h1>
-        <p class="hero-sub" data-t="landing-hero-sub">CRM, Marketing, Content, Finance, WhatsApp — all powered by AI and built for Arab creators, coaches, and entrepreneurs.</p>
+        <p class="hero-sub" data-t="landing-hero-sub">CRM, Marketing, Content, Finance, WhatsApp — all powered by AI and
+          built for Arab creators, coaches, and entrepreneurs.</p>
+        <!-- Dynamic Trial Badge -->
+        <div id="hero-trial-badge" style="display: none; margin-bottom: 20px;">
+          <div style="background: rgba(255, 107, 53, 0.12); border: 1.5px solid var(--or); color: var(--or); font-size: 13.5px; font-weight: 700; padding: 7px 16px; border-radius: 30px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(255,107,53,0.12); cursor: pointer;" onclick="document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })">
+            <span id="hero-trial-badge-text"></span>
+          </div>
+        </div>
         <div class="hero-cta">
           <a href="/login" class="btn btn-prime btn-xl" data-t="landing-hero-cta-trial">🚀 Start Free Trial</a>
           <a href="#preview" class="btn btn-ghost btn-xl" data-t="landing-hero-cta-preview">See it Live →</a>
@@ -2367,19 +2389,19 @@
       </div>
       <div class="hero-visual">
         <div style="position:relative;padding:20px">
-          <div class="float-badge2">📈 +340% Growth</div>
+          <div class="float-badge2" data-t="landing-hero-db-badge-growth">📈 +340% Growth</div>
           <div class="dash-frame">
             <div class="dash-bar">
               <div class="dash-dot" style="background:#ff5f57"></div>
               <div class="dash-dot" style="background:#febc2e"></div>
               <div class="dash-dot" style="background:#28c840"></div>
-              <span style="font-size:11px;color:var(--t3);margin-left:8px">UpKlick Dashboard</span>
+              <span style="font-size:11px;color:var(--t3);margin-left:8px" data-t="landing-hero-db-title">UpKlick Dashboard</span>
             </div>
             <div class="dash-inner">
               <div class="dash-card">
-                <div class="dash-card-lbl">Revenue</div>
+                <div class="dash-card-lbl" data-t="landing-hero-db-revenue">Revenue</div>
                 <div class="dash-card-val">$8,420</div>
-                <div class="dash-card-ch">↑ 24% this month</div>
+                <div class="dash-card-ch" data-t="landing-hero-db-revenue-ch">↑ 24% this month</div>
                 <div class="mini-chart">
                   <div class="mc-bar" style="height:40%"></div>
                   <div class="mc-bar" style="height:60%"></div>
@@ -2390,9 +2412,9 @@
                 </div>
               </div>
               <div class="dash-card">
-                <div class="dash-card-lbl">Active Leads</div>
+                <div class="dash-card-lbl" data-t="landing-hero-db-leads">Active Leads</div>
                 <div class="dash-card-val">47</div>
-                <div class="dash-card-ch">↑ 12 new today</div>
+                <div class="dash-card-ch" data-t="landing-hero-db-leads-ch">↑ 12 new today</div>
                 <div class="mini-chart">
                   <div class="mc-bar" style="height:30%"></div>
                   <div class="mc-bar" style="height:50%"></div>
@@ -2403,15 +2425,15 @@
                 </div>
               </div>
               <div class="dash-card" style="grid-column:span 2">
-                <div class="dash-card-lbl" style="margin-bottom:8px">✦ AI Daily Brief</div>
+                <div class="dash-card-lbl" style="margin-bottom:8px" data-t="landing-hero-db-brief-title">✦ AI Daily Brief</div>
                 <div
-                  style="font-size:12px;color:var(--t1);line-height:1.6;background:var(--or-d);border-radius:8px;padding:10px;border:1px solid rgba(255,107,53,.2)">
+                  style="font-size:12px;color:var(--t1);line-height:1.6;background:var(--or-d);border-radius:8px;padding:10px;border:1px solid rgba(255,107,53,.2)" data-t="landing-hero-db-brief-body">
                   Your conversion rate is up 18% this week. Focus on following up with 3 warm leads — Mohamed, Sarah,
                   and Ahmed — who opened your proposal but haven't replied.</div>
               </div>
             </div>
           </div>
-          <div class="float-badge">🤖 AI Analysis Ready</div>
+          <div class="float-badge" data-t="landing-hero-db-badge-ai">🤖 AI Analysis Ready</div>
         </div>
       </div>
     </div>
@@ -2448,15 +2470,18 @@
     <div class="preview-wrap reveal">
       <div class="preview-head">
         <div class="sec-eyebrow" data-t="landing-features-eyebrow">📸 Live Snapshots</div>
-        <h2 class="sec-h2" data-t="landing-features-title">Everything you need, <span class="grd">in one place</span></h2>
-        <p class="sec-sub" data-t="landing-features-sub">Real screenshots from inside UpKlick — not mockups. This is exactly what you'll use every day.</p>
+        <h2 class="sec-h2" data-t="landing-features-title">Everything you need, <span class="grd">in one place</span>
+        </h2>
+        <p class="sec-sub" data-t="landing-features-sub">Real screenshots from inside UpKlick — not mockups. This is
+          exactly what you'll use every day.</p>
       </div>
       <div class="screens-grid">
-        <div class="screen-card active">
+        <div class="screen-card active" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
             <div class="dot" style="background:#febc2e"></div>
-            <div class="dot" style="background:#28c840"></div><span class="screen-label">Dashboard</span>
+            <div class="dot" style="background:#28c840"></div><span class="screen-label"
+              data-t="landing-ss-dashboard">Dashboard</span>
           </div>
           <div class="screen-preview">
             <div class="sp-mini-cards">
@@ -2469,15 +2494,16 @@
             <div class="sp-row or" style="width:80%"></div>
             <div class="sp-row pu" style="width:60%"></div>
           </div>
-          <div
-            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;color:var(--or)">⌂
-            Command Center</div>
+          <div class="screen-title"
+            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
+            data-t="landing-ss-dashboard-title">⌂ Command Center</div>
         </div>
-        <div class="screen-card">
+        <div class="screen-card" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
             <div class="dot" style="background:#febc2e"></div>
-            <div class="dot" style="background:#28c840"></div><span class="screen-label">Smart CRM</span>
+            <div class="dot" style="background:#28c840"></div><span class="screen-label" data-t="landing-ss-crm">Smart
+              CRM</span>
           </div>
           <div class="screen-preview">
             <div style="display:flex;gap:5px;margin-bottom:5px">
@@ -2497,43 +2523,48 @@
             <div class="sp-row" style="width:100%;height:8px"></div>
             <div class="sp-row" style="width:80%;height:8px"></div>
           </div>
-          <div
-            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;color:var(--t2)">🎯
-            Smart CRM</div>
+          <div class="screen-title"
+            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
+            data-t="landing-ss-crm-title">🎯 Smart CRM</div>
         </div>
-        <div class="screen-card">
+        <div class="screen-card" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
             <div class="dot" style="background:#febc2e"></div>
-            <div class="dot" style="background:#28c840"></div><span class="screen-label">Marketing OS</span>
+            <div class="dot" style="background:#28c840"></div><span class="screen-label"
+              data-t="landing-ss-marketing">Marketing OS</span>
           </div>
           <div class="screen-preview">
             <div style="display:flex;gap:5px;margin-bottom:8px">
               <div
-                style="height:26px;padding:0 10px;background:var(--or-d);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--or)">
+                style="height:26px;padding:0 10px;background:var(--or-d);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--or)"
+                data-t="landing-ss-marketing-tag-research">
                 Research</div>
               <div
-                style="height:26px;padding:0 10px;background:var(--s3);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--t3)">
+                style="height:26px;padding:0 10px;background:var(--s3);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--t3)"
+                data-t="landing-ss-marketing-tag-strategy">
                 Strategy</div>
               <div
-                style="height:26px;padding:0 10px;background:var(--s3);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--t3)">
+                style="height:26px;padding:0 10px;background:var(--s3);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--t3)"
+                data-t="landing-ss-marketing-tag-ads">
                 Ads</div>
             </div>
             <div class="sp-row or" style="width:100%;height:50px;border-radius:8px"></div>
             <div class="sp-row" style="width:70%"></div>
             <div class="sp-row pu" style="width:50%"></div>
           </div>
-          <div
-            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;color:var(--t2)">📣
-            Marketing OS</div>
+          <div class="screen-title"
+            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
+            data-t="landing-ss-marketing-title">📣 Marketing OS</div>
         </div>
       </div>
       <div class="screens-grid">
-        <div class="screen-card">
+        <div class="screen-card" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
             <div class="dot" style="background:#febc2e"></div>
-            <div class="dot" style="background:#28c840"></div><span class="screen-label">Finance</span>
+            <div class="dot" style="background:#28c840"></div><span class="screen-label"
+              data-t="landing-ss-finance-label">Finance</span>
           </div>
           <div class="screen-preview">
             <div style="display:flex;align-items:flex-end;gap:4px;height:60px">
@@ -2546,46 +2577,51 @@
             </div>
             <div class="sp-row" style="width:100%;height:8px"></div>
           </div>
-          <div
-            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;color:var(--t2)">💳
-            Finance</div>
+          <div class="screen-title"
+            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
+            data-t="landing-ss-finance-title">💳 Finance</div>
         </div>
-        <div class="screen-card">
+        <div class="screen-card" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
             <div class="dot" style="background:#febc2e"></div>
-            <div class="dot" style="background:#28c840"></div><span class="screen-label">AI Growth Intel</span>
+            <div class="dot" style="background:#28c840"></div><span class="screen-label"
+              data-t="landing-ss-growth-label">AI Growth Intel</span>
           </div>
           <div class="screen-preview">
             <div
-              style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:8px;padding:8px;font-size:10.5px;color:var(--t1);line-height:1.5">
+              style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:8px;padding:8px;font-size:10.5px;color:var(--t1);line-height:1.5"
+              data-t="landing-ss-growth-brief">
               ✦ Your competitor is running 3 ads targeting "online coaching". Opportunity score: 8.4/10</div>
             <div class="sp-row" style="width:80%"></div>
             <div class="sp-row pu" style="width:60%"></div>
           </div>
-          <div
-            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;color:var(--t2)">🔮
-            AI Growth Intel</div>
+          <div class="screen-title"
+            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
+            data-t="landing-ss-growth-title">🔮 AI Growth Intel</div>
         </div>
-        <div class="screen-card">
+        <div class="screen-card" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
             <div class="dot" style="background:#febc2e"></div>
-            <div class="dot" style="background:#28c840"></div><span class="screen-label">WhatsApp Hub</span>
+            <div class="dot" style="background:#28c840"></div><span class="screen-label"
+              data-t="landing-ss-whatsapp-label">WhatsApp Hub</span>
           </div>
           <div class="screen-preview">
             <div style="display:flex;flex-direction:column;gap:6px">
               <div
-                style="background:var(--s3);border-radius:10px 10px 10px 2px;padding:7px 10px;font-size:10.5px;color:var(--t1);max-width:85%">
+                style="background:var(--s3);border-radius:10px 10px 10px 2px;padding:7px 10px;font-size:10.5px;color:var(--t1);max-width:85%"
+                data-t="landing-ss-whatsapp-msg-in">
                 مرحباً! هل الكورس لا يزال متاحاً؟</div>
               <div
-                style="background:var(--or-d);border-radius:10px 10px 2px 10px;padding:7px 10px;font-size:10.5px;color:var(--t1);max-width:85%;align-self:flex-end">
+                style="background:var(--or-d);border-radius:10px 10px 2px 10px;padding:7px 10px;font-size:10.5px;color:var(--t1);max-width:85%;align-self:flex-end"
+                data-t="landing-ss-whatsapp-msg-out">
                 أهلاً! نعم، سعيد بمساعدتك 🎓</div>
             </div>
           </div>
-          <div
-            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;color:var(--t2)">💬
-            WhatsApp Hub</div>
+          <div class="screen-title"
+            style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
+            data-t="landing-ss-whatsapp-title">💬 WhatsApp Hub</div>
         </div>
       </div>
     </div>
@@ -2596,8 +2632,10 @@
     <div class="tools-wrap reveal">
       <div>
         <div class="sec-eyebrow" data-t="landing-tools-eyebrow">🛠️ 32 Built-in Tools</div>
-        <h2 class="sec-h2" data-t="landing-tools-title">One tool for every<br><span class="grd">part of your business</span></h2>
-        <p class="sec-sub" style="margin-bottom:28px" data-t="landing-tools-sub">Each module is a complete mini-product — not a placeholder. Every tool has real AI behind it.</p>
+        <h2 class="sec-h2" data-t="landing-tools-title">One tool for every<br><span class="grd">part of your
+            business</span></h2>
+        <p class="sec-sub" style="margin-bottom:28px" data-t="landing-tools-sub">Each module is a complete mini-product
+          — not a placeholder. Every tool has real AI behind it.</p>
         <div class="tools-list" id="tools-list">
           <div class="tool-item on" onclick="selectTool(this,'crm')">
             <div class="tool-icon">🎯</div>
@@ -2666,7 +2704,8 @@
           <div style="background:var(--s2);border-radius:10px;overflow:hidden">
             <div
               style="display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid var(--edge);font-size:11px;font-weight:700;color:var(--t3)">
-              <span style="flex:2">NAME</span><span style="flex:1">STATUS</span><span style="flex:1">VALUE</span></div>
+              <span style="flex:2">NAME</span><span style="flex:1">STATUS</span><span style="flex:1">VALUE</span>
+            </div>
             <div style="display:flex;gap:8px;padding:8px 10px;font-size:12.5px;color:var(--t1);align-items:center"><span
                 style="flex:2">محمد الأحمد</span><span style="flex:1"><span
                   style="background:var(--or-d);color:var(--or);padding:2px 7px;border-radius:20px;font-size:11px">Hot</span></span><span
@@ -2675,7 +2714,8 @@
               style="display:flex;gap:8px;padding:8px 10px;font-size:12.5px;color:var(--t1);align-items:center;border-top:1px solid var(--edge)">
               <span style="flex:2">سارة الخليفة</span><span style="flex:1"><span
                   style="background:var(--pu-d);color:var(--pu);padding:2px 7px;border-radius:20px;font-size:11px">Warm</span></span><span
-                style="flex:1;color:#00d98b">$1,800</span></div>
+                style="flex:1;color:#00d98b">$1,800</span>
+            </div>
           </div>
           <div
             style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12.5px;color:var(--t1)">
@@ -2727,52 +2767,52 @@
   <section id="screenshots">
     <div class="ss-wrap reveal">
       <div class="ss-head">
-        <div class="sec-eyebrow">🖥️ Inside UpKlick</div>
-        <h2 class="sec-h2">Your entire business, <span class="grd">at a glance</span></h2>
+        <div class="sec-eyebrow" data-t="landing-ss-eyebrow">🖥️ Inside UpKlick</div>
+        <h2 class="sec-h2" data-t="landing-ss-heading">Your entire business, <span class="grd">at a glance</span></h2>
       </div>
       <div class="ss-big">
         <div class="ss-bar">
           <div class="dot" style="background:#ff5f57"></div>
           <div class="dot" style="background:#febc2e"></div>
           <div class="dot" style="background:#28c840"></div>
-          <div class="ss-url">app.upklick.io/dashboard</div>
+          <div class="ss-url" data-t="landing-ss-url">app.upklick.io/dashboard</div>
         </div>
         <div class="ss-main">
           <div class="ss-sidebar">
             <div style="padding:4px 6px;margin-bottom:4px"><img src="/upklick-logo.png" alt="UpKlick"
                 style="height:20px;width:auto;object-fit:contain;"></div>
-            <div class="ss-sb-item on">⌂ Dashboard</div>
-            <div class="ss-sb-sep">Grow</div>
-            <div class="ss-sb-item">🎯 Smart CRM</div>
-            <div class="ss-sb-item">💬 WhatsApp</div>
-            <div class="ss-sb-item">📣 Marketing</div>
-            <div class="ss-sb-sep">Discover</div>
-            <div class="ss-sb-item">🔮 AI Growth</div>
-            <div class="ss-sb-item">📡 Trends</div>
-            <div class="ss-sb-sep">Manage</div>
-            <div class="ss-sb-item">◉ Tasks</div>
-            <div class="ss-sb-item">💳 Finance</div>
+            <div class="ss-sb-item on" data-t="landing-ss-sb-dashboard">⌂ Dashboard</div>
+            <div class="ss-sb-sep" data-t="landing-ss-sb-grow">Grow</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-crm">🎯 Smart CRM</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-whatsapp">💬 WhatsApp</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-marketing">📣 Marketing</div>
+            <div class="ss-sb-sep" data-t="landing-ss-sb-discover">Discover</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-aigrowth">🔮 AI Growth</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-trends">📡 Trends</div>
+            <div class="ss-sb-sep" data-t="landing-ss-sb-manage">Manage</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-tasks">◉ Tasks</div>
+            <div class="ss-sb-item" data-t="landing-ss-sb-finance">💳 Finance</div>
           </div>
           <div class="ss-content">
             <div class="ss-stat">
-              <div class="ss-stat-l">Revenue</div>
+              <div class="ss-stat-l" data-t="landing-ss-stat-revenue">Revenue</div>
               <div class="ss-stat-n">$8,420</div>
             </div>
             <div class="ss-stat">
-              <div class="ss-stat-l">Active Leads</div>
+              <div class="ss-stat-l" data-t="landing-ss-stat-leads">Active Leads</div>
               <div class="ss-stat-n">47</div>
             </div>
             <div class="ss-stat">
-              <div class="ss-stat-l">Tasks</div>
+              <div class="ss-stat-l" data-t="landing-ss-stat-tasks">Tasks</div>
               <div class="ss-stat-n">12</div>
             </div>
             <div class="ss-stat">
-              <div class="ss-stat-l">Followers</div>
+              <div class="ss-stat-l" data-t="landing-ss-stat-followers">Followers</div>
               <div class="ss-stat-n">284K</div>
             </div>
             <div class="ss-stat ss-wide">
-              <div class="ss-stat-l" style="margin-bottom:8px">✦ AI Daily Brief</div>
-              <div class="ss-ai-box">Your conversion rate is up 18% this week. Focus on following up with 3 warm leads
+              <div class="ss-stat-l" style="margin-bottom:8px" data-t="landing-ss-stat-brief-title">✦ AI Daily Brief</div>
+              <div class="ss-ai-box" data-t="landing-ss-stat-brief-body">Your conversion rate is up 18% this week. Focus on following up with 3 warm leads
                 who opened your proposal. Revenue target: 67% complete — you need $2,600 more to hit your goal.</div>
             </div>
             <div class="ss-stat ss-wide">
@@ -2797,7 +2837,8 @@
     <div class="reviews-wrap reveal">
       <div class="reviews-head">
         <div class="sec-eyebrow" data-t="landing-reviews-eyebrow">⭐ Real Reviews</div>
-        <h2 class="sec-h2" data-t="landing-reviews-title">What Arab entrepreneurs <span class="grd">say about UpKlick</span></h2>
+        <h2 class="sec-h2" data-t="landing-reviews-title">What Arab entrepreneurs <span class="grd">say about
+            UpKlick</span></h2>
       </div>
       <div class="reviews-grid">
         <div class="review-card review-featured">
@@ -2815,14 +2856,14 @@
         </div>
         <div class="review-card">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-          <p class="review-text">"The AI Growth Intelligence module alone is worth it. I found 3 competitor gaps in my
+          <p class="review-text" data-t="landing-review-text-2">"The AI Growth Intelligence module alone is worth it. I found 3 competitor gaps in my
             market I didn't know existed. Launched a new digital product from that insight — made $2,400 in the first
             week."</p>
           <div class="reviewer">
             <div class="reviewer-av">S</div>
             <div>
-              <div class="reviewer-name">Sarah Al-Mansoori</div>
-              <div class="reviewer-role">Content Creator · Dubai 🇦🇪</div>
+              <div class="reviewer-name" data-t="landing-review-name-2">Sarah Al-Mansoori</div>
+              <div class="reviewer-role" data-t="landing-review-role-2">Content Creator · Dubai 🇦🇪</div>
             </div>
           </div>
         </div>
@@ -2840,13 +2881,13 @@
         </div>
         <div class="review-card">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-          <p class="review-text">"Digital Products Hub is insane. I went from zero idea to a live Notion template on
+          <p class="review-text" data-t="landing-review-text-4">"Digital Products Hub is insane. I went from zero idea to a live Notion template on
             Gumroad in 3 days following the AI execution plan. Made $890 in the first month with zero ads."</p>
           <div class="reviewer">
             <div class="reviewer-av">L</div>
             <div>
-              <div class="reviewer-name">Lama Hassan</div>
-              <div class="reviewer-role">Freelancer · Cairo 🇪🇬</div>
+              <div class="reviewer-name" data-t="landing-review-name-4">Lama Hassan</div>
+              <div class="reviewer-role" data-t="landing-review-role-4">Freelancer · Cairo 🇪🇬</div>
             </div>
           </div>
         </div>
@@ -2864,13 +2905,13 @@
         </div>
         <div class="review-card">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>☆</span></div>
-          <p class="review-text">"The Telegram bot integration is genuinely useful — I get daily reports on my phone
+          <p class="review-text" data-t="landing-review-text-6">"The Telegram bot integration is genuinely useful — I get daily reports on my phone
             without opening the dashboard. Small detail but saves me 20 minutes a day."</p>
           <div class="reviewer">
             <div class="reviewer-av">N</div>
             <div>
-              <div class="reviewer-name">Nour El-Din</div>
-              <div class="reviewer-role">Agency Owner · Morocco 🇲🇦</div>
+              <div class="reviewer-name" data-t="landing-review-name-6">Nour El-Din</div>
+              <div class="reviewer-role" data-t="landing-review-role-6">Agency Owner · Morocco 🇲🇦</div>
             </div>
           </div>
         </div>
@@ -2884,7 +2925,8 @@
       <div class="pricing-head">
         <div class="sec-eyebrow" data-t="landing-pricing-eyebrow">💳 Pricing</div>
         <h2 class="sec-h2" data-t="landing-pricing-title">Simple, honest <span class="grd">pricing</span></h2>
-        <p class="sec-sub" style="margin:0 auto" data-t="landing-pricing-sub">Start free. Upgrade when you're ready. No credit card required to start.</p>
+        <p class="sec-sub" style="margin:0 auto" data-t="landing-pricing-sub">Start free. Upgrade when you're ready. No
+          credit card required to start.</p>
       </div>
       <div class="pricing-grid">
         <div class="price-card">
@@ -2954,46 +2996,46 @@
       </div>
       <div id="faq-list">
         <div class="faq-item open">
-          <div class="faq-q" onclick="toggleFaq(this)">Is UpKlick really free to start?<div class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-1">Is UpKlick really free to start?<div class="faq-icon">+</div>
           </div>
-          <div class="faq-a">Yes — the Starter plan is free forever with no credit card required. You get full dashboard
+          <div class="faq-a" data-t="landing-faq-a-1">Yes — the Starter plan is free forever with no credit card required. You get full dashboard
             access, AI assistant (50 msgs/mo), CRM, content tools, and more. Upgrade to Pro when you want unlimited AI
             and marketing tools.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">Is it available in Arabic?<div class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-2">Is it available in Arabic?<div class="faq-icon">+</div>
           </div>
-          <div class="faq-a">نعم بالكامل. UpKlick يدعم العربية بالكامل — الواجهة، الـ AI، والمحتوى. يمكنك التبديل بين
+          <div class="faq-a" data-t="landing-faq-a-2">نعم بالكامل. UpKlick يدعم العربية بالكامل — الواجهة، الـ AI، والمحتوى. يمكنك التبديل بين
             العربية والإنجليزية في أي وقت من الإعدادات. الـ AI مدرب خصيصاً للسوق العربي.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">Can I replace tools like Notion, Trello, and Mailchimp?<div
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-3">Can I replace tools like Notion, Trello, and Mailchimp?<div
               class="faq-icon">+</div>
           </div>
-          <div class="faq-a">Most people who use UpKlick cancel 4-7 other subscriptions. It covers CRM (replaces
+          <div class="faq-a" data-t="landing-faq-a-3">Most people who use UpKlick cancel 4-7 other subscriptions. It covers CRM (replaces
             HubSpot), task management (replaces Trello/Notion), basic email marketing (replaces Mailchimp for simple
             campaigns), content planning, and financial tracking. We integrate with tools you want to keep.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">Which payment methods work for Arab markets?<div
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-4">Which payment methods work for Arab markets?<div
               class="faq-icon">+</div>
           </div>
-          <div class="faq-a">We accept Visa, Mastercard, Tap Payments (MADA, KNET, STC Pay), PayPal, and bank transfer.
+          <div class="faq-a" data-t="landing-faq-a-4">We accept Visa, Mastercard, Tap Payments (MADA, KNET, STC Pay), PayPal, and bank transfer.
             Invoices available in AED, SAR, KWD, EGP, and USD.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">How is this different from other all-in-one tools?<div
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-5">How is this different from other all-in-one tools?<div
               class="faq-icon">+</div>
           </div>
-          <div class="faq-a">UpKlick is the only platform built specifically for Arab entrepreneurs and creators — with
+          <div class="faq-a" data-t="landing-faq-a-5">UpKlick is the only platform built specifically for Arab entrepreneurs and creators — with
             Arabic-first AI, Arab market data (WhatsApp-centric sales, Arab e-commerce integrations), and cultural
             context baked in. It's not a translated Western tool.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">What happens when my free trial ends?<div class="faq-icon">+
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-6">What happens when my free trial ends?<div class="faq-icon">+
             </div>
           </div>
-          <div class="faq-a">You automatically drop to the free Starter plan — your data is safe and you keep access to
+          <div class="faq-a" data-t="landing-faq-a-6">You automatically drop to the free Starter plan — your data is safe and you keep access to
             core features. No surprise charges. Upgrade anytime to restore Pro features.</div>
         </div>
       </div>
@@ -3006,70 +3048,71 @@
       <div class="rm-head">
         <div class="sec-eyebrow" data-t="landing-roadmap-eyebrow">🗺️ Roadmap</div>
         <h2 class="sec-h2" data-t="landing-roadmap-title">Where we're <span class="grd">going next</span></h2>
-        <p class="sec-sub" style="margin:0 auto;margin-top:10px" data-t="landing-roadmap-sub">We build in public. Upvote features that matter to you.</p>
+        <p class="sec-sub" style="margin:0 auto;margin-top:10px" data-t="landing-roadmap-sub">We build in public. Upvote
+          features that matter to you.</p>
       </div>
       <div class="rm-track">
         <div class="rm-item">
           <div class="rm-dot done">✓</div>
           <div class="rm-body">
-            <div class="rm-phase">Live Now</div>
-            <div class="rm-title">UpKlick Dashboard v1</div>
-            <div class="rm-desc">32 tools, AI assistant, CRM, marketing, finance, WhatsApp hub, digital products, and
+            <div class="rm-phase" data-t="landing-rm-phase-1">Live Now</div>
+            <div class="rm-title" data-t="landing-rm-title-1">UpKlick Dashboard v1</div>
+            <div class="rm-desc" data-t="landing-rm-desc-1">32 tools, AI assistant, CRM, marketing, finance, WhatsApp hub, digital products, and
               full Arabic support.</div>
-            <div class="rm-tags"><span class="rm-tag live">✅ Live</span><span class="rm-tag live">Arabic</span><span
-                class="rm-tag live">AI</span></div>
+            <div class="rm-tags"><span class="rm-tag live" data-t="landing-rm-tag-1-1">✅ Live</span><span class="rm-tag live" data-t="landing-rm-tag-1-2">Arabic</span><span
+                class="rm-tag live" data-t="landing-rm-tag-1-3">AI</span></div>
           </div>
         </div>
         <div class="rm-item">
           <div class="rm-dot done">✓</div>
           <div class="rm-body">
-            <div class="rm-phase">Live Now</div>
-            <div class="rm-title">Telegram Bot Control</div>
-            <div class="rm-desc">Control your entire dashboard from Telegram. Ask AI, check leads, get reports — all via
+            <div class="rm-phase" data-t="landing-rm-phase-2">Live Now</div>
+            <div class="rm-title" data-t="landing-rm-title-2">Telegram Bot Control</div>
+            <div class="rm-desc" data-t="landing-rm-desc-2">Control your entire dashboard from Telegram. Ask AI, check leads, get reports — all via
               /commands.</div>
-            <div class="rm-tags"><span class="rm-tag live">✅ Live</span></div>
+            <div class="rm-tags"><span class="rm-tag live" data-t="landing-rm-tag-2-1">✅ Live</span></div>
           </div>
         </div>
         <div class="rm-item">
           <div class="rm-dot next"></div>
           <div class="rm-body">
-            <div class="rm-phase">Q3 2025</div>
-            <div class="rm-title">Mobile App (iOS & Android)</div>
-            <div class="rm-desc">Native mobile app with push notifications for new leads, daily AI brief, and quick task
+            <div class="rm-phase" data-t="landing-rm-phase-3">Q3 2025</div>
+            <div class="rm-title" data-t="landing-rm-title-3">Mobile App (iOS & Android)</div>
+            <div class="rm-desc" data-t="landing-rm-desc-3">Native mobile app with push notifications for new leads, daily AI brief, and quick task
               management.</div>
-            <div class="rm-tags"><span class="rm-tag">📱 Mobile</span><span class="rm-tag">Push Notifications</span>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-3-1">📱 Mobile</span><span class="rm-tag" data-t="landing-rm-tag-3-2">Push Notifications</span>
             </div>
           </div>
         </div>
         <div class="rm-item">
           <div class="rm-dot next"></div>
           <div class="rm-body">
-            <div class="rm-phase">Q3 2025</div>
-            <div class="rm-title">UpKlick Academy</div>
-            <div class="rm-desc">Built-in learning paths: how to close with WhatsApp, how to launch digital products,
+            <div class="rm-phase" data-t="landing-rm-phase-4">Q3 2025</div>
+            <div class="rm-title" data-t="landing-rm-title-4">UpKlick Academy</div>
+            <div class="rm-desc" data-t="landing-rm-desc-4">Built-in learning paths: how to close with WhatsApp, how to launch digital products,
               how to use AI for content — in Arabic.</div>
-            <div class="rm-tags"><span class="rm-tag">🎓 Arabic Courses</span></div>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-4-1">🎓 Arabic Courses</span></div>
           </div>
         </div>
         <div class="rm-item">
           <div class="rm-dot"></div>
           <div class="rm-body">
-            <div class="rm-phase">Q4 2025</div>
-            <div class="rm-title">Marketplace Integration</div>
-            <div class="rm-desc">Sell your digital products directly from UpKlick — without needing Gumroad or Payhip.
+            <div class="rm-phase" data-t="landing-rm-phase-5">Q4 2025</div>
+            <div class="rm-title" data-t="landing-rm-title-5">Marketplace Integration</div>
+            <div class="rm-desc" data-t="landing-rm-desc-5">Sell your digital products directly from UpKlick — without needing Gumroad or Payhip.
               Arab payment methods included.</div>
-            <div class="rm-tags"><span class="rm-tag">🛒 Sell Direct</span><span class="rm-tag">Arab Payments</span>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-5-1">🛒 Sell Direct</span><span class="rm-tag" data-t="landing-rm-tag-5-2">Arab Payments</span>
             </div>
           </div>
         </div>
         <div class="rm-item">
           <div class="rm-dot"></div>
           <div class="rm-body">
-            <div class="rm-phase">2026</div>
-            <div class="rm-title">UpKlick AI Agent (Autonomous)</div>
-            <div class="rm-desc">An AI that doesn't just answer — it acts. Auto-follow-up leads, schedule content,
+            <div class="rm-phase" data-t="landing-rm-phase-6">2026</div>
+            <div class="rm-title" data-t="landing-rm-title-6">UpKlick AI Agent (Autonomous)</div>
+            <div class="rm-desc" data-t="landing-rm-desc-6">An AI that doesn't just answer — it acts. Auto-follow-up leads, schedule content,
               analyze competitors, and report daily without you asking.</div>
-            <div class="rm-tags"><span class="rm-tag">🤖 Autonomous AI</span><span class="rm-tag">Game-changing</span>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-6-1">🤖 Autonomous AI</span><span class="rm-tag" data-t="landing-rm-tag-6-2">Game-changing</span>
             </div>
           </div>
         </div>
@@ -3081,14 +3124,16 @@
   <section id="cta-final">
     <div class="container reveal">
       <div class="cta-inner">
-        <h2 class="cta-h" data-t="landing-final-title">Ready to run your business<br><span class="grd">like a CEO?</span></h2>
-        <p class="cta-sub" data-t="landing-final-sub">Join 2,400+ Arab entrepreneurs already using UpKlick.<br>Start free — no credit card, no commitment.</p>
+        <h2 class="cta-h" data-t="landing-final-title">Ready to run your business<br><span class="grd">like a
+            CEO?</span></h2>
+        <p class="cta-sub" data-t="landing-final-sub">Join 2,400+ Arab entrepreneurs already using UpKlick.<br>Start
+          free — no credit card, no commitment.</p>
         <div class="cta-btns">
-          <a href="/login" class="btn btn-prime btn-xl">🚀 Start Free Trial</a>
+          <a href="/login" class="btn btn-prime btn-xl" data-t="landing-final-cta-trial">🚀 Start Free Trial</a>
           <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')"
-            class="btn btn-ghost btn-xl">💬 Talk to Us</a>
+            class="btn btn-ghost btn-xl" data-t="landing-final-cta-talk">💬 Talk to Us</a>
         </div>
-        <p class="cta-note">✓ Free forever plan available &nbsp;&nbsp; ✓ No credit card &nbsp;&nbsp; ✓ Arabic & English
+        <p class="cta-note" data-t="landing-final-note">✓ Free forever plan available &nbsp;&nbsp; ✓ No credit card &nbsp;&nbsp; ✓ Arabic & English
         </p>
       </div>
     </div>
@@ -3103,7 +3148,8 @@
           <a href="#" class="logo">
             <div class="logo-icon">✦</div><span class="logo-text">UpKlick</span>
           </a>
-          <p class="footer-tagline" data-t="landing-footer-tagline">The AI Operating System for Arab creators, coaches, and entrepreneurs. Build, grow, and manage everything from one dashboard.</p>
+          <p class="footer-tagline" data-t="landing-footer-tagline">The AI Operating System for Arab creators, coaches,
+            and entrepreneurs. Build, grow, and manage everything from one dashboard.</p>
           <div class="footer-socials">
             <a class="social-btn" href="#" title="Instagram">📸</a>
             <a class="social-btn" href="#" title="TikTok">🎵</a>
@@ -3113,36 +3159,36 @@
           </div>
         </div>
         <div class="footer-col">
-          <div class="footer-col-title">Product</div>
-          <a href="#tools">All Tools</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#roadmap">Roadmap</a>
-          <a href="/login">Login</a>
-          <a href="/login">Sign Up Free</a>
+          <div class="footer-col-title" data-t="landing-footer-col-product">Product</div>
+          <a href="#tools" data-t="landing-footer-link-tools">All Tools</a>
+          <a href="#pricing" data-t="landing-footer-link-pricing">Pricing</a>
+          <a href="#roadmap" data-t="landing-footer-link-roadmap">Roadmap</a>
+          <a href="/login" data-t="landing-footer-link-login">Login</a>
+          <a href="/login" data-t="landing-footer-link-signup">Sign Up Free</a>
         </div>
         <div class="footer-col">
-          <div class="footer-col-title">Resources</div>
-          <a href="#">Arabic Blog</a>
-          <a href="#">Video Tutorials</a>
-          <a href="#">Help Center</a>
-          <a href="#">API Docs</a>
-          <a href="#">Changelog</a>
+          <div class="footer-col-title" data-t="landing-footer-col-resources">Resources</div>
+          <a href="#" data-t="landing-footer-link-blog">Arabic Blog</a>
+          <a href="#" data-t="landing-footer-link-tutorials">Video Tutorials</a>
+          <a href="#" data-t="landing-footer-link-help">Help Center</a>
+          <a href="#" data-t="landing-footer-link-api">API Docs</a>
+          <a href="#" data-t="landing-footer-link-changelog">Changelog</a>
         </div>
         <div class="footer-col">
-          <div class="footer-col-title">Company</div>
-          <a href="#">About Us</a>
-          <a href="#">Careers</a>
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')">Contact Us</a>
+          <div class="footer-col-title" data-t="landing-footer-col-company">Company</div>
+          <a href="#" data-t="landing-footer-link-about">About Us</a>
+          <a href="#" data-t="landing-footer-link-careers">Careers</a>
+          <a href="#" data-t="landing-footer-link-privacy">Privacy Policy</a>
+          <a href="#" data-t="landing-footer-link-terms">Terms of Service</a>
+          <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')" data-t="landing-footer-link-contact">Contact Us</a>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2025 UpKlick. Built for Arab entrepreneurs 🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦</span>
+        <span data-t="landing-footer-copyright">© 2025 UpKlick. Built for Arab entrepreneurs 🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦</span>
         <div class="footer-lang">
-          <button class="lang-btn on" data-lang="en"
-            onclick="toggleLang(null);this.classList.add('on')">EN</button><button class="lang-btn" data-lang="ar"
-            onclick="toggleLang(null);this.classList.add('on')">AR</button>
+          <button class="lang-btn" data-lang="en" id="lang-btn-en"
+            onclick="toggleLang('en')">EN</button><button class="lang-btn" data-lang="ar" id="lang-btn-ar"
+            onclick="toggleLang('ar')">AR</button>
         </div>
       </div>
     </div>
@@ -3268,28 +3314,46 @@
     // ── TOOLS DEMO ──
     var toolDemos = {
       crm: {
-        icon: '🎯', title: 'Smart CRM',
-        html: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">47</div><div style="font-size:10px;color:var(--t3)">Leads</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">$12K</div><div style="font-size:10px;color:var(--t3)">Pipeline</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">68%</div><div style="font-size:10px;color:var(--t3)">Conv.</div></div></div><div style="background:var(--s2);border-radius:10px;overflow:hidden"><div style="display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid var(--edge);font-size:11px;font-weight:700;color:var(--t3)"><span style="flex:2">NAME</span><span style="flex:1">STATUS</span><span style="flex:1">VALUE</span></div><div style="display:flex;gap:8px;padding:8px 10px;font-size:12px;color:var(--t1)"><span style="flex:2">محمد الأحمد</span><span style="flex:1"><span style="background:var(--or-d);color:var(--or);padding:2px 6px;border-radius:20px;font-size:10px">Hot</span></span><span style="flex:1;color:#00d98b">$2,400</span></div><div style="display:flex;gap:8px;padding:8px 10px;font-size:12px;color:var(--t1);border-top:1px solid var(--edge)"><span style="flex:2">سارة الخليفة</span><span style="flex:1"><span style="background:var(--pu-d);color:var(--pu);padding:2px 6px;border-radius:20px;font-size:10px">Warm</span></span><span style="flex:1;color:#00d98b">$1,800</span></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12px;color:var(--t1);margin-top:8px">✦ AI: Follow up Mohamed — 2 days no reply. Best time: 7-9 PM.</div>'
+        icon: '🎯',
+        titleEn: 'Smart CRM',
+        titleAr: 'إدارة العملاء الذكية',
+        htmlEn: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">47</div><div style="font-size:10px;color:var(--t3)">Leads</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">$12K</div><div style="font-size:10px;color:var(--t3)">Pipeline</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">68%</div><div style="font-size:10px;color:var(--t3)">Conv.</div></div></div><div style="background:var(--s2);border-radius:10px;overflow:hidden"><div style="display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid var(--edge);font-size:11px;font-weight:700;color:var(--t3)"><span style="flex:2">NAME</span><span style="flex:1">STATUS</span><span style="flex:1">VALUE</span></div><div style="display:flex;gap:8px;padding:8px 10px;font-size:12px;color:var(--t1)"><span style="flex:2">Alex Johnson</span><span style="flex:1"><span style="background:var(--or-d);color:var(--or);padding:2px 6px;border-radius:20px;font-size:10px">Hot</span></span><span style="flex:1;color:#00d98b">$2,400</span></div><div style="display:flex;gap:8px;padding:8px 10px;font-size:12px;color:var(--t1);border-top:1px solid var(--edge)"><span style="flex:2">Sarah Smith</span><span style="flex:1"><span style="background:var(--pu-d);color:var(--pu);padding:2px 6px;border-radius:20px;font-size:10px">Warm</span></span><span style="flex:1;color:#00d98b">$1,800</span></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12px;color:var(--t1);margin-top:8px">✦ AI: Follow up Alex — 2 days no reply. Best time: 7-9 PM.</div>',
+        htmlAr: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">47</div><div style="font-size:10px;color:var(--t3)">العملاء المهتمين</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">12,000$</div><div style="font-size:10px;color:var(--t3)">المبيعات المتوقعة</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">68%</div><div style="font-size:10px;color:var(--t3)">نسبة التحويل</div></div></div><div style="background:var(--s2);border-radius:10px;overflow:hidden"><div style="display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid var(--edge);font-size:11px;font-weight:700;color:var(--t3)"><span style="flex:2">الاسم</span><span style="flex:1">الحالة</span><span style="flex:1">القيمة</span></div><div style="display:flex;gap:8px;padding:8px 10px;font-size:12px;color:var(--t1)"><span style="flex:2">محمد الأحمد</span><span style="flex:1"><span style="background:var(--or-d);color:var(--or);padding:2px 6px;border-radius:20px;font-size:10px">مهتم جداً</span></span><span style="flex:1;color:#00d98b">2,400$</span></div><div style="display:flex;gap:8px;padding:8px 10px;font-size:12px;color:var(--t1);border-top:1px solid var(--edge)"><span style="flex:2">سارة الخليفة</span><span style="flex:1"><span style="background:var(--pu-d);color:var(--pu);padding:2px 6px;border-radius:20px;font-size:10px">مهتم</span></span><span style="flex:1;color:#00d98b">1,800$</span></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12px;color:var(--t1);margin-top:8px">✦ ذكاء اصطناعي: تابع محمد — يومين بدون رد. أفضل وقت للتواصل: 7-9 مساءً.</div>'
       },
       marketing: {
-        icon: '📣', title: 'Marketing OS',
-        html: '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="background:var(--or-d);color:var(--or);padding:4px 10px;border-radius:20px;font-size:11.5px">🔍 Research</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">Strategy</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">Ads</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">AI Consultant</span></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6">✦ Market Research: "business coaching" has 340K monthly searches in Arabic. Top gap: nobody targeting UAE freelancers specifically.</div><div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">8</div><div style="font-size:10px;color:var(--t3)">Tools</div></div><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">AI</div><div style="font-size:10px;color:var(--t3)">Powered</div></div><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">24/7</div><div style="font-size:10px;color:var(--t3)">Active</div></div></div>'
+        icon: '📣',
+        titleEn: 'Marketing OS',
+        titleAr: 'نظام التسويق',
+        htmlEn: '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="background:var(--or-d);color:var(--or);padding:4px 10px;border-radius:20px;font-size:11.5px">🔍 Research</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">Strategy</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">Ads</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">AI Consultant</span></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6">✦ Market Research: "business coaching" has 340K monthly searches in Arabic. Top gap: nobody targeting UAE freelancers specifically.</div><div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">8</div><div style="font-size:10px;color:var(--t3)">Tools</div></div><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">AI</div><div style="font-size:10px;color:var(--t3)">Powered</div></div><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">24/7</div><div style="font-size:10px;color:var(--t3)">Active</div></div></div>',
+        htmlAr: '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="background:var(--or-d);color:var(--or);padding:4px 10px;border-radius:20px;font-size:11.5px">🔍 الأبحاث</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">الاستراتيجية</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">الإعلانات</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">مستشار AI</span></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6">✦ دراسة السوق: كلمة "بزنس كوتشينج" تبحث 340 ألف مرة شهرياً بالعربية. الفجوة الأبرز: لا أحد يستهدف المستقلين في الإمارات تحديداً.</div><div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">8</div><div style="font-size:10px;color:var(--t3)">أدوات</div></div><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">ذكية</div><div style="font-size:10px;color:var(--t3)">بالكامل</div></div><div style="background:var(--s2);border-radius:8px;padding:9px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">24/7</div><div style="font-size:10px;color:var(--t3)">نشط</div></div></div>'
       },
       whatsapp: {
-        icon: '💬', title: 'WhatsApp Hub',
-        html: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">234</div><div style="font-size:10px;color:var(--t3)">Chats</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">94%</div><div style="font-size:10px;color:var(--t3)">Response</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">$4.2K</div><div style="font-size:10px;color:var(--t3)">Revenue</div></div></div><div style="background:var(--s2);border-radius:12px;padding:12px"><div style="background:var(--s3);border-radius:10px 10px 10px 2px;padding:8px 11px;max-width:80%;margin-bottom:6px;font-size:12.5px;color:var(--t1)">هل الكورس لا يزال متاحاً؟</div><div style="background:var(--or-d);border-radius:10px 10px 2px 10px;padding:8px 11px;max-width:80%;margin-left:auto;font-size:12.5px;color:var(--t1)">✦ AI: نعم! الكورس متاح وفيه 3 أماكن بس. هل تريد أن أرسل لك التفاصيل؟</div></div>'
+        icon: '💬',
+        titleEn: 'WhatsApp Hub',
+        titleAr: 'مركز واتساب',
+        htmlEn: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">234</div><div style="font-size:10px;color:var(--t3)">Chats</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">94%</div><div style="font-size:10px;color:var(--t3)">Response</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">$4.2K</div><div style="font-size:10px;color:var(--t3)">Revenue</div></div></div><div style="background:var(--s2);border-radius:12px;padding:12px"><div style="background:var(--s3);border-radius:10px 10px 10px 2px;padding:8px 11px;max-width:80%;margin-bottom:6px;font-size:12.5px;color:var(--t1)">Is the course still open?</div><div style="background:var(--or-d);border-radius:10px 10px 2px 10px;padding:8px 11px;max-width:80%;margin-left:auto;font-size:12.5px;color:var(--t1)">✦ AI: Yes! It is active, only 3 spots left. Do you want me to send details?</div></div>',
+        htmlAr: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">234</div><div style="font-size:10px;color:var(--t3)">محادثة</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">94%</div><div style="font-size:10px;color:var(--t3)">سرعة الرد</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">4.2K$</div><div style="font-size:10px;color:var(--t3)">الأرباح</div></div></div><div style="background:var(--s2);border-radius:12px;padding:12px"><div style="background:var(--s3);border-radius:10px 10px 10px 2px;padding:8px 11px;max-width:80%;margin-bottom:6px;font-size:12.5px;color:var(--t1)">هل الكورس لا يزال متاحاً؟</div><div style="background:var(--or-d);border-radius:10px 10px 2px 10px;padding:8px 11px;max-width:80%;margin-left:auto;font-size:12.5px;color:var(--t1)">✦ AI: نعم! الكورس متاح وفيه 3 أماكن بس. هل تريد أن أرسل لك التفاصيل؟</div></div>'
       },
       digital: {
-        icon: '📦', title: 'Digital Products Hub',
-        html: '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:var(--s2);border-radius:10px;padding:11px;border:1px solid var(--edge)"><div style="font-size:18px;margin-bottom:5px">📅</div><div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px">Social Media Planner</div><div style="font-size:11px;color:#00d98b">$27 · 340 sales/mo</div><div style="display:flex;gap:2px;margin-top:6px"><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div></div></div><div style="background:var(--s2);border-radius:10px;padding:11px;border:1px solid var(--edge)"><div style="font-size:18px;margin-bottom:5px">🤖</div><div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px">ChatGPT Prompt Pack</div><div style="font-size:11px;color:#00d98b">$19 · 520 sales/mo</div><div style="display:flex;gap:2px;margin-top:6px"><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div></div></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12px;color:var(--t1)">✦ Opportunity: Arabic AI Prompt Pack — demand 9/10. Only 3 competitors. Build in 2 days.</div>'
+        icon: '📦',
+        titleEn: 'Digital Products Hub',
+        titleAr: 'مركز المنتجات الرقمية',
+        htmlEn: '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:var(--s2);border-radius:10px;padding:11px;border:1px solid var(--edge)"><div style="font-size:18px;margin-bottom:5px">📅</div><div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px">Social Media Planner</div><div style="font-size:11px;color:#00d98b">$27 · 340 sales/mo</div><div style="display:flex;gap:2px;margin-top:6px"><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div></div></div><div style="background:var(--s2);border-radius:10px;padding:11px;border:1px solid var(--edge)"><div style="font-size:18px;margin-bottom:5px">🤖</div><div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px">ChatGPT Prompt Pack</div><div style="font-size:11px;color:#00d98b">$19 · 520 sales/mo</div><div style="display:flex;gap:2px;margin-top:6px"><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div></div></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12px;color:var(--t1)">✦ Opportunity: Arabic AI Prompt Pack — demand 9/10. Only 3 competitors. Build in 2 days.</div>',
+        htmlAr: '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"><div style="background:var(--s2);border-radius:10px;padding:11px;border:1px solid var(--edge)"><div style="font-size:18px;margin-bottom:5px">📅</div><div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px">مخطط وسائل التواصل</div><div style="font-size:11px;color:#00d98b">27$ · 340 مبيعات/شهر</div><div style="display:flex;gap:2px;margin-top:6px"><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div></div></div><div style="background:var(--s2);border-radius:10px;padding:11px;border:1px solid var(--edge)"><div style="font-size:18px;margin-bottom:5px">🤖</div><div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:2px">حزمة أوامر ChatGPT</div><div style="font-size:11px;color:#00d98b">19$ · 520 مبيعات/شهر</div><div style="display:flex;gap:2px;margin-top:6px"><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--or)"></div><div style="height:4px;width:8px;border-radius:2px;background:var(--s3)"></div></div></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12px;color:var(--t1)">✦ فرصة واعدة: حزمة أوامر ذكاء اصطناعي بالعربية — طلب 9/10. 3 منافسين فقط. أنشئها في يومين.</div>'
       },
       content: {
-        icon: '✦', title: 'Content Hub',
-        html: '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="background:var(--or-d);color:var(--or);padding:4px 10px;border-radius:20px;font-size:11.5px">📝 Caption AI</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">🎬 Script</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">🔥 Hooks</span></div><div style="background:var(--s2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6;border:1px solid var(--edge);margin-bottom:8px">✦ AI Caption Generated:<br><em style="color:var(--t2)">3 أشياء تعلمتها بعد خسارة $50,000 في بزنسي الأول — وكيف تتجنبها أنت 🧵</em></div><div style="display:flex;gap:8px;font-size:11.5px;color:var(--t3)"><span>📸 Instagram</span><span>🎵 TikTok</span><span>✈️ Telegram</span></div>'
+        icon: '✦',
+        titleEn: 'Content Hub',
+        titleAr: 'مركز المحتوى',
+        htmlEn: '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="background:var(--or-d);color:var(--or);padding:4px 10px;border-radius:20px;font-size:11.5px">📝 Caption AI</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">🎬 Script</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">🔥 Hooks</span></div><div style="background:var(--s2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6;border:1px solid var(--edge);margin-bottom:8px">✦ AI Caption Generated:<br><em style="color:var(--t2)">3 things I learned after losing $50,000 in my first business — and how you can avoid them 🧵</em></div><div style="display:flex;gap:8px;font-size:11.5px;color:var(--t3)"><span>📸 Instagram</span><span>🎵 TikTok</span><span>✈️ Telegram</span></div>',
+        htmlAr: '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="background:var(--or-d);color:var(--or);padding:4px 10px;border-radius:20px;font-size:11.5px">📝 كابشن بالذكاء الاصطناعي</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">🎬 سكريبت</span><span style="background:var(--s2);color:var(--t3);padding:4px 10px;border-radius:20px;font-size:11.5px">🔥 خطافات</span></div><div style="background:var(--s2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6;border:1px solid var(--edge);margin-bottom:8px">✦ وصف مولد بالذكاء الاصطناعي:<br><em style="color:var(--t2)">3 أشياء تعلمتها بعد خسارة 50,000$ في مشروعي الأول — وكيف تتجنبها أنت 🧵</em></div><div style="display:flex;gap:8px;font-size:11.5px;color:var(--t3)"><span>📸 إنستغرام</span><span>🎵 تيك توك</span><span>✈️ تيليجرام</span></div>'
       },
       growth: {
-        icon: '🔮', title: 'AI Growth Intelligence',
-        html: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">12</div><div style="font-size:10px;color:var(--t3)">Competitors</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">340K</div><div style="font-size:10px;color:var(--t3)">Searches</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">3</div><div style="font-size:10px;color:var(--t3)">Opportunities</div></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6;margin-bottom:8px">🔮 Competitor Gap: Nobody targeting TikTok + UAE for coaching. Opportunity score: 9.2/10</div><div style="background:var(--s2);border-radius:10px;padding:10px;font-size:12px;color:var(--t2)">📊 Winning ad seen 340K times · CPC $0.12 · 3 variants</div>'
+        icon: '🔮',
+        titleEn: 'AI Growth Intelligence',
+        titleAr: 'ذكاء النمو AI',
+        htmlEn: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">12</div><div style="font-size:10px;color:var(--t3)">Competitors</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">340K</div><div style="font-size:10px;color:var(--t3)">Searches</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">3</div><div style="font-size:10px;color:var(--t3)">Opportunities</div></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6;margin-bottom:8px">🔮 Competitor Gap: Nobody targeting TikTok + UAE for coaching. Opportunity score: 9.2/10</div><div style="background:var(--s2);border-radius:10px;padding:10px;font-size:12px;color:var(--t2)">📊 Winning ad seen 340K times · CPC $0.12 · 3 variants</div>',
+        htmlAr: '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--or)">12</div><div style="font-size:10px;color:var(--t3)">منافسين</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:var(--pu)">340 ألف</div><div style="font-size:10px;color:var(--t3)">عمليات البحث</div></div><div style="background:var(--s2);border-radius:9px;padding:10px;text-align:center"><div style="font-family:var(--ff);font-size:18px;font-weight:800;color:#00d98b">3</div><div style="font-size:10px;color:var(--t3)">فرص نمو</div></div></div><div style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:12px;font-size:12.5px;color:var(--t1);line-height:1.6;margin-bottom:8px">🔮 فجوة المنافسين: لا أحد يستهدف تيك توك + الإمارات للكوتشينج. تقييم الفرصة: 9.2/10</div><div style="background:var(--s2);border-radius:10px;padding:10px;font-size:12px;color:var(--t2)">📊 إعلان رابح شوهد 340 ألف مرة · سعر النقرة 0.12$ · 3 تنوعات</div>'
       }
     };
 
@@ -3299,8 +3363,15 @@
       var d = toolDemos[key];
       if (!d) return;
       document.getElementById('td-icon').textContent = d.icon;
-      document.getElementById('td-title').textContent = d.title;
-      document.getElementById('td-body').innerHTML = d.html;
+      document.getElementById('td-title').textContent = _lang === 'ar' ? d.titleAr : d.titleEn;
+      document.getElementById('td-body').innerHTML = _lang === 'ar' ? d.htmlAr : d.htmlEn;
+    }
+
+    function selectScreenCard(el) {
+      document.querySelectorAll('.screen-card').forEach(function (c) {
+        c.classList.remove('active');
+      });
+      el.classList.add('active');
     }
 
     // ── CHAT ──
@@ -3388,28 +3459,168 @@
       'landing-roadmap-sub': 'We build in public. Upvote features that matter to you.',
       'landing-final-title': 'Ready to run your business<br><span class="grd">like a CEO?</span>',
       'landing-final-sub': 'Join 2,400+ Arab entrepreneurs already using UpKlick.<br>Start free — no credit card, no commitment.',
-      'landing-footer-tagline': 'The AI Operating System for Arab creators, coaches, and entrepreneurs. Build, grow, and manage everything from one dashboard.'
+      'landing-footer-tagline': 'The AI Operating System for Arab creators, coaches, and entrepreneurs. Build, grow, and manage everything from one dashboard.',
+      'landing-ss-dashboard': 'Dashboard',
+      'landing-ss-crm': 'Smart CRM',
+      'landing-ss-marketing': 'Marketing OS',
+      'landing-ss-finance-label': 'Finance',
+      'landing-ss-growth-label': 'AI Growth Intel',
+      'landing-ss-whatsapp-label': 'WhatsApp Hub',
+      'landing-ss-dashboard-title': '⌂ Command Center',
+      'landing-ss-crm-title': '🎯 Smart CRM',
+      'landing-ss-marketing-title': '📣 Marketing OS',
+      'landing-ss-finance-title': '💳 Finance',
+      'landing-ss-growth-title': '🔮 AI Growth Intel',
+      'landing-ss-whatsapp-title': '💬 WhatsApp Hub',
+      'landing-ss-marketing-tag-research': 'Research',
+      'landing-ss-marketing-tag-strategy': 'Strategy',
+      'landing-ss-marketing-tag-ads': 'Ads',
+      'landing-ss-growth-brief': '✦ Your competitor is running 3 ads targeting "online coaching". Opportunity score: 8.4/10',
+      'landing-ss-whatsapp-msg-in': 'Hi! Is the course still available?',
+      'landing-ss-whatsapp-msg-out': 'Hello! Yes, happy to help 🎓',
+
+      'landing-btn-lang': 'عربي',
+      
+      // Hero Mock Dashboard Preview translations
+      'landing-hero-db-revenue': 'Revenue',
+      'landing-hero-db-revenue-ch': '↑ 24% this month',
+      'landing-hero-db-leads': 'Active Leads',
+      'landing-hero-db-leads-ch': '↑ 12 new today',
+      'landing-hero-db-brief-title': '✦ AI Daily Brief',
+      'landing-hero-db-brief-body': 'Your conversion rate is up 18% this week. Focus on following up with 3 warm leads — Mohamed, Sarah, and Ahmed — who opened your proposal but haven\'t replied.',
+      'landing-hero-db-badge-ai': '🤖 AI Analysis Ready',
+      'landing-hero-db-badge-growth': '📈 +340% Growth',
+      'landing-hero-db-title': 'UpKlick Dashboard',
+      
+      // Live Dashboard Screenshot Section Preview translations
+      'landing-ss-eyebrow': '🖥️ Inside UpKlick',
+      'landing-ss-heading': 'Your entire business, <span class="grd">at a glance</span>',
+      'landing-ss-url': 'app.upklick.io/dashboard',
+      'landing-ss-sb-dashboard': '⌂ Dashboard',
+      'landing-ss-sb-grow': 'Grow',
+      'landing-ss-sb-crm': '🎯 Smart CRM',
+      'landing-ss-sb-whatsapp': '💬 WhatsApp',
+      'landing-ss-sb-marketing': '📣 Marketing',
+      'landing-ss-sb-discover': 'Discover',
+      'landing-ss-sb-aigrowth': '🔮 AI Growth',
+      'landing-ss-sb-trends': '📡 Trends',
+      'landing-ss-sb-manage': 'Manage',
+      'landing-ss-sb-tasks': '◉ Tasks',
+      'landing-ss-sb-finance': '💳 Finance',
+      'landing-ss-stat-revenue': 'Revenue',
+      'landing-ss-stat-leads': 'Active Leads',
+      'landing-ss-stat-tasks': 'Tasks',
+      'landing-ss-stat-followers': 'Followers',
+      'landing-ss-stat-brief-title': '✦ AI Daily Brief',
+      'landing-ss-stat-brief-body': 'Your conversion rate is up 18% this week. Focus on following up with 3 warm leads who opened your proposal. Revenue target: 67% complete — you need $2,600 more to hit your goal.',
+
+      // English Reviews translations
+      'landing-review-text-2': '"The AI Growth Intelligence module alone is worth it. I found 3 competitor gaps in my market I didn\'t know existed. Launched a new digital product from that insight — made $2,400 in the first week."',
+      'landing-review-name-2': 'Sarah Al-Mansoori',
+      'landing-review-role-2': 'Content Creator · Dubai 🇦🇪',
+      'landing-review-text-4': '"Digital Products Hub is insane. I went from zero idea to a live Notion template on Gumroad in 3 days following the AI execution plan. Made $890 in the first month with zero ads."',
+      'landing-review-name-4': 'Lama Hassan',
+      'landing-review-role-4': 'Freelancer · Cairo 🇪🇬',
+      'landing-review-text-6': '"The Telegram bot integration is genuinely useful — I get daily reports on my phone without opening the dashboard. Small detail but saves me 20 minutes a day."',
+      'landing-review-name-6': 'Nour El-Din',
+      'landing-review-role-6': 'Agency Owner · Morocco 🇲🇦',
+
+      // FAQ Questions & Answers
+      'landing-faq-q-1': 'Is UpKlick really free to start?',
+      'landing-faq-a-1': 'Yes — the Starter plan is free forever with no credit card required. You get full dashboard access, AI assistant (50 msgs/mo), CRM, content tools, and more. Upgrade to Pro when you want unlimited AI and marketing tools.',
+      'landing-faq-q-2': 'Is it available in Arabic?',
+      'landing-faq-a-2': 'نعم بالكامل. UpKlick يدعم العربية بالكامل — الواجهة، الـ AI، والمحتوى. يمكنك التبديل بين العربية والإنجليزية في أي وقت من الإعدادات. الـ AI مدرب خصيصاً للسوق العربي.',
+      'landing-faq-q-3': 'Can I replace tools like Notion, Trello, and Mailchimp?',
+      'landing-faq-a-3': 'Most people who use UpKlick cancel 4-7 other subscriptions. It covers CRM (replaces HubSpot), task management (replaces Trello/Notion), basic email marketing (replaces Mailchimp for simple campaigns), content planning, and financial tracking. We integrate with tools you want to keep.',
+      'landing-faq-q-4': 'Which payment methods work for Arab markets?',
+      'landing-faq-a-4': 'We accept Visa, Mastercard, Tap Payments (MADA, KNET, STC Pay), PayPal, and bank transfer. Invoices available in AED, SAR, KWD, EGP, and USD.',
+      'landing-faq-q-5': 'How is this different from other all-in-one tools?',
+      'landing-faq-a-5': 'UpKlick is the only platform built specifically for Arab entrepreneurs and creators — with Arabic-first AI, Arab market data (WhatsApp-centric sales, Arab e-commerce integrations), and cultural context baked in. It\'s not a translated Western tool.',
+      'landing-faq-q-6': 'What happens when my free trial ends?',
+      'landing-faq-a-6': 'You automatically drop to the free Starter plan — your data is safe and you keep access to core features. No surprise charges. Upgrade anytime to restore Pro features.',
+
+      // Roadmap Cards translations
+      'landing-rm-phase-1': 'Live Now',
+      'landing-rm-title-1': 'UpKlick Dashboard v1',
+      'landing-rm-desc-1': '32 tools, AI assistant, CRM, marketing, finance, WhatsApp hub, digital products, and full Arabic support.',
+      'landing-rm-tag-1-1': '✅ Live',
+      'landing-rm-tag-1-2': 'Arabic',
+      'landing-rm-tag-1-3': 'AI',
+
+      'landing-rm-phase-2': 'Live Now',
+      'landing-rm-title-2': 'Telegram Bot Control',
+      'landing-rm-desc-2': 'Control your entire dashboard from Telegram. Ask AI, check leads, get reports — all via /commands.',
+      'landing-rm-tag-2-1': '✅ Live',
+
+      'landing-rm-phase-3': 'Q3 2025',
+      'landing-rm-title-3': 'Mobile App (iOS & Android)',
+      'landing-rm-desc-3': 'Native mobile app with push notifications for new leads, daily AI brief, and quick task management.',
+      'landing-rm-tag-3-1': '📱 Mobile',
+      'landing-rm-tag-3-2': 'Push Notifications',
+
+      'landing-rm-phase-4': 'Q3 2025',
+      'landing-rm-title-4': 'UpKlick Academy',
+      'landing-rm-desc-4': 'Built-in learning paths: how to close with WhatsApp, how to launch digital products, how to use AI for content — in Arabic.',
+      'landing-rm-tag-4-1': '🎓 Arabic Courses',
+
+      'landing-rm-phase-5': 'Q4 2025',
+      'landing-rm-title-5': 'Marketplace Integration',
+      'landing-rm-desc-5': 'Sell your digital products directly from UpKlick — without needing Gumroad or Payhip. Arab payment methods included.',
+      'landing-rm-tag-5-1': '🛒 Sell Direct',
+      'landing-rm-tag-5-2': 'Arab Payments',
+
+      'landing-rm-phase-6': '2026',
+      'landing-rm-title-6': 'UpKlick AI Agent (Autonomous)',
+      'landing-rm-desc-6': 'An AI that doesn\'t just answer — it acts. Auto-follow-up leads, schedule content, analyze competitors, and report daily without you asking.',
+      'landing-rm-tag-6-1': '🤖 Autonomous AI',
+      'landing-rm-tag-6-2': 'Game-changing',
+
+      // CTA buttons & notes
+      'landing-final-cta-trial': '🚀 Start Free Trial',
+      'landing-final-cta-talk': '💬 Talk to Us',
+      'landing-final-note': '✓ Free forever plan available &nbsp;&nbsp; ✓ No credit card &nbsp;&nbsp; ✓ Arabic & English',
+
+      // Footer
+      'landing-footer-col-product': 'Product',
+      'landing-footer-link-tools': 'All Tools',
+      'landing-footer-link-pricing': 'Pricing',
+      'landing-footer-link-roadmap': 'Roadmap',
+      'landing-footer-link-login': 'Login',
+      'landing-footer-link-signup': 'Sign Up Free',
+      'landing-footer-col-resources': 'Resources',
+      'landing-footer-link-blog': 'Arabic Blog',
+      'landing-footer-link-tutorials': 'Video Tutorials',
+      'landing-footer-link-help': 'Help Center',
+      'landing-footer-link-api': 'API Docs',
+      'landing-footer-link-changelog': 'Changelog',
+      'landing-footer-col-company': 'Company',
+      'landing-footer-link-about': 'About Us',
+      'landing-footer-link-careers': 'Careers',
+      'landing-footer-link-privacy': 'Privacy Policy',
+      'landing-footer-link-terms': 'Terms of Service',
+      'landing-footer-link-contact': 'Contact Us',
+      'landing-footer-copyright': '© 2025 UpKlick. Built for Arab entrepreneurs 🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦'
     };
 
     var AR_DEFAULTS = {
-      'landing-nav-dashboard': 'الداشبورد',
+      'landing-nav-dashboard': 'الرئيسية',
       'landing-nav-tools': 'الأدوات',
-      'landing-nav-forwho': 'لمن هو',
+      'landing-nav-forwho': 'لمن',
       'landing-nav-pricing': 'الأسعار',
       'landing-nav-roadmap': 'خارطة الطريق',
       'landing-nav-signin': 'تسجيل الدخول',
       'landing-nav-startfree': 'ابدأ مجاناً ←',
-      'landing-hero-badge': 'نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
-      'landing-hero-title': 'أدر بزنسك كاملاً<br>من <span class="grd">لوحة واحدة</span>',
-      'landing-hero-sub': 'CRM، تسويق، محتوى، مالية، واتساب — مدعومون بالذكاء الاصطناعي للمبدعين العرب.',
-      'landing-hero-cta-trial': '🚀 ابدأ التجربة المجانية',
-      'landing-hero-cta-preview': 'شوف الداشبورد ←',
-      'landing-trust-text': 'رائد أعمال يستخدمون UpKlick بالفعل',
+      'landing-hero-badge': 'نظام تشغيل بالذكاء الاصطناعي لرواد الأعمال العرب',
+      'landing-hero-title': 'تحكم في نشاطك التجاري بالكامل<br>من <span class="grd">منصة واحدة</span>',
+      'landing-hero-sub': 'نظام متكامل لإدارة العملاء (CRM)، التسويق، صناعة المحتوى، الحسابات، والواتساب — مصمم خصيصاً بالذكاء الاصطناعي لصنّاع المحتوى، الكوتشز، ورواد الأعمال العرب.',
+      'landing-hero-cta-trial': '🚀 ابدأ تجربتك المجانية',
+      'landing-hero-cta-preview': 'شاهد لوحة التحكم ←',
+      'landing-trust-text': 'أكثر من 2,400 رائد أعمال عربي يثقون في UpKlick',
       'landing-features-eyebrow': 'لقطات حية',
-      'landing-features-title': 'كل حاجة محتاجها، <span class="grd">في مكان واحد</span>',
+      'landing-features-title': 'كل ما تحتاجه لإدارة مشروعك، <span class="grd">في مكان واحد</span>',
       'landing-features-sub': 'لقطات حية وحقيقية من داخل لوحة التحكم.',
       'landing-tools-eyebrow': '32 أداة مدمجة',
-      'landing-tools-title': 'أداة لكل <span class="grd">جزء في بزنسك</span>',
+      'landing-tools-title': 'أداة لكل <span class="grd">جزء في نشاطك أو تجارتك أو عملك</span>',
       'landing-tools-sub': 'كل قسم هو منتج كامل بحد ذاته، مدعوم بالذكاء الاصطناعي.',
       'landing-personas-eyebrow': 'مبني لك',
       'landing-personas-title': 'منصة واحدة. <span class="grd">كل الاتجاهات.</span>',
@@ -3425,13 +3636,153 @@
       'landing-roadmap-sub': 'نحن نبني في العلن. صوّت للميزات التي تهمك.',
       'landing-final-title': 'جاهز لإدارة عملك<br><span class="grd">كمدير تنفيذي؟</span>',
       'landing-final-sub': 'انضم إلى أكثر من 2,400 رائد أعمال عربي يستخدمون UpKlick بالفعل.<br>ابدأ مجاناً — بدون بطاقة، بدون التزامات.',
-      'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز ورواد الأعمال العرب. ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.'
+      'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز ورواد الأعمال العرب. ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.',
+      'landing-ss-dashboard': 'لوحة التحكم',
+      'landing-ss-crm': 'إدارة العملاء',
+      'landing-ss-marketing': 'نظام التسويق',
+      'landing-ss-finance-label': 'المالية',
+      'landing-ss-growth-label': 'ذكاء النمو AI',
+      'landing-ss-whatsapp-label': 'مركز واتساب',
+      'landing-ss-dashboard-title': '⌂ لوحة التحكم الرئيسية',
+      'landing-ss-crm-title': '🎯 إدارة العملاء الذكية',
+      'landing-ss-marketing-title': '📣 نظام التسويق',
+      'landing-ss-finance-title': '💳 المالية والحسابات',
+      'landing-ss-growth-title': '🔮 ذكاء النمو الذكي',
+      'landing-ss-whatsapp-title': '💬 مركز الواتساب',
+      'landing-ss-marketing-tag-research': 'البحث والاستكشاف',
+      'landing-ss-marketing-tag-strategy': 'الاستراتيجية',
+      'landing-ss-marketing-tag-ads': 'الإعلانات',
+      'landing-ss-growth-brief': '✦ منافسك يطلق 3 إعلانات تستهدف "الكوتشينج عبر الإنترنت". تقييم الفرصة: 8.4/10',
+      'landing-ss-whatsapp-msg-in': 'مرحباً! هل الكورس لا يزال متاحاً؟',
+      'landing-ss-whatsapp-msg-out': 'أهلاً! نعم، سعيد بمساعدتك 🎓',
+
+      'landing-btn-lang': 'English',
+      
+      // Hero Mock Dashboard Preview translations (Arabic)
+      'landing-hero-db-revenue': 'الإيرادات',
+      'landing-hero-db-revenue-ch': '↑ 24% هذا الشهر',
+      'landing-hero-db-leads': 'العملاء المهتمين النشطين',
+      'landing-hero-db-leads-ch': '↑ 12 عميل جديد اليوم',
+      'landing-hero-db-brief-title': '✦ الموجز اليومي بالذكاء الاصطناعي',
+      'landing-hero-db-brief-body': 'ارتفع معدل التحويل الخاص بك بنسبة 18% هذا الأسبوع. ركّز على المتابعة مع 3 عملاء محتملين مهتمين — محمد، وسارة، وأحمد — الذين فتحوا عرضك السعري ولم يردوا بعد.',
+      'landing-hero-db-badge-ai': '🤖 تحليل الذكاء الاصطناعي جاهز',
+      'landing-hero-db-badge-growth': '📈 نمو +340%',
+      'landing-hero-db-title': 'لوحة تحكم UpKlick',
+      
+      // Live Dashboard Screenshot Section Preview translations (Arabic)
+      'landing-ss-eyebrow': '🖥️ داخل منصة UpKlick',
+      'landing-ss-heading': 'كل أعمالك، <span class="grd">في لمحة سريعة</span>',
+      'landing-ss-url': 'app.upklick.io/dashboard',
+      'landing-ss-sb-dashboard': '⌂ الرئيسية',
+      'landing-ss-sb-grow': 'النمو',
+      'landing-ss-sb-crm': '🎯 إدارة العملاء',
+      'landing-ss-sb-whatsapp': '💬 واتساب',
+      'landing-ss-sb-marketing': '📣 التسويق',
+      'landing-ss-sb-discover': 'اكتشف',
+      'landing-ss-sb-aigrowth': '🔮 نمو بالذكاء الاصطناعي',
+      'landing-ss-sb-trends': '📡 الترندات',
+      'landing-ss-sb-manage': 'إدارة',
+      'landing-ss-sb-tasks': '◉ المهام',
+      'landing-ss-sb-finance': '💳 المالية والحسابات',
+      'landing-ss-stat-revenue': 'الإيرادات',
+      'landing-ss-stat-leads': 'العملاء المهتمين',
+      'landing-ss-stat-tasks': 'المهام',
+      'landing-ss-stat-followers': 'المتابعين',
+      'landing-ss-stat-brief-title': '✦ الموجز اليومي بالذكاء الاصطناعي',
+      'landing-ss-stat-brief-body': 'ارتفع معدل التحويل الخاص بك بنسبة 18% هذا الأسبوع. ركّز على المتابعة مع 3 عملاء محتملين مهتمين فتحوا عرضك السعري. هدف الإيرادات: تم إنجاز 67% — تحتاج إلى 2,600$ إضافية لتحقيق هدفك.',
+
+      // English Reviews translations (Arabic)
+      'landing-review-text-2': '"وحدة ذكاء النمو بالذكاء الاصطناعي وحدها تستحق ذلك. لقد وجدت 3 ثغرات للمنافسين في سوقي لم أكن أعلم بوجودها. أطلقت منتجاً رقمياً جديداً بناءً على تلك الرؤية — وحققت 2,400 دولار في الأسبوع الأول."',
+      'landing-review-name-2': 'سارة المنصوري',
+      'landing-review-role-2': 'صانعة محتوى · دبي 🇦🇪',
+      'landing-review-text-4': '"مركز المنتجات الرقمية رائع للغاية. لقد انتقلت من عدم وجود أي فكرة إلى قالب Notion جاهز للبيع على Gumroad في 3 أيام باتباع خطة تنفيذ الذكاء الاصطناعي. حققت 890 دولاراً في الشهر الأول بدون إعلانات."',
+      'landing-review-name-4': 'لمى حسن',
+      'landing-review-role-4': 'مستقلة · القاهرة 🇪🇬',
+      'landing-review-text-6': '"التكامل مع بوت تلجرام مفيد حقاً — أحصل على تقارير يومية على هاتفي دون فتح لوحة التحكم. تفصيل صغير ولكنه يوفر لي 20 دقيقة يومياً."',
+      'landing-review-name-6': 'نور الدين',
+      'landing-review-role-6': 'صاحب وكالة · المغرب 🇲🇦',
+
+      // FAQ Questions & Answers (Arabic)
+      'landing-faq-q-1': 'هل البدء في UpKlick مجاني حقاً؟',
+      'landing-faq-a-1': 'نعم — الخطة المجانية (Starter) مجانية للأبد دون الحاجة لبطاقة ائتمان. ستحصل على وصول كامل للوحة التحكم، والمساعد الذكي (50 رسالة شهرياً)، وإدارة العملاء، وأدوات المحتوى والمزيد. قم بالترقية إلى الخطة الاحترافية (Pro) عندما تحتاج للذكاء الاصطناعي وأدوات التسويق بلا حدود.',
+      'landing-faq-q-2': 'هل التطبيق متوفر باللغة العربية؟',
+      'landing-faq-a-2': 'نعم بالكامل. UpKlick يدعم العربية بالكامل — الواجهة، الـ AI، والمحتوى. يمكنك التبديل بين العربية والإنجليزية في أي وقت من الإعدادات. الـ AI مدرب خصيصاً للسوق العربي.',
+      'landing-faq-q-3': 'هل يمكنني استبدال أدوات مثل Notion وTrello وMailchimp؟',
+      'landing-faq-a-3': 'معظم مستخدمي UpKlick يقومون بإلغاء 4 إلى 7 اشتراكات أخرى. حيث تغطي المنصة نظام إدارة العملاء CRM (بديل HubSpot)، وإدارة المهام (بديل Trello/Notion)، والتسويق الأساسي عبر البريد الإلكتروني (بديل Mailchimp للحملات البسيطة)، وتخطيط المحتوى، والمتابعة المالية. كما نتكامل مع الأدوات التي ترغب في الاحتفاظ بها.',
+      'landing-faq-q-4': 'ما هي طرق الدفع التي تعمل في الأسواق العربية؟',
+      'landing-faq-a-4': 'نقبل بطاقات فيزا، وماستركارد، وبوابة دفع Tap (مدى، KNET، STC Pay)، وPayPal، والتحويل البنكي. الفواتير متوفرة بالدرهم الإماراتي، والريال السعودي، والدينار الكويتي، والجنيه المصري، والدولار الأمريكي.',
+      'landing-faq-q-5': 'كيف يختلف هذا عن الأدوات الشاملة الأخرى؟',
+      'landing-faq-a-5': 'UpKlick هي المنصة الوحيدة المصممة خصيصاً لرواد الأعمال وصناع المحتوى العرب — مع ذكاء اصطناعي يدعم العربية كلغة أولى، وبيانات السوق العربي (المبيعات التي تركز على واتساب، وتكاملات التجارة الإلكترونية العربية)، وسياق ثقافي متأصل. هي ليست مجرد أداة غربية مترجمة.',
+      'landing-faq-q-6': 'ماذا يحدث عندما تنتهي فترتي التجريبية المجانية؟',
+      'landing-faq-a-6': 'ستنتقل تلقائياً إلى خطة Starter المجانية — بياناتك آمنة وستحتفظ بالوصول إلى الميزات الأساسية. لا توجد أي رسوم مفاجئة. ويمكنك الترقية في أي وقت لاستعادة ميزات Pro.',
+
+      // Roadmap Cards translations (Arabic)
+      'landing-rm-phase-1': 'متوفر الآن',
+      'landing-rm-title-1': 'لوحة تحكم UpKlick الإصدار الأول',
+      'landing-rm-desc-1': '32 أداة، مساعد ذكاء اصطناعي، نظام إدارة عملاء، تسويق، مالية، مركز واتساب، منتجات رقمية، ودعم كامل للغة العربية.',
+      'landing-rm-tag-1-1': '✅ متوفر',
+      'landing-rm-tag-1-2': 'عربي',
+      'landing-rm-tag-1-3': 'ذكاء اصطناعي',
+
+      'landing-rm-phase-2': 'متوفر الآن',
+      'landing-rm-title-2': 'التحكم عبر بوت تلجرام',
+      'landing-rm-desc-2': 'تحكم في لوحة التحكم الخاصة بك بالكامل من تلجرام. اسأل الذكاء الاصطناعي، تحقق من العملاء المحتملين، واحصل على التقارير — كل ذلك عبر الأوامر (commands/).',
+      'landing-rm-tag-2-1': '✅ متوفر',
+
+      'landing-rm-phase-3': 'الربع الثالث 2025',
+      'landing-rm-title-3': 'تطبيق الهاتف المحمول (iOS وأندرويد)',
+      'landing-rm-desc-3': 'تطبيق هاتف أصلي مع إشعارات فورية للعملاء الجدد، والموجز اليومي للذكاء الاصطناعي، وإدارة المهام السريعة.',
+      'landing-rm-tag-3-1': '📱 تطبيق هاتف',
+      'landing-rm-tag-3-2': 'إشعارات فورية',
+
+      'landing-rm-phase-4': 'الربع الثالث 2025',
+      'landing-rm-title-4': 'أكاديمية UpKlick',
+      'landing-rm-desc-4': 'مسارات تعليمية مدمجة: كيفية إغلاق الصفقات عبر واتساب، كيفية إطلاق المنتجات الرقمية، وكيفية استخدام الذكاء الاصطناعي لصناعة المحتوى — باللغة العربية.',
+      'landing-rm-tag-4-1': '🎓 دورات بالعربية',
+
+      'landing-rm-phase-5': 'التكامل مع المتجر الرقمي',
+      'landing-rm-title-5': 'التكامل مع المتجر الرقمي',
+      'landing-rm-desc-5': 'بع منتجاتك الرقمية مباشرة من UpKlick — دون الحاجة لـ Gumroad أو Payhip. تشمل طرق الدفع العربية.',
+      'landing-rm-tag-5-1': '🛒 بيع مباشر',
+      'landing-rm-tag-5-2': 'مدفوعات عربية',
+
+      'landing-rm-phase-6': 'عام 2026',
+      'landing-rm-title-6': 'وكيل UpKlick الذكي المستقل',
+      'landing-rm-desc-6': 'ذكاء اصطناعي لا يكتفي بالإجابة فحسب — بل يتصرف. متابعة تلقائية للعملاء، جدولة المحتوى، تحليل المنافسين، وإرسال تقارير يومية دون تدخل منك.',
+      'landing-rm-tag-6-1': '🤖 ذكاء اصطناعي مستقل',
+      'landing-rm-tag-6-2': 'تغيير قواعد اللعبة',
+
+      // CTA buttons & notes (Arabic)
+      'landing-final-cta-trial': '🚀 ابدأ التجربة المجانية',
+      'landing-final-cta-talk': '💬 تواصل معنا',
+      'landing-final-note': '✓ تتوفر خطة مجانية للأبد &nbsp;&nbsp; ✓ لا توجد حاجة لبطاقة ائتمان &nbsp;&nbsp; ✓ العربية والإنجليزية',
+
+      // Footer (Arabic)
+      'landing-footer-col-product': 'المنتج',
+      'landing-footer-link-tools': 'جميع الأدوات',
+      'landing-footer-link-pricing': 'الأسعار',
+      'landing-footer-link-roadmap': 'خارطة الطريق',
+      'landing-footer-link-login': 'تسجيل الدخول',
+      'landing-footer-link-signup': 'سجل مجاناً',
+      'landing-footer-col-resources': 'المصادر',
+      'landing-footer-link-blog': 'المدونة العربية',
+      'landing-footer-link-tutorials': 'الفيديوهات التعليمية',
+      'landing-footer-link-help': 'مركز المساعدة',
+      'landing-footer-link-api': 'توثيق واجهة البرمجة (API)',
+      'landing-footer-link-changelog': 'سجل التغييرات',
+      'landing-footer-col-company': 'الشركة',
+      'landing-footer-link-about': 'من نحن',
+      'landing-footer-link-careers': 'الوظائف',
+      'landing-footer-link-privacy': 'سياسة الخصوصية',
+      'landing-footer-link-terms': 'شروط الخدمة',
+      'landing-footer-link-contact': 'اتصل بنا',
+      'landing-footer-copyright': '© 2025 UpKlick. تم التطوير لرواد الأعمال العرب 🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦'
     };
 
     var AR = {
-      nav: ['الداشبورد', 'الأدوات', 'لمن هو', 'الأسعار', 'خارطة الطريق'],
+      nav: ['الرئيسية', 'الأدوات', 'لمن', 'الأسعار', 'خارطة الطريق'],
       tools_name: ['إدارة العملاء الذكية', 'نظام التسويق', 'مركز واتساب', 'المنتجات الرقمية', 'مركز المحتوى', 'ذكاء النمو AI'],
-      tools_desc: ['متابعة العملاء + خط مبيعات + AI', '8 أدوات: بحث، إعلانات، فانلات، AI', 'صندوق وارد، وكيل AI، بث جماعي', 'اكتشف الترند، ابنِ خطة، ابيع عالمياً', 'سكريبت، كابشن، هوك، أفكار فيروسية', 'تجسس على المنافسين، اكتشف الفرص'],
+      tools_desc: ['متابعة العملاء وخطوط المبيعات بالذكاء الاصطناعي', ' أدوات: بحث، إعلانات، مسار بيع ذكي بالذكاء الاصطناعي ', 'صندوق وارد، وكيل ، بث جماعي', 'اكتشف الترند، ابنِ خطة، بيع ', 'سكريبت، كابشن، هوك، أفكار فيروسية', 'تجسس على المنافسين، اكتشف الفرص'],
       personas_title: ['المدرب والكوتش', 'صانع المحتوى', 'رائد الأعمال'],
       personas_desc: ['أدر العملاء، جدول الجلسات، بيع الكورسات — كلها في مكان واحد بدون 10 أدوات مختلفة.', 'حوّل جمهورك لدخل. اكتب محتوى، تابع الترندات، واربح من المنتجات الرقمية تلقائياً.', 'ابنِ فانلات، راقب المنافسين، أدر تسويقك وماليتك من مكان واحد.'],
       stats: ['+32 أداة مدمجة', '+2,400 رائد أعمال عربي', '8 دول', 'مجاني للبدء', 'ذكاء اصطناعي 24/7']
@@ -3463,6 +3814,19 @@
         }
       });
 
+      // Update footer lang buttons state
+      var btnEn = document.getElementById('lang-btn-en');
+      var btnAr = document.getElementById('lang-btn-ar');
+      if (btnEn && btnAr) {
+        if (_lang === 'en') {
+          btnEn.classList.add('on');
+          btnAr.classList.remove('on');
+        } else {
+          btnAr.classList.add('on');
+          btnEn.classList.remove('on');
+        }
+      }
+
       // 2. Translate Tools List
       var toolItems = document.querySelectorAll('.tool-item');
       toolItems.forEach(function (el, idx) {
@@ -3470,19 +3834,23 @@
         var descEl = el.querySelector('.tool-desc');
         var defaultName = _lang === 'ar' ? AR.tools_name[idx] : EN.tools_name[idx];
         var defaultDesc = _lang === 'ar' ? AR.tools_desc[idx] : EN.tools_desc[idx];
-        
+
         if (nameEl) nameEl.textContent = t('landing-tool-name-' + idx, defaultName);
         if (descEl) descEl.textContent = t('landing-tool-desc-' + idx, defaultDesc);
       });
 
-      // Update active tool title
-      var tdTitleEl = document.getElementById('td-title');
-      if (tdTitleEl) {
-        var activeItem = document.querySelector('.tool-item.on');
-        if (activeItem) {
-          var activeName = activeItem.querySelector('.tool-name');
-          if (activeName) tdTitleEl.textContent = activeName.textContent;
-        }
+      // Update active tool title and body content
+      var activeItem = document.querySelector('.tool-item.on');
+      if (activeItem) {
+        var activeKey = 'crm';
+        var onclickAttr = activeItem.getAttribute('onclick') || '';
+        if (onclickAttr.indexOf('marketing') !== -1) activeKey = 'marketing';
+        else if (onclickAttr.indexOf('whatsapp') !== -1) activeKey = 'whatsapp';
+        else if (onclickAttr.indexOf('digital') !== -1) activeKey = 'digital';
+        else if (onclickAttr.indexOf('content') !== -1) activeKey = 'content';
+        else if (onclickAttr.indexOf('growth') !== -1) activeKey = 'growth';
+
+        selectTool(activeItem, activeKey);
       }
 
       // 3. Translate Personas List
@@ -3492,7 +3860,7 @@
         var descEl = el.querySelector('.persona-desc');
         var defaultTitle = _lang === 'ar' ? AR.personas_title[idx] : EN.personas_title[idx];
         var defaultDesc = _lang === 'ar' ? AR.personas_desc[idx] : EN.personas_desc[idx];
-        
+
         if (titleEl) titleEl.textContent = t('landing-persona-title-' + idx, defaultTitle);
         if (descEl) descEl.textContent = t('landing-persona-desc-' + idx, defaultDesc);
       });
@@ -3509,22 +3877,22 @@
     function renderPricingPlans() {
       var grid = document.querySelector('.pricing-grid');
       if (!grid) return;
-      
+
       var isPlanVisible = tenantConfig && tenantConfig.plan && tenantConfig.plan.visible;
       var isPlanAnnualVisible = tenantConfig && tenantConfig.planAnnual && tenantConfig.planAnnual.visible;
-      
+
       var pricingSection = document.getElementById('pricing');
       var pricingNavLinks = document.querySelectorAll('a[href="#pricing"]');
-      
+
       if (tenantConfig && !isPlanVisible && !isPlanAnnualVisible) {
         if (pricingSection) pricingSection.style.display = 'none';
-        pricingNavLinks.forEach(function(el) { el.style.display = 'none'; });
+        pricingNavLinks.forEach(function (el) { el.style.display = 'none'; });
         return;
       } else {
         if (pricingSection) pricingSection.style.display = '';
-        pricingNavLinks.forEach(function(el) { el.style.display = ''; });
+        pricingNavLinks.forEach(function (el) { el.style.display = ''; });
       }
-      
+
       if (!isPlanVisible && !isPlanAnnualVisible) {
         // Fallback to static pricing layout (Default UpKlick plans)
         grid.style.gridTemplateColumns = '1fr 1.1fr 1fr';
@@ -3583,14 +3951,14 @@
           '  </div>' +
           '  <a href="/login" class="btn btn-ghost" style="width:100%;justify-content:center" data-t="landing-plan-agency-cta">Contact Sales</a>' +
           '</div>';
-          
+
         translatePricingElements();
         return;
       }
-      
+
       grid.innerHTML = '';
       var html = '';
-      
+
       // Monthly/Pro
       if (isPlanVisible) {
         var p = tenantConfig.plan;
@@ -3601,12 +3969,12 @@
         var pPeriod = _lang === 'ar' ? (p.period || 'شهرياً') : (p.periodEn || p.period || 'monthly');
         var pCta = _lang === 'ar' ? (p.ctaText || 'اشترك الآن') : (p.ctaTextEn || p.ctaText || 'Subscribe Now');
         var pFeatures = _lang === 'ar' ? (p.features || []) : (p.featuresEn || p.features || []);
-        
+
         if (tenantConfig.freeTrial && tenantConfig.freeTrial.enabled) {
           var trialDays = tenantConfig.freeTrial.days || 14;
           pCta = _lang === 'ar' ? ('ابدأ تجربة مجانية لمدة ' + trialDays + ' يوم') : ('Start ' + trialDays + '-Day Free Trial');
         }
-        
+
         html += '<div class="price-card featured">';
         if (pBadge) {
           html += '<div class="price-badge">' + pBadge + '</div>';
@@ -3616,7 +3984,7 @@
           '<div class="price-period">' + pPeriod + '</div>' +
           '<div class="price-divider"></div>' +
           '<div class="price-features">';
-        pFeatures.forEach(function(f) {
+        pFeatures.forEach(function (f) {
           if (f.trim()) {
             html += '<div class="pf has"><span class="chk">✓</span> ' + f + '</div>';
           }
@@ -3629,7 +3997,7 @@
         }
         html += '</div>';
       }
-      
+
       // Annual
       if (isPlanAnnualVisible) {
         var ap = tenantConfig.planAnnual;
@@ -3640,7 +4008,7 @@
         var apPeriod = _lang === 'ar' ? (ap.period || 'سنوياً') : (ap.periodEn || ap.period || 'yearly');
         var apCta = _lang === 'ar' ? (ap.ctaText || 'اشترك الآن') : (ap.ctaTextEn || ap.ctaText || 'Subscribe Now');
         var apFeatures = _lang === 'ar' ? (ap.features || []) : (ap.featuresEn || ap.features || []);
-        
+
         html += '<div class="price-card">';
         if (apBadge) {
           html += '<div class="price-badge">' + apBadge + '</div>';
@@ -3650,7 +4018,7 @@
           '<div class="price-period">' + apPeriod + '</div>' +
           '<div class="price-divider"></div>' +
           '<div class="price-features">';
-        apFeatures.forEach(function(f) {
+        apFeatures.forEach(function (f) {
           if (f.trim()) {
             html += '<div class="pf has"><span class="chk">✓</span> ' + f + '</div>';
           }
@@ -3659,7 +4027,7 @@
           '<a href="/login" class="btn btn-ghost" style="width:100%;justify-content:center">' + apCta + '</a>' +
           '</div>';
       }
-      
+
       grid.innerHTML = html;
       grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(280px, 1fr))';
       if (grid.children.length === 1) {
@@ -3686,8 +4054,8 @@
         'landing-plan-agency-period': _lang === 'ar' ? 'شهرياً · حتى 5 أعضاء' : 'per month · up to 5 team members',
         'landing-plan-agency-cta': _lang === 'ar' ? 'اتصل بالمبيعات' : 'Contact Sales'
       };
-      
-      Object.keys(trs).forEach(function(key) {
+
+      Object.keys(trs).forEach(function (key) {
         var el = document.querySelector('[data-t="' + key + '"]');
         if (el) {
           el.textContent = t(key, trs[key]);
@@ -3708,54 +4076,69 @@
       if (tenantConfig && tenantConfig.bgColor) root.style.setProperty('--ink', tenantConfig.bgColor);
       if (tenantConfig && tenantConfig.textColor) root.style.setProperty('--t1', tenantConfig.textColor);
       if (tenantConfig && tenantConfig.text2Color) root.style.setProperty('--t2', tenantConfig.text2Color);
-      
+
       if (tenantConfig && tenantConfig.logoUrl) {
-        document.querySelectorAll('.logo img, .footer-brand img, .ss-sidebar img').forEach(function(img) {
+        document.querySelectorAll('.logo img, .footer-brand img, .ss-sidebar img').forEach(function (img) {
           img.src = tenantConfig.logoUrl;
         });
       }
-      
+
       if (tenantConfig) {
         var name = _lang === 'ar' ? (tenantConfig.appName || 'UpKlick') : (tenantConfig.appNameEn || tenantConfig.appName || 'UpKlick');
         var tagline = _lang === 'ar' ? (tenantConfig.tagline || '') : (tenantConfig.taglineEn || tenantConfig.tagline || '');
-        
-        document.querySelectorAll('.logo-text').forEach(function(el) {
+
+        document.querySelectorAll('.logo-text').forEach(function (el) {
           el.textContent = name;
         });
-        document.querySelectorAll('.footer-tagline').forEach(function(el) {
+        document.querySelectorAll('.footer-tagline').forEach(function (el) {
           el.textContent = tagline;
         });
         document.title = name + ' — ' + tagline;
       }
-      
+
       if (tenantConfig && tenantConfig.whatsappNumber) {
         var whatsappUrl = 'https://wa.me/' + tenantConfig.whatsappNumber;
-        document.querySelectorAll('a[href^="https://wa.me/"]').forEach(function(a) {
+        document.querySelectorAll('a[href^="https://wa.me/"]').forEach(function (a) {
           a.href = whatsappUrl;
         });
       }
-      
+
+      if (tenantConfig && tenantConfig.freeTrial && tenantConfig.freeTrial.enabled) {
+        var days = tenantConfig.freeTrial.days || 7;
+        var badgeText = _lang === 'ar'
+          ? '🔥 الحق فترتك التجريبية الآن لمدة ' + days + ' أيام!'
+          : '🔥 Grab your ' + days + '-day free trial now!';
+        var badgeEl = document.getElementById('hero-trial-badge');
+        var badgeTextEl = document.getElementById('hero-trial-badge-text');
+        if (badgeEl && badgeTextEl) {
+          badgeTextEl.textContent = badgeText;
+          badgeEl.style.display = 'block';
+        }
+      } else {
+        var badgeEl = document.getElementById('hero-trial-badge');
+        if (badgeEl) {
+          badgeEl.style.display = 'none';
+        }
+      }
+
       renderPricingPlans();
       translatePage();
     }
 
-    function toggleLang(btn) {
-      _lang = _lang === 'en' ? 'ar' : 'en';
+    function toggleLang(btnOrTarget) {
+      if (btnOrTarget === 'en' || btnOrTarget === 'ar') {
+        _lang = btnOrTarget;
+      } else {
+        _lang = _lang === 'en' ? 'ar' : 'en';
+      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('upklick_lang', _lang);
       }
-      
+
       document.documentElement.setAttribute('lang', _lang);
       document.documentElement.setAttribute('dir', _lang === 'ar' ? 'rtl' : 'ltr');
-      
-      renderPricingPlans();
-      translatePage();
-      
-      if (tenantConfig) {
-        var name = _lang === 'ar' ? (tenantConfig.appName || 'UpKlick') : (tenantConfig.appNameEn || tenantConfig.appName || 'UpKlick');
-        var tagline = _lang === 'ar' ? (tenantConfig.tagline || '') : (tenantConfig.taglineEn || tenantConfig.tagline || '');
-        document.title = name + ' — ' + tagline;
-      }
+
+      applyTenantConfig();
     }
 
     // Initial language config
@@ -3764,7 +4147,7 @@
       document.documentElement.setAttribute('lang', _lang);
       document.documentElement.setAttribute('dir', _lang === 'ar' ? 'rtl' : 'ltr');
     }
-    
+
     // Load config from firebase match domain
     var currentHost = window.location.hostname;
     db.collection('tenants').where('domain', '==', currentHost).get().then(function (snap) {
@@ -3785,7 +4168,7 @@
       if (event.data && event.data.type === 'TENANT_BRANDING') {
         var config = event.data.config;
         if (!config) return;
-        
+
         tenantConfig = config;
         applyTenantConfig();
       }

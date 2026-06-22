@@ -454,6 +454,8 @@ export default function ContentView() {
                         fontWeight: isToday || isSelected ? 700 : 500,
                         color: isToday ? 'var(--orange)' : isSelected ? 'var(--purple)' : 'var(--t1)',
                         boxShadow: isSelected ? '0 0 10px rgba(108, 53, 255, 0.25)' : 'none',
+                        minWidth: 0,
+                        overflow: 'hidden'
                       }}
                       onClick={() => handleAddPostClick(day)}
                     >
@@ -517,7 +519,15 @@ export default function ContentView() {
                       <div className="row" key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--edge)' }}>
                         <div style={{ fontSize: '16px' }}>📱</div>
                         <div style={{ flex: 1 }}>
-                          <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{p.title}</div>
+                          <div className="rn" style={{ 
+                            fontWeight: 600, 
+                            fontSize: '12.5px',
+                            display: '-webkit-box',
+                            WebkitLineClamp: '2',
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>{p.title}</div>
                           <div className="rs" style={{ fontSize: '11px', color: 'var(--t2)' }}>
                             {L(`Day ${p.day} @ ${p.time}`, `اليوم ${p.day} @ ${p.time}`)}
                           </div>

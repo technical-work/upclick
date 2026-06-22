@@ -115,6 +115,40 @@ export default function LoginPage() {
             {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
           </button>
         </form>
+
+        {tenantConfig?.freeTrial?.enabled && (
+          <div style={styles.registerContainer}>
+            <div style={{
+              width: '100%',
+              height: '1px',
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              margin: '22px 0'
+            }} />
+            <span style={{
+              display: 'block',
+              fontSize: '12.5px',
+              color: '#9090b0',
+              marginBottom: '12px'
+            }}>
+              ليس لديك حساب؟
+            </span>
+            <a 
+              href="/register" 
+              style={{ 
+                ...styles.registerButton, 
+                ...(tenantConfig?.primaryColor 
+                  ? { 
+                      borderColor: `${tenantConfig.primaryColor}50`, 
+                      background: `${tenantConfig.primaryColor}0d`,
+                      color: tenantConfig.textColor || '#f8f4ff' 
+                    } 
+                  : {}) 
+              }}
+            >
+              🚀 إنشاء حساب جديد (تجربة مجانية)
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -211,5 +245,27 @@ const styles = {
     width: '100%',
     textAlign: 'center',
     border: '1px solid rgba(255, 95, 87, 0.2)'
+  },
+  registerContainer: {
+    marginTop: '10px',
+    textAlign: 'center',
+    width: '100%'
+  },
+  registerButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    padding: '12px',
+    borderRadius: '12px',
+    border: '1.5px solid rgba(255, 107, 53, 0.4)',
+    background: 'rgba(255, 107, 53, 0.04)',
+    color: '#f8f4ff',
+    fontSize: '14px',
+    fontWeight: '700',
+    textDecoration: 'none',
+    transition: 'all 0.2s',
+    cursor: 'pointer',
+    boxShadow: '0 4px 15px rgba(255,107,53,0.05)'
   }
 };
