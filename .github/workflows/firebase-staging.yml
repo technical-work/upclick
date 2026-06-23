@@ -1,13 +1,16 @@
-name: Deploy to Firebase Staging
+name: Staging Verification
 
 on:
   push:
     branches:
       - dev
+  pull_request:
+    branches:
+      - dev
 
 jobs:
-  build_and_deploy:
-    name: Build and Deploy to Staging
+  verify:
+    name: Verify Build and Lint
     runs-on: ubuntu-latest
 
     steps:
@@ -23,13 +26,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Lint Code
+        run: npm run lint
+
       - name: Build Application
         run: npm run build
 
-      - name: Deploy to Firebase Staging
-        run: |
-          npx firebase-tools hosting:channel:deploy staging \
-            --project staging \
-            --token "$FIREBASE_TOKEN"
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
