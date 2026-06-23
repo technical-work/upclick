@@ -47,11 +47,14 @@ if (typeof window !== "undefined") {
   });
 }
 
-const auth = getAuth(app);
-try {
-  setPersistence(auth, browserSessionPersistence);
-} catch (e) {
-  console.warn("Failed to set Firebase Auth persistence", e);
+let auth = null;
+if (typeof window !== "undefined") {
+  auth = getAuth(app);
+  try {
+    setPersistence(auth, browserSessionPersistence);
+  } catch (e) {
+    console.warn("Failed to set Firebase Auth persistence", e);
+  }
 }
 const db = getFirestore(app);
 const storage = getStorage(app);

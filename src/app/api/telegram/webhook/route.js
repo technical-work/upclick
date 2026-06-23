@@ -6,6 +6,16 @@ export async function POST(req) {
   try {
     const body = await req.json();
     
+    if (db) {
+      // Log the webhook request for diagnostics
+      const logRef = doc(collection(db, 'telegram_webhook_logs'));
+      await setDoc(logRef, {
+        payload: body,
+        receivedAt: new Date().toISOString(),
+        status: 'received'
+      });
+    }
+
     // Check if it's a message
     if (body.message) {
       const msg = body.message;

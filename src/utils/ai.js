@@ -11,71 +11,48 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
     }
   }
 
-  const claudeKey = gc?.integrations?.claudeKey;
-  const openaiKey = gc?.integrations?.openaiKey;
-  const claudeConnected = gc?.integrations?.claudeConnected;
-  const openaiConnected = gc?.integrations?.openaiConnected;
+  // Determine credentials to use
+  const defaultKey = "sk-nry-sCBhTqkDeBcp8fp53eO5OQIJ96ztTuNCat9lorftjm4";
+  const defaultEndpoint = "https://router.bynara.id/v1/chat/completions";
+  const defaultModel = "glm-5";
 
-  // Try Claude first if key is present
-  if (claudeKey && (claudeConnected || !openaiKey)) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': claudeKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-profiles-allowed': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1200,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      });
-      const data = await res.json();
-      if (data.content && data.content[0] && data.content[0].text) {
-        return data.content[0].text;
-      }
-      if (data.error) {
-        console.warn('Claude API error object:', data.error);
-      }
-    } catch (error) {
-      console.warn('Claude API request failed:', error);
-    }
-  }
+  const customKey = gc?.integrations?.bynaraKey;
+  const customEndpoint = gc?.integrations?.bynaraEndpoint;
+  const customModel = gc?.integrations?.bynaraModel;
+  const isCustomConnected = gc?.integrations?.bynaraConnected;
 
-  // Try OpenAI if key is present
-  if (openaiKey && (openaiConnected || !claudeKey)) {
-    try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: prompt }
-          ]
-        })
-      });
-      const data = await res.json();
-      if (data.choices && data.choices[0] && data.choices[0].message) {
-        return data.choices[0].message.content;
-      }
-      if (data.error) {
-        console.warn('OpenAI API error object:', data.error);
-      }
-    } catch (error) {
-      console.warn('OpenAI API request failed:', error);
+  const API_KEY = (isCustomConnected && customKey) ? customKey : defaultKey;
+  const ENDPOINT = (isCustomConnected && customEndpoint) ? customEndpoint : defaultEndpoint;
+  const MODEL_NAME = (isCustomConnected && customModel) ? customModel : defaultModel;
+
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ]
+      })
+    });
+    const data = await res.json();
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      return data.choices[0].message.content;
     }
+    if (data.error) {
+      console.warn('Custom API error object:', data.error);
+    }
+  } catch (error) {
+    console.warn('Custom API request failed:', error);
   }
 
   // Fallback engine
+
   try {
     return generateSmartFallback(prompt, lang, gc);
   } catch (fallbackError) {

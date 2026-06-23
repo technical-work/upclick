@@ -63,5 +63,19 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
+
+    // Telegram Webhook Collections
+    match /telegram_webhook_logs/{logId} {
+      allow read, write: if true;
+    }
+    match /telegram_contacts/{contactId} {
+      allow read, write: if true;
+    }
+    match /telegram_chats/{chatId} {
+      allow read, write: if true;
+    }
+    match /telegram_chats/{chatId}/messages/{msgId} {
+      allow read, write: if true;
+    }
   }
 }

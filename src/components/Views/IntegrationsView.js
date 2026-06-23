@@ -17,6 +17,7 @@ export default function IntegrationsView() {
   const [mailchimpConnected, setMailchimpConnected] = useState(false);
   const [telegramConnected, setTelegramConnected] = useState(false);
   const [apifyConnected, setApifyConnected] = useState(false);
+  const [bynaraConnected, setBynaraConnected] = useState(false);
 
   // Key Fields
   const [stripeKey, setStripeKey] = useState('');
@@ -26,6 +27,9 @@ export default function IntegrationsView() {
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
   const [apifyToken, setApifyToken] = useState('');
+  const [bynaraKey, setBynaraKey] = useState('');
+  const [bynaraEndpoint, setBynaraEndpoint] = useState('https://router.bynara.id/v1/chat/completions');
+  const [bynaraModel, setBynaraModel] = useState('glm-5');
 
   // Sync state with GC on mount or database update
   useEffect(() => {
@@ -38,6 +42,7 @@ export default function IntegrationsView() {
       setMailchimpConnected(integrations.mailchimpConnected || false);
       setTelegramConnected(integrations.telegramConnected || false);
       setApifyConnected(integrations.apifyConnected || false);
+      setBynaraConnected(integrations.bynaraConnected || false);
 
       setStripeKey(integrations.stripeKey || '');
       setTapKey(integrations.tapKey || '');
@@ -46,6 +51,9 @@ export default function IntegrationsView() {
       setTelegramBotToken(integrations.telegramBotToken || '');
       setTelegramChatId(integrations.telegramChatId || '');
       setApifyToken(integrations.apifyToken || '');
+      setBynaraKey(integrations.bynaraKey || '');
+      setBynaraEndpoint(integrations.bynaraEndpoint || 'https://router.bynara.id/v1/chat/completions');
+      setBynaraModel(integrations.bynaraModel || 'glm-5');
     }
   }, [GC]);
 
@@ -79,6 +87,7 @@ export default function IntegrationsView() {
                        : serviceName === 'tap' ? 'Tap Payments'
                        : serviceName === 'claude' ? 'Claude AI'
                        : serviceName === 'openai' ? 'OpenAI'
+                       : serviceName === 'bynara' ? 'Custom AI'
                        : serviceName === 'telegram' ? 'Telegram Bot'
                        : serviceName === 'apify' ? 'Apify Scraper'
                        : serviceName === 'mailchimp' ? 'Mailchimp' : serviceName;
@@ -192,6 +201,60 @@ export default function IntegrationsView() {
       {activeTab === 'integ-ai' && (
         <div className="tab-panel on" id="integ-ai">
           <div className="g2">
+            <div className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span style={{ fontSize: '32px' }}>🧠</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t1)' }}>Bynara AI (Custom Endpoint)</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>{L('Use your own custom AI model endpoint', 'استخدم نقطة اتصال لنموذج ذكاء اصطناعي مخصص')}</div>
+                </div>
+                <span className={`badge ${bynaraConnected ? 'b-green' : 'b-ai'}`}>
+                  {bynaraConnected ? L('Connected', 'متصل') : L('Inactive', 'غير نشط')}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>API Key</label>
+                  <input 
+                    className="inp" 
+                    type="password" 
+                    value={bynaraKey} 
+                    onChange={(e) => setBynaraKey(e.target.value)} 
+                    onBlur={(e) => handleBlur('bynaraKey', e.target.value)}
+                    placeholder="sk-..." 
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>Endpoint URL</label>
+                  <input 
+                    className="inp" 
+                    type="text" 
+                    value={bynaraEndpoint} 
+                    onChange={(e) => setBynaraEndpoint(e.target.value)} 
+                    onBlur={(e) => handleBlur('bynaraEndpoint', e.target.value)}
+                    placeholder="https://..." 
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>Model Name</label>
+                  <input 
+                    className="inp" 
+                    type="text" 
+                    value={bynaraModel} 
+                    onChange={(e) => setBynaraModel(e.target.value)} 
+                    onBlur={(e) => handleBlur('bynaraModel', e.target.value)}
+                    placeholder="glm-5" 
+                  />
+                </div>
+                <button 
+                  className={`btn ${bynaraConnected ? 'btn-ghost' : 'btn-prime'}`}
+                  onClick={() => handleConnectToggle('bynara', bynaraConnected, setBynaraConnected, { bynaraKey, bynaraEndpoint, bynaraModel })}
+                >
+                  {bynaraConnected ? L('Disconnect', 'إلغاء الربط') : L('Connect Custom AI', 'ربط الذكاء الاصطناعي المخصص')}
+                </button>
+              </div>
+            </div>
+
             <div className="card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                 <span style={{ fontSize: '32px' }}>🔮</span>

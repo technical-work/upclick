@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import Papa from 'papaparse';
 
 export default function TelegramHubView() {
   const {
@@ -43,6 +44,32 @@ export default function TelegramHubView() {
   // Broadcast list state
   const [broadcasts, setBroadcasts] = useState(tg.broadcasts || []);
   const [newBcTitle, setNewBcTitle] = useState('');
+
+  // Diagnostics Modal States
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [diagData, setDiagData] = useState({ webhookInfo: null, logs: [] });
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [testChatId, setTestChatId] = useState('');
+  const [testMessage, setTestMessage] = useState('Test from UpKlick 🚀');
+  const [testLoading, setTestLoading] = useState(false);
+
+  // Chat UI states
+  const [chatMessages, setChatMessages] = useState([]);
+  const [replyText, setReplyText] = useState('');
+  const [replyLoading, setReplyLoading] = useState(false);
+
+  // CSV Import States
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvHeaders, setCsvHeaders] = useState([]);
+  const [csvData, setCsvData] = useState([]);
+  const [showMappingModal, setShowMappingModal] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [columnMap, setColumnMap] = useState({
+    id: '',
+    firstName: '',
+    lastName: '',
+    username: ''
+  });
 
   // Update local states when GC changes
   useEffect(() => {
@@ -87,6 +114,24 @@ export default function TelegramHubView() {
       if (unsubscribeContacts) unsubscribeContacts();
     };
   }, [GC?.integrations?.telegramConnected]);
+
+  // Fetch real-time messages for the selected chat
+  useEffect(() => {
+    let unsubscribeMessages;
+    if (selectedChat?.id) {
+      const messagesQuery = query(collection(db, `telegram_chats/${selectedChat.id}/messages`), orderBy('date', 'asc'));
+      unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
+        const msgs = [];
+        snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
+        setChatMessages(msgs);
+      });
+    } else {
+      setChatMessages([]);
+    }
+    return () => {
+      if (unsubscribeMessages) unsubscribeMessages();
+    };
+  }, [selectedChat]);
 
   const saveTGHub = (updatedFields) => {
     saveGC({
@@ -162,12 +207,115 @@ export default function TelegramHubView() {
     alert(L('Broadcast campaign sent successfully! 🚀', 'تم إرسال حملة البث بنجاح! 🚀'));
   };
 
+  const fetchDiagnostics = async () => {
+    if (!GC?.integrations?.telegramBotToken) return;
+    setDiagLoading(true);
+    try {
+      const res = await fetch('/api/telegram/diagnostics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: GC.integrations.telegramBotToken })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setDiagData({ webhookInfo: data.webhookInfo, logs: data.logs || [] });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDiagLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showDiagnostics) {
+      fetchDiagnostics();
+    }
+  }, [showDiagnostics]);
+
+  const handleSendTest = async () => {
+    if (!testChatId) return alert(L('Please enter a Chat ID', 'الرجاء إدخال معرف المحادثة (Chat ID)'));
+    setTestLoading(true);
+    try {
+      const res = await fetch('/api/telegram/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: GC.integrations?.telegramBotToken, chatId: testChatId, message: testMessage })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(L('Test message sent successfully!', 'تم إرسال الرسالة التجريبية بنجاح!'));
+        fetchDiagnostics(); // refresh logs
+      } else {
+        alert(L('Failed to send:', 'فشل الإرسال: ') + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert(L('Network error', 'خطأ في الشبكة'));
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !selectedChat?.id || !GC?.integrations?.telegramBotToken) return;
+    setReplyLoading(true);
+    try {
+      const res = await fetch('/api/telegram/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: GC.integrations.telegramBotToken,
+          chatId: selectedChat.id,
+          message: replyText
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setReplyText('');
+        // Optimistically insert message into Firestore since webhook doesn't receive sent messages
+        const msgRef = doc(collection(db, `telegram_chats/${selectedChat.id}/messages`));
+        await setDoc(msgRef, {
+          text: replyText,
+          date: Math.floor(Date.now() / 1000), // match telegram unix timestamp format
+          direction: 'outbound',
+          from: 'agent'
+        });
+        const chatRef = doc(db, 'telegram_chats', selectedChat.id);
+        await setDoc(chatRef, {
+          lastMessage: replyText,
+          lastMessageAt: new Date().toISOString()
+        }, { merge: true });
+      } else {
+        alert(L('Failed to send:', 'فشل الإرسال: ') + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert(L('Network error', 'خطأ في الشبكة'));
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
+  const handleContactClick = (contact) => {
+    const chat = liveChats.find(c => c.id === contact.id.toString());
+    if (chat) {
+      setSelectedChat(chat);
+    } else {
+      setSelectedChat({
+        id: contact.id.toString(),
+        contactId: contact.firstName || 'Unknown'
+      });
+    }
+    setActiveTab('inbox');
+  };
+
   const handleConnectAPI = async () => {
     const newToken = prompt(L('Enter Telegram Bot API token:', 'أدخل توكن بوت التليجرام الخاص بك:'), GC?.integrations?.telegramBotToken || '');
     if (newToken !== null) {
-      let webhookUrl = prompt(L('Enter your Webhook URL (e.g. https://your-ngrok.app/api/telegram/webhook):', 'أدخل رابط الويب هوك الخاص بك (مثل https://your-ngrok.app/api/telegram/webhook):'), GC?.integrations?.telegramWebhookUrl || '');
+      const webhookUrl = 'https://upklick-eight.vercel.app/api/telegram/webhook';
       
-      if (newToken && webhookUrl) {
+      if (newToken) {
         try {
           const res = await fetch(`https://api.telegram.org/bot${newToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
           const data = await res.json();
@@ -191,7 +339,73 @@ export default function TelegramHubView() {
         } 
       };
       saveGC(newGC);
-      if (newToken) alert(L('Token and Webhook updated successfully! You can now receive messages.', 'تم تحديث التوكن والويب هوك بنجاح! يمكنك الآن استلام الرسائل.'));
+      if (newToken) alert(L('Token updated successfully! You can now receive messages.', 'تم تحديث التوكن بنجاح! يمكنك الآن استلام الرسائل.'));
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCsvFile(file);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        if (results.meta && results.meta.fields) {
+          setCsvHeaders(results.meta.fields);
+          setCsvData(results.data);
+          setShowMappingModal(true);
+        } else {
+          alert(L('Error parsing CSV headers', 'خطأ في قراءة عناوين الأعمدة من الملف'));
+        }
+      },
+      error: function(err) {
+        alert(L('Error parsing file', 'خطأ في قراءة الملف: ') + err.message);
+      }
+    });
+    e.target.value = null; // Reset input
+  };
+
+  const handleImportConfirm = async () => {
+    if (!columnMap.id) {
+      alert(L('You must select a column for ID.', 'يجب اختيار العمود الخاص بمعرف العميل (ID).'));
+      return;
+    }
+    setImportLoading(true);
+    let importedCount = 0;
+
+    try {
+      for (const row of csvData) {
+        const rowId = row[columnMap.id];
+        if (!rowId) continue;
+        
+        const firstName = columnMap.firstName ? row[columnMap.firstName] : '';
+        const lastName = columnMap.lastName ? row[columnMap.lastName] : '';
+        const username = columnMap.username ? row[columnMap.username] : '';
+
+        const contactRef = doc(db, 'telegram_contacts', rowId.toString());
+        await setDoc(contactRef, {
+          id: rowId.toString(),
+          firstName: firstName,
+          lastName: lastName,
+          username: username,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        importedCount++;
+      }
+      
+      alert(L(`Successfully imported ${importedCount} contacts!`, `تم استيراد ${importedCount} جهة اتصال بنجاح!`));
+      setShowMappingModal(false);
+      setCsvFile(null);
+      setCsvData([]);
+      setColumnMap({ id: '', firstName: '', lastName: '', username: '' });
+    } catch (error) {
+      console.error(error);
+      alert(L('Error importing contacts', 'حدث خطأ أثناء حفظ جهات الاتصال'));
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -220,7 +434,7 @@ export default function TelegramHubView() {
           <button className="btn-ai" onClick={() => setAiPanelOpen(true)}>
             ✦ {L('AI Advisor', 'مستشار الذكاء الاصطناعي')}
           </button>
-          <button className="btn btn-ghost" style={{ padding: '6px 12px' }} onClick={handleConnectAPI}>
+          <button className="btn btn-ghost" style={{ padding: '6px 12px' }} onClick={() => setShowDiagnostics(true)}>
             ⚙️ {L('Connection Settings', 'اعدادات الربط')}
           </button>
           <button className="btn btn-prime" onClick={() => { setActiveTab('broadcasts'); alert(L('Scroll down to create a new broadcast campaign.', 'انتقل للأسفل لإنشاء حملة بث جديدة.')); }}>
@@ -233,7 +447,7 @@ export default function TelegramHubView() {
       <div className="g4 stagger mb">
         <div className="stat-card">
           <div className="stat-lbl">💬 {L('Total Chats', 'إجمالي المحادثات')}</div>
-          <div className="stat-val" id="tg-stat-chats">0</div>
+          <div className="stat-val" id="tg-stat-chats">{liveChats.length}</div>
           <div className="stat-ch ch-nu">{L('active conversations', 'محادثات نشطة')}</div>
         </div>
         <div className="stat-card">
@@ -281,7 +495,10 @@ export default function TelegramHubView() {
                 liveChats.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {liveChats.map(chat => (
-                      <div key={chat.id} style={{ padding: '10px', background: 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--edge)' }}>
+                      <div 
+                        key={chat.id} 
+                        onClick={() => setSelectedChat(chat)}
+                        style={{ padding: '10px', background: selectedChat?.id === chat.id ? 'var(--surface2)' : 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid', borderColor: selectedChat?.id === chat.id ? 'var(--prime)' : 'var(--edge)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                           <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{chat.contactId || 'Unknown'}</span>
                           <span style={{ fontSize: '10px', color: 'var(--t3)' }}>{new Date(chat.lastMessageAt).toLocaleTimeString()}</span>
@@ -306,22 +523,66 @@ export default function TelegramHubView() {
               )}
             </div>
           </div>
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-            {GC?.integrations?.telegramConnected ? (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+            {selectedChat ? (
               <>
+                {/* Chat Header */}
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--edge)', background: 'var(--surface2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{selectedChat.contactId || 'Unknown'}</div>
+                  <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => setSelectedChat(null)}>✕</button>
+                </div>
+                {/* Messages List */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {chatMessages.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--t3)', fontSize: '12px', marginTop: '20px' }}>
+                      {L('Loading messages...', 'جاري تحميل الرسائل...')}
+                    </div>
+                  ) : (
+                    chatMessages.map(msg => {
+                      const isOutbound = msg.direction === 'outbound';
+                      return (
+                        <div key={msg.id} style={{ alignSelf: isOutbound ? (lang==='ar'?'flex-start':'flex-end') : (lang==='ar'?'flex-end':'flex-start'), maxWidth: '75%' }}>
+                          <div style={{ background: isOutbound ? 'var(--prime)' : 'var(--surface2)', color: isOutbound ? '#fff' : 'var(--t1)', padding: '10px 14px', borderRadius: '12px', borderBottomLeftRadius: isOutbound || lang==='ar' ? '12px' : '2px', borderBottomRightRadius: isOutbound && lang!=='ar' ? '2px' : '12px', fontSize: '13px', direction: 'ltr' }}>
+                            {msg.text}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px', textAlign: isOutbound ? (lang==='ar'?'left':'right') : (lang==='ar'?'right':'left') }}>
+                            {new Date(msg.date * 1000).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {/* Chat Input */}
+                <div style={{ padding: '12px', borderTop: '1px solid var(--edge)', display: 'flex', gap: '8px' }}>
+                  <input 
+                    className="inp" 
+                    placeholder={L('Type a message...', 'اكتب رسالة...')} 
+                    style={{ flex: 1 }} 
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
+                  />
+                  <button className="btn btn-prime" onClick={handleSendReply} disabled={replyLoading || !replyText.trim()}>
+                    {replyLoading ? '...' : L('Send', 'إرسال')}
+                  </button>
+                </div>
+              </>
+            ) : GC?.integrations?.telegramConnected ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '20px' }}>
                 <div style={{ fontSize: '40px' }}>🤖</div>
                 <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)' }}>
                   {L('Telegram Connected Successfully', 'تم ربط تليجرام بنجاح')}
                 </div>
                 <div style={{ fontSize: '13px', color: 'var(--t2)', textAlign: 'center', maxWidth: '360px' }}>
-                  {L('Your Telegram bot is now active. You will receive new messages here.', 'بوت التليجرام الخاص بك نشط الآن. ستتلقى الرسائل الجديدة هنا.')}
+                  {L('Select a conversation from the list to view messages and reply.', 'حدد محادثة من القائمة لعرض الرسائل والرد عليها.')}
                 </div>
-                <button className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={handleConnectAPI}>
-                  ⚙️ {L('Update Telegram Token', 'تحديث توكن تليجرام')}
+                <button className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={() => setShowDiagnostics(true)}>
+                  ⚙️ {L('Connection Settings', 'إعدادات الربط')}
                 </button>
-              </>
+              </div>
             ) : (
-              <>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '20px' }}>
                 <div style={{ fontSize: '40px' }}>💬</div>
                 <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)' }}>
                   {L('Connect Telegram Business', 'ربط حساب تليجرام للأعمال')}
@@ -329,7 +590,7 @@ export default function TelegramHubView() {
                 <div style={{ fontSize: '13px', color: 'var(--t2)', textAlign: 'center', maxWidth: '360px' }}>
                   {L('Connect your Telegram Business API to manage all conversations, automate replies, and track sales from one place.', 'قم بربط حسابك بواجهة برمجة تطبيقات تليجرام للأعمال لإدارة جميع المحادثات، أتمتة الردود، وتتبع المبيعات من مكان واحد.')}
                 </div>
-                <button className="btn btn-prime" style={{ padding: '10px 24px' }} onClick={handleConnectAPI}>
+                <button className="btn btn-prime" style={{ padding: '10px 24px' }} onClick={() => setShowDiagnostics(true)}>
                   🔗 {L('Connect Telegram Bot', 'ربط بوت التليجرام')}
                 </button>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -337,7 +598,7 @@ export default function TelegramHubView() {
                   <span className="badge b-blue">Meta Cloud API</span>
                   <span className="badge b-purple">OpenAI Integration</span>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -840,7 +1101,7 @@ export default function TelegramHubView() {
           <div className="g4 stagger">
             <div className="stat-card">
               <div className="stat-lbl">👤 {L('Total Contacts', 'إجمالي جهات الاتصال')}</div>
-              <div className="stat-val">0</div>
+              <div className="stat-val">{liveContacts.length}</div>
             </div>
             <div className="stat-card">
               <div className="stat-lbl">🔥 {L('Hot Leads', 'عملاء محتملون ساخنون')}</div>
@@ -861,7 +1122,14 @@ export default function TelegramHubView() {
               <div className="sec-title">👤 {L('Contact Database', 'قاعدة بيانات جهات الاتصال')}</div>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <input className="inp" placeholder={L('Search contacts...', 'البحث في جهات الاتصال...')} style={{ fontSize: '12px', padding: '6px 11px', width: '200px' }} />
-                <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={() => alert(L('Importing contact list...', 'جاري استيراد قائمة جهات الاتصال...'))}>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  id="csv-upload" 
+                  style={{ display: 'none' }} 
+                  onChange={handleFileUpload} 
+                />
+                <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={() => document.getElementById('csv-upload').click()}>
                   + {L('Import', 'استيراد')}
                 </button>
               </div>
@@ -871,19 +1139,19 @@ export default function TelegramHubView() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('ID', 'المعرف')}</th>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('Name', 'الاسم')}</th>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('Username', 'اسم المستخدم')}</th>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('Last Active', 'آخر نشاط')}</th>
+                      <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('ID', 'المعرف')}</th>
+                      <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Name', 'الاسم')}</th>
+                      <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Username', 'اسم المستخدم')}</th>
+                      <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Active', 'آخر نشاط')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {liveContacts.map(contact => (
-                      <tr key={contact.id} style={{ borderBottom: '1px solid var(--edge)' }}>
-                        <td style={{ padding: '10px', color: 'var(--t2)' }}>{contact.id}</td>
-                        <td style={{ padding: '10px', fontWeight: 600 }}>{contact.firstName} {contact.lastName}</td>
-                        <td style={{ padding: '10px', color: 'var(--t2)' }}>{contact.username ? `@${contact.username}` : '-'}</td>
-                        <td style={{ padding: '10px', color: 'var(--t3)' }}>{new Date(contact.updatedAt).toLocaleString()}</td>
+                      <tr key={contact.id} style={{ borderBottom: '1px solid var(--edge)', cursor: 'pointer' }} onClick={() => handleContactClick(contact)}>
+                        <td style={{ padding: '10px', color: 'var(--t2)', textAlign: lang==='ar'?'right':'left' }}>{contact.id}</td>
+                        <td style={{ padding: '10px', fontWeight: 600, textAlign: lang==='ar'?'right':'left' }}>{contact.firstName} {contact.lastName}</td>
+                        <td style={{ padding: '10px', color: 'var(--t2)', textAlign: lang==='ar'?'right':'left' }}>{contact.username ? `@${contact.username}` : '-'}</td>
+                        <td style={{ padding: '10px', color: 'var(--t3)', textAlign: lang==='ar'?'right':'left' }}>{new Date(contact.updatedAt).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -904,6 +1172,172 @@ export default function TelegramHubView() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Diagnostics Modal */}
+      {showDiagnostics && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setShowDiagnostics(false); }} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="modal-content card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', position: 'relative' }}>
+            <button className="btn btn-ghost" style={{ position: 'absolute', top: '16px', right: lang==='ar'?'auto':'16px', left: lang==='ar'?'16px':'auto', padding: '5px 10px' }} onClick={() => setShowDiagnostics(false)}>
+              ✕
+            </button>
+            <div className="sec-hd" style={{ marginBottom: '20px' }}>
+              <div className="sec-title" style={{ fontSize: '20px' }}>⚙️ {L('Connection Settings & Diagnostics', 'إعدادات الربط والتشخيص')}</div>
+            </div>
+
+            {/* Quick Actions */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <button className="btn btn-prime" onClick={handleConnectAPI}>
+                🔑 {L('Update Bot Token', 'تحديث توكن البوت')}
+              </button>
+              <button className="btn btn-ghost" onClick={fetchDiagnostics}>
+                🔄 {L('Refresh Status', 'تحديث الحالة')}
+              </button>
+            </div>
+
+            {diagLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--t3)' }}>{L('Loading diagnostics...', 'جاري تحميل بيانات التشخيص...')}</div>
+            ) : (
+              <>
+                {/* Status Section */}
+                <div style={{ background: 'var(--surface2)', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: 'var(--t1)' }}>{L('Webhook Status', 'حالة الويب هوك (Webhook)')}</h4>
+                  {diagData.webhookInfo ? (
+                    <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div><strong style={{ color: 'var(--t2)' }}>{L('Pending Updates:', 'تحديثات معلقة:')}</strong> {diagData.webhookInfo.pending_update_count || 0}</div>
+                      {diagData.webhookInfo.last_error_message && (
+                        <div style={{ color: 'var(--red)' }}><strong style={{ color: 'var(--red)' }}>{L('Last Error:', 'آخر خطأ:')}</strong> {diagData.webhookInfo.last_error_message}</div>
+                      )}
+                      {!diagData.webhookInfo.last_error_message && diagData.webhookInfo.url && (
+                        <div style={{ color: 'var(--green)' }}>✅ {L('Webhook is active and receiving messages', 'الويب هوك نشط ويستقبل الرسائل بشكل سليم')}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--t3)', fontSize: '13px' }}>{L('No Webhook Info available. Ensure token is set.', 'لا توجد بيانات للويب هوك. تأكد من إدخال التوكن.')}</div>
+                  )}
+                </div>
+
+                {/* Send Test Message */}
+                <div style={{ background: 'var(--surface2)', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: 'var(--t1)' }}>{L('Test Connection', 'اختبار الاتصال')}</h4>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <input className="inp" placeholder={L('Chat ID (e.g. 123456)', 'معرف المحادثة (Chat ID)')} style={{ flex: 1, minWidth: '150px' }} value={testChatId} onChange={(e) => setTestChatId(e.target.value)} />
+                    <input className="inp" placeholder={L('Message', 'الرسالة')} style={{ flex: 2, minWidth: '200px' }} value={testMessage} onChange={(e) => setTestMessage(e.target.value)} />
+                    <button className="btn btn-prime" onClick={handleSendTest} disabled={testLoading}>
+                      {testLoading ? '...' : L('Send Test', 'إرسال تجريبي')}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Logs Table */}
+                <div style={{ background: 'var(--surface2)', padding: '16px', borderRadius: '12px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: 'var(--t1)' }}>{L('Incoming Webhook Logs', 'سجل الطلبات الواردة للويب هوك')}</h4>
+                  {diagData.logs && diagData.logs.length > 0 ? (
+                    <div style={{ overflowX: 'auto', maxHeight: '300px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                        <thead style={{ position: 'sticky', top: 0, background: 'var(--surface2)', zIndex: 1 }}>
+                          <tr style={{ borderBottom: '1px solid var(--edge)', color: 'var(--t2)' }}>
+                            <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Date', 'التاريخ')}</th>
+                            <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Status', 'الحالة')}</th>
+                            <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Payload Preview', 'معاينة الطلب')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {diagData.logs.map(log => (
+                            <tr key={log.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                              <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>{new Date(log.receivedAt).toLocaleString()}</td>
+                              <td style={{ padding: '8px' }}><span className="badge b-green">{log.status}</span></td>
+                              <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--t3)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {JSON.stringify(log.payload)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--t3)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
+                      {L('No logs found. Try sending a message from Telegram to your bot.', 'لا يوجد سجل للطلبات. جرب إرسال رسالة من تليجرام إلى البوت.')}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mapping Modal */}
+      {showMappingModal && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setShowMappingModal(false); }} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="modal-content card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', position: 'relative' }}>
+            <button className="btn btn-ghost" style={{ position: 'absolute', top: '16px', right: lang==='ar'?'auto':'16px', left: lang==='ar'?'16px':'auto', padding: '5px 10px' }} onClick={() => setShowMappingModal(false)}>
+              ✕
+            </button>
+            <div className="sec-hd" style={{ marginBottom: '20px' }}>
+              <div className="sec-title" style={{ fontSize: '20px' }}>📋 {L('Map CSV Columns', 'ربط أعمدة الملف')}</div>
+            </div>
+
+            <div style={{ marginBottom: '20px', fontSize: '13px', color: 'var(--t2)' }}>
+              {L(`Found ${csvData.length} rows in the file. Please match your columns with the Telegram contact fields.`, `تم العثور على ${csvData.length} عميل في الملف. يرجى اختيار الأعمدة المناسبة لكل حقل.`)}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
+              {/* ID Mapping */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  {L('Telegram ID (Required)', 'معرف تليجرام - ID (مطلوب)')}
+                </label>
+                <select className="inp" value={columnMap.id} onChange={(e) => setColumnMap({ ...columnMap, id: e.target.value })}>
+                  <option value="">-- {L('Select Column', 'اختر العمود')} --</option>
+                  {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+
+              {/* First Name Mapping */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  {L('First Name', 'الاسم الأول')}
+                </label>
+                <select className="inp" value={columnMap.firstName} onChange={(e) => setColumnMap({ ...columnMap, firstName: e.target.value })}>
+                  <option value="">-- {L('Select Column', 'اختر العمود')} --</option>
+                  {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+
+              {/* Last Name Mapping */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  {L('Last Name', 'الاسم الأخير')}
+                </label>
+                <select className="inp" value={columnMap.lastName} onChange={(e) => setColumnMap({ ...columnMap, lastName: e.target.value })}>
+                  <option value="">-- {L('Select Column', 'اختر العمود')} --</option>
+                  {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+
+              {/* Username Mapping */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600 }}>
+                  {L('Username', 'اسم المستخدم')}
+                </label>
+                <select className="inp" value={columnMap.username} onChange={(e) => setColumnMap({ ...columnMap, username: e.target.value })}>
+                  <option value="">-- {L('Select Column', 'اختر العمود')} --</option>
+                  {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setShowMappingModal(false)}>
+                {L('Cancel', 'إلغاء')}
+              </button>
+              <button className="btn btn-prime" onClick={handleImportConfirm} disabled={importLoading || !columnMap.id}>
+                {importLoading ? L('Importing...', 'جاري الاستيراد...') : L('Confirm Import', 'تأكيد الاستيراد')}
+              </button>
+            </div>
           </div>
         </div>
       )}
