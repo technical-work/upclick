@@ -40,7 +40,7 @@ export default function Sidebar() {
       title: 'Grow',
       items: [
         { page: 'crm', label: 'Smart CRM', icon: '🎯', badge: hotLeads },
-        { page: 'whatsapp', label: 'WhatsApp Hub', icon: '💬' },
+        { page: 'telegram', label: 'Telegram Hub', icon: '💬' },
         { page: 'strategy', label: 'Strategy Lab', icon: '🧠' }
       ]
     },

@@ -1104,6 +1104,7 @@ export const ARTEXT = {
   "Revenue Hub": "مركز الإيرادات",
   "Digital Products": "منتجات رقمية",
   "WhatsApp Hub": "مركز واتساب",
+  "Telegram Hub": "مركز التليجرام",
   "Task Board": "لوحة المهام",
   "Smart Calendar": "التقويم الذكي",
   "Ops Hub": "مركز العمليات",
