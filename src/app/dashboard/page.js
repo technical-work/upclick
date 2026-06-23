@@ -242,7 +242,7 @@ function DashboardShell() {
         return <HomeView />;
       case 'crm':
         return <CRMView />;
-      case 'telegram':
+      case 'whatsapp':
         return <TelegramHubView />;
       case 'landing':
         return <LandingPageView />;

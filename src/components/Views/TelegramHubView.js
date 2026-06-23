@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 export default function TelegramHubView() {
   const {
@@ -17,6 +19,10 @@ export default function TelegramHubView() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedChat, setSelectedChat] = useState(null);
   
+  // Real-time Firebase data
+  const [liveChats, setLiveChats] = useState([]);
+  const [liveContacts, setLiveContacts] = useState([]);
+
   const tg = GC.telegramHub || {};
 
   // Agent States
@@ -54,6 +60,33 @@ export default function TelegramHubView() {
       setBroadcasts(tgData.broadcasts || []);
     }
   }, [GC.telegramHub]);
+
+  // Fetch real-time data from Firebase if Telegram is connected
+  useEffect(() => {
+    let unsubscribeChats;
+    let unsubscribeContacts;
+
+    if (GC?.integrations?.telegramConnected) {
+      const chatsQuery = query(collection(db, 'telegram_chats'), orderBy('lastMessageAt', 'desc'));
+      unsubscribeChats = onSnapshot(chatsQuery, (snapshot) => {
+        const chatsData = [];
+        snapshot.forEach((doc) => chatsData.push({ id: doc.id, ...doc.data() }));
+        setLiveChats(chatsData);
+      });
+
+      const contactsQuery = query(collection(db, 'telegram_contacts'), orderBy('updatedAt', 'desc'));
+      unsubscribeContacts = onSnapshot(contactsQuery, (snapshot) => {
+        const contactsData = [];
+        snapshot.forEach((doc) => contactsData.push({ id: doc.id, ...doc.data() }));
+        setLiveContacts(contactsData);
+      });
+    }
+
+    return () => {
+      if (unsubscribeChats) unsubscribeChats();
+      if (unsubscribeContacts) unsubscribeContacts();
+    };
+  }, [GC?.integrations?.telegramConnected]);
 
   const saveTGHub = (updatedFields) => {
     saveGC({
@@ -129,8 +162,37 @@ export default function TelegramHubView() {
     alert(L('Broadcast campaign sent successfully! 🚀', 'تم إرسال حملة البث بنجاح! 🚀'));
   };
 
-  const handleConnectAPI = () => {
-    alert(L('Opening Telegram Business API Connection Portal...', 'جاري فتح بوابة الاتصال بواجهة برمجة تطبيقات تليجرام للأعمال...'));
+  const handleConnectAPI = async () => {
+    const newToken = prompt(L('Enter Telegram Bot API token:', 'أدخل توكن بوت التليجرام الخاص بك:'), GC?.integrations?.telegramBotToken || '');
+    if (newToken !== null) {
+      let webhookUrl = prompt(L('Enter your Webhook URL (e.g. https://your-ngrok.app/api/telegram/webhook):', 'أدخل رابط الويب هوك الخاص بك (مثل https://your-ngrok.app/api/telegram/webhook):'), GC?.integrations?.telegramWebhookUrl || '');
+      
+      if (newToken && webhookUrl) {
+        try {
+          const res = await fetch(`https://api.telegram.org/bot${newToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+          const data = await res.json();
+          if (!data.ok) {
+            alert(L('Failed to set webhook with Telegram: ', 'فشل إعداد الويب هوك مع تليجرام: ') + data.description);
+            return;
+          }
+        } catch (error) {
+          alert(L('Network error setting webhook.', 'خطأ في الشبكة أثناء إعداد الويب هوك.'));
+          return;
+        }
+      }
+
+      const newGC = { 
+        ...GC, 
+        integrations: { 
+          ...(GC.integrations || {}), 
+          telegramBotToken: newToken, 
+          telegramWebhookUrl: webhookUrl,
+          telegramConnected: !!newToken 
+        } 
+      };
+      saveGC(newGC);
+      if (newToken) alert(L('Token and Webhook updated successfully! You can now receive messages.', 'تم تحديث التوكن والويب هوك بنجاح! يمكنك الآن استلام الرسائل.'));
+    }
   };
 
   const tabs = [
@@ -158,14 +220,7 @@ export default function TelegramHubView() {
           <button className="btn-ai" onClick={() => setAiPanelOpen(true)}>
             ✦ {L('AI Advisor', 'مستشار الذكاء الاصطناعي')}
           </button>
-          <button className="btn btn-ghost" style={{ padding: '6px 12px' }} onClick={() => {
-            const newToken = prompt(L('Enter Telegram Bot API token:', 'أدخل توكن بوت التليجرام الخاص بك:'), GC?.integrations?.telegramBotToken || '');
-            if (newToken !== null) {
-              const newGC = { ...GC, integrations: { ...(GC.integrations || {}), telegramBotToken: newToken, telegramConnected: !!newToken } };
-              saveGC(newGC);
-              if (newToken) alert(L('Token updated successfully!', 'تم تحديث التوكن بنجاح!'));
-            }
-          }}>
+          <button className="btn btn-ghost" style={{ padding: '6px 12px' }} onClick={handleConnectAPI}>
             ⚙️ {L('Connection Settings', 'اعدادات الربط')}
           </button>
           <button className="btn btn-prime" onClick={() => { setActiveTab('broadcasts'); alert(L('Scroll down to create a new broadcast campaign.', 'انتقل للأسفل لإنشاء حملة بث جديدة.')); }}>
@@ -222,16 +277,68 @@ export default function TelegramHubView() {
               <input className="inp" placeholder={L('🔍 Search conversations...', '🔍 البحث في المحادثات...')} style={{ fontSize: '12px', padding: '7px 11px' }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
-              {L('Connect your Telegram Business API to manage all conversations, automate replies, and track sales from one place.', 'قم بربط حسابك بواجهة برمجة تطبيقات تليجرام للأعمال لإدارة جميع المحادثات، أتمتة الردود، وتتبع المبيعات من مكان واحد.')}
+              {GC?.integrations?.telegramConnected ? (
+                liveChats.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {liveChats.map(chat => (
+                      <div key={chat.id} style={{ padding: '10px', background: 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid var(--edge)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{chat.contactId || 'Unknown'}</span>
+                          <span style={{ fontSize: '10px', color: 'var(--t3)' }}>{new Date(chat.lastMessageAt).toLocaleTimeString()}</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--t2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {chat.lastMessage}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '30px 0' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                    {L('No active conversations yet', 'لا توجد محادثات نشطة بعد')}
+                  </div>
+                )
+              ) : (
+                <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '30px 0' }}>
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                  {L('Connect Telegram API to see conversations', 'اربط حساب تليجرام لمشاهدة المحادثات')}
+                </div>
+              )}
             </div>
-            <button className="btn btn-prime" style={{ padding: '10px 24px' }} onClick={handleConnectAPI}>
-              🔗 {L('Connect Telegram Bot', 'ربط بوت التليجرام')}
-            </button>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <span className="badge b-green">Telegram Business API</span>
-              <span className="badge b-blue">Meta Cloud API</span>
-              <span className="badge b-purple">OpenAI Integration</span>
-            </div>
+          </div>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            {GC?.integrations?.telegramConnected ? (
+              <>
+                <div style={{ fontSize: '40px' }}>🤖</div>
+                <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)' }}>
+                  {L('Telegram Connected Successfully', 'تم ربط تليجرام بنجاح')}
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--t2)', textAlign: 'center', maxWidth: '360px' }}>
+                  {L('Your Telegram bot is now active. You will receive new messages here.', 'بوت التليجرام الخاص بك نشط الآن. ستتلقى الرسائل الجديدة هنا.')}
+                </div>
+                <button className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={handleConnectAPI}>
+                  ⚙️ {L('Update Telegram Token', 'تحديث توكن تليجرام')}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '40px' }}>💬</div>
+                <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)' }}>
+                  {L('Connect Telegram Business', 'ربط حساب تليجرام للأعمال')}
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--t2)', textAlign: 'center', maxWidth: '360px' }}>
+                  {L('Connect your Telegram Business API to manage all conversations, automate replies, and track sales from one place.', 'قم بربط حسابك بواجهة برمجة تطبيقات تليجرام للأعمال لإدارة جميع المحادثات، أتمتة الردود، وتتبع المبيعات من مكان واحد.')}
+                </div>
+                <button className="btn btn-prime" style={{ padding: '10px 24px' }} onClick={handleConnectAPI}>
+                  🔗 {L('Connect Telegram Bot', 'ربط بوت التليجرام')}
+                </button>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <span className="badge b-green">Telegram Business API</span>
+                  <span className="badge b-blue">Meta Cloud API</span>
+                  <span className="badge b-purple">OpenAI Integration</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -759,19 +866,44 @@ export default function TelegramHubView() {
                 </button>
               </div>
             </div>
-            <div className="empty-state">
-              <div className="es-icon">👤</div>
-              <div className="es-title">{L('No contacts yet', 'لا توجد جهات اتصال بعد')}</div>
-              <div className="es-sub">
-                {L('Import contacts or connect Telegram API to automatically sync your contacts', 'قم باستيراد جهات الاتصال أو اربط حساب تليجرام لمزامنة جهات اتصالك تلقائياً')}
+            {liveContacts.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
+                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('ID', 'المعرف')}</th>
+                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('Name', 'الاسم')}</th>
+                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('Username', 'اسم المستخدم')}</th>
+                      <th style={{ padding: '10px', textAlign: 'left' }}>{L('Last Active', 'آخر نشاط')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveContacts.map(contact => (
+                      <tr key={contact.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                        <td style={{ padding: '10px', color: 'var(--t2)' }}>{contact.id}</td>
+                        <td style={{ padding: '10px', fontWeight: 600 }}>{contact.firstName} {contact.lastName}</td>
+                        <td style={{ padding: '10px', color: 'var(--t2)' }}>{contact.username ? `@${contact.username}` : '-'}</td>
+                        <td style={{ padding: '10px', color: 'var(--t3)' }}>{new Date(contact.updatedAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
-                <span className="badge b-green">Telegram Business API</span>
-                <span className="badge b-blue">Shopify</span>
-                <span className="badge b-purple">Stripe</span>
-                <span className="badge b-amber">WooCommerce</span>
+            ) : (
+              <div className="empty-state">
+                <div className="es-icon">👤</div>
+                <div className="es-title">{L('No contacts yet', 'لا توجد جهات اتصال بعد')}</div>
+                <div className="es-sub">
+                  {L('Import contacts or connect Telegram API to automatically sync your contacts', 'قم باستيراد جهات الاتصال أو اربط حساب تليجرام لمزامنة جهات اتصالك تلقائياً')}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
+                  <span className="badge b-green">Telegram Business API</span>
+                  <span className="badge b-blue">Shopify</span>
+                  <span className="badge b-purple">Stripe</span>
+                  <span className="badge b-amber">WooCommerce</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

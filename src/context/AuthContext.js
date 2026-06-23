@@ -15,6 +15,14 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Fallback timeout in case onAuthStateChanged hangs (e.g. on ngrok free tier without headers)
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn("Auth initialization timed out. Forcing loading to false.");
+        setLoading(false);
+      }
+    }, 5000);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -34,9 +42,13 @@ export function AuthProvider({ children }) {
         setUserData(null);
       }
       setLoading(false);
+      clearTimeout(timeout);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const login = async (email, password) => {
@@ -72,7 +84,13 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ user, currentUser: user, userData, login, logout, updateUserAccount, loading }}>
-      {!loading && children}
+      {loading ? (
+        <div style={{ display: 'flex', height: '100vh', width: '100vw', justifyContent: 'center', alignItems: 'center', background: '#08080f', color: '#8275A3', fontFamily: 'sans-serif', flexDirection: 'column', gap: '12px' }}>
+          <div className="spinner" style={{ width: '30px', height: '30px', border: '3px solid rgba(255,107,53,0.3)', borderTopColor: '#FF6B35', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+          <div>جاري التحميل...</div>
+        </div>
+      ) : children}
     </AuthContext.Provider>
   );
 }
