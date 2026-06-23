@@ -26,13 +26,14 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
   const MODEL_NAME = (isCustomConnected && customModel) ? customModel : defaultModel;
 
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch('/api/ai', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        endpoint: ENDPOINT,
+        apiKey: API_KEY,
         model: MODEL_NAME,
         messages: [
           { role: 'system', content: systemPrompt },
