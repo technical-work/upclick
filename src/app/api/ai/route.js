@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'edge';
+export const maxDuration = 60;
+
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -21,7 +25,13 @@ export async function POST(request) {
       })
     });
 
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch(e) {
+      return NextResponse.json({ error: 'API returned HTML (Cloudflare block?)', html: text.substring(0, 500) }, { status: 502 });
+    }
     return NextResponse.json(data);
   } catch (error) {
     console.error('Proxy AI Error:', error);

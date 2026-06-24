@@ -88,7 +88,8 @@ export default function Sidebar() {
       title: 'Settings',
       items: [
         { page: 'integrations', label: 'Integrations', icon: '⛓' },
-        { page: 'analytics', label: 'Analytics', icon: '◈' }
+        { page: 'analytics', label: 'Analytics', icon: '◈' },
+        { page: 'model-test', label: 'اختبار الموديل', icon: '⏱️' }
       ]
     }
   ];

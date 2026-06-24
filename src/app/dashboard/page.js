@@ -49,6 +49,7 @@ import TeamManagementView from '@/components/Views/TeamManagementView';
 import TeamChatView from '@/components/Views/TeamChatView';
 import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
+import ModelTestView from '@/components/Views/ModelTestView';
 function DashboardShell() {
   const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
@@ -234,7 +235,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -294,6 +295,8 @@ function DashboardShell() {
         return <NicheStudioView />;
       case 'design':
         return <DesignStudioView />;
+      case 'model-test':
+        return <ModelTestView />;
       default:
         return <HomeView />;
     }

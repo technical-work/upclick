@@ -1,6 +1,6 @@
 'use client';
 
-export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price = 27) {
+export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price = 27, aiData = {}) {
   const R = isAR ? 'rtl' : 'ltr';
   const font = isAR ? "'Cairo',sans-serif" : "'Syne','DM Sans',sans-serif";
   const priceStr = '$' + price;
@@ -110,6 +110,10 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   );
 
   // ── SECTION 3: ABOUT / WHO AM I ──
+  const defaultAboutAR = `أنا ${name}، ${isCoach ? 'مدرب معتمد' : 'منشئ محتوى'} في مجال ${niche} منذ أكثر من ٣ سنوات. ساعدت أكثر من ٥٠٠ شخص على ${isCoach ? 'تحقيق أهدافهم المهنية' : 'بناء حضورهم الرقمي والنمو على السوشيال ميديا'}.`;
+  const defaultAboutEN = `I'm ${name}, a ${isCoach ? 'certified coach' : 'content creator'} in ${niche} for over 3 years. I've helped 500+ people ${isCoach ? 'achieve their professional goals' : 'build their digital presence and grow on social media'}.`;
+  const aboutText = aiData?.aboutText || (isAR ? defaultAboutAR : defaultAboutEN);
+
   const sec3 = S(
     'about',
     maxW(`<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:40px;align-items:center">
@@ -120,15 +124,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
     </div>
     <div>
       ${H(isAR ? `من أنا؟` : `About Me`, '', R === 'rtl' ? 'right' : 'left')}
-      <p style="font-size:15px;color:${sub};line-height:1.8;margin-bottom:16px">${
-        isAR
-          ? `أنا ${name}، ${isCoach ? 'مدرب معتمد' : 'منشئ محتوى'} في مجال ${niche} منذ أكثر من ٣ سنوات. ساعدت أكثر من ٥٠٠ شخص على ${
-              isCoach ? 'تحقيق أهدافهم المهنية' : 'بناء حضورهم الرقمي والنمو على السوشيال ميديا'
-            }.`
-          : `I'm ${name}, a ${isCoach ? 'certified coach' : 'content creator'} in ${niche} for over 3 years. I've helped 500+ people ${
-              isCoach ? 'achieve their professional goals' : 'build their digital presence and grow on social media'
-            }.`
-      }</p>
+      <p style="font-size:15px;color:${sub};line-height:1.8;margin-bottom:16px">${aboutText}</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${(isAR
           ? ['✅ خبرة ٣+ سنوات في المجال', '✅ ٥٠٠+ قصة نجاح موثّقة', '✅ محتوى مخصص للسوق العربي', '✅ دعم مستمر بعد الانضمام']
@@ -142,81 +138,87 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   );
 
   // ── SECTION 4: FEATURES / WHAT YOU GET ──
-  const featItems = isCoach
-    ? isAR
+  let featItems = aiData?.features;
+  if (!featItems || !Array.isArray(featItems)) {
+    featItems = isCoach
+      ? isAR
+        ? [
+            { icon: '🎯', t: 'خطة شخصية مخصصة', d: 'خطة عمل مصممة خصيصاً لأهدافك وظروفك' },
+            { icon: '📞', t: 'جلسات فردية أسبوعية', d: 'لقاءات منتظمة لمتابعة تقدمك وحل التحديات' },
+            { icon: '📚', t: 'موارد حصرية', d: 'مكتبة شاملة من القوالب والأدوات والمواد' },
+            { icon: '👥', t: 'مجتمع داعم', d: 'انضم لمجموعة من المتحمسين يشجعونك للأمام' },
+            { icon: '📊', t: 'قياس النتائج', d: 'متابعة دقيقة للتقدم مع تعديلات مستمرة' },
+            { icon: '🏆', t: 'شهادة معتمدة', d: 'احصل على شهادة إتمام معترف بها' }
+          ]
+        : [
+            { icon: '🎯', t: 'Personalized Action Plan', d: 'A roadmap designed specifically for your goals' },
+            { icon: '📞', t: 'Weekly 1-on-1 Sessions', d: 'Regular meetings to track progress and solve challenges' },
+            { icon: '📚', t: 'Exclusive Resources', d: 'Full library of templates, tools, and materials' },
+            { icon: '👥', t: 'Supportive Community', d: 'Join a group of motivated peers cheering you on' },
+            { icon: '📊', t: 'Results Tracking', d: 'Precise progress monitoring with ongoing adjustments' },
+            { icon: '🏆', t: 'Certified Achievement', d: 'Get a recognized completion certificate' }
+          ]
+      : isAR
       ? [
-          { icon: '🎯', t: 'خطة شخصية مخصصة', d: 'خطة عمل مصممة خصيصاً لأهدافك وظروفك' },
-          { icon: '📞', t: 'جلسات فردية أسبوعية', d: 'لقاءات منتظمة لمتابعة تقدمك وحل التحديات' },
-          { icon: '📚', t: 'موارد حصرية', d: 'مكتبة شاملة من القوالب والأدوات والمواد' },
-          { icon: '👥', t: 'مجتمع داعم', d: 'انضم لمجموعة من المتحمسين يشجعونك للأمام' },
-          { icon: '📊', t: 'قياس النتائج', d: 'متابعة دقيقة للتقدم مع تعديلات مستمرة' },
-          { icon: '🏆', t: 'شهادة معتمدة', d: 'احصل على شهادة إتمام معترف بها' }
+          { icon: '📱', t: 'إنشاء المحتوى', d: 'ريلز وكاروسيل وستوريز تجذب الجمهور الحقيقي' },
+          { icon: '📈', t: 'استراتيجيات النمو', d: 'هاشتاق وكولاب وتوقيت مثالي للوصول الأقصى' },
+          { icon: '💰', t: 'تحقيق الدخل', d: '٧+ مصادر دخل من محتواك وجمهورك' },
+          { icon: '🤝', t: 'صفقات البراندات', d: 'كيف تجد البراندات وتفاوض وتوقع عقوداً مربحة' },
+          { icon: '🎯', t: 'بناء البراند الشخصي', d: 'قصتك، هويتك، وكيف تتميز في السوق العربي' },
+          { icon: '🌟', t: 'السوق العربي', d: 'استراتيجيات مخصصة لجمهور الخليج ومصر والشام' }
         ]
       : [
-          { icon: '🎯', t: 'Personalized Action Plan', d: 'A roadmap designed specifically for your goals' },
-          { icon: '📞', t: 'Weekly 1-on-1 Sessions', d: 'Regular meetings to track progress and solve challenges' },
-          { icon: '📚', t: 'Exclusive Resources', d: 'Full library of templates, tools, and materials' },
-          { icon: '👥', t: 'Supportive Community', d: 'Join a group of motivated peers cheering you on' },
-          { icon: '📊', t: 'Results Tracking', d: 'Precise progress monitoring with ongoing adjustments' },
-          { icon: '🏆', t: 'Certified Achievement', d: 'Get a recognized completion certificate' }
-        ]
-    : isAR
-    ? [
-        { icon: '📱', t: 'إنشاء المحتوى', d: 'ريلز وكاروسيل وستوريز تجذب الجمهور الحقيقي' },
-        { icon: '📈', t: 'استراتيجيات النمو', d: 'هاشتاق وكولاب وتوقيت مثالي للوصول الأقصى' },
-        { icon: '💰', t: 'تحقيق الدخل', d: '٧+ مصادر دخل من محتواك وجمهورك' },
-        { icon: '🤝', t: 'صفقات البراندات', d: 'كيف تجد البراندات وتفاوض وتوقع عقوداً مربحة' },
-        { icon: '🎯', t: 'بناء البراند الشخصي', d: 'قصتك، هويتك، وكيف تتميز في السوق العربي' },
-        { icon: '🌟', t: 'السوق العربي', d: 'استراتيجيات مخصصة لجمهور الخليج ومصر والشام' }
-      ]
-    : [
-        { icon: '📱', t: 'Content Creation', d: 'Reels, carousels & stories that attract real audiences' },
-        { icon: '📈', t: 'Growth Strategies', d: 'Hashtags, collabs & optimal timing for max reach' },
-        { icon: '💰', t: 'Monetization', d: '7+ income streams from your content and audience' },
-        { icon: '🤝', t: 'Brand Deals', d: 'How to find brands, negotiate, and sign profitable contracts' },
-        { icon: '🎯', t: 'Personal Branding', d: 'Your story, identity, and how to stand out in Arab market' },
-        { icon: '🌟', t: 'Arab Market Focus', d: 'Strategies tailored for Gulf, Egypt & Levant audiences' }
-      ];
+          { icon: '📱', t: 'Content Creation', d: 'Reels, carousels & stories that attract real audiences' },
+          { icon: '📈', t: 'Growth Strategies', d: 'Hashtags, collabs & optimal timing for max reach' },
+          { icon: '💰', t: 'Monetization', d: '7+ income streams from your content and audience' },
+          { icon: '🤝', t: 'Brand Deals', d: 'How to find brands, negotiate, and sign profitable contracts' },
+          { icon: '🎯', t: 'Personal Branding', d: 'Your story, identity, and how to stand out in Arab market' },
+          { icon: '🌟', t: 'Arab Market Focus', d: 'Strategies tailored for Gulf, Egypt & Levant audiences' }
+        ];
+  }
 
   const sec4 = S(
     'features',
-    maxW(`${H(isAR ? `ماذا ستحصل عليه؟` : `What You Get`, isAR ? `كل ما تحتاجه لتحقيق النجاح في ${niche}` : `Everything you need to succeed in ${niche}`)}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">${featItems
+    maxW(H(isAR ? 'ماذا ستحصل عليه؟' : 'What You Get', isAR ? 'كل ما تحتاجه لتحقيق النجاح في ' + niche : 'Everything you need to succeed in ' + niche) +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">' + featItems
       .map(
         (f) =>
-          `<div style="background:${card};border:1px solid ${border};border-radius:16px;padding:24px;transition:transform .2s,border-color .2s" onmouseover="this.style.transform='translateY(-4px)';this.style.borderColor='${c}'" onmouseout="this.style.transform='none';this.style.borderColor='${border}'"><div style="font-size:36px;margin-bottom:12px">${f.icon}</div><div style="font-size:16px;font-weight:700;color:${fg};margin-bottom:8px">${f.t}</div><div style="font-size:13px;color:${sub};line-height:1.6">${f.d}</div></div>`
+          '<div style="background:' + card + ';border:1px solid ' + border + ';border-radius:16px;padding:24px;transition:transform .2s,border-color .2s" onmouseover="this.style.transform=\'translateY(-4px)\';this.style.borderColor=\'' + c + '\'" onmouseout="this.style.transform=\'none\';this.style.borderColor=\'' + border + '\'"><div style="font-size:36px;margin-bottom:12px">' + (f.icon || '✨') + '</div><div style="font-size:16px;font-weight:700;color:' + fg + ';margin-bottom:8px">' + (f.title || f.t) + '</div><div style="font-size:13px;color:' + sub + ';line-height:1.6">' + (f.desc || f.d) + '</div></div>'
       )
-      .join('')}</div>`)
+      .join('') + '</div>')
   );
 
   // ── SECTION 5: TESTIMONIALS ──
-  const tesItems = isAR
-    ? [
-        { i: 'ن', n: 'نورة الراشدي', loc: 'السعودية', stars: 5, tx: isCoach ? 'الكوتشينج مع ' + name + ' غيّر مسار حياتي المهنية كلياً. ساعدني أحقق أهدافاً كنت أظنها مستحيلة.' : 'نمت من ٥ آلاف إلى ٤٠ ألف متابع في ٣ أشهر. المحتوى بالعربي أخيراً يعطي نتائج!' },
-        { i: 'أ', n: 'أحمد خليل', loc: 'مصر', stars: 5, tx: isCoach ? 'الخطة الشخصية والمتابعة الأسبوعية كانت بالضبط ما احتجته. نتائج حقيقية وملموسة.' : 'بدأت أكسب من محتواي في أول ٦٠ يوم. أفضل استثمار في حياتي.' },
-        { i: 'م', n: 'منى صابر', loc: 'الإمارات', stars: 5, tx: isCoach ? 'أخيراً مدرب يفهم السوق العربي وتحدياته الفعلية. أنصح به بشدة.' : 'الكورس يفهم السوق العربي بشكل حقيقي. محتوى عملي وقابل للتطبيق فوراً.' }
-      ]
-    : [
-        { i: 'N', n: 'Nora Al-Rashidi', loc: 'Saudi Arabia', stars: 5, tx: isCoach ? 'Coaching with ' + name + ' completely changed my professional path. Helped me achieve goals I thought were impossible.' : 'Grew from 5K to 40K followers in 3 months. Arabic content finally works!' },
-        { i: 'A', n: 'Ahmed K.', loc: 'Egypt', stars: 5, tx: isCoach ? 'The personal plan and weekly follow-ups were exactly what I needed. Real, tangible results.' : 'Started earning from my content in the first 60 days. Best investment of my life.' },
-        { i: 'M', n: 'Mona Saber', loc: 'UAE', stars: 5, tx: isCoach ? 'Finally a coach who truly understands the Arab market. Highly recommend.' : 'The course truly understands the Arab market. Practical and instantly applicable.' }
-      ];
+  let tesItems = aiData?.testimonials;
+  if (!tesItems || !Array.isArray(tesItems)) {
+    tesItems = isAR
+      ? [
+          { i: 'ن', n: 'نورة الراشدي', loc: 'السعودية', stars: 5, text: isCoach ? 'الكوتشينج مع ' + name + ' غيّر مسار حياتي المهنية كلياً. ساعدني أحقق أهدافاً كنت أظنها مستحيلة.' : 'نمت من ٥ آلاف إلى ٤٠ ألف متابع في ٣ أشهر. المحتوى بالعربي أخيراً يعطي نتائج!' },
+          { i: 'أ', n: 'أحمد خليل', loc: 'مصر', stars: 5, text: isCoach ? 'الخطة الشخصية والمتابعة الأسبوعية كانت بالضبط ما احتجته. نتائج حقيقية وملموسة.' : 'بدأت أكسب من محتواي في أول ٦٠ يوم. أفضل استثمار في حياتي.' },
+          { i: 'م', n: 'منى صابر', loc: 'الإمارات', stars: 5, text: isCoach ? 'أخيراً مدرب يفهم السوق العربي وتحدياته الفعلية. أنصح به بشدة.' : 'الكورس يفهم السوق العربي بشكل حقيقي. محتوى عملي وقابل للتطبيق فوراً.' }
+        ]
+      : [
+          { i: 'N', n: 'Nora Al-Rashidi', loc: 'Saudi Arabia', stars: 5, text: isCoach ? 'Coaching with ' + name + ' completely changed my professional path. Helped me achieve goals I thought were impossible.' : 'Grew from 5K to 40K followers in 3 months. Arabic content finally works!' },
+          { i: 'A', n: 'Ahmed K.', loc: 'Egypt', stars: 5, text: isCoach ? 'The personal plan and weekly follow-ups were exactly what I needed. Real, tangible results.' : 'Started earning from my content in the first 60 days. Best investment of my life.' },
+          { i: 'M', n: 'Mona Saber', loc: 'UAE', stars: 5, text: isCoach ? 'Finally a coach who truly understands the Arab market. Highly recommend.' : 'The course truly understands the Arab market. Practical and instantly applicable.' }
+        ];
+  }
 
   const sec5 = S(
     'testimonials',
     maxW(`${H(isAR ? 'ماذا يقول عملائي' : 'What My Clients Say', isAR ? 'نتائج حقيقية من أشخاص حقيقيين' : 'Real results from real people')}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">${tesItems
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">\${tesItems
       .map(
         (t) =>
-          `<div style="background:${card};border:1px solid ${border};border-radius:16px;padding:24px"><div style="font-size:20px;color:${c};margin-bottom:10px">${'⭐'.repeat(
-            t.stars
-          )}</div><p style="font-size:14px;color:${sub};line-height:1.7;margin-bottom:14px;font-style:italic">"${
-            t.tx
-          }"</p><div style="display:flex;align-items:center;gap:9px"><div style="width:36px;height:36px;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px">${
-            t.i
-          }</div><div><div style="font-size:13px;font-weight:600;color:${fg}">${t.n}</div><div style="font-size:11px;color:${sub}">${
+          \`<div style="background:\${card};border:1px solid \${border};border-radius:16px;padding:24px"><div style="font-size:20px;color:\${c};margin-bottom:10px">\${'⭐'.repeat(
+            t.stars || 5
+          )}</div><p style="font-size:14px;color:\${sub};line-height:1.7;margin-bottom:14px;font-style:italic">"\${
+            t.text || t.tx
+          }"</p><div style="display:flex;align-items:center;gap:9px"><div style="width:36px;height:36px;border-radius:50%;background:\${c};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px">\${
+            t.initial || t.i || t.n[0]
+          }</div><div><div style="font-size:13px;font-weight:600;color:\${fg}">\${t.name || t.n}</div><div style="font-size:11px;color:\${sub}">\${
             t.loc
-          }</div></div></div></div>`
+          }</div></div></div></div>\`
       )
       .join('')}</div>`),
     isDark ? bg + ' ' : c + '08'
@@ -250,33 +252,33 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   const sec6 = S(
     'offer',
     maxW(`${H(isAR ? 'اختر خطتك' : 'Choose Your Plan', isAR ? 'استثمار في نفسك يدوم مدى الحياة' : 'An investment in yourself that lasts a lifetime')}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">${plans
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">\${plans
       .map(
         (p) =>
-          `<div style="background:${p.popular ? c : card};border:2px solid ${p.popular ? c : border};border-radius:16px;padding:28px;text-align:center;position:relative;${
+          \`<div style="background:\${p.popular ? c : card};border:2px solid \${p.popular ? c : border};border-radius:16px;padding:28px;text-align:center;position:relative;\${
             p.popular ? 'transform:scale(1.04)' : ''
-          }">${
+          }">\${
             p.popular
-              ? `<div style="position:absolute;top:-13px;${
+              ? \`<div style="position:absolute;top:-13px;\${
                   R === 'rtl' ? 'right' : 'left'
-                }:50%;transform:translateX(${R === 'rtl' ? '50%' : '-50%'});background:${c};color:#fff;padding:4px 16px;border-radius:12px;font-size:12px;font-weight:700">${
+                }:50%;transform:translateX(\${R === 'rtl' ? '50%' : '-50%'});background:\${c};color:#fff;padding:4px 16px;border-radius:12px;font-size:12px;font-weight:700">\${
                   isAR ? '🌟 الأشهر' : '🌟 Most Popular'
-                }</div>`
+                }</div>\`
               : ''
-          }<div style="font-size:17px;font-weight:700;color:${p.popular ? '#fff' : fg};margin-bottom:10px">${p.n}</div><div style="font-size:38px;font-weight:800;color:${
+          }<div style="font-size:17px;font-weight:700;color:\${p.popular ? '#fff' : fg};margin-bottom:10px">\${p.n}</div><div style="font-size:38px;font-weight:800;color:\${
             p.popular ? '#fff' : c
-          };margin-bottom:16px">${p.p}</div>${p.b
+          };margin-bottom:16px">\${p.p}</div>\${p.b
             .map(
               (b) =>
-                `<div style="font-size:13px;color:${p.popular ? 'rgba(255,255,255,.85)' : sub};padding:5px 0;border-bottom:1px solid ${
+                \`<div style="font-size:13px;color:\${p.popular ? 'rgba(255,255,255,.85)' : sub};padding:5px 0;border-bottom:1px solid \${
                   p.popular ? 'rgba(255,255,255,.15)' : border
-                }">✓ ${b}</div>`
+                }">✓ \${b}</div>\`
             )
-            .join('')}<button onclick="alert('${
+            .join('')}<button onclick="alert('\${
             isAR ? 'شكراً! سيتم التواصل معك قريباً.' : 'Thank you! We will contact you soon.'
-          }')" style="margin-top:16px;background:${p.popular ? '#fff' : c};color:${p.popular ? c : '#fff'};border:none;padding:12px 28px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">${
+          }')" style="margin-top:16px;background:\${p.popular ? '#fff' : c};color:\${p.popular ? c : '#fff'};border:none;padding:12px 28px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">\${
             isAR ? 'ابدأ الآن' : 'Start Now'
-          }</button></div>`
+          }</button></div>\`
       )
       .join('')}</div>`),
     c + '08'
@@ -303,19 +305,22 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   );
 
   // ── SECTION 8: FAQ + FINAL CTA ──
-  const faqItems = isAR
-    ? [
-        { q: 'هل هذا البرنامج مناسب للمبتدئين تماماً؟', a: 'نعم! صُمم من الصفر للمبتدئين وحتى المتقدمين. لا تحتاج أي خبرة مسبقة.' },
-        { q: 'كم من الوقت أحتاج يومياً؟', a: `${isCoach ? 'ساعة إلى ساعتين أسبوعياً للجلسات + وقت للتطبيق.' : '٣٠ دقيقة إلى ساعة يومياً كافية للتطبيق والنتائج.'}` },
-        { q: 'هل يوجد ضمان استرداد؟', a: `نعم! ضمان استرداد كامل خلال ٣٠ يوم إذا لم تكن راضياً ١٠٠٪.` },
-        { q: 'هل المحتوى مناسب للسوق العربي؟', a: `نعم تماماً! كل المحتوى مصمم خصيصاً للجمهور العربي في الخليج ومصر والشام.` }
-      ]
-    : [
-        { q: 'Is this program suitable for complete beginners?', a: 'Yes! Designed from scratch for beginners to advanced. No prior experience needed.' },
-        { q: 'How much time do I need daily?', a: `${isCoach ? '1-2 hours weekly for sessions + application time.' : '30 minutes to 1 hour daily is enough for application and results.'}` },
-        { q: 'Is there a money-back guarantee?', a: `Yes! Full money-back guarantee within 30 days if you're not 100% satisfied.` },
-        { q: 'Is the content suitable for the Arab market?', a: `Absolutely! All content is designed specifically for Arab audiences in the Gulf, Egypt, and Levant.` }
-      ];
+  let faqItems = aiData?.faqs;
+  if (!faqItems || !Array.isArray(faqItems)) {
+    faqItems = isAR
+      ? [
+          { q: 'هل هذا البرنامج مناسب للمبتدئين تماماً؟', a: 'نعم! صُمم من الصفر للمبتدئين وحتى المتقدمين. لا تحتاج أي خبرة مسبقة.' },
+          { q: 'كم من الوقت أحتاج يومياً؟', a: `${isCoach ? 'ساعة إلى ساعتين أسبوعياً للجلسات + وقت للتطبيق.' : '٣٠ دقيقة إلى ساعة يومياً كافية للتطبيق والنتائج.'}` },
+          { q: 'هل يوجد ضمان استرداد؟', a: `نعم! ضمان استرداد كامل خلال ٣٠ يوم إذا لم تكن راضياً ١٠٠٪.` },
+          { q: 'هل المحتوى مناسب للسوق العربي؟', a: `نعم تماماً! كل المحتوى مصمم خصيصاً للجمهور العربي في الخليج ومصر والشام.` }
+        ]
+      : [
+          { q: 'Is this program suitable for complete beginners?', a: 'Yes! Designed from scratch for beginners to advanced. No prior experience needed.' },
+          { q: 'How much time do I need daily?', a: `${isCoach ? '1-2 hours weekly for sessions + application time.' : '30 minutes to 1 hour daily is enough for application and results.'}` },
+          { q: 'Is there a money-back guarantee?', a: `Yes! Full money-back guarantee within 30 days if you're not 100% satisfied.` },
+          { q: 'Is the content suitable for the Arab market?', a: `Absolutely! All content is designed specifically for Arab audiences in the Gulf, Egypt, and Levant.` }
+        ];
+  }
 
   const sec8 = S(
     'faq-cta',

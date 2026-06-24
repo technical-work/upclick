@@ -41,15 +41,25 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
         ]
       })
     });
+    
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await res.text();
+      throw new Error(`Server returned non-JSON response (Status: ${res.status}). This usually means the AI generation took too long and timed out. ${text.substring(0, 100)}`);
+    }
+
     const data = await res.json();
     if (data.choices && data.choices[0] && data.choices[0].message) {
       return data.choices[0].message.content;
     }
     if (data.error) {
-      console.warn('Custom API error object:', data.error);
+      return `❌ خطأ من الخادم (API Error): ${data.error.message || JSON.stringify(data.error)}`;
     }
+    
+    return `❌ استجابة غير متوقعة: ${JSON.stringify(data)}`;
   } catch (error) {
     console.warn('Custom API request failed:', error);
+    return `❌ حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: ${error.message}`;
   }
 
   // Fallback engine

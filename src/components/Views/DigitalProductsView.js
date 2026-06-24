@@ -84,6 +84,14 @@ export default function DigitalProductsView() {
       const systemText = 'You are a digital product market researcher. Return ONLY a valid JSON array, no markdown or extra text.';
 
       const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
+      
+      if (typeof rawText === 'string' && rawText.includes('❌')) {
+        alert(rawText);
+        setTrendingProducts(getFallbackTrends());
+        setLoadingTrends(false);
+        return;
+      }
+
       let cleaned = (rawText || '[]').replace(/```json/g, '').replace(/```/g, '').trim();
       if (cleaned.indexOf('[') > -1) {
         cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);
@@ -92,6 +100,7 @@ export default function DigitalProductsView() {
       setTrendingProducts(parsed);
     } catch (e) {
       console.warn("API failed in loadDPTrends, using fallback data:", e);
+      alert(`❌ Error parsing AI response: ${e.message}`);
       setTrendingProducts(getFallbackTrends());
     } finally {
       setLoadingTrends(false);
@@ -138,6 +147,18 @@ export default function DigitalProductsView() {
       const systemText = 'Digital product researcher. Return ONLY JSON array.';
 
       const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
+      
+      if (typeof rawText === 'string' && rawText.includes('❌')) {
+        alert(rawText);
+        setNicheProducts([
+          { title: `Ultimate ${micro} Guidebook`, type: 'PDF Guide', price: 19, monthly_sales: 150, emoji: '📖', creation_days: 3, description: `Step-by-step workbook to dominate ${micro} space.` },
+          { title: `${micro} Workflow Dashboard`, type: 'Notion Template', price: 29, monthly_sales: 95, emoji: '⚡', creation_days: 5, description: `A robust digital planning workspace for ${micro} professionals.` },
+          { title: `${micro} Starter Toolkit`, type: 'Toolkit / Bundle', price: 47, monthly_sales: 60, emoji: '🛠️', creation_days: 7, description: `A comprehensive bundle containing cheat sheets, scripts, and asset packs.` }
+        ]);
+        setLoadingNicheProducts(false);
+        return;
+      }
+
       let cleaned = (rawText || '[]').replace(/```json/g, '').replace(/```/g, '').trim();
       if (cleaned.indexOf('[') > -1) {
         cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);
@@ -146,6 +167,7 @@ export default function DigitalProductsView() {
       setNicheProducts(parsed);
     } catch (e) {
       console.warn("API failed in loadMicroNicheProducts, using fallback:", e);
+      alert(`❌ Error parsing AI response: ${e.message}`);
       // Fallback micro niche products
       setNicheProducts([
         { title: `Ultimate ${micro} Guidebook`, type: 'PDF Guide', price: 19, monthly_sales: 150, emoji: '📖', creation_days: 3, description: `Step-by-step workbook to dominate ${micro} space.` },

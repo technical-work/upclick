@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { buildFullLP } from '../../utils/lpBuilder';
+import { callClaudeAPI } from '../../utils/ai';
 
 export default function LandingPageView() {
   const {
@@ -26,6 +27,7 @@ export default function LandingPageView() {
   const [template, setTemplate] = useState(lpData.template || 'bold');
   const [price, setPrice] = useState(lpData.price ?? 29);
   const [lpCode, setLpCode] = useState(lpData.lpCode || '');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Brand Color Palette Options
   const brandColors = [
@@ -57,16 +59,86 @@ export default function LandingPageView() {
     saveGC(updatedGC);
   };
 
-  const handleGenerate = () => {
+  const handleGenerateStatic = () => {
     const code = buildFullLP(name, niche, offer, tagline, color, lang === 'ar', template, price);
     setLpCode(code);
     setLpPreviewHtml(code);
     saveLPData({ name, niche, offer, tagline, color, template, price, lpCode: code });
   };
 
+  const handleGenerate = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+
+    try {
+      const promptText = `Generate high-converting landing page copy based on the following:
+Name/Brand: ${name}
+Niche/Industry: ${niche}
+Main Offer/Product: ${offer}
+Price: $${price}
+
+Return ONLY a raw JSON object with this exact structure (no markdown, no extra text):
+{
+  "tagline": "A compelling 4-8 word subtitle",
+  "aboutText": "A persuasive 3-4 sentence 'About Me' bio building trust.",
+  "features": [
+    { "icon": "emoji", "title": "short feature title", "desc": "short benefit description" },
+    ... exactly 6 features ...
+  ],
+  "testimonials": [
+    { "initial": "A", "name": "Fake Arabic Name", "loc": "City/Country", "stars": 5, "text": "Short amazing review" },
+    ... exactly 3 reviews ...
+  ],
+  "faqs": [
+    { "q": "Question?", "a": "Answer" },
+    ... exactly 4 faqs ...
+  ]
+}
+
+The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make it highly persuasive and professional.`;
+
+      const systemText = "You are a professional conversion copywriter. You only output pure, valid JSON matching the exact requested structure.";
+
+      const res = await callClaudeAPI(promptText, systemText, lang, GC);
+      
+      if (typeof res === 'string' && res.includes('❌')) {
+        alert(res);
+        handleGenerateStatic();
+        setIsGenerating(false);
+        return;
+      }
+
+      let parsed;
+      try {
+        const jsonStr = res.substring(res.indexOf('{'), res.lastIndexOf('}') + 1);
+        parsed = JSON.parse(jsonStr);
+      } catch (e) {
+        console.error("Failed to parse JSON", res);
+        alert(`❌ AI Error: Could not parse response as JSON.\nResponse: ${res}`);
+        handleGenerateStatic();
+        setIsGenerating(false);
+        return;
+      }
+
+      const code = buildFullLP(name, niche, offer, parsed.tagline || tagline, color, lang === 'ar', template, price, parsed);
+      setLpCode(code);
+      setLpPreviewHtml(code);
+      if (parsed.tagline) setTagline(parsed.tagline);
+      saveLPData({ name, niche, offer, tagline: parsed.tagline || tagline, color, template, price, lpCode: code });
+
+    } catch (e) {
+      console.error(e);
+      alert(`❌ Unexpected Error: ${e.message}`);
+      handleGenerateStatic();
+    }
+    setIsGenerating(false);
+  };
+
   useEffect(() => {
-    handleGenerate();
-  }, [name, niche, offer, tagline, color, template, price, lang]);
+    if (!lpCode) {
+      handleGenerateStatic();
+    }
+  }, []);
 
   // Sync state if GC updates
   useEffect(() => {
@@ -235,8 +307,8 @@ export default function LandingPageView() {
               </div>
             </div>
 
-            <button className="btn btn-prime" onClick={handleGenerate} style={{ marginTop: '8px' }}>
-              ✦ {L('Regenerate Landing Page', 'إعادة توليد الصفحة')}
+            <button className="btn btn-prime" onClick={handleGenerate} disabled={isGenerating} style={{ marginTop: '8px' }}>
+              ✦ {isGenerating ? L('Generating with AI...', 'جاري التوليد بالذكاء الاصطناعي...') : L('Regenerate Landing Page', 'إعادة توليد الصفحة')}
             </button>
           </div>
         </div>
