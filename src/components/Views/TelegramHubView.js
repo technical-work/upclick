@@ -297,6 +297,22 @@ export default function TelegramHubView() {
     }
   };
 
+  const handleViewMedia = async (fileId) => {
+    if (!GC?.integrations?.telegramBotToken) return;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${GC.integrations.telegramBotToken}/getFile?file_id=${fileId}`);
+      const data = await res.json();
+      if (data.ok && data.result.file_path) {
+        const fileUrl = `https://api.telegram.org/file/bot${GC.integrations.telegramBotToken}/${data.result.file_path}`;
+        window.open(fileUrl, '_blank');
+      } else {
+        alert(L('Failed to load media', 'فشل في تحميل الوسائط'));
+      }
+    } catch (e) {
+      alert(L('Network error', 'خطأ في الشبكة'));
+    }
+  };
+
   const handleContactClick = (contact) => {
     const chat = liveChats.find(c => c.id === contact.id.toString());
     if (chat) {
@@ -543,7 +559,32 @@ export default function TelegramHubView() {
                       return (
                         <div key={msg.id} style={{ alignSelf: isOutbound ? (lang==='ar'?'flex-start':'flex-end') : (lang==='ar'?'flex-end':'flex-start'), maxWidth: '75%' }}>
                           <div style={{ background: isOutbound ? 'var(--prime)' : 'var(--surface2)', color: isOutbound ? '#fff' : 'var(--t1)', padding: '10px 14px', borderRadius: '12px', borderBottomLeftRadius: isOutbound || lang==='ar' ? '12px' : '2px', borderBottomRightRadius: isOutbound && lang!=='ar' ? '2px' : '12px', fontSize: '13px', direction: 'ltr' }}>
-                            {msg.text}
+                            {msg.mediaType && (
+                              <div 
+                                onClick={() => handleViewMedia(msg.mediaFileId)}
+                                style={{ 
+                                  display: 'inline-block', 
+                                  marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '8px' : '0', 
+                                  padding: '6px 12px', 
+                                  background: 'rgba(0,0,0,0.15)', 
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: 'bold'
+                                }}
+                                title={L('Click to view media', 'اضغط لعرض الميديا')}
+                              >
+                                {msg.mediaType === 'photo' ? '📷 ' + L('Photo', 'صورة') :
+                                 msg.mediaType === 'video' ? '🎥 ' + L('Video', 'فيديو') :
+                                 msg.mediaType === 'voice' ? '🎤 ' + L('Voice Message', 'رسالة صوتية') :
+                                 msg.mediaType === 'document' ? '📄 ' + L('Document', 'مستند') :
+                                 msg.mediaType === 'sticker' ? '🎭 ' + L('Sticker', 'ملصق') :
+                                 '📎 ' + L('Media', 'ميديا')}
+                              </div>
+                            )}
+                            {(!msg.mediaType || (msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]`)) && (
+                              <div>{msg.text}</div>
+                            )}
                           </div>
                           <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px', textAlign: isOutbound ? (lang==='ar'?'left':'right') : (lang==='ar'?'right':'left') }}>
                             {new Date(msg.date * 1000).toLocaleTimeString()}

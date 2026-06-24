@@ -196,6 +196,31 @@ export default function AIGrowthIntelView() {
     }
   };
 
+  const renderFormattedOutput = (text) => {
+    if (!text) return null;
+    let html = text
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--orange);">$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em style="color:var(--t2);">$1</em>')
+      .replace(/^### (.*$)/gim, '<h3 style="color:var(--t1); margin-top:20px; margin-bottom:10px; border-bottom:1px solid var(--edge); padding-bottom:4px;">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="color:var(--t1); margin-top:24px; margin-bottom:12px; border-bottom:1px solid var(--edge); padding-bottom:6px;">$1</h2>')
+      .replace(/`(.*?)`/g, '<code style="background:var(--surface1); padding:2px 6px; border-radius:4px; font-family:monospace; color:var(--orange);">$1</code>');
+
+    // Enhance table lines
+    html = html.replace(/^\|(.*)\|$/gim, (match) => {
+      return `<div style="background:var(--surface1); padding:4px 10px; border-bottom:1px solid var(--edge2); font-family:monospace; font-size:13px; white-space:pre-wrap; word-break:break-word;">|${match.substring(1, match.length-1)}|</div>`;
+    });
+
+    return (
+      <div 
+        className="ai-formatted-result"
+        style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', fontSize: '15px', color: 'var(--t1)', background: 'var(--surface2)', padding: '20px', borderRadius: '12px', border: '1px solid var(--edge)' }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  };
+
   return (
     <div className="pg on" id="pg-ai-growth">
       <div className="pg-header">
@@ -291,8 +316,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Winning Ads Analysis', 'تحليل الإعلانات الرابحة')}</div></div>
-              <div id="agi-ads-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-ads'] || (
+              <div id="agi-ads-out">
+                {outputs['agi-ads'] ? renderFormattedOutput(outputs['agi-ads']) : (
                   <div className="empty-state">
                     <div className="es-icon">📢</div>
                     <div className="es-title">{L('Discover winning ads', 'اكتشف الإعلانات الرابحة')}</div>
@@ -348,8 +373,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Funnel Analysis', 'تحليل الفانل')}</div></div>
-              <div id="agi-funnel-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-funnel'] || (
+              <div id="agi-funnel-out">
+                {outputs['agi-funnel'] ? renderFormattedOutput(outputs['agi-funnel']) : (
                   <div className="empty-state">
                     <div className="es-icon">🔄</div>
                     <div className="es-title">{L('Explore top funnels', 'استكشف الفانلات الأبرز')}</div>
@@ -394,8 +419,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Competitor Report', 'تقرير المنافس')}</div></div>
-              <div id="agi-comp-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-competitor'] || (
+              <div id="agi-comp-out">
+                {outputs['agi-competitor'] ? renderFormattedOutput(outputs['agi-competitor']) : (
                   <div className="empty-state">
                     <div className="es-icon">🕵️</div>
                     <div className="es-title">{L('Competitor intelligence', 'ذكاء المنافسة')}</div>
@@ -447,8 +472,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Offer Database', 'قاعدة بيانات العروض')}</div></div>
-              <div id="agi-offer-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-offer'] || (
+              <div id="agi-offer-out">
+                {outputs['agi-offer'] ? renderFormattedOutput(outputs['agi-offer']) : (
                   <div className="empty-state">
                     <div className="es-icon">🎁</div>
                     <div className="es-title">{L('Offer database', 'دليل العروض الناجحة')}</div>
@@ -509,8 +534,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Your Headline Library', 'مكتبة عناوينك')}</div></div>
-              <div id="agi-hl-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-headlines'] || (
+              <div id="agi-hl-out">
+                {outputs['agi-headlines'] ? renderFormattedOutput(outputs['agi-headlines']) : (
                   <div className="empty-state">
                     <div className="es-icon">✍️</div>
                     <div className="es-title">{L('Headline library', 'مكتبة العناوين')}</div>
@@ -561,8 +586,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Page Analysis', 'تحليل الصفحة')}</div></div>
-              <div id="agi-lp-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-lp'] || (
+              <div id="agi-lp-out">
+                {outputs['agi-lp'] ? renderFormattedOutput(outputs['agi-lp']) : (
                   <div className="empty-state">
                     <div className="es-icon">🚀</div>
                     <div className="es-title">{L('Landing page analysis', 'تحليل صفحات الهبوط')}</div>
@@ -607,8 +632,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Tech Stack Report', 'تقرير الأدوات')}</div></div>
-              <div id="agi-tech-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-tech'] || (
+              <div id="agi-tech-out">
+                {outputs['agi-tech'] ? renderFormattedOutput(outputs['agi-tech']) : (
                   <div className="empty-state">
                     <div className="es-icon">⚙️</div>
                     <div className="es-title">{L('Tech stack analysis', 'تحليل البنية التقنية')}</div>
@@ -664,8 +689,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Market Opportunities Report', 'تقرير فرص السوق')}</div></div>
-              <div id="agi-mkt-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-market'] || (
+              <div id="agi-mkt-out">
+                {outputs['agi-market'] ? renderFormattedOutput(outputs['agi-market']) : (
                   <div className="empty-state">
                     <div className="es-icon">🌍</div>
                     <div className="es-title">{L('Market opportunities', 'فرص السوق')}</div>
@@ -711,8 +736,8 @@ export default function AIGrowthIntelView() {
             </div>
             <div className="card">
               <div className="sec-hd"><div className="sec-title">{L('Engineering Report', 'تقرير التفكيك')}</div></div>
-              <div id="agi-rev-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-reverse'] || (
+              <div id="agi-rev-out">
+                {outputs['agi-reverse'] ? renderFormattedOutput(outputs['agi-reverse']) : (
                   <div className="empty-state">
                     <div className="es-icon">🔁</div>
                     <div className="es-title">{L('Reverse engineering', 'الهندسة العكسية للمبيعات')}</div>

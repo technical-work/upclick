@@ -131,7 +131,7 @@ export default function Sidebar() {
 
         {sections.map(sec => {
           const visibleItems = sec.items.filter(item => {
-            if (item.page === 'home') return true;
+            if (['home', 'profile', 'model-test'].includes(item.page)) return true;
             if (userData?.allowedTools) {
               return userData.allowedTools.includes(item.page);
             }

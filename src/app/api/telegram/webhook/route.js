@@ -20,8 +20,33 @@ export async function POST(req) {
     if (body.message) {
       const msg = body.message;
       const chatId = msg.chat.id.toString();
-      const text = msg.text || '';
-      
+      let text = msg.text || msg.caption || '';
+      let mediaType = null;
+      let mediaFileId = null;
+
+      if (msg.photo && msg.photo.length > 0) {
+        mediaType = 'photo';
+        mediaFileId = msg.photo[msg.photo.length - 1].file_id;
+      } else if (msg.video) {
+        mediaType = 'video';
+        mediaFileId = msg.video.file_id;
+      } else if (msg.document) {
+        mediaType = 'document';
+        mediaFileId = msg.document.file_id;
+      } else if (msg.voice) {
+        mediaType = 'voice';
+        mediaFileId = msg.voice.file_id;
+      } else if (msg.audio) {
+        mediaType = 'audio';
+        mediaFileId = msg.audio.file_id;
+      } else if (msg.sticker) {
+        mediaType = 'sticker';
+        mediaFileId = msg.sticker.file_id;
+      }
+
+      if (!text && mediaType) {
+        text = `[${mediaType.toUpperCase()}]`;
+      }      
       const user = msg.from;
       const contactData = {
         id: user.id.toString(),
@@ -44,6 +69,8 @@ export async function POST(req) {
           date: msg.date,
           from: contactData.id,
           isIncoming: true,
+          mediaType: mediaType || null,
+          mediaFileId: mediaFileId || null,
           createdAt: new Date().toISOString()
         };
 
