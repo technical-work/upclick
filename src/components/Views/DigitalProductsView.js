@@ -80,7 +80,7 @@ export default function DigitalProductsView() {
     setHasLoadedTrends(true);
 
     try {
-      const promptText = `Generate 12 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}. Market: ${market}. ${typeFilter !== 'all' ? `Type filter: ${typeFilter}` : ''}. Each object must have: {title, type, platform, price(number), monthly_sales(number), rating(1-5 with decimal), demand_score(1-10), category, emoji, description(one line), opportunity_score(1-10), why_trending(one sentence), ai_tools(array of 3 tools to create it), sell_on(array of 3 platforms), creation_days(number)}. Focus on products relevant to Arab entrepreneurs and creators. Return JSON array ONLY.`;
+      const promptText = `Generate 6 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}. Market: ${market}. ${typeFilter !== 'all' ? `Type filter: ${typeFilter}` : ''}. Each object must have: {title, type, platform, price(number), monthly_sales(number), rating(1-5 with decimal), demand_score(1-10), category, emoji, description(one line), opportunity_score(1-10), why_trending(one sentence), ai_tools(array of 3 tools to create it), sell_on(array of 3 platforms), creation_days(number)}. Focus on products relevant to Arab entrepreneurs and creators. Return JSON array ONLY.`;
       const systemText = 'You are a digital product market researcher. Return ONLY a valid JSON array, no markdown or extra text.';
 
       const rawText = await callClaudeAPI(promptText, systemText, lang, GC);

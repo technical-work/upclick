@@ -18,6 +18,7 @@ export default function IntegrationsView() {
   const [telegramConnected, setTelegramConnected] = useState(false);
   const [apifyConnected, setApifyConnected] = useState(false);
   const [bynaraConnected, setBynaraConnected] = useState(false);
+  const [cloudinaryConnected, setCloudinaryConnected] = useState(false);
 
   // Key Fields
   const [stripeKey, setStripeKey] = useState('');
@@ -30,6 +31,8 @@ export default function IntegrationsView() {
   const [bynaraKey, setBynaraKey] = useState('');
   const [bynaraEndpoint, setBynaraEndpoint] = useState('https://router.bynara.id/v1/chat/completions');
   const [bynaraModel, setBynaraModel] = useState('glm-5');
+  const [cloudinaryCloudName, setCloudinaryCloudName] = useState('');
+  const [cloudinaryUploadPreset, setCloudinaryUploadPreset] = useState('');
 
   // Sync state with GC on mount or database update
   useEffect(() => {
@@ -43,6 +46,7 @@ export default function IntegrationsView() {
       setTelegramConnected(integrations.telegramConnected || false);
       setApifyConnected(integrations.apifyConnected || false);
       setBynaraConnected(integrations.bynaraConnected || false);
+      setCloudinaryConnected(integrations.cloudinaryConnected || false);
 
       setStripeKey(integrations.stripeKey || '');
       setTapKey(integrations.tapKey || '');
@@ -54,6 +58,8 @@ export default function IntegrationsView() {
       setBynaraKey(integrations.bynaraKey || '');
       setBynaraEndpoint(integrations.bynaraEndpoint || 'https://router.bynara.id/v1/chat/completions');
       setBynaraModel(integrations.bynaraModel || 'glm-5');
+      setCloudinaryCloudName(integrations.cloudinaryCloudName || '');
+      setCloudinaryUploadPreset(integrations.cloudinaryUploadPreset || '');
     }
   }, [GC]);
 
@@ -90,7 +96,8 @@ export default function IntegrationsView() {
                        : serviceName === 'bynara' ? 'Custom AI'
                        : serviceName === 'telegram' ? 'Telegram Bot'
                        : serviceName === 'apify' ? 'Apify Scraper'
-                       : serviceName === 'mailchimp' ? 'Mailchimp' : serviceName;
+                       : serviceName === 'mailchimp' ? 'Mailchimp'
+                       : serviceName === 'cloudinary' ? 'Cloudinary Storage' : serviceName;
 
     alert(nextConnected 
       ? L(`${readableName} connected successfully!`, `تم ربط ${readableName} بنجاح!`) 
@@ -473,6 +480,53 @@ export default function IntegrationsView() {
                 onClick={() => handleConnectToggle('apify', apifyConnected, setApifyConnected, { apifyToken })}
               >
                 {apifyConnected ? L('Disconnect Scraper', 'قطع الاتصال') : L('Connect Apify Scraper', 'ربط Apify Scraper')}
+              </button>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginTop: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <span style={{ fontSize: '32px' }}>☁️</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t1)' }}>Cloudinary Storage</div>
+                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
+                  {L('Store media files sent via Telegram directly in Cloudinary', 'تخزين ملفات الميديا المرسلة عبر تليجرام مباشرة في Cloudinary ليتم عرضها في الشات')}
+                </div>
+              </div>
+              <span className={`badge ${cloudinaryConnected ? 'b-green' : 'b-ai'}`}>
+                {cloudinaryConnected ? L('Connected', 'متصل') : L('Inactive', 'غير نشط')}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Cloud Name', 'اسم مساحة التخزين (Cloud Name)')}
+                </label>
+                <input 
+                  className="inp" 
+                  value={cloudinaryCloudName} 
+                  onChange={(e) => setCloudinaryCloudName(e.target.value)} 
+                  onBlur={(e) => handleBlur('cloudinaryCloudName', e.target.value)}
+                  placeholder="e.g. dfkxy..." 
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Upload Preset', 'إعدادات الرفع (Upload Preset)')}
+                </label>
+                <input 
+                  className="inp" 
+                  value={cloudinaryUploadPreset} 
+                  onChange={(e) => setCloudinaryUploadPreset(e.target.value)} 
+                  onBlur={(e) => handleBlur('cloudinaryUploadPreset', e.target.value)}
+                  placeholder="e.g. telegram_uploads" 
+                />
+              </div>
+              <button 
+                className={`btn ${cloudinaryConnected ? 'btn-ghost' : 'btn-prime'}`}
+                onClick={() => handleConnectToggle('cloudinary', cloudinaryConnected, setCloudinaryConnected, { cloudinaryCloudName, cloudinaryUploadPreset })}
+              >
+                {cloudinaryConnected ? L('Disconnect Cloudinary', 'قطع الاتصال') : L('Connect Cloudinary', 'ربط حساب Cloudinary')}
               </button>
             </div>
           </div>

@@ -47,7 +47,10 @@ const initialGC = {
     telegramConnected: false,
     mailchimpConnected: false,
     apifyConnected: false,
-    apifyToken: ''
+    apifyToken: '',
+    cloudinaryConnected: false,
+    cloudinaryCloudName: '',
+    cloudinaryUploadPreset: ''
   },
   bioLink: {
     displayName: 'Sara Hassan',

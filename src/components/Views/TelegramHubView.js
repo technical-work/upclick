@@ -133,6 +133,40 @@ export default function TelegramHubView() {
     };
   }, [selectedChat]);
 
+  // Sync Telegram media to Cloudinary automatically
+  useEffect(() => {
+    if (GC?.integrations?.cloudinaryConnected && GC?.integrations?.telegramBotToken && chatMessages.length > 0 && selectedChat) {
+      chatMessages.forEach(async (msg) => {
+        if (msg.mediaFileId && !msg.cloudinaryUrl && !msg.uploadingToCloud) {
+          msg.uploadingToCloud = true; // prevent multiple triggers in memory
+          try {
+            const res = await fetch(`https://api.telegram.org/bot${GC.integrations.telegramBotToken}/getFile?file_id=${msg.mediaFileId}`);
+            const data = await res.json();
+            if (data.ok && data.result.file_path) {
+              const fileUrl = `https://api.telegram.org/file/bot${GC.integrations.telegramBotToken}/${data.result.file_path}`;
+              const formData = new FormData();
+              formData.append('file', fileUrl);
+              formData.append('upload_preset', GC.integrations.cloudinaryUploadPreset);
+              
+              const cRes = await fetch(`https://api.cloudinary.com/v1_1/${GC.integrations.cloudinaryCloudName}/auto/upload`, {
+                method: 'POST',
+                body: formData
+              });
+              const cData = await cRes.json();
+              if (cData.secure_url) {
+                const msgRef = doc(db, `telegram_chats/${selectedChat.id}/messages`, msg.id);
+                await setDoc(msgRef, { cloudinaryUrl: cData.secure_url }, { merge: true });
+              }
+            }
+          } catch (e) {
+            console.error('Failed to upload media to Cloudinary', e);
+            msg.uploadingToCloud = false;
+          }
+        }
+      });
+    }
+  }, [chatMessages, GC?.integrations, selectedChat]);
+
   const saveTGHub = (updatedFields) => {
     saveGC({
       ...GC,
@@ -559,7 +593,21 @@ export default function TelegramHubView() {
                       return (
                         <div key={msg.id} style={{ alignSelf: isOutbound ? (lang==='ar'?'flex-start':'flex-end') : (lang==='ar'?'flex-end':'flex-start'), maxWidth: '75%' }}>
                           <div style={{ background: isOutbound ? 'var(--prime)' : 'var(--surface2)', color: isOutbound ? '#fff' : 'var(--t1)', padding: '10px 14px', borderRadius: '12px', borderBottomLeftRadius: isOutbound || lang==='ar' ? '12px' : '2px', borderBottomRightRadius: isOutbound && lang!=='ar' ? '2px' : '12px', fontSize: '13px', direction: 'ltr' }}>
-                            {msg.mediaType && (
+                            {msg.cloudinaryUrl ? (
+                              <div style={{ marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '8px' : '0' }}>
+                                {msg.mediaType === 'photo' ? (
+                                  <img src={msg.cloudinaryUrl} alt="media" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                ) : msg.mediaType === 'video' ? (
+                                  <video src={msg.cloudinaryUrl} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                ) : msg.mediaType === 'voice' || msg.mediaType === 'audio' ? (
+                                  <audio src={msg.cloudinaryUrl} controls style={{ maxWidth: '100%' }} />
+                                ) : (
+                                  <a href={msg.cloudinaryUrl} target="_blank" rel="noopener noreferrer" style={{ color: isOutbound ? '#fff' : 'var(--prime)', textDecoration: 'underline', fontSize: '13px', fontWeight: 'bold' }}>
+                                    📎 {L('Download Document', 'تحميل المستند')}
+                                  </a>
+                                )}
+                              </div>
+                            ) : msg.mediaType ? (
                               <div 
                                 onClick={() => handleViewMedia(msg.mediaFileId)}
                                 style={{ 
@@ -581,7 +629,7 @@ export default function TelegramHubView() {
                                  msg.mediaType === 'sticker' ? '🎭 ' + L('Sticker', 'ملصق') :
                                  '📎 ' + L('Media', 'ميديا')}
                               </div>
-                            )}
+                            ) : null}
                             {(!msg.mediaType || (msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]`)) && (
                               <div>{msg.text}</div>
                             )}
