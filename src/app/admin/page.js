@@ -377,7 +377,8 @@ const AdminDashboard = () => {
       newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
       
       await setDoc(userRef, {
-        expiresAt: newExpiresDate
+        expiresAt: newExpiresDate,
+        isTrial: false
       }, { merge: true });
       
       await setDoc(doc(db, 'payments', payment.id), {

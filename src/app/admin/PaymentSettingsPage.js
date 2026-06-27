@@ -61,7 +61,7 @@ const PaymentSettingsPage = () => {
         }
       })
       .catch(() => setLoadError(t('branding.loadError')));
-  }, [currentUser, t]);
+  }, [currentUser?.uid]);
 
   const handleToggle = (method) => {
     setPaymentMethods(prev => ({

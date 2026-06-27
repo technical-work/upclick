@@ -59,6 +59,22 @@ if (typeof window !== "undefined") {
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { app, analytics, auth, db, storage, storage as libStorage, firebaseConfig };
+export const libFirebaseConfig = {
+  apiKey: "AIzaSyCaswftcLmfIepG_F8fzizqGXFl5mnXvj8",
+  authDomain: "aibrand-vision.firebaseapp.com",
+  projectId: "aibrand-vision",
+  storageBucket: "aibrand-vision.firebasestorage.app",
+  messagingSenderId: "36898907108",
+  appId: "1:36898907108:web:423352bb5b0f5825d65df1",
+  measurementId: "G-G0CFX66Q3V"
+};
+
+const libApp = !getApps().some(a => a.name === 'LibApp') 
+  ? initializeApp(libFirebaseConfig, 'LibApp') 
+  : getApp('LibApp');
+
+const libStorage = getStorage(libApp);
+
+export { app, analytics, auth, db, storage, libStorage, firebaseConfig };
 
 

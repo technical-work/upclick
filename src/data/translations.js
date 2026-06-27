@@ -1261,5 +1261,6 @@ export const ARTEXT = {
   "Calendar": "التقويم",
   "Finance": "المالية",
   "Team": "الفريق",
-  "Team Chat": "دردشة الفريق"
+  "Team Chat": "دردشة الفريق",
+  "Billing & Subscription": "الاشتراكات والفواتير"
 };

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -50,10 +50,47 @@ import TeamChatView from '@/components/Views/TeamChatView';
 import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
 import ModelTestView from '@/components/Views/ModelTestView';
+import BillingView from '@/components/Views/BillingView';
 function DashboardShell() {
   const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [verifyingStripe, setVerifyingStripe] = useState(false);
+
+  const stripeStatus = searchParams?.get('stripe');
+  const sessionId = searchParams?.get('session_id');
+
+  useEffect(() => {
+    if (stripeStatus === 'success' && sessionId && user?.uid) {
+      setVerifyingStripe(true);
+      const adminId = userData?.adminId || '';
+      
+      fetch(`/api/stripe/verify-session?session_id=${sessionId}&adminId=${adminId}`)
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || 'Failed to verify session');
+          }
+          alert(lang === 'ar' 
+            ? 'تم تفعيل الاشتراك بنجاح! شكراً لك.' 
+            : 'Your subscription has been successfully activated! Thank you.'
+          );
+          window.location.href = '/dashboard';
+        })
+        .catch((err) => {
+          console.error(err);
+          alert(lang === 'ar'
+            ? `فشل تفعيل الاشتراك تلقائياً: ${err.message}. يرجى مراجعة الدعم.`
+            : `Failed to verify payment: ${err.message}. Please contact support.`
+          );
+          window.location.href = '/dashboard';
+        })
+        .finally(() => {
+          setVerifyingStripe(false);
+        });
+    }
+  }, [stripeStatus, sessionId, user?.uid, userData?.adminId, lang]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -71,6 +108,36 @@ function DashboardShell() {
   }, []);
 
   if (loading || !user || !userData || userData.role === 'admin' || userData.role === 'super_admin') return null; // Show nothing or a spinner until redirected
+
+  if (verifyingStripe) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: '#0a0a0f',
+        backgroundImage: 'radial-gradient(circle at top right, rgba(255, 107, 53, 0.08), transparent 40%), radial-gradient(circle at bottom left, rgba(108, 53, 255, 0.08), transparent 40%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '"IBM Plex Sans Arabic", "DM Sans", sans-serif',
+        zIndex: 999999,
+        padding: '20px',
+        flexDirection: 'column',
+        gap: '16px',
+        color: '#fff',
+        textAlign: 'center'
+      }}>
+        <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(255,107,53,0.3)', borderTopColor: '#FF6B35', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <h3 style={{ fontSize: '18px', fontWeight: '800' }}>
+          {lang === 'ar' ? 'جاري التحقق من عملية الدفع...' : 'Verifying your payment...'}
+        </h3>
+        <p style={{ color: 'var(--t2)', fontSize: '13px', margin: 0 }}>
+          {lang === 'ar' ? 'يرجى عدم إغلاق أو تحديث هذه الصفحة.' : 'Please do not close or refresh this page.'}
+        </p>
+      </div>
+    );
+  }
 
   const getMs = (val) => {
     if (!val) return 0;
@@ -97,135 +164,100 @@ function DashboardShell() {
     return Date.now() > expiresMs;
   };
 
-  const isExpired = isTrialExpired() || isSubscriptionExpired();
+  const isExpired = userData?.expiresAt ? isSubscriptionExpired() : isTrialExpired();
 
   if (isExpired) {
     return (
       <div style={{
-        position: 'fixed',
-        inset: 0,
+        minHeight: '100vh',
         backgroundColor: '#0a0a0f',
         backgroundImage: 'radial-gradient(circle at top right, rgba(255, 107, 53, 0.08), transparent 40%), radial-gradient(circle at bottom left, rgba(108, 53, 255, 0.08), transparent 40%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         fontFamily: '"IBM Plex Sans Arabic", "DM Sans", sans-serif',
-        zIndex: 999999,
-        padding: '20px'
       }}>
-        {/* Blocker Card */}
+        {/* Minimal restricted Topbar/Header */}
         <div style={{
-          backgroundColor: '#12121e',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '24px',
-          padding: '40px 32px',
-          maxWidth: '440px',
-          width: '100%',
+          background: 'var(--surface2)',
+          borderBottom: '1px solid var(--brd)',
+          padding: '12px 24px',
           display: 'flex',
-          flexDirection: 'column',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          textAlign: 'center',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.6)',
-          direction: lang === 'ar' ? 'rtl' : 'ltr'
+          position: 'sticky',
+          top: 0,
+          zIndex: 100
         }}>
-          {/* Clock Icon */}
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '24px' }}>
-            <circle cx="12" cy="13" r="8" />
-            <path d="M12 9v4l2 2" />
-            <path d="M5 3L2 6" />
-            <path d="M19 3l3 3" />
-            <path d="M6.3 19.8l-1.3 1.3" />
-            <path d="M17.7 19.8l1.3 1.3" />
-          </svg>
-
-          {/* Title */}
-          <h2 style={{
-            fontSize: '22px',
-            fontWeight: '800',
-            color: '#ffffff',
-            margin: '0 0 12px 0',
-            lineHeight: '1.4'
-          }}>
-            {isTrialExpired() 
-              ? (lang === 'ar' ? 'انتهت فترة التجربة المجانية' : 'Free Trial Expired') 
-              : (lang === 'ar' ? 'انتهت صلاحية اشتراكك' : 'Subscription Expired')
-            }
-          </h2>
-
-          {/* Description */}
-          <p style={{
-            fontSize: '14.5px',
-            lineHeight: '1.6',
-            color: '#a0a0c0',
-            margin: '0 0 32px 0'
-          }}>
-            {isTrialExpired()
-              ? (lang === 'ar' 
-                  ? `انتهت فترة التجربة المجانية في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام تواصل معنا على الواتساب وسنقوم بتفعيل حسابك خلال دقائق.`
-                  : `Your free trial in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please contact us on WhatsApp and we will activate your account within minutes.`
-                )
-              : (lang === 'ar'
-                  ? `انتهت صلاحية اشتراكك في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام تواصل معنا على الواتساب وسنقوم بتجديد حسابك خلال دقائق.`
-                  : `Your subscription in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please contact us on WhatsApp and we will renew your account within minutes.`
-                )
-            }
-          </p>
-
-          {/* WhatsApp Support CTA */}
-          <a 
-            href={`https://wa.me/${tenantConfig?.whatsappNumber || '201000000000'}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img 
+              src={tenantConfig?.logoUrl || "https://storage.googleapis.com/msgsndr/GRFYul19fkMHp7sNiPF0/media/69447879aca6ab0633721cf7.png"} 
+              alt={tenantConfig?.appName || "UpKlick Logo"} 
+              style={{ maxHeight: '30px', objectFit: 'contain' }}
+            />
+            <span style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              color: 'var(--red)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              fontSize: '11px',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontWeight: '700'
+            }}>
+              {lang === 'ar' ? 'منتهي الصلاحية - وضع مقيد' : 'Expired - Restricted Mode'}
+            </span>
+          </div>
+          
+          <button 
+            onClick={() => logout()}
+            className="btn btn-ghost"
             style={{
-              background: '#25D366',
-              color: '#ffffff',
+              color: 'var(--red)',
+              borderColor: 'rgba(255, 61, 110, 0.15)',
               display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              padding: '14px 28px',
-              borderRadius: '12px',
-              fontWeight: '700',
-              fontSize: '15px',
-              textDecoration: 'none',
-              width: '100%',
-              marginBottom: '20px',
-              boxShadow: '0 8px 24px rgba(37, 211, 102, 0.25)',
-              transition: 'all 0.2s',
+              gap: '6px',
+              fontSize: '12.5px',
+              padding: '6px 12px',
+              fontWeight: 600,
               cursor: 'pointer'
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: lang === 'ar' ? '0' : '8px', marginLeft: lang === 'ar' ? '8px' : '0' }}>
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.965C16.528 1.977 14.053.953 11.428.953c-5.44 0-9.866 4.372-9.87 9.802 0 1.634.459 3.234 1.33 4.646L1.87 20.893l5.592-1.443.185-.096zm12.012-7.39c-.198-.1-.177-.167-.775-.466-.299-.149-1.764-.868-2.039-.967-.276-.099-.477-.149-.676.15-.199.299-.773.967-.948 1.165-.175.199-.349.224-.648.075-.3-.15-1.266-.466-2.41-1.484-.89-.794-1.49-1.773-1.665-2.072-.174-.3-.019-.462.13-.61.135-.133.3-.349.449-.523.149-.174.199-.299.299-.498.099-.2.049-.374-.025-.523-.075-.15-.676-1.63-.925-2.228-.243-.582-.488-.504-.676-.513-.175-.008-.374-.01-.573-.01-.199 0-.523.075-.797.373-.274.299-1.045 1.022-1.045 2.49 0 1.47 1.07 2.888 1.219 3.087.149.199 2.106 3.216 5.102 4.51.713.308 1.27.492 1.704.63.717.227 1.37.195 1.886.118.575-.086 1.765-.722 2.013-1.42.249-.697.249-1.295.174-1.42-.075-.125-.274-.224-.473-.323z"/>
-            </svg>
-            <span>{lang === 'ar' ? 'تواصل معنا على واتساب' : 'Contact us on WhatsApp'}</span>
-          </a>
-
-          {/* Logout Button */}
-          <button 
-            onClick={() => logout()}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#9090b0',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              cursor: 'pointer',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              transition: 'color 0.2s'
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: lang === 'ar' ? '0' : '6px', marginLeft: lang === 'ar' ? '6px' : '0' }}>
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            <span>{lang === 'ar' ? 'تسجيل الخروج' : 'Log Out'}</span>
+            <span>⎋</span>
+            <span>{lang === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}</span>
           </button>
+        </div>
+
+        {/* Restricted content area containing only BillingView */}
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '24px',
+          animation: 'fadeSlide 0.4s ease'
+        }}>
+          {/* A callout explaining the situation */}
+          <div className="card mb" style={{ borderColor: 'rgba(239, 68, 68, 0.2)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(8, 12, 20, 0.2) 100%)', display: 'flex', gap: '14px', alignItems: 'center', padding: '16px' }}>
+            <span style={{ fontSize: '24px' }}>⚠️</span>
+            <div style={{ textAlign: 'start' }}>
+              <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '14px', fontWeight: '700' }}>
+                {isTrialExpired() 
+                  ? (lang === 'ar' ? 'انتهت فترة التجربة المجانية' : 'Free Trial Expired') 
+                  : (lang === 'ar' ? 'انتهت صلاحية اشتراكك' : 'Subscription Expired')
+                }
+              </h4>
+              <p style={{ margin: '4px 0 0', color: 'var(--t2)', fontSize: '12.5px', lineHeight: '1.5' }}>
+                {isTrialExpired()
+                  ? (lang === 'ar' 
+                      ? `انتهت فترة التجربة المجانية في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
+                      : `Your free trial in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please renew your subscription below and submit payment proof.`
+                    )
+                  : (lang === 'ar'
+                      ? `انتهت صلاحية اشتراكك في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
+                      : `Your subscription in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please renew your subscription below and submit payment proof.`
+                    )
+                }
+              </p>
+            </div>
+          </div>
+
+          <BillingView />
         </div>
       </div>
     );
@@ -235,7 +267,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -297,6 +329,8 @@ function DashboardShell() {
         return <DesignStudioView />;
       case 'model-test':
         return <ModelTestView />;
+      case 'billing':
+        return <BillingView />;
       default:
         return <HomeView />;
     }
@@ -345,7 +379,13 @@ function DashboardShell() {
 export default function Home() {
   return (
     <BusinessProvider>
-      <DashboardShell />
+      <Suspense fallback={
+        <div style={{ display: 'flex', height: '100vh', width: '100vw', justifyContent: 'center', alignItems: 'center', background: '#08080f', color: '#8275A3' }}>
+          Loading dashboard...
+        </div>
+      }>
+        <DashboardShell />
+      </Suspense>
     </BusinessProvider>
   );
 }
