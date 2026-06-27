@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دليل نشر وربط بوابة Stripe والفايربيس على Vercel - UpKlick</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #09090e;
+      --card-bg: #111119;
+      --border: #1f1f2e;
+      --accent: #8b5cf6;
+      --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success: #10b981;
+      --warning: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans Arabic', sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+      border-bottom: 2px dashed var(--border);
+      padding-bottom: 30px;
+    }
+
+    .logo-badge {
+      background: var(--accent-gradient);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 700;
+      display: inline-block;
+      margin-bottom: 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 30px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-number {
+      background: var(--accent-gradient);
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      font-size: 14.5px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .alert {
+      background: rgba(139, 92, 246, 0.08);
+      border-left: 4px solid var(--accent);
+      padding: 16px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 24px;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.08);
+      border-left: 4px solid var(--success);
+    }
+
+    .alert-title {
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+      font-size: 14.5px;
+    }
+
+    ol, ul {
+      margin-right: 24px;
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      font-size: 14.5px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    code {
+      font-family: 'Plus Jakarta Sans', monospace;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #f472b6;
+      font-size: 13.5px;
+    }
+
+    pre {
+      background: #050508;
+      border: 1px solid var(--border);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+      direction: ltr;
+      text-align: left;
+    }
+
+    pre code {
+      color: #a78bfa;
+      background: none;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 50px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* Print styling to optimize saving as PDF */
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+        padding: 0;
+      }
+      .container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+        background: #fff;
+      }
+      h1, h2, .alert-title {
+        color: #000 !important;
+      }
+      p, li, .subtitle {
+        color: #333 !important;
+      }
+      .card, pre {
+        background: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
+        color: #000 !important;
+      }
+      pre code {
+        color: #111827 !important;
+      }
+      .logo-badge, .step-number {
+        background: #6b7280 !important;
+        color: #fff !important;
+      }
+      .alert {
+        background: #f3f4f6 !important;
+        border-left: 4px solid #6b7280 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="logo-badge">UPKLICK OS</div>
+      <h1>دليل نشر وتشغيل بوابة Stripe على Vercel</h1>
+      <p class="subtitle">دليل إعداد الـ Admin SDK وتفعيل الويب هوك للإنتاج (Production Deployment Guide)</p>
+    </header>
+
+    <div class="alert">
+      <div class="alert-title">💡 فكرة التشغيل الأساسية</div>
+      <p style="margin: 0;">يستخدم النظام <strong>Firebase Admin SDK</strong> لتعديل وتنشيط حسابات المستخدمين على السيرفر لتخطي قيود الحماية. كما يدعم <strong>Webhooks</strong> لضمان تفعيل الحسابات حتى عند انقطاع اتصال المشترك.</p>
+    </div>
+
+    <h2>
+      <span class="step-number">1</span>
+      تهيئة متغيرات البيئة على لوحة تحكم Vercel
+    </h2>
+    <p>يتطلب السيرفر صلاحيات الفايربيس ليتمكن من الاتصال بقاعدة البيانات. قم بالدخول إلى مشروعك في Vercel ثم اذهب إلى <code>Settings -> Environment Variables</code> وأضف المتغيرات التالية:</p>
+    
+    <div class="card">
+      <ul>
+        <li><strong>المفتاح:</strong> <code>FIREBASE_PROJECT_ID</code><br><strong>القيمة:</strong> <code>upklick-software</code></li>
+        <li style="margin-top: 12px;"><strong>المفتاح:</strong> <code>FIREBASE_CLIENT_EMAIL</code><br><strong>القيمة:</strong> <code>firebase-adminsdk-fbsvc@upklick-software.iam.gserviceaccount.com</code></li>
+        <li style="margin-top: 12px;"><strong>المفتاح:</strong> <code>FIREBASE_PRIVATE_KEY</code><br><strong>القيمة:</strong> الصق الـ <code>private_key</code> كاملة كما هي بملف الـ JSON (والتي تبدأ بـ <code>-----BEGIN PRIVATE KEY-----\nMIIEv...</code>).</li>
+      </ul>
+    </div>
+
+    <h2>
+      <span class="step-number">2</span>
+      ربط الـ Webhook الفعلي في بوابة Stripe للإنتاج
+    </h2>
+    <p>لضمان تنشيط الحسابات بصورة آلية وفورية فور الدفع مباشرة:</p>
+    <ol>
+      <li>افتح لوحة تحكم <strong>Stripe Dashboard</strong> (وتأكد من تشغيل وضع التجربة <code>Test Mode</code> إذا كنت تفحص النظام).</li>
+      <li>اذهب إلى <strong>Developers</strong> ثم اختر تبويب <strong>Webhooks</strong> من القائمة الجانبية.</li>
+      <li>اضغط على زر <strong>Add endpoint</strong> لإضافة رابط تتبع.</li>
+      <li>في خانة <strong>Endpoint URL</strong> اكتب رابط موقعك الفعلي متبوعاً بالمسار التالي:
+        <pre><code>https://[your-app-domain].vercel.app/api/stripe/webhook</code></pre>
+      </li>
+      <li>من قائمة الأحداث (Select events)، اختر الحدث التالي:
+        <ul>
+          <li><code>checkout.session.completed</code></li>
+        </ul>
+      </li>
+      <li>اضغط على <strong>Add endpoint</strong> لحفظ الإعدادات.</li>
+      <li>انسخ مفتاح التوقيع السري الناتج <strong>Signing secret</strong> (والذي يبدأ بـ <code>whsec_...</code>).</li>
+      <li>اذهب للوحة تحكم <strong>Vercel</strong> وأضف هذا المفتاح كمتغير رابع بالاسم التالي:
+        <ul>
+          <li><strong>المفتاح:</strong> <code>STRIPE_WEBHOOK_SECRET</code></li>
+          <li><strong>القيمة:</strong> <code>whsec_...</code> (المفتاح الذي نسخته).</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h2>
+      <span class="step-number">3</span>
+      تفعيل التنشيط التلقائي لروابط الدفع اليدوية (اختياري)
+    </h2>
+    <p>إذا كنت تستخدم روابط دفع Stripe مخصصة (Payment Links) تم إنشاؤها يدوياً بدلاً من أزرار النظام التلقائية:</p>
+    <ul>
+      <li>اذهب لإعدادات رابط الدفع داخل Stripe.</li>
+      <li>ابحث عن إعدادات <strong>"إعادة التوجيه بعد الدفع (Redirect on completion)"</strong>.</li>
+      <li>قم بتوجيه العميل للرابط التالي:
+        <pre><code>https://[your-app-domain].vercel.app/dashboard?stripe=success&session_id={CHECKOUT_SESSION_ID}</code></pre>
+      </li>
+      <li>سيقوم النظام تلقائياً بقراءة رقم الجلسة وتفعيل الحساب فور عودة المستخدم!</li>
+    </ul>
+
+    <div class="alert alert-success">
+      <div class="alert-title">🎯 سيناريوهات الاختبار المقترحة</div>
+      <ol style="margin: 0; padding-right: 18px;">
+        <li><strong>التنشيط مع العودة:</strong> اضغط على زر الاشتراك المطور، قم بالدفع ببطاقة التجربة <code>4242</code>، وانتظر العودة للموقع لتشهد فك الحظر الفوري للوحة التحكم.</li>
+        <li><strong>التنشيط الاحتياطي (الويب هوك):</strong> قم بالدفع، وبمجرد إتمام الدفع بنجاح أغلق النافذة مباشرة دون الانتظار. انتظر 5 ثوانٍ ثم افتح الموقع وستجد حسابك مفعل ومحدث بالكامل!</li>
+      </ol>
+    </div>
+
+    <div class="footer">
+      <p>تم الإنشاء بواسطة مساعد الذكاء الاصطناعي لمشروع UpKlick - 2026</p>
+    </div>
+  </div>
+
+</body>
+</html>
