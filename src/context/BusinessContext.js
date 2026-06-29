@@ -378,6 +378,36 @@ export function BusinessProvider({ children }) {
       if (userData.GC) {
         setGC(userData.GC);
         localStorage.setItem('ba_context', JSON.stringify(userData.GC));
+
+        // Auto-create missing public bio link/CV in Firestore
+        const bio = userData.GC.bioLink;
+        if (bio && bio.username) {
+          const cleanUsername = bio.username.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
+          if (cleanUsername) {
+            const bioDocRef = doc(db, 'bio_links', cleanUsername);
+            getDoc(bioDocRef).then((bioDocSnap) => {
+              if (!bioDocSnap.exists()) {
+                console.log("Auto-creating missing public bio link for", cleanUsername);
+                setDoc(bioDocRef, {
+                  ownerUid: userData.uid || authContext?.user?.uid,
+                  displayName: bio.displayName || userData.name || 'User',
+                  bioTagline: bio.bioTagline || 'Coach | Entrepreneur | Content Creator 🚀',
+                  username: cleanUsername,
+                  bioTheme: bio.bioTheme || 'dark',
+                  layout: bio.layout || 'classic',
+                  font: bio.font || 'Tajawal',
+                  avatarUrl: bio.avatarUrl || '',
+                  links: bio.links || [],
+                  socials: bio.socials || {},
+                  cvEnabled: bio.cvEnabled || false,
+                  lang: bio.lang || lang || 'ar',
+                  cvSections: bio.cvSections || { experience: [], education: [], skills: [] },
+                  updatedAt: new Date().toISOString()
+                }).catch(err => console.error("Error writing auto-created bio:", err));
+              }
+            }).catch(err => console.error("Error checking public bio link doc:", err));
+          }
+        }
       }
       if (userData.onboardingDone) {
         setOnboardingDone(true);

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -225,6 +225,21 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
+      // Ensure uniqueness of username on register
+      let baseUsername = name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+      let cleanUsername = baseUsername;
+      let isUnique = false;
+      let counter = 0;
+      while (!isUnique) {
+        const docSnap = await getDoc(doc(db, 'bio_links', cleanUsername));
+        if (!docSnap.exists()) {
+          isUnique = true;
+        } else {
+          counter++;
+          cleanUsername = `${baseUsername}${counter}`;
+        }
+      }
+
       // 2. Setup user profile defaults inside Firestore
       const userGC = {
         ...initialGC,
@@ -235,13 +250,32 @@ export default function RegisterPage() {
         bioLink: {
           ...initialGC.bioLink,
           displayName: name,
-          username: name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user' + Math.floor(Math.random() * 1000)
+          username: cleanUsername
         }
       };
 
       const isTrial = tenantConfig?.freeTrial?.enabled || false;
       const trialStartedAt = isTrial ? new Date().toISOString() : null;
 
+      // 3. Automatically create/publish public CV/Bio link document
+      await setDoc(doc(db, 'bio_links', cleanUsername), {
+        ownerUid: uid,
+        displayName: name,
+        bioTagline: initialGC.bioLink.bioTagline || 'Coach | Entrepreneur | Content Creator 🚀',
+        username: cleanUsername,
+        bioTheme: initialGC.bioLink.bioTheme || 'dark',
+        layout: 'classic',
+        font: 'Tajawal',
+        avatarUrl: '',
+        links: initialGC.bioLink.links || [],
+        socials: initialGC.bioLink.socials || {},
+        cvEnabled: false,
+        lang: 'ar',
+        cvSections: { experience: [], education: [], skills: [] },
+        updatedAt: new Date().toISOString()
+      });
+
+      // 4. Save User document
       await setDoc(doc(db, 'users', uid), {
         uid: uid,
         name: name,
