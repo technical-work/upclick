@@ -47,6 +47,7 @@ import { db, firebaseConfig } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import BrandingSettings from './BrandingSettings';
 import PaymentSettingsPage from './PaymentSettingsPage';
+import AiSettingsPage from './AiSettingsPage';
 
 const countryData = {
   EG: { code: '+20', placeholder: '1xxxxxxxxx' },
@@ -118,6 +119,7 @@ const AdminDashboard = () => {
   const [editingUser, setEditingUser] = useState(null);
 
   const [tenantFreeTrial, setTenantFreeTrial] = useState({ enabled: false, days: 7 });
+  const [globalDefaultCredits, setGlobalDefaultCredits] = useState(5.00);
   const [projectCount, setProjectCount] = useState(0);
   const [adminCount, setAdminCount] = useState(0);
   const [libraryCount, setLibraryCount] = useState(0);
@@ -146,6 +148,7 @@ const AdminDashboard = () => {
     role: 'user',
     subscriptionType: 'months',
     subscriptionDuration: '1',
+    aiCredits: '',
     allowedTools: AVAILABLE_TOOLS.map(t => t.key)
   });
 
@@ -451,6 +454,7 @@ const AdminDashboard = () => {
         subscriptionType: newUser.subscriptionType,
         subscriptionDuration: newUser.subscriptionType === 'lifetime' ? null : newUser.subscriptionDuration,
         expiresAt: expiresAt,
+        aiCredits: newUser.aiCredits !== '' ? Number(newUser.aiCredits) : globalDefaultCredits,
         createdAt: serverTimestamp(),
         allowedTools: newUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
       });
@@ -488,6 +492,7 @@ const AdminDashboard = () => {
     setEditingUser({
       ...user,
       phoneNumber: user.phoneNumber?.replace(countryData[user.country || 'EG'].code, '') || '',
+      aiCredits: user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits,
       allowedTools: user.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
     });
     setShowEditModal(true);
@@ -514,6 +519,7 @@ const AdminDashboard = () => {
         subscriptionType: editingUser.subscriptionType,
         subscriptionDuration: editingUser.subscriptionType === 'lifetime' ? null : editingUser.subscriptionDuration,
         expiresAt: expiresAt,
+        aiCredits: Number(editingUser.aiCredits || 0),
         allowedTools: editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
       }, { merge: true });
 
@@ -536,8 +542,11 @@ const AdminDashboard = () => {
       unsubSales = fetchSales();
       unsubPayments = fetchPendingPayments();
       unsubAllPayments = fetchAllPayments();
-      getDoc(doc(db, 'tenants', currentUser.uid)).then(snap => {
-        if (snap.exists() && snap.data().freeTrial) setTenantFreeTrial(snap.data().freeTrial);
+      getDoc(doc(db, 'tenants', 'global')).then(snap => {
+        if (snap.exists()) {
+          if (snap.data().freeTrial) setTenantFreeTrial(snap.data().freeTrial);
+          if (snap.data().defaultUserCredit !== undefined) setGlobalDefaultCredits(Number(snap.data().defaultUserCredit));
+        }
       }).catch(() => {});
     }
     return () => {
@@ -1093,6 +1102,8 @@ const AdminDashboard = () => {
         <BrandingSettings />
       ) : activeTab === 'payments' && userData?.role === 'admin' ? (
         <PaymentSettingsPage />
+      ) : activeTab === 'ai' && userData?.role === 'admin' ? (
+        <AiSettingsPage />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
           <div style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1138,6 +1149,9 @@ const AdminDashboard = () => {
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold', marginTop: '2px' }}>
+                              🤖 {isRTL ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${(user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits).toFixed(2)}
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -1333,6 +1347,19 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              <div className="field" style={{ marginBottom: '12px' }}>
+                <label className="field-label">{isRTL ? 'رصيد الذكاء الاصطناعي ($)' : 'AI Credits ($)'}</label>
+                <input 
+                  className="form-control" 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  value={editingUser.aiCredits !== undefined ? editingUser.aiCredits : ''} 
+                  onChange={e => setEditingUser({ ...editingUser, aiCredits: e.target.value })} 
+                  placeholder="0.00" 
+                />
+              </div>
+
               <div className="field" style={{ marginBottom: '20px' }}>
                 <label className="field-label" style={{ display: 'block', marginBottom: '10px' }}>
                   {isRTL ? 'الأدوات والصلاحيات المفعلة' : 'Enabled Tools & Permissions'}
@@ -1482,6 +1509,19 @@ const AdminDashboard = () => {
                     <Zap size={14} /> {t('common.generateCode') || 'Generate'}
                   </button>
                 </div>
+              </div>
+
+              <div className="field" style={{ marginBottom: '12px' }}>
+                <label className="field-label">{isRTL ? 'رصيد الذكاء الاصطناعي ($)' : 'AI Credits ($)'}</label>
+                <input 
+                  className="form-control" 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  value={newUser.aiCredits} 
+                  onChange={e => setNewUser({ ...newUser, aiCredits: e.target.value })} 
+                  placeholder={`Default: $${globalDefaultCredits.toFixed(2)}`} 
+                />
               </div>
 
               <div className="field" style={{ marginBottom: '20px' }}>

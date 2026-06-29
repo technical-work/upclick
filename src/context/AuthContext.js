@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext({});
@@ -15,6 +15,8 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
+    let unsubSnapshot = null;
+
     // Fallback timeout in case onAuthStateChanged hangs (e.g. on ngrok free tier without headers)
     const timeout = setTimeout(() => {
       if (loading) {
@@ -23,30 +25,36 @@ export function AuthProvider({ children }) {
       }
     }, 5000);
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
+      if (unsubSnapshot) unsubSnapshot();
+
       if (firebaseUser) {
-        try {
-          const docRef = doc(db, 'users', firebaseUser.uid);
-          const docSnap = await getDoc(docRef);
+        const docRef = doc(db, 'users', firebaseUser.uid);
+        unsubSnapshot = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserData(docSnap.data());
           } else {
-            setUserData({ role: 'user', email: firebaseUser.email });
+            setUserData({ role: 'user', email: firebaseUser.email, uid: firebaseUser.uid });
           }
-        } catch (error) {
-          console.error('Error fetching user document:', error);
-          setUserData({ role: 'user', email: firebaseUser.email });
-        }
+          setLoading(false);
+          clearTimeout(timeout);
+        }, (error) => {
+          console.error('Error listening to user document:', error);
+          setUserData({ role: 'user', email: firebaseUser.email, uid: firebaseUser.uid });
+          setLoading(false);
+          clearTimeout(timeout);
+        });
       } else {
         setUserData(null);
+        setLoading(false);
+        clearTimeout(timeout);
       }
-      setLoading(false);
-      clearTimeout(timeout);
     });
 
     return () => {
       unsubscribe();
+      if (unsubSnapshot) unsubSnapshot();
       clearTimeout(timeout);
     };
   }, []);

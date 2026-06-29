@@ -138,9 +138,6 @@ export default function SocialTrendsView() {
           payload = { searchQueries: [queryTerm + ' snapchat'], resultsPerPage: parseInt(resultsLimit), shouldDownloadVideos: false, shouldDownloadCovers: false };
         }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 seconds timeout
-
         const response = await fetch(
           `https://api.apify.com/v2/acts/${actorName}/run-sync-get-dataset-items?token=${apifyToken}`,
           {
@@ -148,12 +145,9 @@ export default function SocialTrendsView() {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload),
-            signal: controller.signal
+            body: JSON.stringify(payload)
           }
         );
-
-        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error('Apify API request failed');
@@ -190,6 +184,8 @@ export default function SocialTrendsView() {
               videoUrl = `https://www.tiktok.com/@${creatorName}/video/${item.id}`;
             }
 
+            const coverUrl = item.coverUrl || item.video?.coverUrl || item.displayUrl || item.thumbnailUrl || item.thumbnail || '';
+
             return {
               title: cleanTitle,
               creator: creatorName,
@@ -205,6 +201,7 @@ export default function SocialTrendsView() {
               trend_score: Math.floor(Math.random() * 3) + 8,
               why_trending: L(`High engagement and social shares on ${platform}.`, `تفاعل كبير ومشاركات عالية على ${platform}.`),
               video_url: videoUrl,
+              cover_url: coverUrl,
               rawPlayCount: playCount,
               rawDiggCount: diggCount,
               rawShareCount: shareCount,
@@ -241,8 +238,8 @@ export default function SocialTrendsView() {
       }
     }
 
-    const prompt = `Generate ${resultsLimit} Arabic social media trending videos. Platform: ${platform} Niche: ${niche || 'mixed'} Region: ${region}. Each object needs: title, creator, views, likes, shares, comments, hashtags(array of 3), category, duration, trend_score(1-10), why_trending. Return ONLY the JSON array.`;
-    const sysPrompt = 'TikTok trend analyst for Arabic market. Return ONLY valid JSON array, no markdown, no code blocks.';
+    const prompt = `Generate ${resultsLimit} Arabic social media trending videos for ${platform}. Niche: ${niche || 'mixed'} Region: ${region}. Each object needs: title, creator, views, likes, shares, comments, hashtags(array of 3), category, duration, trend_score(1-10), why_trending. Return ONLY the JSON array.`;
+    const sysPrompt = `${platform} trend analyst for Arabic market. Return ONLY valid JSON array, no markdown, no code blocks.`;
 
     try {
       const reply = await callClaudeAPI(prompt, sysPrompt, lang);
@@ -253,7 +250,7 @@ export default function SocialTrendsView() {
       const rawParsed = JSON.parse(cleaned);
       const parsed = Array.isArray(rawParsed) ? rawParsed.map(item => ({
         ...item,
-        video_url: item.video_url || `https://www.tiktok.com/search?q=${encodeURIComponent(item.title || '')}`
+        video_url: item.video_url || (platform === 'youtube' ? `https://www.youtube.com/results?search_query=${encodeURIComponent(item.title || '')}` : platform === 'instagram' ? `https://www.instagram.com/explore/tags/${encodeURIComponent((item.hashtags && item.hashtags[0]) || 'reels')}` : `https://www.tiktok.com/search?q=${encodeURIComponent(item.title || '')}`)
       })) : [];
       setTrends(parsed);
 
@@ -267,12 +264,105 @@ export default function SocialTrendsView() {
       saveGC(updatedGC);
     } catch (e) {
       console.warn("AI Trends call failed, using mock fallbacks.");
-      // Fallback trend cards
-      const fallbacks = [
-        { title: L('How to start a digital product store from scratch in Arabic', 'كيف تبدأ متجر منتجات رقمية من الصفر باللغة العربية'), creator: 'upklick_creator', views: '284K', likes: '24K', shares: '5.2K', comments: '1.2K', hashtags: ['منتجات_رقمية', 'عمل_حر', 'ريادة_الأعمال'], category: 'Business', duration: '0:45', trend_score: 9, why_trending: L('High search volume for side hustles in the Gulf.', 'معدل بحث مرتفع عن مصادر الدخل الجانبية في منطقة الخليج.'), video_url: 'https://www.tiktok.com/search?q=' + encodeURIComponent('start digital products store arabic') },
-        { title: L('My 5:00 AM morning routine as a SaaS founder', 'روتين الصباح الساعة ٥:٠٠ صباحاً كمؤسس شركة برمجيات'), creator: 'saas_sara', views: '194K', likes: '18K', shares: '2.1K', comments: '640', hashtags: ['روتين_الصباح', 'إنتاجية', 'يوميات'], category: 'Lifestyle', duration: '0:35', trend_score: 8, why_trending: L('Aesthetic productivity routines are highly viral right now.', 'فيديوهات الإنتاجية الجمالية تحظى برواج كبير حالياً.'), video_url: 'https://www.tiktok.com/search?q=' + encodeURIComponent('morning routine saas founder') },
-        { title: L('Stop doing manual data entry - use this Notion tracker', 'توقف عن كتابة البيانات يدوياً - استخدم جدول Notion هذا'), creator: 'notion_arabia', views: '342K', likes: '31K', shares: '11K', comments: '3.4K', hashtags: ['نوتشن', 'أدوات_ذكية', 'تنظيم'], category: 'Tech', duration: '0:50', trend_score: 10, why_trending: L('Notion templates adoption is growing rapidly.', 'تزايد استخدام قوالب نوتشن بشكل متسارع.'), video_url: 'https://www.tiktok.com/search?q=' + encodeURIComponent('Notion tracker tutorial') }
-      ];
+      
+      let fallbacks = [];
+      if (platform === 'youtube') {
+        fallbacks = [
+          { 
+            title: L('How to start a digital product store from scratch in Arabic', 'كيف تبدأ متجر منتجات رقمية من الصفر باللغة العربية'), 
+            creator: 'upklick_shorts', 
+            views: '284K', 
+            likes: '24K', 
+            shares: '5.2K', 
+            comments: '1.2K', 
+            hashtags: ['يوتيوب_شورتس', 'عمل_حر', 'منتجات_رقمية'], 
+            category: 'YouTube Shorts', 
+            duration: '0:45', 
+            trend_score: 9, 
+            why_trending: L('High search volume for side hustles in the Gulf on YouTube.', 'معدل بحث مرتفع عن مصادر الدخل الجانبية على يوتيوب شورتس في الخليج.'), 
+            video_url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent('start digital products store arabic') 
+          },
+          { 
+            title: L('My 5:00 AM morning routine as a SaaS founder', 'روتين الصباح الساعة ٥:٠٠ صباحاً كمؤسس شركة برمجيات'), 
+            creator: 'saas_sara', 
+            views: '194K', 
+            likes: '18K', 
+            shares: '2.1K', 
+            comments: '640', 
+            hashtags: ['شورتس', 'إنتاجية', 'يوميات'], 
+            category: 'YouTube Shorts', 
+            duration: '0:35', 
+            trend_score: 8, 
+            why_trending: L('Aesthetic productivity routines are highly viral on YouTube Shorts.', 'فيديوهات الإنتاجية الجمالية تحظى برواج كبير على يوتيوب شورتس.'), 
+            video_url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent('morning routine saas founder') 
+          },
+          { 
+            title: L('Stop doing manual data entry - use this Notion tracker', 'توقف عن كتابة البيانات يدوياً - استخدم جدول Notion هذا'), 
+            creator: 'notion_arabia', 
+            views: '342K', 
+            likes: '31K', 
+            shares: '11K', 
+            comments: '3.4K', 
+            hashtags: ['نوتشن', 'أدوات_ذكية', 'تنظيم'], 
+            category: 'YouTube Shorts', 
+            duration: '0:50', 
+            trend_score: 10, 
+            why_trending: L('Notion templates tutorials are growing rapidly on YouTube.', 'تزايد شروحات قوالب نوتشن بشكل متسارع على يوتيوب.'), 
+            video_url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent('Notion tracker tutorial') 
+          }
+        ];
+      } else if (platform === 'instagram') {
+        fallbacks = [
+          { 
+            title: L('How to start a digital product store from scratch in Arabic', 'كيف تبدأ متجر منتجات رقمية من الصفر باللغة العربية'), 
+            creator: 'upklick_reels', 
+            views: '284K', 
+            likes: '24K', 
+            shares: '5.2K', 
+            comments: '1.2K', 
+            hashtags: ['انستقرام_ريلز', 'عمل_حر', 'منتجات_رقمية'], 
+            category: 'Instagram Reels', 
+            duration: '0:45', 
+            trend_score: 9, 
+            why_trending: L('High search volume for side hustles in the Gulf on Instagram Reels.', 'معدل بحث مرتفع عن مصادر الدخل الجانبية على ريلز انستقرام في الخليج.'), 
+            video_url: 'https://www.instagram.com/explore/tags/' + encodeURIComponent('start digital products store arabic') 
+          },
+          { 
+            title: L('My 5:00 AM morning routine as a SaaS founder', 'روتين الصباح الساعة ٥:٠٠ صباحاً كمؤسس شركة برمجيات'), 
+            creator: 'saas_sara', 
+            views: '194K', 
+            likes: '18K', 
+            shares: '2.1K', 
+            comments: '640', 
+            hashtags: ['ريلز', 'إنتاجية', 'يوميات'], 
+            category: 'Instagram Reels', 
+            duration: '0:35', 
+            trend_score: 8, 
+            why_trending: L('Aesthetic productivity routines are highly viral on Instagram Reels.', 'فيديوهات الإنتاجية الجمالية تحظى برواج كبير على ريلز انستقرام.'), 
+            video_url: 'https://www.instagram.com/explore/tags/' + encodeURIComponent('morning routine saas founder') 
+          },
+          { 
+            title: L('Stop doing manual data entry - use this Notion tracker', 'توقف عن كتابة البيانات يدوياً - استخدم جدول Notion هذا'), 
+            creator: 'notion_arabia', 
+            views: '342K', 
+            likes: '31K', 
+            shares: '11K', 
+            comments: '3.4K', 
+            hashtags: ['نوتشن', 'أدوات_ذكية', 'تنظيم'], 
+            category: 'Instagram Reels', 
+            duration: '0:50', 
+            trend_score: 10, 
+            why_trending: L('Notion templates tutorials are growing rapidly on Instagram Reels.', 'تزايد شروحات قوالب نوتشن بشكل متسارع على ريلز انستقرام.'), 
+            video_url: 'https://www.instagram.com/explore/tags/' + encodeURIComponent('Notion tracker tutorial') 
+          }
+        ];
+      } else {
+        fallbacks = [
+          { title: L('How to start a digital product store from scratch in Arabic', 'كيف تبدأ متجر منتجات رقمية من الصفر باللغة العربية'), creator: 'upklick_creator', views: '284K', likes: '24K', shares: '5.2K', comments: '1.2K', hashtags: ['منتجات_رقمية', 'عمل_حر', 'ريادة_الأعمال'], category: 'TikTok', duration: '0:45', trend_score: 9, why_trending: L('High search volume for side hustles in the Gulf.', 'معدل بحث مرتفع عن مصادر الدخل الجانبية في منطقة الخليج.'), video_url: 'https://www.tiktok.com/search?q=' + encodeURIComponent('start digital products store arabic') },
+          { title: L('My 5:00 AM morning routine as a SaaS founder', 'روتين الصباح الساعة ٥:٠٠ صباحاً كمؤسس شركة برمجيات'), creator: 'saas_sara', views: '194K', likes: '18K', shares: '2.1K', comments: '640', hashtags: ['روتين_الصباح', 'إنتاجية', 'يوميات'], category: 'TikTok', duration: '0:35', trend_score: 8, why_trending: L('Aesthetic productivity routines are highly viral right now.', 'فيديوهات الإنتاجية الجمالية تحظى برواج كبير حالياً.'), video_url: 'https://www.tiktok.com/search?q=' + encodeURIComponent('morning routine saas founder') },
+          { title: L('Stop doing manual data entry - use this Notion tracker', 'توقف عن كتابة البيانات يدوياً - استخدم جدول Notion هذا'), creator: 'notion_arabia', views: '342K', likes: '31K', shares: '11K', comments: '3.4K', hashtags: ['نوتشن', 'أدوات_ذكية', 'تنظيم'], category: 'TikTok', duration: '0:50', trend_score: 10, why_trending: L('Notion templates adoption is growing rapidly.', 'تزايد استخدام قوالب نوتشن بشكل متسارع.'), video_url: 'https://www.tiktok.com/search?q=' + encodeURIComponent('Notion tracker tutorial') }
+        ];
+      }
       setTrends(fallbacks);
 
       const updatedGC = {
@@ -531,7 +621,7 @@ export default function SocialTrendsView() {
               className="trend-thumbnail-container"
               style={{ 
                 height: '130px', 
-                background: 'linear-gradient(135deg, var(--surface2), var(--surface3))', 
+                background: v.cover_url ? `url(${v.cover_url}) center/cover no-repeat` : 'linear-gradient(135deg, var(--surface2), var(--surface3))', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
@@ -544,7 +634,7 @@ export default function SocialTrendsView() {
                 }
               }}
             >
-              <div className="trend-music-icon" style={{ fontSize: '36px' }}>🎵</div>
+              {!v.cover_url && <div className="trend-music-icon" style={{ fontSize: '36px' }}>🎵</div>}
               {v.video_url && (
                 <div className="hover-play-btn">
                   <span style={{ fontSize: '36px', color: '#fff' }}>▶️</span>

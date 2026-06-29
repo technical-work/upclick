@@ -183,6 +183,28 @@ export default function Sidebar() {
           </span>
         </div>
 
+        {!collapsed && userData?.aiCredits !== undefined && (
+          <div style={{
+            fontSize: '11.5px',
+            color: 'var(--orange)',
+            fontWeight: 'bold',
+            marginTop: '8px',
+            marginBottom: '4px',
+            background: 'rgba(255, 107, 53, 0.08)',
+            padding: '5px 12px',
+            borderRadius: '12px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            border: '1px solid rgba(255, 107, 53, 0.15)',
+            width: '100%',
+            justifyContent: 'center',
+            boxSizing: 'border-box'
+          }}>
+            🤖 {isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${Number(userData.aiCredits).toFixed(2)}
+          </div>
+        )}
+
         {/* Logout button */}
         <button
           className="sb-logout-btn"
