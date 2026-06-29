@@ -97,7 +97,7 @@ export default function LaunchpadView() {
       title: L('Set up Telegram for sales', 'إعداد تليجرام للمبيعات'),
       desc: L('Your primary sales channel in the Arab market', 'قناة مبيعاتك الأساسية في السوق العربي'),
       btnLabel: L('Telegram Hub →', 'مركز التليجرام ←'),
-      action: () => setCurrentPage('whatsapp')
+      action: () => setCurrentPage('telegram')
     },
     {
       id: 5,

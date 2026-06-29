@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { collection, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
@@ -44,6 +44,13 @@ export default function TelegramHubView() {
   // Broadcast list state
   const [broadcasts, setBroadcasts] = useState(tg.broadcasts || []);
   const [newBcTitle, setNewBcTitle] = useState('');
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+
+  // Automations State
+  const [automations, setAutomations] = useState(tg.automations || []);
+  const [showAutoModal, setShowAutoModal] = useState(false);
+  const [autoForm, setAutoForm] = useState({ name: '', keyword: '', reply: '' });
 
   // Diagnostics Modal States
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -53,10 +60,39 @@ export default function TelegramHubView() {
   const [testMessage, setTestMessage] = useState('Test from UpKlick 🚀');
   const [testLoading, setTestLoading] = useState(false);
 
+  // New Templates and Media UI States
+  const fileInputRef = useRef(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+
+  const [templates, setTemplates] = useState(tg.templates || [
+    { id: '1', name: 'Welcome Message', content: 'السلام عليكم {{name}}! 👋 أهلاً بك في ...', status: 'Active' },
+    { id: '2', name: 'Follow Up #1', content: 'مرحباً {{name}}، لاحظت إنك مهتم بـ...', status: 'Draft' }
+  ]);
+  const [showCreateTmplModal, setShowCreateTmplModal] = useState(false);
+  const [newTmplName, setNewTmplName] = useState('');
+  const [newTmplContent, setNewTmplContent] = useState('');
+
+  const [showSendTmplModal, setShowSendTmplModal] = useState(false);
+  const [selectedTmplToSend, setSelectedTmplToSend] = useState(null);
+  const [sendTmplToAll, setSendTmplToAll] = useState(true);
+  const [selectedContactsForTmpl, setSelectedContactsForTmpl] = useState([]);
+  const [sendingTmpl, setSendingTmpl] = useState(false);
+
   // Chat UI states
   const [chatMessages, setChatMessages] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages, selectedChat]);
 
   // CSV Import States
   const [csvFile, setCsvFile] = useState(null);
@@ -85,6 +121,9 @@ export default function TelegramHubView() {
       setTmplCtx(tgData.tmplCtx || '');
       setTmplOutput(tgData.tmplOutput || '');
       setBroadcasts(tgData.broadcasts || []);
+      if (tgData.templates) {
+        setTemplates(tgData.templates);
+      }
     }
   }, [GC.telegramHub]);
 
@@ -132,6 +171,57 @@ export default function TelegramHubView() {
       if (unsubscribeMessages) unsubscribeMessages();
     };
   }, [selectedChat]);
+
+  // Automations Auto-Reply Watcher
+  useEffect(() => {
+    if (!chatMessages || chatMessages.length === 0 || !selectedChat) return;
+    const latestMsg = chatMessages[chatMessages.length - 1];
+    
+    // Process only if it's incoming and we haven't auto-replied to it yet
+    if (latestMsg.isIncoming && !latestMsg.autoProcessed && automations.length > 0) {
+      const activeAutos = automations.filter(a => a.active);
+      if (activeAutos.length === 0) return;
+      
+      const text = (latestMsg.text || '').toLowerCase();
+      let triggeredReply = null;
+      
+      for (const auto of activeAutos) {
+        if (auto.keyword && text.includes(auto.keyword.toLowerCase())) {
+          triggeredReply = auto.reply;
+          break;
+        }
+      }
+      
+      if (triggeredReply) {
+        latestMsg.autoProcessed = true; // In-memory flag to prevent duplicate calls
+        const token = GC?.integrations?.telegramBotToken;
+        if (token) {
+          fetch('/api/telegram/send-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, chatId: selectedChat.id, message: triggeredReply })
+          }).then(res => res.json()).then(async data => {
+            if (data.ok) {
+              // Also save the sent reply to Firestore to show in chat UI
+              const replyData = {
+                messageId: data.result.message_id,
+                text: triggeredReply,
+                date: data.result.date,
+                from: 'bot',
+                isIncoming: false,
+                createdAt: new Date().toISOString()
+              };
+              await setDoc(doc(db, `telegram_chats/${selectedChat.id}/messages`, data.result.message_id.toString()), replyData);
+              await setDoc(doc(db, 'telegram_chats', selectedChat.id), {
+                lastMessage: triggeredReply,
+                lastMessageAt: new Date().toISOString()
+              }, { merge: true });
+            }
+          }).catch(console.error);
+        }
+      }
+    }
+  }, [chatMessages, automations, selectedChat, GC?.integrations?.telegramBotToken]);
 
   // Sync Telegram media to Cloudinary automatically
   useEffect(() => {
@@ -203,8 +293,8 @@ export default function TelegramHubView() {
   const handleGenerateTemplate = async () => {
     setTmplLoading(true);
     setTmplOutput('');
-    const prompt = `Write a high-converting Telegram message of type: "${tmplType}" in "${tmplLang}". Context details: "${tmplCtx}". Include 2-3 variations, use emojis and bullet points.`;
-    const systemPrompt = `You are a Telegram copywriter. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    const prompt = `Write a short, high-converting Telegram message of type: "${tmplType}" in "${tmplLang}". Context details: "${tmplCtx}". Provide ONLY ONE message variation. Use emojis. STRICT RULE: Keep the total response under 50 words.`;
+    const systemPrompt = `You are a Telegram copywriter. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Keep the response extremely concise.`;
     
     try {
       const res = await callClaudeAPI(prompt, systemPrompt, lang, GC);
@@ -239,6 +329,33 @@ export default function TelegramHubView() {
     saveTGHub({ broadcasts: updatedBcs });
     setNewBcTitle('');
     alert(L('Broadcast campaign sent successfully! 🚀', 'تم إرسال حملة البث بنجاح! 🚀'));
+  };
+
+  const handleAddAutomation = () => {
+    if (!autoForm.name.trim() || !autoForm.keyword.trim() || !autoForm.reply.trim()) {
+      alert(L('Please fill all fields', 'الرجاء ملء جميع الحقول'));
+      return;
+    }
+    const newAuto = { id: Date.now(), ...autoForm, active: true };
+    const updated = [newAuto, ...automations];
+    setAutomations(updated);
+    saveTGHub({ automations: updated });
+    setAutoForm({ name: '', keyword: '', reply: '' });
+    setShowAutoModal(false);
+  };
+
+  const handleToggleAutomation = (id) => {
+    const updated = automations.map(a => a.id === id ? { ...a, active: !a.active } : a);
+    setAutomations(updated);
+    saveTGHub({ automations: updated });
+  };
+
+  const handleDeleteAutomation = (id) => {
+    if (window.confirm(L('Are you sure you want to delete this automation?', 'هل أنت متأكد من حذف هذه الأتمتة؟'))) {
+      const updated = automations.filter(a => a.id !== id);
+      setAutomations(updated);
+      saveTGHub({ automations: updated });
+    }
   };
 
   const fetchDiagnostics = async () => {
@@ -318,7 +435,8 @@ export default function TelegramHubView() {
         const chatRef = doc(db, 'telegram_chats', selectedChat.id);
         await setDoc(chatRef, {
           lastMessage: replyText,
-          lastMessageAt: new Date().toISOString()
+          lastMessageAt: new Date().toISOString(),
+          unreadCount: 0
         }, { merge: true });
       } else {
         alert(L('Failed to send:', 'فشل الإرسال: ') + data.error);
@@ -456,6 +574,84 @@ export default function TelegramHubView() {
       alert(L('Error importing contacts', 'حدث خطأ أثناء حفظ جهات الاتصال'));
     } finally {
       setImportLoading(false);
+      setImportLoading(false);
+    }
+  };
+
+  const handleSaveNewTmpl = () => {
+    if (!newTmplName.trim() || !newTmplContent.trim()) return;
+    const newTmpl = { id: Date.now().toString(), name: newTmplName, content: newTmplContent, status: 'Active' };
+    const updated = [...templates, newTmpl];
+    setTemplates(updated);
+    saveGC({ ...GC, telegramHub: { ...(GC.telegramHub || {}), templates: updated } });
+    setShowCreateTmplModal(false);
+    setNewTmplName('');
+    setNewTmplContent('');
+  };
+
+  const handleTmplClick = (tmpl) => {
+    setSelectedTmplToSend(tmpl);
+    setSendTmplToAll(true);
+    setSelectedContactsForTmpl([]);
+    setShowSendTmplModal(true);
+  };
+
+  const handleSendTemplateSubmit = async () => {
+    if (!GC?.integrations?.telegramBotToken) { alert(L('Connect Telegram Bot first', 'قم بربط البوت أولاً')); return; }
+    setSendingTmpl(true);
+    let targets = sendTmplToAll ? liveContacts : liveContacts.filter(c => selectedContactsForTmpl.includes(c.id));
+    if (targets.length === 0) { alert(L('No contacts selected', 'لم يتم تحديد جهات اتصال')); setSendingTmpl(false); return; }
+    
+    let successCount = 0;
+    for (let contact of targets) {
+      let msgText = selectedTmplToSend.content.replace(/\{\{name\}\}/g, contact.firstName || 'مرحباً');
+      try {
+        const res = await fetch('/api/telegram/send-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: GC.integrations.telegramBotToken, chatId: contact.id, message: msgText })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          successCount++;
+          const msgRef = doc(collection(db, `telegram_chats/${contact.id}/messages`));
+          await setDoc(msgRef, { text: msgText, date: Math.floor(Date.now() / 1000), direction: 'outbound', from: 'agent' });
+          const chatRef = doc(db, 'telegram_chats', contact.id);
+          await setDoc(chatRef, { lastMessage: msgText, lastMessageAt: new Date().toISOString(), unreadCount: 0 }, { merge: true });
+        }
+      } catch (err) {}
+    }
+    alert(L(`Sent successfully to ${successCount} contacts`, `تم الإرسال بنجاح إلى ${successCount} جهة اتصال`));
+    setSendingTmpl(false);
+    setShowSendTmplModal(false);
+  };
+
+  const handleMediaUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedChat?.id || !GC?.integrations?.telegramBotToken) return;
+    setUploadingMedia(true);
+    try {
+      const formData = new FormData();
+      formData.append('token', GC.integrations.telegramBotToken);
+      formData.append('chatId', selectedChat.id);
+      formData.append('file', file);
+      let type = 'document';
+      if (file.type.startsWith('image/')) type = 'photo';
+      else if (file.type.startsWith('video/')) type = 'video';
+      else if (file.type.startsWith('audio/')) type = 'audio';
+      formData.append('type', type);
+      
+      const res = await fetch('/api/telegram/send-media', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.ok) {
+        const msgRef = doc(collection(db, `telegram_chats/${selectedChat.id}/messages`));
+        await setDoc(msgRef, { text: `[${type.toUpperCase()}]`, mediaType: type, date: Math.floor(Date.now() / 1000), direction: 'outbound', from: 'agent' });
+        const chatRef = doc(db, 'telegram_chats', selectedChat.id);
+        await setDoc(chatRef, { lastMessage: `[${type.toUpperCase()}]`, lastMessageAt: new Date().toISOString(), unreadCount: 0 }, { merge: true });
+      } else { alert(data.error || L('Failed to send media', 'فشل في إرسال الميديا')); }
+    } catch (err) { alert(L('Network error', 'خطأ في الشبكة')); } finally {
+      setUploadingMedia(false);
+      e.target.value = '';
     }
   };
 
@@ -473,7 +669,7 @@ export default function TelegramHubView() {
   ];
 
   return (
-    <div className="pg on" id="pg-whatsapp">
+    <div className="pg on" id="pg-telegram">
       {/* Header */}
       <div className="pg-header">
         <div className="pg-title">
@@ -549,8 +745,13 @@ export default function TelegramHubView() {
                         key={chat.id} 
                         onClick={() => setSelectedChat(chat)}
                         style={{ padding: '10px', background: selectedChat?.id === chat.id ? 'var(--surface2)' : 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid', borderColor: selectedChat?.id === chat.id ? 'var(--prime)' : 'var(--edge)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{chat.contactId || 'Unknown'}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {chat.contactId || 'Unknown'}
+                            {chat.unreadCount > 0 && (
+                              <div style={{ width: '8px', height: '8px', background: 'var(--red)', borderRadius: '50%' }} title={L('Unreplied message', 'رسالة غير مجاب عليها')} />
+                            )}
+                          </div>
                           <span style={{ fontSize: '10px', color: 'var(--t3)' }}>{new Date(chat.lastMessageAt).toLocaleTimeString()}</span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--t2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -596,11 +797,11 @@ export default function TelegramHubView() {
                             {msg.cloudinaryUrl ? (
                               <div style={{ marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '8px' : '0' }}>
                                 {msg.mediaType === 'photo' ? (
-                                  <img src={msg.cloudinaryUrl} alt="media" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                  <img src={msg.cloudinaryUrl} alt="media" onLoad={scrollToBottom} style={{ maxWidth: '100%', borderRadius: '8px' }} />
                                 ) : msg.mediaType === 'video' ? (
-                                  <video src={msg.cloudinaryUrl} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                  <video src={msg.cloudinaryUrl} controls onLoadedData={scrollToBottom} style={{ maxWidth: '100%', borderRadius: '8px' }} />
                                 ) : msg.mediaType === 'voice' || msg.mediaType === 'audio' ? (
-                                  <audio src={msg.cloudinaryUrl} controls style={{ maxWidth: '100%' }} />
+                                  <audio src={msg.cloudinaryUrl} controls onLoadedData={scrollToBottom} style={{ maxWidth: '100%' }} />
                                 ) : (
                                   <a href={msg.cloudinaryUrl} target="_blank" rel="noopener noreferrer" style={{ color: isOutbound ? '#fff' : 'var(--prime)', textDecoration: 'underline', fontSize: '13px', fontWeight: 'bold' }}>
                                     📎 {L('Download Document', 'تحميل المستند')}
@@ -641,11 +842,16 @@ export default function TelegramHubView() {
                       );
                     })
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
                 {/* Chat Input */}
-                <div style={{ padding: '12px', borderTop: '1px solid var(--edge)', display: 'flex', gap: '8px' }}>
+                <div style={{ padding: '12px', borderTop: '1px solid var(--edge)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={handleMediaUpload} />
+                  <button className="btn btn-ghost" style={{ padding: '0 12px', fontSize: '18px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => fileInputRef.current?.click()} disabled={uploadingMedia || replyLoading} title={L('Attach File', 'إرفاق ملف')}>
+                    {uploadingMedia ? '⏳' : '📎'}
+                  </button>
                   <input 
-                    className="inp" 
+                    className="inp"  
                     placeholder={L('Type a message...', 'اكتب رسالة...')} 
                     style={{ flex: 1 }} 
                     value={replyText}
@@ -811,24 +1017,39 @@ export default function TelegramHubView() {
                 </label>
                 <textarea className="inp" rows="4" placeholder="السلام عليكم {{name}} 👋&#10;&#10;عندنا عرض خاص ليك..." />
               </div>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Schedule', 'جدولة الإرسال')}
-                </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                 <input 
-                  className="inp" 
-                  type="text" 
-                  placeholder="dd/mm/yyyy --:--" 
-                  onFocus={(e) => e.target.type = 'datetime-local'} 
-                  onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }} 
+                  type="checkbox" 
+                  id="schedule-toggle"
+                  checked={isScheduled} 
+                  onChange={(e) => setIsScheduled(e.target.checked)} 
                 />
+                <label htmlFor="schedule-toggle" style={{ fontSize: '12px', color: 'var(--t1)', cursor: 'pointer', userSelect: 'none' }}>
+                  {L('Schedule for later', 'جدولة الإرسال لوقت لاحق')}
+                </label>
               </div>
-              <div style={{ display: 'flex', gap: '7px' }}>
+              
+              {isScheduled && (
+                <div style={{ marginTop: '4px' }}>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Date & Time', 'تاريخ ووقت الإرسال')}
+                  </label>
+                  <input 
+                    className="inp" 
+                    type="datetime-local" 
+                    value={scheduleDate}
+                    min={new Date().toISOString().slice(0, 16)}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                  />
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: '7px', marginTop: '6px' }}>
                 <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setAiPanelOpen(true)}>
                   ✦ {L('AI Write Message', 'كتابة بالذكاء الاصطناعي')}
                 </button>
                 <button className="btn btn-prime" style={{ flex: 1, justifyContent: 'center' }} onClick={handleAddBc}>
-                  📤 {L('Schedule Broadcast', 'جدولة حملة البث')}
+                  {isScheduled ? `📤 ${L('Schedule Broadcast', 'جدولة حملة البث')}` : `🚀 ${L('Send Now', 'إرسال الآن')}`}
                 </button>
               </div>
             </div>
@@ -882,57 +1103,79 @@ export default function TelegramHubView() {
                 ✦ {L('AI Build', 'بناء بالذكاء الاصطناعي')}
               </button>
             </div>
-            <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t1)', marginBottom: '8px' }}>
-                📋 {L('Example Workflow: Sales Follow-up', 'مثال لمسار عمل: متابعة المبيعات')}
+            
+            {showAutoModal ? (
+              <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Automation Name', 'اسم الأتمتة')}
+                  </label>
+                  <input className="inp" placeholder="e.g. Price Reply" value={autoForm.name} onChange={e => setAutoForm({...autoForm, name: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Keyword Trigger', 'الكلمة المفتاحية')}
+                  </label>
+                  <input className="inp" placeholder="e.g. سعر, price" value={autoForm.keyword} onChange={e => setAutoForm({...autoForm, keyword: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Reply Message', 'رسالة الرد')}
+                  </label>
+                  <textarea className="inp" rows="3" placeholder="أهلاً بك، أسعارنا تبدأ من..." value={autoForm.reply} onChange={e => setAutoForm({...autoForm, reply: e.target.value})} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                  <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowAutoModal(false)}>
+                    {L('Cancel', 'إلغاء')}
+                  </button>
+                  <button className="btn btn-prime" style={{ flex: 1, justifyContent: 'center' }} onClick={handleAddAutomation}>
+                    {L('Save Automation', 'حفظ الأتمتة')}
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <div style={{ background: 'var(--surface)', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', borderLeft: '3px solid var(--orange)' }}>
-                  🔔 <strong>{L('Trigger:', 'المشغل:')}</strong> {L('Customer sends "price" / "سعر"', 'يرسل العميل "سعر" / "price"')}
-                </div>
-                <div style={{ background: 'var(--surface)', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', borderLeft: '3px solid var(--blue)' }}>
-                  📤 <strong>{L('Action:', 'الإجراء:')}</strong> {L('Send product brochure PDF', 'إرسال ملف PDF لعرض المنتجات')}
-                </div>
-                <div style={{ background: 'var(--surface)', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', borderLeft: '3px solid var(--t3)' }}>
-                  ⏰ <strong>{L('Wait:', 'الانتظار:')}</strong> {L('2 hours', 'ساعتان')}
-                </div>
-                <div style={{ background: 'var(--surface)', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', borderLeft: '3px solid var(--amber)' }}>
-                  📤 <strong>{L('Action:', 'الإجراء:')}</strong> {L('Send follow-up message', 'إرسال رسالة متابعة')}
-                </div>
-                <div style={{ background: 'var(--surface)', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', borderLeft: '3px solid var(--green)' }}>
-                  ✅ <strong>{L('If replied:', 'في حال الرد:')}</strong> {L('Assign to Sales Team', 'توزيعها على فريق المبيعات')}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
-              <button className="btn btn-ghost" style={{ justifyContent: 'center', fontSize: '12px' }} onClick={() => alert(L('New automation workflow created', 'تم إنشاء مسار أتمتة جديد'))}>
-                {L('+ New Automation', '+ أتمتة جديدة')}
+            ) : (
+              <button className="btn btn-prime" style={{ width: '100%', justifyContent: 'center', marginBottom: '15px' }} onClick={() => setShowAutoModal(true)}>
+                {L('+ Create New Automation', '+ إنشاء أتمتة جديدة')}
               </button>
-              <button className="btn btn-prime" style={{ justifyContent: 'center', fontSize: '12px' }} onClick={() => alert(L('Automation workspace active', 'تم تفعيل مسار الأتمتة'))}>
-                {L('▶ Activate', '▶ تفعيل')}
-              </button>
-            </div>
+            )}
           </div>
 
           <div className="card">
             <div className="sec-hd"><div className="sec-title">⚡ {L('Active Automations', 'الأتمتة النشطة')}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '11px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }}></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 500, color: 'var(--t1)' }}>{L('Welcome Message', 'رسالة الترحيب')}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Triggered on new contact', 'تُرسل عند استلام جهة اتصال جديدة')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {automations.length === 0 ? (
+                <div className="empty-state" style={{ padding: '20px' }}>
+                  <div className="es-icon">⚡</div>
+                  <div className="es-title">{L('No automations', 'لا توجد أتمتة')}</div>
+                  <div className="es-sub">{L('Create rules to automatically reply based on keywords', 'قم بإنشاء قواعد للرد التلقائي بناءً على الكلمات المفتاحية')}</div>
                 </div>
-                <span className="badge b-green">{L('Active', 'نشط')}</span>
-              </div>
-              <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '11px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 }}></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 500, color: 'var(--t1)' }}>{L('Price Inquiry Auto-Reply', 'الرد التلقائي للاستفسار عن السعر')}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Keyword: سعر / price', 'الكلمة المفتاحية: سعر / price')}</div>
-                </div>
-                <span className="badge b-amber">{L('Draft', 'مسودة')}</span>
-              </div>
+              ) : (
+                automations.map(auto => (
+                  <div key={auto.id} style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '3px' }}>{auto.name}</div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
+                        {L('Trigger:', 'المشغل:')} <span style={{ color: 'var(--amber)', fontWeight: 500 }}>{auto.keyword}</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                        ↪ {auto.reply}
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={auto.active} onChange={() => handleToggleAutomation(auto.id)} style={{ marginRight: '5px' }} />
+                        <span style={{ fontSize: '11px', color: auto.active ? 'var(--green)' : 'var(--t3)' }}>
+                          {auto.active ? L('Active', 'نشط') : L('Disabled', 'معطل')}
+                        </span>
+                      </label>
+                      <button className="btn btn-ghost" style={{ padding: '4px', color: 'var(--red)' }} onClick={() => handleDeleteAutomation(auto.id)} title={L('Delete', 'حذف')}>
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -1114,34 +1357,24 @@ export default function TelegramHubView() {
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', cursor: 'pointer', transition: 'all .14s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)' }}>👋 {L('Welcome Message', 'رسالة الترحيب')}</span>
-                  <span className="badge b-green">{L('Active', 'نشط')}</span>
+              {templates.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>
+                  {L('No templates available. Create one!', 'لا توجد قوالب. أنشئ واحداً الآن!')}
                 </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                  {L('السلام عليكم {{name}}! 👋 أهلاً بك في ...', 'Hello {{name}}! 👋 Welcome to ...')}
-                </div>
-              </div>
-              <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', cursor: 'pointer', transition: 'all .14s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)' }}>🔔 {L('Follow Up #1', 'المتابعة الأولى')}</span>
-                  <span className="badge b-amber">{L('Draft', 'مسودة')}</span>
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                  {L('مرحباً {{name}}، لاحظت إنك مهتم بـ...', 'Hello {{name}}, I noticed you were interested in ...')}
-                </div>
-              </div>
-              <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', cursor: 'pointer', transition: 'all .14s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)' }}>💳 {L('Payment Reminder', 'تذكير بالدفع')}</span>
-                  <span className="badge b-blue">{L('Ready', 'جاهز')}</span>
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                  {L('تذكير: فاتورتك بقيمة {{amount}} تستحق...', 'Reminder: Your invoice of {{amount}} is due ...')}
-                </div>
-              </div>
-              <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }} onClick={() => alert(L('New template creator opened', 'تم فتح منشئ القوالب'))}>
+              ) : (
+                templates.map(tmpl => (
+                  <div key={tmpl.id} onClick={() => handleTmplClick(tmpl)} style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', cursor: 'pointer', transition: 'all .14s' }} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--prime)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--edge)'}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)' }}>{tmpl.name}</span>
+                      <span className={`badge ${tmpl.status === 'Active' ? 'b-green' : 'b-amber'}`}>{tmpl.status === 'Active' ? L('Active', 'نشط') : L('Draft', 'مسودة')}</span>
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {tmpl.content}
+                    </div>
+                  </div>
+                ))
+              )}
+              <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }} onClick={() => setShowCreateTmplModal(true)}>
                 {L('+ Create Template', '+ إنشاء قالب')}
               </button>
             </div>
@@ -1431,6 +1664,79 @@ export default function TelegramHubView() {
         </div>
       )}
 
+      {showCreateTmplModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="card" style={{ width: '90%', maxWidth: '400px' }}>
+            <div className="sec-hd">
+              <div className="sec-title">{L('Create Template', 'إنشاء قالب جديد')}</div>
+              <button onClick={() => setShowCreateTmplModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Template Name', 'اسم القالب')}</label>
+                <input className="inp" value={newTmplName} onChange={e => setNewTmplName(e.target.value)} placeholder={L('e.g. Welcome Message', 'مثال: رسالة الترحيب')} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Message Content', 'محتوى الرسالة')}</label>
+                <textarea className="inp" rows="5" value={newTmplContent} onChange={e => setNewTmplContent(e.target.value)} placeholder={L('Hello {{name}}, ...', 'مرحباً {{name}}، ...')} />
+              </div>
+              <button className="btn btn-prime" style={{ justifyContent: 'center' }} onClick={handleSaveNewTmpl}>
+                {L('Save Template', 'حفظ القالب')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSendTmplModal && selectedTmplToSend && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="card" style={{ width: '90%', maxWidth: '450px' }}>
+            <div className="sec-hd">
+              <div className="sec-title">📤 {L('Send Template', 'إرسال القالب')}</div>
+              <button onClick={() => setShowSendTmplModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'var(--surface2)', padding: '10px', borderRadius: '8px', fontSize: '12px', color: 'var(--t1)' }}>
+                <strong>{selectedTmplToSend.name}</strong><br/>
+                <span style={{ color: 'var(--t2)' }}>{selectedTmplToSend.content}</span>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" checked={sendTmplToAll} onChange={() => setSendTmplToAll(true)} />
+                  <span style={{ fontSize: '13px', color: 'var(--t1)' }}>{L('Send to All Contacts', 'إرسال لجميع جهات الاتصال')} ({liveContacts.length})</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" checked={!sendTmplToAll} onChange={() => setSendTmplToAll(false)} />
+                  <span style={{ fontSize: '13px', color: 'var(--t1)' }}>{L('Select Specific Contacts', 'اختيار جهات اتصال محددة')}</span>
+                </label>
+              </div>
+
+              {!sendTmplToAll && (
+                <div style={{ border: '1px solid var(--edge)', borderRadius: '8px', padding: '8px', maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {liveContacts.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--t3)', fontSize: '12px' }}>{L('No contacts available', 'لا توجد جهات اتصال')}</div>
+                  ) : (
+                    liveContacts.map(c => (
+                      <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={selectedContactsForTmpl.includes(c.id)} onChange={(e) => {
+                          if (e.target.checked) setSelectedContactsForTmpl(prev => [...prev, c.id]);
+                          else setSelectedContactsForTmpl(prev => prev.filter(id => id !== c.id));
+                        }} />
+                        <span style={{ fontSize: '12.5px', color: 'var(--t1)' }}>{c.firstName} {c.lastName || ''}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              )}
+
+              <button className="btn btn-prime" style={{ justifyContent: 'center' }} onClick={handleSendTemplateSubmit} disabled={sendingTmpl || (!sendTmplToAll && selectedContactsForTmpl.length === 0)}>
+                {sendingTmpl ? L('Sending...', 'جاري الإرسال...') : L('Send Now', 'إرسال الآن')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

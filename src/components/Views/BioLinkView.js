@@ -228,7 +228,7 @@ export default function BioLinkView() {
                 { key: 'yt', icon: '▶️', placeholder: 'YouTube channel' },
                 { key: 'li', icon: '💼', placeholder: 'LinkedIn URL' },
                 { key: 'tg', icon: '✈️', placeholder: '@telegram' },
-                { key: 'wa', icon: '💬', placeholder: 'WhatsApp number' }
+                { key: 'wa', icon: '💬', placeholder: 'Telegram number' }
               ].map(s => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }} key={s.key}>
                   <span>{s.icon}</span>

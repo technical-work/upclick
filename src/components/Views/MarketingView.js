@@ -335,7 +335,7 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
    - Meta Ads (Facebook/Instagram) Primary Text & Headlines
    - TikTok Video script concept (with visual guidelines)
    - Google Search Ads Headlines (3 variations)
-4. FOLLOW-UP SEQUENCE: A 3-step sequence of WhatsApp or Email outreach templates designed to convert leads into sales.`;
+4. FOLLOW-UP SEQUENCE: A 3-step sequence of Telegram or Email outreach templates designed to convert leads into sales.`;
 
     const system = `You are a growth marketing architect. Provide highly detailed, directly copy-pasteable marketing materials and copy.`;
     triggerAI('campaign-launcher', 'launcher-out', prompt, system);

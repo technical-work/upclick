@@ -497,7 +497,7 @@ export const Tr = {
     // Landing Page Overrides
     'landing-hero-badge': '✦ The AI OS for Arab Entrepreneurs',
     'landing-hero-title': 'Run your entire business from one dashboard',
-    'landing-hero-sub': 'CRM, Marketing, Content, Finance, WhatsApp — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
+    'landing-hero-sub': 'CRM, Marketing, Content, Finance, Telegram — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
     'landing-hero-cta-trial': '🚀 Start Free Trial',
     'landing-hero-cta-preview': 'See it Live →',
     'landing-trust-text': 'entrepreneurs already using UpKlick',
@@ -528,7 +528,7 @@ export const Tr = {
     'landing-tool-desc-0': 'Pipeline + lead tracking + AI follow-ups',
     'landing-tool-name-1': 'Marketing OS',
     'landing-tool-desc-1': '8 tools: research, ads, funnels, AI consultant',
-    'landing-tool-name-2': 'WhatsApp Hub',
+    'landing-tool-name-2': 'Telegram Hub',
     'landing-tool-desc-2': 'Inbox, AI agent, broadcasts, automations',
     'landing-tool-name-3': 'Digital Products',
     'landing-tool-desc-3': 'Find trends, build plans, sell globally',
@@ -539,7 +539,7 @@ export const Tr = {
 
     // Landing Page Personas
     'landing-persona-title-0': 'The Coach & Trainer',
-    'landing-persona-desc-0': 'Manage clients, schedule sessions, sell courses, run WhatsApp communities — all without juggling 10 different tools.',
+    'landing-persona-desc-0': 'Manage clients, schedule sessions, sell courses, run Telegram communities — all without juggling 10 different tools.',
     'landing-persona-title-1': 'The Content Creator',
     'landing-persona-desc-1': 'Turn your audience into income. Script videos, track trends, build your bio link, and monetize with digital products automatically.',
     'landing-persona-title-2': 'The Entrepreneur',
@@ -1043,7 +1043,7 @@ export const Tr = {
     // Landing Page Overrides
     'landing-hero-badge': '✦ نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
     'landing-hero-title': 'أدر بزنسك كاملاً من لوحة واحدة',
-    'landing-hero-sub': 'CRM، تسويق، محتوى، مالية، واتساب — مدعومون بالذكاء الاصطناعي للمبدعين العرب.',
+    'landing-hero-sub': 'CRM، تسويق، محتوى، مالية، تليجرام — مدعومون بالذكاء الاصطناعي للمبدعين العرب.',
     'landing-hero-cta-trial': '🚀 ابدأ التجربة المجانية',
     'landing-hero-cta-preview': 'شوف الداشبورد ←',
     'landing-trust-text': 'رائد أعمال يستخدمون UpKlick بالفعل',
@@ -1074,7 +1074,7 @@ export const Tr = {
     'landing-tool-desc-0': 'متابعة العملاء + خط مبيعات + AI',
     'landing-tool-name-1': 'نظام التسويق',
     'landing-tool-desc-1': '8 أدوات: بحث، إعلانات، فانلات، AI',
-    'landing-tool-name-2': 'مركز واتساب',
+    'landing-tool-name-2': 'مركز تليجرام',
     'landing-tool-desc-2': 'صندوق وارد، وكيل AI، بث جماعي',
     'landing-tool-name-3': 'المنتجات الرقمية',
     'landing-tool-desc-3': 'اكتشف الترند، ابنِ خطة، ابيع عالمياً',
@@ -1119,7 +1119,7 @@ export const ARTEXT = {
   "Smart CRM": "إدارة العملاء",
   "Revenue Hub": "مركز الإيرادات",
   "Digital Products": "منتجات رقمية",
-  "WhatsApp Hub": "مركز واتساب",
+  "Telegram Hub": "مركز تليجرام",
   "Telegram Hub": "مركز التليجرام",
   "Task Board": "لوحة المهام",
   "Smart Calendar": "التقويم الذكي",

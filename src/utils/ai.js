@@ -253,9 +253,9 @@ function generateSmartFallback(prompt, lang, context) {
     return generateVideoScript(isAR, name, localizedNiche, localizedDemo, localizedPain, localizedHours, localizedChannel, goals);
   }
 
-  // 13. WhatsApp Automation & CRM (from WhatsApp Hub or CRM view suggestion)
-  if (normalized.includes('whatsapp') || normalized.includes('automation') || normalized.includes('follow-up suggestion') || normalized.includes('followup suggestion')) {
-    return generateWhatsAppAutomation(isAR, name, localizedNiche, localizedPain, goals, price);
+  // 13. Telegram Automation & CRM (from Telegram Hub or CRM view suggestion)
+  if (normalized.includes('telegram') || normalized.includes('automation') || normalized.includes('follow-up suggestion') || normalized.includes('followup suggestion')) {
+    return generateTelegramAutomation(isAR, name, localizedNiche, localizedPain, goals, price);
   }
 
   // 14. Ops SOP / automation check
@@ -324,7 +324,7 @@ function generateDailyBrief(isAR, context, name, niche, channels, goals, pain) {
 #### 💡 اقتراح استشاري مخصص لليوم:
 `;
     if (activeLeads.length > 0) {
-      brief += `ننصح بالتركيز فوراً اليوم على التواصل الهاتفي أو عبر الواتساب مع العميل **${activeLeads[0].name}** ومحاولة تقديم عرض محدود الوقت لإغلاق الصفقة بقيمة \`$${activeLeads[0].value || 0}\`.`;
+      brief += `ننصح بالتركيز فوراً اليوم على التواصل الهاتفي أو عبر التليجرام مع العميل **${activeLeads[0].name}** ومحاولة تقديم عرض محدود الوقت لإغلاق الصفقة بقيمة \`$${activeLeads[0].value || 0}\`.`;
     } else {
       brief += `خصص ساعات عملك اليوم لنشر فيديو ترويجي تفاعلي على منصات **${channels}** يستهدف مشكلة جمهورك: "**${pain}**" وادعهم للتسجيل عبر صفحة الهبوط مجاناً.`;
     }
@@ -383,7 +383,7 @@ function generateViabilityAnalysis(isAR, name, niche, stage, prompt, price, tran
 
 **3. المخاطر الأساسية واستراتيجيات تخفيفها:**
 • **صعوبة الانتشار وخوارزميات شبكات التواصل:** تغلب عليها بالتركيز على المنصة المفضلة حالياً وصناعة محتوى تفاعلي يعالج الألم مباشرة.
-• **ضعف معدل تحويل العملاء:** حل ذلك عبر تفعيل واتساب CRM للمتابعة اليومية وإرسال رسائل ترحيبية آلية.
+• **ضعف معدل تحويل العملاء:** حل ذلك عبر تفعيل تليجرام CRM للمتابعة اليومية وإرسال رسائل ترحيبية آلية.
 
 **4. خطة التحقق والتحصيل الفورية (5 خطوات):**
 1. **صياغة التحول الرئيسي للخدمة:** أعلن عن تقديم عرضك بقيمة **${price}** والذي يضمن للعميل: "${transform}".
@@ -402,7 +402,7 @@ Operating in the niche "**${niche}**" at the stage "**${stage}**" represents a h
 • **Sales Funnel Automation:** Leverage simple sales pages to acquire customers 24/7 without manual sales calls.
 
 **3. Strategic Risks & Actionable Mitigation:**
-• **Platform Reach Inconsistency:** Mitigate by capturing emails and WhatsApp numbers to build your owned database.
+• **Platform Reach Inconsistency:** Mitigate by capturing emails and Telegram numbers to build your owned database.
 • **Initial Trust Barrier:** Leverage client case studies, step-by-step breakdowns, and personal branding.
 
 **4. Instant 5-Step Validation Framework:**
@@ -443,7 +443,7 @@ function generateSWOT(isAR, name, niche, stage, strengths, weaknesses, opportuni
 
 ### 🗺️ المصفوفة الاستراتيجية المتقاطعة (Cross-SWOT Strategy):
 • **استراتيجية القوة والفرص (SO):** استخدم ثقة فئتك المستهدفة وخبرتك العميقة في **${strengths}** لإطلاق عرض مصغر يسهل شراؤه ويستثمر الفرصة: **${opportunities}**.
-• **استراتيجية التغلب على الضعف (WO):** قم بسد ثغرة **${weaknesses}** عن طريق تفعيل قوالب رسائل المتابعة المؤتمتة عبر الواتساب في CRM لرفع كفاءة مبيعاتك دون هدر الوقت.
+• **استراتيجية التغلب على الضعف (WO):** قم بسد ثغرة **${weaknesses}** عن طريق تفعيل قوالب رسائل المتابعة المؤتمتة عبر التليجرام في CRM لرفع كفاءة مبيعاتك دون هدر الوقت.
 • **استراتيجية الدفاع (WT):** واجه خطر **${threats}** من خلال حث الجمهور باستمرار على الانتقال لصفحتك والحصول على دليل مجاني لبناء قاعدة بيانات خارجية تمتلكها بالكامل.`;
   } else {
     return `### 🧠 SWOT Strategic Analysis for: **${name}**
@@ -493,7 +493,7 @@ function generateMarketingStrategy(isAR, name, budget, niche, channels, duration
       budgetAllocation = `• **توزيع ميزانيتك التسويقية المقدرة بـ ($${totalBudget}):**
   - **60% إعلانات تحويل:** توجيه إعلانات ممولة مستهدفة على **${channels}** لاستقطاب العملاء المهتمين بـ "${transform}".
   - **20% إعلانات إعادة استهداف (Retargeting):** لزيادة ثقة العملاء الذين زاروا صفحة هبوطك ولم يشتروا بعد.
-  - **20% كفاءة أدوات وبناء صفحات الهبوط وأتمتة رسائل الواتساب والـ CRM.`;
+  - **20% كفاءة أدوات وبناء صفحات الهبوط وأتمتة رسائل التليجرام والـ CRM.`;
     }
 
     return `### 📣 الخطة التسويقية الاستشارية الشاملة لـ ${name}
@@ -560,7 +560,7 @@ function generateRoadmap(isAR, rmCurrent, rmGoal, rmHours, rmChannel, pain, pric
 
 **الشهر الأول: التأسيس وجذب العملاء المهتمين (الأسابيع 1-4)**
 • **الأسبوع 1:** قم بإعداد دليل إرشادي أو نموذج عملي (PDF) يحل مشكلة: "**${pain}**". هذا سيكون مغناطيس جذب العملاء الخاص بك.
-• **الأسبوع 2:** صمم صفحة هبوط مبسطة لجمع المشتركين مجاناً. تأكد من إدراج رقم الواتساب ليكون للتواصل المباشر.
+• **الأسبوع 2:** صمم صفحة هبوط مبسطة لجمع المشتركين مجاناً. تأكد من إدراج رقم التليجرام ليكون للتواصل المباشر.
 • **الأسبوع 3:** ابدأ بنشر 3-4 مقاطع فيديو/ريلز أسبوعياً على منصة **${localizedChannel}** تشرح فيها أسباب مشكلة الجمهور وتدعوهم لتحميل دليلك من الرابط.
 • **الأسبوع 4:** أرسل رسالة ترحيب تلقائية للمسجلين لتقديم نفسك واقتراح مكالمة استكشافية أو إرسال تفاصيل عرضك بقيمة **${price}**.
 
@@ -580,7 +580,7 @@ function generateRoadmap(isAR, rmCurrent, rmGoal, rmHours, rmChannel, pain, pric
 • **Week 1:** Package a high-value cheat sheet or tool solving: "**${pain}**". This acts as your lead magnet.
 • **Week 2:** Create a conversion-ready landing page via UpKlick. Sync it with your lead database.
 • **Week 3:** Publish 3 reels/TikToks/posts weekly on **${localizedChannel}** addressing this pain point and pointing to your link.
-• **Week 4:** Trigger a welcome email or WhatsApp follow-up sequence presenting your core program priced at **${price}**.
+• **Week 4:** Trigger a welcome email or Telegram follow-up sequence presenting your core program priced at **${price}**.
 
 **Month 2: Core Offer Validation & Beta Launch (Weeks 5-8)**
 • **Week 5-6:** Interact with your early leads. Adapt features based on real conversations.
@@ -732,9 +732,9 @@ function generateVideoScript(isAR, name, niche, demo, pain, hours, channels, goa
   }
 }
 
-function generateWhatsAppAutomation(isAR, name, niche, pain, goals, price) {
+function generateTelegramAutomation(isAR, name, niche, pain, goals, price) {
   if (isAR) {
-    return `### 💬 سيناريو رسائل الواتساب الآلية والمتابعة الذكية لـ **${name}**
+    return `### 💬 سيناريو رسائل التليجرام الآلية والمتابعة الذكية لـ **${name}**
 
 **الرسالة الأولى (ترسل تلقائياً فور تسجيل العميل لتحميل الملف المجاني):**
 "مرحباً [اسم العميل]! أهلاً بك 🌸 
@@ -759,7 +759,7 @@ function generateWhatsAppAutomation(isAR, name, niche, pain, goals, price) {
 العرض يشمل متابعة مباشرة ودعماً أسبوعياً. 
 هل ترغب في معرفة التفاصيل وكيف يمكننا مساعدتك؟ أجب بـ 'نعم' وسأرسل لك كافة المعلومات!"`;
   } else {
-    return `### 💬 3-Step WhatsApp Follow-up & CRM Automation Sequence
+    return `### 💬 3-Step Telegram Follow-up & CRM Automation Sequence
 
 **Message 1 (Sent instantly upon lead magnet request):**
 "Hi [Lead Name]! Thanks for checking out our guide to solve "**${pain}**". 🚀
@@ -809,7 +809,7 @@ function generateCRMInsights(isAR, context) {
     let recommendation = "";
     if (stageBreakdown.new > stageBreakdown.contacted) {
       bottleneck = "تراكم العملاء الجدد دون تواصل";
-      recommendation = "لديك عملاء جدد لم يتم الاتصال بهم بعد! نوصي بتخصيص ساعة واحدة اليوم لمراسلتهم عبر الواتساب ونقلهم لمرحلة 'تم التواصل'.";
+      recommendation = "لديك عملاء جدد لم يتم الاتصال بهم بعد! نوصي بتخصيص ساعة واحدة اليوم لمراسلتهم عبر التليجرام ونقلهم لمرحلة 'تم التواصل'.";
     } else if (stageBreakdown.proposal > 0) {
       bottleneck = "صفقات معلقة في انتظار رد العرض المالي";
       recommendation = "هناك عملاء استلموا عروض الأسعار ولم يقرروا بعد. تواصل معهم لتقديم عرض إضافي أو بونص مؤقت لإتمام التعاقد.";
@@ -1143,7 +1143,7 @@ function generateOpsSop(isAR, name, niche, stage) {
   3. الرد على أول ١٠ تعليقات في أول ٣٠ دقيقة من النشر لرفع تقييم الفيديو.
 
 #### 💡 أفكار أتمتة مقترحة لتوفير الوقت:
-* **ربط صفحات الهبوط بالواتساب:** إرسال رسالة ترحيبية آلية لكل مسجل جديد دون تدخل يدوي.
+* **ربط صفحات الهبوط بالتليجرام:** إرسال رسالة ترحيبية آلية لكل مسجل جديد دون تدخل يدوي.
 * **أتمتة الفواتير والاشتراكات:** إصدار فاتورة إلكترونية تلقائية بمجرد تأكيد الصفقة في CRM.`;
   } else {
     return `### ⚙️ Standard Operating Procedures (SOPs) & Operations Plan
@@ -1165,7 +1165,7 @@ function generateOpsSop(isAR, name, niche, stage) {
   3. Interact with commenters during the first 30 minutes of publishing.
 
 #### 💡 Recommended Automations:
-* **Opt-in to WhatsApp Automation:** Automatically deliver lead magnets via WhatsApp API upon signup.
+* **Opt-in to Telegram Automation:** Automatically deliver lead magnets via Telegram API upon signup.
 * **Invoice Triggers:** Connect CRM won deals to automatic billing software to eliminate manual invoicing.`;
   }
 }
@@ -1184,7 +1184,7 @@ function generateDigitalProductIdeas(isAR, name, niche, price, transform) {
 #### 💡 الفكرة الثانية: دورة تدريبية مكثفة مسجلة (Hybrid Masterclass)
 * **الاسم:** كورس التأسيس الشامل والتحول لـ ${niche}.
 * **السعر المقترح:** **$99 - $149**.
-* **مواصفات العرض:** فيديوهات مسجلة قصيرة لا تتعدى ساعتين إجمالاً، مع توفير جروب دعم تليجرام/واتساب للإجابة على الأسئلة.
+* **مواصفات العرض:** فيديوهات مسجلة قصيرة لا تتعدى ساعتين إجمالاً، مع توفير جروب دعم تليجرام/تليجرام للإجابة على الأسئلة.
 * **القيمة:** يمنحهم خطة عمل واضحة لتنفيذ التحول الأساسي.
 
 #### 📋 قائمة مراجعة لإطلاق منتجك الرقمي الأول:

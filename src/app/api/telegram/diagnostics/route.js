@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { adminDb as db } from '@/utils/firebaseAdmin';
 
 export async function POST(req) {
   try {
@@ -28,9 +27,10 @@ export async function POST(req) {
     const logs = [];
     if (db) {
       try {
-        const logsRef = collection(db, 'telegram_webhook_logs');
-        const q = query(logsRef, orderBy('receivedAt', 'desc'), limit(50));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await db.collection('telegram_webhook_logs')
+          .orderBy('receivedAt', 'desc')
+          .limit(50)
+          .get();
         
         querySnapshot.forEach((doc) => {
           logs.push({ id: doc.id, ...doc.data() });

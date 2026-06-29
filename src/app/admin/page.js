@@ -62,7 +62,7 @@ const countryData = {
 
 const AVAILABLE_TOOLS = [
   { key: 'crm', labelAr: 'CRM الذكي', labelEn: 'Smart CRM' },
-  { key: 'whatsapp', labelAr: 'مركز التليجرام', labelEn: 'Telegram Hub' },
+  { key: 'telegram', labelAr: 'مركز التليجرام', labelEn: 'Telegram Hub' },
   { key: 'strategy', labelAr: 'مختبر الاستراتيجية', labelEn: 'Strategy Lab' },
   { key: 'marketing', labelAr: 'نظام التسويق', labelEn: 'Marketing OS' },
   { key: 'content', labelAr: 'مركز المحتوى', labelEn: 'Content Hub' },

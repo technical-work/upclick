@@ -111,7 +111,7 @@ export default function LeadModal() {
               </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Phone / WhatsApp', 'الهاتف / واتساب')}
+                  {L('Phone / Telegram', 'الهاتف / تليجرام')}
                 </label>
                 <input
                   className="inp"
@@ -180,7 +180,7 @@ export default function LeadModal() {
                 <option>Instagram DM</option>
                 <option>Referral</option>
                 <option>Website</option>
-                <option>WhatsApp</option>
+                <option>Telegram</option>
                 <option>Other</option>
               </select>
             </div>

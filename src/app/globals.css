@@ -955,7 +955,7 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:background-color .25s ease,bord
     flex-shrink: 0 !important;
   }
   
-  /* WhatsApp Hub Inbox layout stacking */
+  /* Telegram Hub Inbox layout stacking */
   .wa-inbox-grid {
     grid-template-columns: 1fr !important;
     height: auto !important;

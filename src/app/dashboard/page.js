@@ -22,7 +22,6 @@ import DigitalProductDetailModal from '@/components/Modals/DigitalProductDetailM
 // Sub-views
 import HomeView from '@/components/Views/HomeView';
 import CRMView from '@/components/Views/CRMView';
-import WhatsAppHubView from '@/components/Views/WhatsAppHubView';
 import TelegramHubView from '@/components/Views/TelegramHubView';
 import LandingPageView from '@/components/Views/LandingPageView';
 import MarketingView from '@/components/Views/MarketingView';
@@ -275,7 +274,7 @@ function DashboardShell() {
         return <HomeView />;
       case 'crm':
         return <CRMView />;
-      case 'whatsapp':
+      case 'telegram':
         return <TelegramHubView />;
       case 'landing':
         return <LandingPageView />;

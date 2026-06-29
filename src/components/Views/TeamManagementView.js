@@ -60,7 +60,7 @@ export default function TeamManagementView() {
   const permToToolMap = {
     dashboard: 'home',
     crm: 'crm',
-    whatsapp: 'whatsapp',
+    telegram: 'telegram',
     marketing: 'marketing',
     content: 'content',
     finance: 'finance',
@@ -642,7 +642,7 @@ export default function TeamManagementView() {
                       {[
                         { id: 'dashboard', label: L('🏠 Dashboard', '🏠 لوحة التحكم') },
                         { id: 'crm', label: L('🎯 Smart CRM', '🎯 إدارة العملاء') },
-                        { id: 'whatsapp', label: L('💬 WhatsApp Hub', '💬 واتساب هاب') },
+                        { id: 'telegram', label: L('💬 Telegram Hub', '💬 تليجرام هاب') },
                         { id: 'marketing', label: L('📣 Marketing OS', '📣 ماركتنج سنتر') },
                         { id: 'content', label: L('✦ Content Hub', '✦ صناعة المحتوى') },
                         { id: 'finance', label: L('💳 Finance', '💳 الحسابات والمالية') },
@@ -854,7 +854,7 @@ export default function TeamManagementView() {
                     {[
                       { id: 'dashboard', label: 'Dashboard' },
                       { id: 'crm', label: 'Smart CRM' },
-                      { id: 'whatsapp', label: 'WhatsApp Hub' },
+                      { id: 'telegram', label: 'Telegram Hub' },
                       { id: 'marketing', label: 'Marketing OS' },
                       { id: 'content', label: 'Content Hub' },
                       { id: 'finance', label: 'Finance' },

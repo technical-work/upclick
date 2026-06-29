@@ -64,7 +64,7 @@ const initialGC = {
     connectionUrl: '',
     apiKey: '',
     connected: false,
-    cbTrigger: 'New WhatsApp message received',
+    cbTrigger: 'New Telegram message received',
     cbAction: '',
     cbApps: [],
     cbCreds: '',
@@ -143,7 +143,7 @@ const initialGC = {
       ]
     }
   },
-  whatsAppHub: {
+  telegramHub: {
     agentName: '',
     agentStyle: 'Professional & Friendly',
     agentGoal: 'Qualify Leads',

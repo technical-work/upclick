@@ -106,7 +106,7 @@ const DEFAULTS = {
   domain: '',
   plan: DEFAULT_PLAN,
   planAnnual: DEFAULT_PLAN_ANNUAL,
-  whatsappNumber: '',
+  telegramNumber: '',
   freeTrial: { enabled: false, days: 7 },
   i18nOverrides: { ar: {}, en: {} },
 };
@@ -412,25 +412,25 @@ const BrandingSettings = () => {
             </div>
           </div>
         </div>
-        {/* Free Trial & WhatsApp */}
+        {/* Free Trial & Telegram */}
         <div className="card" style={{ marginBottom: '12px' }}>
           <div style={sectionHeader}>
             <MessageCircle size={16} />
-            <span>{t('branding.trialWhatsapp')}</span>
+            <span>{t('branding.trialTelegram')}</span>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>{t('branding.whatsappLabel')}</label>
+            <label style={labelStyle}>{t('branding.telegramLabel')}</label>
             <input
               type="tel"
-              value={config.whatsappNumber}
-              onChange={e => handleChange('whatsappNumber', e.target.value.replace(/[^0-9]/g, ''))}
+              value={config.telegramNumber}
+              onChange={e => handleChange('telegramNumber', e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="201xxxxxxxx"
               dir="ltr"
               style={{ ...inputStyle, textAlign: 'left', fontFamily: 'var(--mono)' }}
             />
             <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-              {t('branding.whatsappHint')}
+              {t('branding.telegramHint')}
             </div>
           </div>
 

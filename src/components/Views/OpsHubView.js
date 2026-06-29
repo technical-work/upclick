@@ -334,7 +334,7 @@ export default function OpsHubView() {
               </div>
               <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>💬</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>WhatsApp API</div>
+                <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>Telegram API</div>
                 <div style={{ fontSize: '11px', color: 'var(--green)' }}>✅ {L('Connected', 'متصل')}</div>
               </div>
               <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', textAlign: 'center', opacity: 0.5, cursor: 'pointer' }} onClick={() => alert('Integrations link clicked')}>

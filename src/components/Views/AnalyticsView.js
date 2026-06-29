@@ -115,7 +115,7 @@ export default function AnalyticsView() {
           <div id="an-lead-sources" style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' }}>
             {[
               { label: 'Instagram', w: 45, color: 'linear-gradient(90deg,var(--orange),var(--purple))' },
-              { label: 'WhatsApp', w: 30, color: 'linear-gradient(90deg,var(--green),#06b6d4)' },
+              { label: 'Telegram', w: 30, color: 'linear-gradient(90deg,var(--green),#06b6d4)' },
               { label: 'TikTok', w: 15, color: 'linear-gradient(90deg,#0088CC,#6C35FF)' },
               { label: 'Referral', w: 10, color: 'linear-gradient(90deg,var(--amber),var(--orange))' }
             ].map((s, idx) => (

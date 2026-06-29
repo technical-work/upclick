@@ -31,6 +31,11 @@ export default function SocialTrendsView() {
   const [region, setRegion] = useState(savedFilters.region ?? 'AR');
   const [sortBy, setSortBy] = useState(savedFilters.sortBy ?? 'plays');
   const [period, setPeriod] = useState(savedFilters.period ?? '7');
+  const [resultsLimit, setResultsLimit] = useState(savedFilters.resultsLimit ?? '10');
+
+  // Specific options
+  const [igSearchType, setIgSearchType] = useState(savedFilters.igSearchType ?? 'hashtag');
+  const [igResultsType, setIgResultsType] = useState(savedFilters.igResultsType ?? 'posts');
 
   const [loading, setLoading] = useState(false);
   const [trends, setTrends] = useState(sanitizeTrends(trendsData.trends));
@@ -45,6 +50,7 @@ export default function SocialTrendsView() {
       setRegion(filters.region ?? 'AR');
       setSortBy(filters.sortBy ?? 'plays');
       setPeriod(filters.period ?? '7');
+      setResultsLimit(filters.resultsLimit ?? '10');
       setTrends(sanitizeTrends(GC.socialTrends.trends));
       setHasLoaded(GC.socialTrends.trends && GC.socialTrends.trends.length > 0);
     }
@@ -103,47 +109,51 @@ export default function SocialTrendsView() {
       try {
         let queryTerm = niche || "trending";
         
-        // Localize search query by appending country/region keywords
-        if (region === 'SA') {
-          queryTerm += ' Saudi Arabia';
-        } else if (region === 'AE') {
-          queryTerm += ' UAE';
-        } else if (region === 'EG') {
-          queryTerm += ' Egypt';
-        } else if (region === 'KW') {
-          queryTerm += ' Kuwait';
-        } else if (region === 'QA') {
-          queryTerm += ' Qatar';
-        } else if (region === 'AR') {
-          queryTerm += ' Arab';
+        // Localize search query
+        if (region === 'SA') queryTerm += ' Saudi Arabia';
+        else if (region === 'AE') queryTerm += ' UAE';
+        else if (region === 'EG') queryTerm += ' Egypt';
+        else if (region === 'KW') queryTerm += ' Kuwait';
+        else if (region === 'QA') queryTerm += ' Qatar';
+        else if (region === 'AR') queryTerm += ' Arab';
+
+        let actorName = 'clockworks~tiktok-scraper';
+        let payload = {};
+        
+        if (platform === 'tiktok' || platform === 'all') {
+          actorName = 'clockworks~tiktok-scraper';
+          payload = { searchQueries: [queryTerm], resultsPerPage: parseInt(resultsLimit), shouldDownloadVideos: false, shouldDownloadCovers: false };
+        } else if (platform === 'instagram') {
+          actorName = 'apify~instagram-scraper';
+          payload = { search: queryTerm, searchType: igSearchType, resultsType: igResultsType, resultsLimit: parseInt(resultsLimit) };
+        } else if (platform === 'youtube') {
+          actorName = 'streamers~youtube-scraper';
+          payload = { searchQueries: [queryTerm], maxResults: parseInt(resultsLimit), maxResultsShorts: parseInt(resultsLimit) };
+        } else if (platform === 'twitter') {
+          actorName = 'quacker~twitter-scraper';
+          payload = { searchTerms: [queryTerm], tweetsDesired: parseInt(resultsLimit) };
+        } else if (platform === 'snapchat') {
+          // fallback to tiktok for snapchat if no reliable snapchat scraper is known
+          actorName = 'clockworks~tiktok-scraper';
+          payload = { searchQueries: [queryTerm + ' snapchat'], resultsPerPage: parseInt(resultsLimit), shouldDownloadVideos: false, shouldDownloadCovers: false };
         }
 
-        // Support cross-platform trends on TikTok
-        if (platform === 'instagram') {
-          queryTerm += ' reels';
-        } else if (platform === 'youtube') {
-          queryTerm += ' shorts';
-        } else if (platform === 'snapchat') {
-          queryTerm += ' snapchat spotlight';
-        } else if (platform === 'twitter') {
-          queryTerm += ' twitter';
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 seconds timeout
 
         const response = await fetch(
-          `https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token=${apifyToken}`,
+          `https://api.apify.com/v2/acts/${actorName}/run-sync-get-dataset-items?token=${apifyToken}`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              searchQueries: [queryTerm],
-              resultsPerPage: 12,
-              shouldDownloadVideos: false,
-              shouldDownloadCovers: false
-            })
+            body: JSON.stringify(payload),
+            signal: controller.signal
           }
         );
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error('Apify API request failed');
@@ -153,7 +163,7 @@ export default function SocialTrendsView() {
         
         if (Array.isArray(items) && items.length > 0) {
           const parsed = items.map(item => {
-            const descText = item.text || item.desc || item.title || L('Trending Video', 'فيديو رائج');
+            const descText = item.text || item.desc || item.title || item.full_text || item.caption || L('Trending Video', 'فيديو رائج');
             const cleanTitle = descText.length > 80 ? descText.slice(0, 80) + '...' : descText;
             
             const displayCategory = platform === 'instagram' ? (niche || L('Instagram Reels', 'ريلز إنستغرام'))
@@ -162,25 +172,43 @@ export default function SocialTrendsView() {
                                   : platform === 'twitter' ? (niche || L('X / Twitter', 'منصة إكس'))
                                   : (niche || 'TikTok');
 
+            const playCount = item.playCount || item.viewCount || item.views || 0;
+            const diggCount = item.diggCount || item.likesCount || item.likeCount || item.favorite_count || item.likes || 0;
+            const shareCount = item.shareCount || item.retweet_count || item.shares || 0;
+            const commentCount = item.commentCount || item.commentsCount || item.reply_count || item.comments || 0;
+
+            const formatCount = (count) => {
+              if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+              if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+              return count ? String(count) : '—';
+            };
+
+            const creatorName = item.authorMeta?.name || item.authorMeta?.nickName || item.author?.uniqueId || item.author?.nickname || item.ownerUsername || item.channelName || item.user?.screen_name || 'creator';
+
+            let videoUrl = item.webVideoUrl || item.url || '';
+            if (!videoUrl && item.id && platform === 'tiktok') {
+              videoUrl = `https://www.tiktok.com/@${creatorName}/video/${item.id}`;
+            }
+
             return {
               title: cleanTitle,
-              creator: item.authorMeta?.name || item.authorMeta?.nickName || item.author?.uniqueId || item.author?.nickname || 'tiktok_creator',
-              views: item.playCount ? (item.playCount >= 1000000 ? (item.playCount / 1000000).toFixed(1) + 'M' : item.playCount >= 1000 ? (item.playCount / 1000).toFixed(1) + 'K' : item.playCount) : '—',
-              likes: item.diggCount ? (item.diggCount >= 1000000 ? (item.diggCount / 1000000).toFixed(1) + 'M' : item.diggCount >= 1000 ? (item.diggCount / 1000).toFixed(1) + 'K' : item.diggCount) : '—',
-              shares: item.shareCount ? String(item.shareCount) : '0',
-              comments: item.commentCount ? String(item.commentCount) : '0',
+              creator: creatorName,
+              views: formatCount(playCount),
+              likes: formatCount(diggCount),
+              shares: formatCount(shareCount),
+              comments: formatCount(commentCount),
               hashtags: Array.isArray(item.hashtags)
                 ? item.hashtags.map(h => typeof h === 'object' ? (h.name || h.title || '') : h).filter(Boolean).slice(0, 3)
                 : (descText.match(/#[^\s#]+/g) || []).map(h => h.replace('#', '')).slice(0, 3),
               category: displayCategory,
-              duration: item.video?.duration ? `${Math.floor(item.video.duration / 60)}:${String(item.video.duration % 60).padStart(2, '0')}` : '0:30',
+              duration: item.video?.duration || item.duration ? `${Math.floor((item.video?.duration || item.duration) / 60)}:${String((item.video?.duration || item.duration) % 60).padStart(2, '0')}` : '0:30',
               trend_score: Math.floor(Math.random() * 3) + 8,
-              why_trending: L('High engagement and social shares on TikTok.', 'تفاعل كبير ومشاركات عالية على تيك توك.'),
-              video_url: item.webVideoUrl || (item.id ? `https://www.tiktok.com/@${item.authorMeta?.name || 'video'}/video/${item.id}` : ''),
-              rawPlayCount: item.playCount || 0,
-              rawDiggCount: item.diggCount || 0,
-              rawShareCount: item.shareCount || 0,
-              rawCommentCount: item.commentCount || 0
+              why_trending: L(`High engagement and social shares on ${platform}.`, `تفاعل كبير ومشاركات عالية على ${platform}.`),
+              video_url: videoUrl,
+              rawPlayCount: playCount,
+              rawDiggCount: diggCount,
+              rawShareCount: shareCount,
+              rawCommentCount: commentCount
             };
           });
 
@@ -200,7 +228,7 @@ export default function SocialTrendsView() {
           const updatedGC = {
             ...GC,
             socialTrends: {
-              filters: { platform, niche, region, sortBy, period },
+              filters: { platform, niche, region, sortBy, period, resultsLimit, igSearchType, igResultsType },
               trends: sorted
             }
           };
@@ -213,7 +241,7 @@ export default function SocialTrendsView() {
       }
     }
 
-    const prompt = `Generate 12 Arabic social media trending videos. Platform: ${platform} Niche: ${niche || 'mixed'} Region: ${region}. Each object needs: title, creator, views, likes, shares, comments, hashtags(array of 3), category, duration, trend_score(1-10), why_trending. Return ONLY the JSON array.`;
+    const prompt = `Generate ${resultsLimit} Arabic social media trending videos. Platform: ${platform} Niche: ${niche || 'mixed'} Region: ${region}. Each object needs: title, creator, views, likes, shares, comments, hashtags(array of 3), category, duration, trend_score(1-10), why_trending. Return ONLY the JSON array.`;
     const sysPrompt = 'TikTok trend analyst for Arabic market. Return ONLY valid JSON array, no markdown, no code blocks.';
 
     try {
@@ -232,7 +260,7 @@ export default function SocialTrendsView() {
       const updatedGC = {
         ...GC,
         socialTrends: {
-          filters: { platform, niche, region, sortBy, period },
+          filters: { platform, niche, region, sortBy, period, resultsLimit },
           trends: parsed
         }
       };
@@ -250,7 +278,7 @@ export default function SocialTrendsView() {
       const updatedGC = {
         ...GC,
         socialTrends: {
-          filters: { platform, niche, region, sortBy, period },
+          filters: { platform, niche, region, sortBy, period, resultsLimit, igSearchType, igResultsType },
           trends: fallbacks
         }
       };
@@ -424,6 +452,40 @@ export default function SocialTrendsView() {
               <option value="1">{L('Today', 'اليوم')}</option>
             </select>
           </div>
+          <div>
+            <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+              {L('Max Results', 'الحد الأقصى')}
+            </label>
+            <select className="inp" value={resultsLimit} onChange={(e) => { setResultsLimit(e.target.value); updateGCFilter('resultsLimit', e.target.value); }} style={{ width: '100px' }}>
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+          </div>
+          
+          {platform === 'instagram' && (
+            <>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('IG Search Type', 'نوع البحث (IG)')}
+                </label>
+                <select className="inp" value={igSearchType} onChange={(e) => { setIgSearchType(e.target.value); updateGCFilter('igSearchType', e.target.value); }} style={{ width: '130px' }}>
+                  <option value="hashtag">{L('Hashtag', 'هاشتاج')}</option>
+                  <option value="user">{L('User', 'مستخدم')}</option>
+                  <option value="place">{L('Place', 'مكان')}</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('IG Results Type', 'نوع النتائج (IG)')}
+                </label>
+                <select className="inp" value={igResultsType} onChange={(e) => { setIgResultsType(e.target.value); updateGCFilter('igResultsType', e.target.value); }} style={{ width: '130px' }}>
+                  <option value="posts">{L('Posts', 'منشورات')}</option>
+                  <option value="reels">{L('Reels', 'ريلز')}</option>
+                </select>
+              </div>
+            </>
+          )}
+
           <button className="btn btn-prime" onClick={handleLoadTrends}>
             🔍 {L('Search', 'بحث')}
           </button>

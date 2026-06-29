@@ -13,7 +13,7 @@ export const PAGE_META = {
   crm: { section: 'Grow', page: 'Smart CRM' },
   revenue: { section: 'Grow', page: 'Revenue Hub' },
   digital: { section: 'Build', page: 'Digital Products' },
-  whatsapp: { section: 'Grow', page: 'WhatsApp Hub' },
+  telegram: { section: 'Grow', page: 'Telegram Hub' },
   marketing: { section: 'Grow', page: 'Marketing OS' },
   'mkt-research': { section: 'Marketing OS', page: 'Research' },
   'mkt-strategy': { section: 'Marketing OS', page: 'Strategy' },

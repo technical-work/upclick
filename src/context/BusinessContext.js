@@ -74,7 +74,7 @@ const initialGC = {
     connectionUrl: '',
     apiKey: '',
     connected: false,
-    cbTrigger: 'New WhatsApp message received',
+    cbTrigger: 'New Telegram message received',
     cbAction: '',
     cbApps: [],
     cbCreds: '',
@@ -166,7 +166,7 @@ const initialGC = {
       ]
     }
   },
-  whatsAppHub: {
+  telegramHub: {
     agentName: '',
     agentStyle: 'Professional & Friendly',
     agentGoal: 'Qualify Leads',
@@ -359,19 +359,32 @@ export function BusinessProvider({ children }) {
     if (isTeamMember && ownerUid) {
       // Real-time listener on the owner's user document for GC data
       const unsub = onSnapshot(doc(db, 'users', ownerUid), (docSnap) => {
-        if (docSnap.exists() && docSnap.data().GC) {
-          setGC(docSnap.data().GC);
-          localStorage.setItem('ba_context', JSON.stringify(docSnap.data().GC));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.GC) {
+            setGC(data.GC);
+            localStorage.setItem('ba_context', JSON.stringify(data.GC));
+          }
+          if (data.onboardingDone) {
+            setOnboardingDone(true);
+            localStorage.setItem('ba_onboard_done', '1');
+          }
         }
       }, (err) => {
         console.error('Error loading owner GC for team member:', err);
       });
       return () => unsub();
-    } else if (userData?.GC) {
-      setGC(userData.GC);
-      localStorage.setItem('ba_context', JSON.stringify(userData.GC));
+    } else if (userData) {
+      if (userData.GC) {
+        setGC(userData.GC);
+        localStorage.setItem('ba_context', JSON.stringify(userData.GC));
+      }
+      if (userData.onboardingDone) {
+        setOnboardingDone(true);
+        localStorage.setItem('ba_onboard_done', '1');
+      }
     }
-  }, [userData?.GC, isTeamMember, ownerUid]);
+  }, [userData, isTeamMember, ownerUid]);
 
   // Sync language attributes to HTML
   useEffect(() => {
@@ -695,11 +708,26 @@ export function BusinessProvider({ children }) {
     saveGC(updated);
     setOnboardingDone(true);
     localStorage.setItem('ba_onboard_done', '1');
+    
+    // Save to Firebase so it persists across logins
+    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (targetUid) {
+      setDoc(doc(db, 'users', targetUid), { onboardingDone: true }, { merge: true }).catch((err) => {
+        console.error("Error saving onboarding state:", err);
+      });
+    }
   };
 
   const resetOnboarding = () => {
     localStorage.removeItem('ba_onboard_done');
     setOnboardingDone(false);
+    
+    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (targetUid) {
+      setDoc(doc(db, 'users', targetUid), { onboardingDone: false }, { merge: true }).catch(err => {
+        console.error("Error resetting onboarding state:", err);
+      });
+    }
   };
 
   return (

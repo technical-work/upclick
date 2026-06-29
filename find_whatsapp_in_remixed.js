@@ -5,7 +5,7 @@ console.log("File length:", content.length);
 const lines = content.split('\n');
 let count = 0;
 lines.forEach((line, idx) => {
-  if (line.toLowerCase().includes('whatsapp')) {
+  if (line.toLowerCase().includes('telegram')) {
     count++;
     if (count < 40) {
       console.log(`Line ${idx + 1}: ${line.trim().substring(0, 150)}`);

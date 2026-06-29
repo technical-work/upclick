@@ -381,11 +381,11 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                       <a
                         className="btn btn-ghost"
                         style={{ fontSize: '11px', padding: '4px 9px', textDecoration: 'none', color: 'var(--green)', borderColor: 'var(--green)' }}
-                        href={`https://wa.me/${l.phone.replace(/[+\s-]/g, '')}`}
+                        href={`https://t.me/${l.phone.replace(/[+\s-]/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {L('WhatsApp', 'واتساب')}
+                        {L('Telegram', 'تليجرام')}
                       </a>
                     )}
                   </div>
@@ -417,7 +417,7 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                         <a
                           className="btn btn-prime"
                           style={{ fontSize: '11px', padding: '4px 9px', textDecoration: 'none' }}
-                          href={`https://wa.me/${l.phone.replace(/[+\s-]/g, '')}`}
+                          href={`https://t.me/${l.phone.replace(/[+\s-]/g, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

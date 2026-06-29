@@ -96,7 +96,7 @@ const DEFAULT_PLAN = {
     'مساعد الذكاء الاصطناعي (غير محدود)',
     'عملاء ومبيعات غير محدودة',
     'نظام التسويق الذكي (8 أدوات)',
-    'مركز واتساب + وكيل الرد التلقائي',
+    'مركز تليجرام + وكيل الرد التلقائي',
     'ذكاء النمو وتحليل المنافسين',
     'مركز المنتجات الرقمية',
     'التحكم عبر بوت تيليجرام',
@@ -112,7 +112,7 @@ const DEFAULT_PLAN = {
     'AI Assistant (unlimited)',
     'Unlimited CRM leads',
     'Marketing OS (8 tools)',
-    'WhatsApp Hub + AI Agent',
+    'Telegram Hub + AI Agent',
     'AI Growth Intelligence',
     'Digital Products Hub',
     'Telegram Bot Control',
@@ -167,12 +167,12 @@ const DEFAULTS = {
   footerTextEn: '© 2025 UpKlick — Made with ❤️ for Arab Entrepreneurs',
   heroBadge: '✦ نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
   heroBadgeEn: '✦ The AI OS for Arab Entrepreneurs',
-  heroSub: 'CRM، تسويق، محتوى، مالية، واتساب — مدعومون بالذكاء الاصطناعي ومبني للمبدعين والكوتشز ورواد الأعمال العرب.',
-  heroSubEn: 'CRM, Marketing, Content, Finance, WhatsApp — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
+  heroSub: 'CRM، تسويق، محتوى، مالية، تليجرام — مدعومون بالذكاء الاصطناعي ومبني للمبدعين والكوتشز ورواد الأعمال العرب.',
+  heroSubEn: 'CRM, Marketing, Content, Finance, Telegram — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
   domain: '',
   plan: DEFAULT_PLAN,
   planAnnual: DEFAULT_PLAN_ANNUAL,
-  whatsappNumber: '',
+  telegramNumber: '',
   freeTrial: { enabled: false, days: 7 },
   i18nOverrides: { ar: {}, en: {} },
 };
@@ -490,25 +490,25 @@ const BrandingSettings = () => {
           </div>
         </div>
 
-        {/* Free Trial & WhatsApp */}
+        {/* Free Trial & Telegram */}
         <div className="card" style={{ marginBottom: '12px' }}>
           <div style={sectionHeader}>
             <MessageCircle size={16} />
-            <span>{t('branding.trialWhatsapp')}</span>
+            <span>{t('branding.trialTelegram')}</span>
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>{t('branding.whatsappLabel')}</label>
+            <label style={labelStyle}>{t('branding.telegramLabel')}</label>
             <input
               type="tel"
-              value={config.whatsappNumber}
-              onChange={e => handleChange('whatsappNumber', e.target.value.replace(/[^0-9]/g, ''))}
+              value={config.telegramNumber}
+              onChange={e => handleChange('telegramNumber', e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="201xxxxxxxx"
               dir="ltr"
               style={{ ...inputStyle, textAlign: 'left', fontFamily: 'var(--mono)' }}
             />
             <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-              {t('branding.whatsappHint')}
+              {t('branding.telegramHint')}
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, collection, increment } from 'firebase/firestore';
+import { adminDb as db } from '@/utils/firebaseAdmin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req) {
   try {
@@ -8,8 +8,8 @@ export async function POST(req) {
     
     if (db) {
       // Log the webhook request for diagnostics
-      const logRef = doc(collection(db, 'telegram_webhook_logs'));
-      await setDoc(logRef, {
+      const logRef = db.collection('telegram_webhook_logs').doc();
+      await logRef.set({
         payload: body,
         receivedAt: new Date().toISOString(),
         status: 'received'
@@ -59,8 +59,7 @@ export async function POST(req) {
 
       if (db) {
         // Save contact to telegram_contacts
-        const contactRef = doc(db, 'telegram_contacts', contactData.id);
-        await setDoc(contactRef, contactData, { merge: true });
+        await db.collection('telegram_contacts').doc(contactData.id).set(contactData, { merge: true });
 
         // Save chat message
         const messageData = {
@@ -75,20 +74,18 @@ export async function POST(req) {
         };
 
         // Add to the specific chat's messages subcollection
-        const messageRef = doc(collection(db, `telegram_chats/${chatId}/messages`), msg.message_id.toString());
-        await setDoc(messageRef, messageData);
+        await db.collection(`telegram_chats/${chatId}/messages`).doc(msg.message_id.toString()).set(messageData);
 
         // Update the last message in the chat document
-        const chatRef = doc(db, 'telegram_chats', chatId);
-        await setDoc(chatRef, {
+        await db.collection('telegram_chats').doc(chatId).set({
           lastMessage: text,
           lastMessageAt: new Date().toISOString(),
           contactId: contactData.id,
           updatedAt: new Date().toISOString(),
-          unreadCount: increment(1)
+          unreadCount: FieldValue.increment(1)
         }, { merge: true });
       } else {
-        console.warn('Firebase Client DB is not initialized. Message not saved to database.');
+        console.warn('Firebase Admin DB is not initialized. Message not saved to database.');
       }
     }
 

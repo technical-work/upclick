@@ -229,12 +229,12 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
     ? isAR
       ? [
           { n: 'ستارتر', p: '$' + Math.round(parseInt(price) * 0.5), b: ['٣ جلسات فردية', 'خطة عمل شخصية', 'موارد حصرية'], popular: false },
-          { n: 'المتميز', p: priceStr, b: ['كل ما في ستارتر', '٦ جلسات فردية', 'دعم واتساب ٣٠ يوم', 'ضمان استرداد'], popular: true },
+          { n: 'المتميز', p: priceStr, b: ['كل ما في ستارتر', '٦ جلسات فردية', 'دعم تليجرام ٣٠ يوم', 'ضمان استرداد'], popular: true },
           { n: 'VIP', p: '$' + Math.round(parseInt(price) * 2), b: ['كل شيء', 'دعم غير محدود ٣ شهور', 'ضمان النتائج'], popular: false }
         ]
       : [
           { n: 'Starter', p: '$' + Math.round(parseInt(price) * 0.5), b: ['3 private sessions', 'Personal action plan', 'Exclusive resources'], popular: false },
-          { n: 'Premium', p: priceStr, b: ['Everything in Starter', '6 private sessions', 'WhatsApp support 30 days', 'Money-back guarantee'], popular: true },
+          { n: 'Premium', p: priceStr, b: ['Everything in Starter', '6 private sessions', 'Telegram support 30 days', 'Money-back guarantee'], popular: true },
           { n: 'VIP', p: '$' + Math.round(parseInt(price) * 2), b: ['Everything', 'Unlimited support 3 months', 'Results guarantee'], popular: false }
         ]
     : isAR
