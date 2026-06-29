@@ -27,7 +27,7 @@ const PaymentSettingsPage = () => {
   // Load existing tenant configuration
   useEffect(() => {
     if (!currentUser?.uid) return;
-    getDoc(doc(db, 'tenants', currentUser.uid))
+    getDoc(doc(db, 'tenants', 'global'))
       .then(snap => {
         if (snap.exists()) {
           const data = snap.data();
@@ -86,7 +86,7 @@ const PaymentSettingsPage = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, 'tenants', currentUser.uid), {
+      await setDoc(doc(db, 'tenants', 'global'), {
         paymentMethods,
         updatedAt: serverTimestamp(),
       }, { merge: true });

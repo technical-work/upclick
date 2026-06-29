@@ -170,16 +170,11 @@ export default function RegisterPage() {
   const [tenantConfig, setTenantConfig] = useState(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const currentHost = window.location.hostname;
-    
-    // Fetch tenant by domain match
-    const q = query(collection(db, 'tenants'), where('domain', '==', currentHost));
-    getDocs(q).then((snap) => {
-      if (!snap.empty) {
-        setTenantConfig(snap.docs[0].data());
+    getDoc(doc(db, 'tenants', 'global')).then((docSnap) => {
+      if (docSnap.exists()) {
+        setTenantConfig(docSnap.data());
       }
-    }).catch(err => console.error("Error fetching register tenant:", err));
+    }).catch(err => console.error("Error fetching global tenant:", err));
   }, []);
 
   useEffect(() => {
@@ -286,7 +281,7 @@ export default function RegisterPage() {
         GC: userGC,
         isTrial: isTrial,
         trialStartedAt: trialStartedAt,
-        adminId: tenantConfig?.adminId || null,
+        adminId: 'global',
         createdAt: new Date().toISOString()
       });
 

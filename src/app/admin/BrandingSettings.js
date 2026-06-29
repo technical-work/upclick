@@ -209,7 +209,7 @@ const BrandingSettings = () => {
   // Load existing tenant config
   useEffect(() => {
     if (!currentUser?.uid) return;
-    getDoc(doc(db, 'tenants', currentUser.uid))
+    getDoc(doc(db, 'tenants', 'global'))
       .then(snap => {
         const data = snap.exists() ? snap.data() : {};
         // Auto-detect parent platform domain when embedded in iframe
@@ -316,7 +316,7 @@ const BrandingSettings = () => {
     if (!file.type.startsWith('image/')) return;
     setUploading(true);
     try {
-      const storageRef = ref(libStorage, `tenants/${currentUser.uid}/logo_${Date.now()}`);
+      const storageRef = ref(libStorage, `tenants/global/logo_${Date.now()}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       handleChange('logoUrl', url);
@@ -330,9 +330,9 @@ const BrandingSettings = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setDoc(doc(db, 'tenants', currentUser.uid), {
+      await setDoc(doc(db, 'tenants', 'global'), {
         ...config,
-        adminId: currentUser.uid,
+        adminId: 'global',
         updatedAt: serverTimestamp(),
       }, { merge: true });
       setSaved(true);

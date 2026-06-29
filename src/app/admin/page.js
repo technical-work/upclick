@@ -179,7 +179,7 @@ const AdminDashboard = () => {
     setLoading(true);
     const q = query(
       collection(db, 'users'),
-      where('adminId', '==', currentUser?.uid || '')
+      where('role', '==', 'user')
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -249,7 +249,6 @@ const AdminDashboard = () => {
   const fetchSales = () => {
     const q = query(
       collection(db, 'sales'),
-      where('adminId', '==', currentUser?.uid || ''),
       orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snapshot) => {
@@ -278,7 +277,7 @@ const AdminDashboard = () => {
           userId: newSale.userId,
           customerName: newSale.customerName,
           amount: Number(newSale.amount),
-          adminId: currentUser.uid,
+          adminId: 'global',
           createdAt: serverTimestamp()
         });
       }
@@ -312,7 +311,6 @@ const AdminDashboard = () => {
   const fetchPendingPayments = () => {
     const q = query(
       collection(db, 'payments'),
-      where('adminId', '==', currentUser?.uid || ''),
       where('status', '==', 'pending')
     );
     const unsub = onSnapshot(q, (snapshot) => {
@@ -331,8 +329,7 @@ const AdminDashboard = () => {
 
   const fetchAllPayments = () => {
     const q = query(
-      collection(db, 'payments'),
-      where('adminId', '==', currentUser?.uid || '')
+      collection(db, 'payments')
     );
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -390,7 +387,7 @@ const AdminDashboard = () => {
         userId: payment.userId,
         customerName: payment.userName || payment.userEmail.split('@')[0],
         amount: Number(payment.amount),
-        adminId: currentUser.uid,
+        adminId: 'global',
         createdAt: serverTimestamp()
       });
       
@@ -448,7 +445,7 @@ const AdminDashboard = () => {
         licenseKey: newUser.licenseKey,
         country: newUser.country,
         role: 'user',
-        adminId: currentUser.uid,
+        adminId: 'global',
         adminEmail: currentUser.email,
         adminName: currentUser.email.split('@')[0],
         subscriptionType: newUser.subscriptionType,

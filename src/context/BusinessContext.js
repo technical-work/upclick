@@ -267,36 +267,19 @@ export function BusinessProvider({ children }) {
     if (userData?.theme) setTheme(userData.theme);
   }, [userData]);
 
-  // Real-time listen to tenant branding configurations
+  // Real-time listen to global branding configurations
   useEffect(() => {
-    if (userData?.adminId) {
-      const unsub = onSnapshot(doc(db, 'tenants', userData.adminId), (docSnap) => {
-        if (docSnap.exists()) {
-          setTenantConfig(docSnap.data());
-        } else {
-          setTenantConfig(null);
-        }
-      }, (err) => {
-        console.error("Error listening to tenant config:", err);
-      });
-      return () => unsub();
-    } else {
-      // Fallback: search by domain match
-      if (typeof window === 'undefined') return;
-      const currentHost = window.location.hostname;
-      const q = query(collection(db, 'tenants'), where('domain', '==', currentHost));
-      getDocs(q).then((snap) => {
-        if (!snap.empty) {
-          setTenantConfig(snap.docs[0].data());
-        } else {
-          setTenantConfig(null);
-        }
-      }).catch(err => {
-        console.error("Error fetching fallback tenant by domain:", err);
+    const unsub = onSnapshot(doc(db, 'tenants', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        setTenantConfig(docSnap.data());
+      } else {
         setTenantConfig(null);
-      });
-    }
-  }, [userData?.adminId]);
+      }
+    }, (err) => {
+      console.error("Error listening to global tenant config:", err);
+    });
+    return () => unsub();
+  }, []);
 
   // Apply tenant branding styles to CSS variables dynamically
   useEffect(() => {
