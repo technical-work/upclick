@@ -81,7 +81,7 @@ const LayoutContent = ({ children }) => {
             </svg>
           </div>
           <div>
-            <h1>GigSniper Pro</h1>
+            <h1>upKlick</h1>
             <span>إصدار المسؤولين · V2.0</span>
           </div>
         </div>

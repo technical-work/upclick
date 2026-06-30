@@ -82,10 +82,10 @@ const DEFAULT_PLAN_ANNUAL = {
 };
 
 const DEFAULTS = {
-  appName: 'GigSniper Pro',
-  appNameEn: 'GigSniper Pro',
-  tagline: 'مساعدك الذكي للنجاح في الفريلانس',
-  taglineEn: 'Your Smart Assistant for Freelance Success',
+  appName: 'upKlick',
+  appNameEn: 'upKlick',
+  tagline: 'بوابتك للنجاح في العمل الحر',
+  taglineEn: 'Your Gateway to Success in Freelancing',
   primaryColor: '#3B82F6',
   accentColor: '#1D4ED8',
   bgColor: '#080C14',
@@ -97,12 +97,12 @@ const DEFAULTS = {
   text2Color: '#8B96A8',
   btnTextColor: '#ffffff',
   logoUrl: '',
-  footerText: '© 2025 GigSniper Pro — مصنوع بـ ❤️ للفريلانسر العربي',
-  footerTextEn: '© 2025 GigSniper Pro — Made with ❤️ for Arab Freelancers',
+  footerText: '© 2025 upKlick — بوابتك للنجاح في العمل الحر',
+  footerTextEn: '© 2025 upKlick — Your Gateway to Success in Freelancing',
   heroBadge: 'الأداة الأولى عربياً للفريلانسر الذكي',
   heroBadgeEn: 'The #1 Tool for the Smart Arab Freelancer',
-  heroSub: 'GigSniper Pro مش مجرد أداة — هو مرشدك الشخصي الكامل.',
-  heroSubEn: 'GigSniper Pro is not just a tool — it\'s your complete personal guide.',
+  heroSub: 'upKlick مش مجرد أداة — هو مرشدك الشخصي الكامل.',
+  heroSubEn: 'upKlick is not just a tool — it\'s your complete personal guide.',
   domain: '',
   plan: DEFAULT_PLAN,
   planAnnual: DEFAULT_PLAN_ANNUAL,
@@ -619,7 +619,7 @@ const BrandingSettings = () => {
             <div>
               <label style={labelStyle}>{t('branding.planPrice')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="number" min="0" value={config.plan?.price || ''} onChange={e => handleChange('plan', { ...config.plan, price: e.target.value })} placeholder="99" style={{...inputStyle, height: '100%'}} />
+                <input type="number" min="0" value={config.plan?.price || ''} onChange={e => handleChange('plan', { ...config.plan, price: e.target.value })} placeholder="99" style={{ ...inputStyle, height: '100%' }} />
               </div>
             </div>
             <div>
@@ -762,7 +762,7 @@ const BrandingSettings = () => {
             <div>
               <label style={labelStyle}>{t('branding.planPrice')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="number" min="0" value={config.planAnnual?.price || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, price: e.target.value })} placeholder="999" style={{...inputStyle, height: '100%'}} />
+                <input type="number" min="0" value={config.planAnnual?.price || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, price: e.target.value })} placeholder="999" style={{ ...inputStyle, height: '100%' }} />
               </div>
             </div>
             <div>

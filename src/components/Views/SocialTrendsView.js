@@ -242,7 +242,7 @@ export default function SocialTrendsView() {
     const sysPrompt = `${platform} trend analyst for Arabic market. Return ONLY valid JSON array, no markdown, no code blocks.`;
 
     try {
-      const reply = await callClaudeAPI(prompt, sysPrompt, lang);
+      const reply = await callClaudeAPI(prompt, sysPrompt, lang, GC, 'Social Trends');
       let cleaned = reply;
       if (cleaned.indexOf('[') > -1) {
         cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);

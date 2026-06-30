@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/utils/firebaseAdmin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export const maxDuration = 60;
 
@@ -51,7 +52,7 @@ const getModelRates = (modelName) => {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { userId, messages } = body;
+    const { userId, messages, tool } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -129,6 +130,28 @@ export async function POST(request) {
     await userRef.update({
       aiCredits: newCredits
     });
+
+    try {
+      await adminDb.collection('ai_logs').add({
+        userId,
+        userEmail: userData.email || '',
+        userName: userData.name || '',
+        model: configuredModel,
+        inputTokens: inputCount,
+        outputTokens: outputCount,
+        cost: cost,
+        tool: tool || 'General',
+        timestamp: new Date()
+      });
+
+      await adminDb.collection('tenants').doc('global').update({
+        totalAiSpend: FieldValue.increment(cost),
+        totalAiTokens: FieldValue.increment(inputCount + outputCount),
+        totalAiCalls: FieldValue.increment(1)
+      });
+    } catch (logError) {
+      console.error('Failed to log AI call or increment metrics:', logError);
+    }
 
     return NextResponse.json({
       ...data,

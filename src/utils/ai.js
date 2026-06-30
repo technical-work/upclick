@@ -1,6 +1,6 @@
 import { auth } from '@/lib/firebase';
 
-export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessContext = {}) {
+export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessContext = {}, toolName = 'General') {
   let gc = businessContext;
   if (!gc || !gc.integrations) {
     try {
@@ -38,6 +38,7 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
         apiKey: API_KEY,
         model: MODEL_NAME,
         userId: auth?.currentUser?.uid || '',
+        tool: toolName,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
