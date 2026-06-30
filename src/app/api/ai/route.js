@@ -92,7 +92,7 @@ export async function POST(request) {
       }, { status: 403 });
     }
 
-    // 4. Request OpenAI API
+    // 4. Request OpenAI API with Streaming enabled
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -103,59 +103,113 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         model: configuredModel,
-        messages: messages
+        messages: messages,
+        stream: true,
+        stream_options: { include_usage: true } // Returns usage stats in final stream payload
       })
     });
 
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch(e) {
-      return NextResponse.json({ error: 'API returned HTML (Cloudflare block?)', html: text.substring(0, 500) }, { status: 502 });
+    if (!res.ok) {
+      const errText = await res.text();
+      let openAiError = 'Failed to connect to OpenAI';
+      try {
+        const errJson = JSON.parse(errText);
+        openAiError = errJson.error?.message || openAiError;
+      } catch (e) {}
+      return NextResponse.json({ error: openAiError }, { status: res.status });
     }
 
-    if (data.error) {
-      return NextResponse.json(data);
-    }
+    // 5. Create a readable stream to pipe to client
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    // 5. Calculate cost and deduct credits
-    const rates = getModelRates(configuredModel);
-    const inputCount = data.usage?.prompt_tokens || 0;
-    const outputCount = data.usage?.completion_tokens || 0;
-    const cost = (inputCount * rates.input) + (outputCount * rates.output);
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = res.body.getReader();
+        let buffer = '';
+        let promptTokens = 0;
+        let completionTokens = 0;
 
-    const newCredits = Math.max(0, aiCredits - cost);
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-    await userRef.update({
-      aiCredits: newCredits
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep last incomplete line in buffer
+
+            for (const line of lines) {
+              const cleanLine = line.trim();
+              if (!cleanLine) continue;
+              if (cleanLine === 'data: [DONE]') continue;
+
+              if (cleanLine.startsWith('data: ')) {
+                const jsonStr = cleanLine.substring(6);
+                if (jsonStr === '[DONE]') continue;
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  
+                  // Stream text content chunks to client
+                  const textChunk = parsed.choices?.[0]?.delta?.content || '';
+                  if (textChunk) {
+                    controller.enqueue(encoder.encode(textChunk));
+                  }
+
+                  // Accumulate usage token counts
+                  if (parsed.usage) {
+                    promptTokens = parsed.usage.prompt_tokens || 0;
+                    completionTokens = parsed.usage.completion_tokens || 0;
+                  }
+                } catch (e) {
+                  // Partial JSON chunk error bypass
+                }
+              }
+            }
+          }
+
+          // 6. Deduct credits & Log when the stream finishes successfully
+          if (promptTokens > 0 || completionTokens > 0) {
+            const rates = getModelRates(configuredModel);
+            const cost = (promptTokens * rates.input) + (completionTokens * rates.output);
+            const newCredits = Math.max(0, aiCredits - cost);
+
+            await userRef.update({
+              aiCredits: newCredits
+            });
+
+            await adminDb.collection('ai_logs').add({
+              userId,
+              userEmail: userData.email || '',
+              userName: userData.name || '',
+              model: configuredModel,
+              inputTokens: promptTokens,
+              outputTokens: completionTokens,
+              cost: cost,
+              tool: tool || 'General',
+              timestamp: new Date()
+            });
+
+            await adminDb.collection('tenants').doc('global').update({
+              totalAiSpend: FieldValue.increment(cost),
+              totalAiTokens: FieldValue.increment(promptTokens + completionTokens),
+              totalAiCalls: FieldValue.increment(1)
+            });
+          }
+        } catch (streamError) {
+          console.error("Error processing OpenAI stream:", streamError);
+        } finally {
+          controller.close();
+        }
+      }
     });
 
-    try {
-      await adminDb.collection('ai_logs').add({
-        userId,
-        userEmail: userData.email || '',
-        userName: userData.name || '',
-        model: configuredModel,
-        inputTokens: inputCount,
-        outputTokens: outputCount,
-        cost: cost,
-        tool: tool || 'General',
-        timestamp: new Date()
-      });
-
-      await adminDb.collection('tenants').doc('global').update({
-        totalAiSpend: FieldValue.increment(cost),
-        totalAiTokens: FieldValue.increment(inputCount + outputCount),
-        totalAiCalls: FieldValue.increment(1)
-      });
-    } catch (logError) {
-      console.error('Failed to log AI call or increment metrics:', logError);
-    }
-
-    return NextResponse.json({
-      ...data,
-      updatedCredits: newCredits
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
     });
 
   } catch (error) {

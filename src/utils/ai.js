@@ -46,24 +46,37 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
       })
     });
     
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
+    if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Server returned non-JSON response (Status: ${res.status}). This usually means the AI generation took too long and timed out. ${text.substring(0, 100)}`);
+      let errorMsg = 'AI request failed';
+      try {
+        const parsed = JSON.parse(text);
+        errorMsg = parsed.error || errorMsg;
+      } catch (e) {}
+      throw new Error(errorMsg);
     }
 
-    const data = await res.json();
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      return data.choices[0].message.content;
+    if (onChunk) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        accumulated += text;
+        onChunk(text);
+      }
+      return accumulated;
+    } else {
+      const text = await res.text();
+      return text;
     }
-    if (data.error) {
-      return `❌ خطأ من الخادم (API Error): ${data.error.message || JSON.stringify(data.error)}`;
-    }
-    
-    return `❌ استجابة غير متوقعة: ${JSON.stringify(data)}`;
   } catch (error) {
     console.warn('Custom API request failed:', error);
-    return `❌ حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: ${error.message}`;
+    if (error.message && (error.message.includes('رصيد') || error.message.includes('كافٍ') || error.message.includes('not configured') || error.message.includes('User ID'))) {
+      return `❌ ${error.message}`;
+    }
   }
 
   // Fallback engine

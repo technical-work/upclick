@@ -110,9 +110,12 @@ export default function AIPanel() {
   const askAI = async (question) => {
     if (!question.trim()) return;
 
-    // Append user message
-    const newMsgs = [...messages, { sender: 'user', text: question }];
-    setMessages(newMsgs);
+    // Append user message and a placeholder AI message
+    setMessages(prev => [
+      ...prev,
+      { sender: 'user', text: question },
+      { sender: 'ai', text: '' }
+    ]);
     setLoading(true);
 
     try {
@@ -125,12 +128,38 @@ You have access to their CRM (${leadsCount} leads), tasks (${tasksCount} tasks),
 Be concise, specific, and actionable. No generic advice. Reference their actual data when available.
 Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
-      const reply = await callClaudeAPI(question, systemPrompt, lang, GC);
-      const finalReply = reply || L('I encountered an issue. Please try again.', 'حدث خطأ. يرجى المحاولة مرة أخرى.');
-      setMessages(prev => [...prev, { sender: 'ai', text: finalReply }]);
+      let hasReceivedFirstChunk = false;
+      await callClaudeAPI(
+        question, 
+        systemPrompt, 
+        lang, 
+        GC, 
+        'AI Assistant', 
+        (chunk) => {
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            setLoading(false); // Turn off loading spinner as typing begins
+          }
+          setMessages(prev => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last && last.sender === 'ai') {
+              last.text += chunk;
+            }
+            return next;
+          });
+        }
+      );
     } catch (e) {
       console.error('AI Panel askAI error:', e);
-      setMessages(prev => [...prev, { sender: 'ai', text: L('Could not reach AI. Check connection.', 'لم نتمكن من الوصول للذكاء الاصطناعي. تحقق من الاتصال.') }]);
+      setMessages(prev => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last && last.sender === 'ai' && !last.text) {
+          last.text = L('Could not reach AI. Check connection.', 'لم نتمكن من الوصول للذكاء الاصطناعي. تحقق من الاتصال.');
+        }
+        return next;
+      });
     } finally {
       setLoading(false);
     }
