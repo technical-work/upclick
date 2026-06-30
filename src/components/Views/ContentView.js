@@ -178,22 +178,55 @@ export default function ContentView() {
   const [generatedScript, setGeneratedScript] = useState('');
   const [generatingScript, setGeneratingScript] = useState(false);
 
+  const triggerContentAI = async (toolKey, loadingSetter, outputSetter, prompt, system, isArrayOutput = false, fallbackFn = null) => {
+    loadingSetter(true);
+    outputSetter(isArrayOutput ? [] : '');
+    let accumulated = '';
+    let hasReceivedFirstChunk = false;
+
+    try {
+      const response = await callClaudeAPI(prompt, system, lang, GC, `Content Hub - ${toolKey}`, (chunk) => {
+        if (!hasReceivedFirstChunk) {
+          hasReceivedFirstChunk = true;
+          loadingSetter(false);
+        }
+        accumulated += chunk;
+        if (isArrayOutput) {
+          const parts = accumulated.split(/(?=\d\.\s*)/g).filter(Boolean);
+          outputSetter(parts);
+        } else {
+          outputSetter(accumulated);
+        }
+      });
+      const finalRes = response || accumulated;
+      if (isArrayOutput) {
+        const parts = finalRes.split(/(?=\d\.\s*)/g).filter(Boolean);
+        outputSetter(parts);
+      } else {
+        outputSetter(finalRes);
+      }
+    } catch (e) {
+      console.warn("AI generation failed, trying fallback:", e);
+      if (fallbackFn) {
+        fallbackFn();
+      } else {
+        outputSetter(isArrayOutput ? ['Error generating content'] : 'Error generating content');
+      }
+    } finally {
+      loadingSetter(false);
+    }
+  };
+
   const handleGenerateScript = async () => {
     if (!scrTopic.trim()) {
       alert(L('Please enter a video topic first', 'من فضلك أدخل موضوع الفيديو أولاً'));
       return;
     }
-    setGeneratingScript(true);
-    setGeneratedScript('');
 
     const prompt = `Write a video script for platform: ${scrPlatform}, style: ${scrStyle}, hook type: ${scrHookType}, about topic: "${scrTopic}". Target audience: Arab creators. Generate complete structure (Hook, Body, CTA, and Production notes).`;
     const sysPrompt = 'World-class short form video scriptwriter specializing in high retention hook rates.';
 
-    try {
-      const reply = await callClaudeAPI(prompt, sysPrompt, lang);
-      setGeneratedScript(reply);
-    } catch (e) {
-      // Local fallback builder matching original javascript
+    const fallbackFn = () => {
       const isShort = !scrPlatform.includes('YouTube Video');
       const isAR = lang === 'ar';
       const hooksEN = {
@@ -220,9 +253,9 @@ export default function ContentView() {
 
       const fallbackText = `📱 Platform: ${scrPlatform}\n⏱️ Duration: ${isShort ? '30–60 sec' : '6–9 min'}\n\n🎬 OPENING\n${hook}\n\n💡 BODY\n${body}\n\n🎯 CTA\n${cta}`;
       setGeneratedScript(fallbackText);
-    } finally {
-      setGeneratingScript(false);
-    }
+    };
+
+    await triggerContentAI('Script Writer', setGeneratingScript, setGeneratedScript, prompt, sysPrompt, false, fallbackFn);
   };
 
   const handleCopyScript = () => {
@@ -243,21 +276,15 @@ export default function ContentView() {
   };
 
   const handleGenFromTrend = async (customTrendTitle = null) => {
-    setGeneratingTrendVersion(true);
-    setTrendIdeasOut('');
-
     const targetTrend = customTrendTitle || tvSelectedTrend;
     const prompt = `Write a viral version/ideas of the following social media trend: "${targetTrend}" for my niche. Language: ${lang}. Offer actionable steps.`;
     const sysPrompt = 'Viral video ideator specializing in MENA niche audience targeting.';
 
-    try {
-      const reply = await callClaudeAPI(prompt, sysPrompt, lang);
-      setTrendIdeasOut(reply);
-    } catch (e) {
+    const fallbackFn = () => {
       setTrendIdeasOut(L('Click "Generate My Version" to customize your script.', 'اضغط على زر توليد نسختي للحصول على أفكار مخصصة.'));
-    } finally {
-      setGeneratingTrendVersion(false);
-    }
+    };
+
+    await triggerContentAI('Gen From Trend', setGeneratingTrendVersion, setTrendIdeasOut, prompt, sysPrompt, false, fallbackFn);
   };
 
   // 6. Repurpose Tab States
@@ -271,25 +298,18 @@ export default function ContentView() {
       alert(L('Please enter original content first', 'الرجاء إدخال المحتوى الأصلي أولاً'));
       return;
     }
-    setRepurposing(true);
-    setRepOutputs([]);
 
     const prompt = `Repurpose the following content into 5 formats: 1. Reel script, 2. Twitter Thread, 3. Email Newsletter, 4. Carousel slides layout, 5. Blog intro paragraph. Original format: ${repType}. Content: "${repInp}". Language: ${lang}.`;
     const sysPrompt = 'Content repurposing machine. Return the 5 formats labeled clearly.';
 
-    try {
-      const reply = await callClaudeAPI(prompt, sysPrompt, lang);
-      const parts = reply.split(/(?=\d\.\s*)/g).filter(Boolean);
-      setRepOutputs(parts.length > 0 ? parts : [reply]);
-    } catch (e) {
-      // Fallback
+    const fallbackFn = () => {
       setRepOutputs(lang === 'ar'
         ? ['١. سكريبت ريل معاد صياغته', '٢. ثريد تويتر', '٣. نيوزليتر إيميل', '٤. تصميم شرائح كاروسيل', '٥. مقدمة مقال']
         : ['1. Repurposed Reel script', '2. Twitter Thread', '3. Email newsletter', '4. Carousel slides outline', '5. Blog post intro']
       );
-    } finally {
-      setRepurposing(false);
-    }
+    };
+
+    await triggerContentAI('Repurpose', setRepurposing, setRepOutputs, prompt, sysPrompt, true, fallbackFn);
   };
 
   // 7. Radar Tab (Trends) Lists
@@ -310,20 +330,15 @@ export default function ContentView() {
       alert(L('Please enter a question first', 'الرجاء إدخال السؤال أولاً'));
       return;
     }
-    setGeneratingQA(true);
-    setQaAnswer('');
 
     const prompt = `Create an answer to this question: "${qaInp}". Style: ${qaStyle}. Format: ${qaFormat}. Language: ${lang}. Write the output directly as if you are replying.`;
     const sysPrompt = 'Personal assistant answering community questions in an engaging style.';
 
-    try {
-      const reply = await callClaudeAPI(prompt, sysPrompt, lang);
-      setQaAnswer(reply);
-    } catch (e) {
+    const fallbackFn = () => {
       setQaAnswer(L('Reply answer generated.', 'تم توليد الرد.'));
-    } finally {
-      setGeneratingQA(false);
-    }
+    };
+
+    await triggerContentAI('Community Q&A', setGeneratingQA, setQaAnswer, prompt, sysPrompt, false, fallbackFn);
   };
 
   // 9. Burnout Tab States

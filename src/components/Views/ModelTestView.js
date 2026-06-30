@@ -34,16 +34,35 @@ export default function ModelTestView() {
     setFinalTime(null);
     
     const startMs = Date.now();
+    let hasReceivedFirstChunk = false;
+
     try {
-      // systemPrompt can be simple or standard
       const systemPrompt = "أنت مساعد ذكي. يرجى الإجابة على طلب المستخدم بدقة ووضوح.";
-      const res = await callClaudeAPI(prompt, systemPrompt, lang, GC);
-      setResponse(res);
+      const res = await callClaudeAPI(
+        prompt, 
+        systemPrompt, 
+        lang, 
+        GC, 
+        'Model Test', 
+        (chunk) => {
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            setLoading(false);
+            setFinalTime(Date.now() - startMs);
+          }
+          setResponse(prev => prev + chunk);
+        }
+      );
+      if (res && !hasReceivedFirstChunk) {
+        setResponse(res);
+      }
     } catch (err) {
       setResponse("❌ خطأ أثناء الاتصال بالموديل: " + err.message);
     } finally {
-      setFinalTime(Date.now() - startMs);
-      setLoading(false);
+      if (!hasReceivedFirstChunk) {
+        setFinalTime(Date.now() - startMs);
+        setLoading(false);
+      }
     }
   };
 
