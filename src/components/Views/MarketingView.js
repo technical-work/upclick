@@ -225,15 +225,32 @@ export default function MarketingView() {
   };
 
   const triggerAI = async (toolKey, outputId, promptText, systemText, extraCounts = {}) => {
+    setOutputs(prev => ({ ...prev, [outputId]: '' }));
     setLoading(prev => ({ ...prev, [outputId]: true }));
-    try {
-      const response = await callClaudeAPI(promptText, systemText, lang, GC);
-      
-      // Update local state cleanly (pure function)
-      setOutputs(prev => ({ ...prev, [outputId]: response }));
+    let accumulated = '';
+    let hasReceivedFirstChunk = false;
 
-      // Save to Firebase/GC outside the state update callback
-      const nextOutputs = { ...outputs, [outputId]: response };
+    try {
+      const response = await callClaudeAPI(
+        promptText, 
+        systemText, 
+        lang, 
+        GC, 
+        `Marketing OS - ${toolKey}`, 
+        (chunk) => {
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            setLoading(prev => ({ ...prev, [outputId]: false }));
+          }
+          accumulated += chunk;
+          setOutputs(prev => ({ ...prev, [outputId]: accumulated }));
+        }
+      );
+      
+      const finalResponse = response || accumulated || L('Error generating report.', 'حدث خطأ أثناء التوليد.');
+      setOutputs(prev => ({ ...prev, [outputId]: finalResponse }));
+
+      const nextOutputs = { ...outputs, [outputId]: finalResponse };
       const currentCounts = {
         competitors: competitorsCount,
         audience: audienceCount,
@@ -254,8 +271,9 @@ export default function MarketingView() {
       saveGC(updatedGC);
     } catch (err) {
       setOutputs(prev => ({ ...prev, [outputId]: L('Error generating report. Please try again.', 'حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.') }));
+    } finally {
+      setLoading(prev => ({ ...prev, [outputId]: false }));
     }
-    setLoading(prev => ({ ...prev, [outputId]: false }));
   };
 
   // ── 1. RESEARCH SUB-ACTIONS ──

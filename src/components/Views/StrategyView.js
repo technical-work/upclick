@@ -51,100 +51,114 @@ export default function StrategyView() {
     saveGC(updated);
   };
 
-  // ── Trigger AIs ──
+  // ── Trigger AIs with Streaming ──
+  const triggerStrategyAI = async (key, promptText, systemText, saveCallback) => {
+    setAiOutputs(prev => ({ ...prev, [key]: '' }));
+    setLoading(prev => ({ ...prev, [key]: true }));
+    let accumulated = '';
+    let hasReceivedFirstChunk = false;
+
+    try {
+      const response = await callClaudeAPI(
+        promptText, 
+        systemText, 
+        lang, 
+        GC, 
+        `Strategy Lab - ${key}`, 
+        (chunk) => {
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            setLoading(prev => ({ ...prev, [key]: false }));
+          }
+          accumulated += chunk;
+          setAiOutputs(prev => ({ ...prev, [key]: accumulated }));
+        }
+      );
+      
+      const finalRes = response || accumulated;
+      setAiOutputs(prev => ({ ...prev, [key]: finalRes }));
+      saveCallback(finalRes);
+    } catch (e) {
+      console.error(e);
+      setAiOutputs(prev => ({ ...prev, [key]: L('Error generating strategy report.', 'حدث خطأ أثناء التوليد.') }));
+    } finally {
+      setLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   const runIdeaAnalysis = async () => {
-    setLoading(prev => ({ ...prev, idea: true }));
     const prompt = `Analyze my business idea: Brand Name: "${bizName}", Description: "${bizDesc}", Niche: "${bizNiche}", Stage: "${bizStage}".
 Outline 3 core strengths of this idea, 2 major competitor risks, and a clear next-step action plan to validate the concept.`;
-
     const system = `You are an expert business architect AI. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    try {
-      const res = await callClaudeAPI(prompt, system, lang, GC);
-      setAiOutputs(prev => ({ ...prev, idea: res }));
+
+    await triggerStrategyAI('idea', prompt, system, (finalRes) => {
       handleSaveGC({
         profile: { ...GC.profile, name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage },
-        strategy: { ...GC.strategy, idea_analysis: res }
+        strategy: { ...GC.strategy, idea_analysis: finalRes }
       });
-    } catch (e) {}
-    setLoading(prev => ({ ...prev, idea: false }));
+    });
   };
 
   const runICPBuilder = async () => {
-    setLoading(prev => ({ ...prev, icp: true }));
     const prompt = `Build an Ideal Client Profile (ICP): Demographics: "${icpDemo}", Pain points: "${icpPains}", Goals: "${icpGoals}", Online channels: "${icpChannels}".
 Provide a clear buyer persona summary, key marketing messages that will resonate with them, and where/how to reach them.`;
-
     const system = `You are a customer marketing strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    try {
-      const res = await callClaudeAPI(prompt, system, lang, GC);
-      setAiOutputs(prev => ({ ...prev, icp: res }));
+
+    await triggerStrategyAI('icp', prompt, system, (finalRes) => {
       handleSaveGC({
-        strategy: { ...GC.strategy, icp: res }
+        strategy: { ...GC.strategy, icp: finalRes }
       });
-    } catch (e) {}
-    setLoading(prev => ({ ...prev, icp: false }));
+    });
   };
 
   const runOfferClarity = async () => {
-    setLoading(prev => ({ ...prev, offer: true }));
     const prompt = `Optimize and clarify my core offer: Name: "${offerName}", Transformation: "${offerTransform}", Price: "${offerPrice}", Duration: "${offerDuration}", Deliverables: "${offerDeliverables}".
 Rate this offer on clarity and packaging. Suggest 2 high-value bonuses to include, and rewrite the transformation headline to be irresistible.`;
-
     const system = `You are a product packaging expert. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    try {
-      const res = await callClaudeAPI(prompt, system, lang, GC);
-      setAiOutputs(prev => ({ ...prev, offer: res }));
+
+    await triggerStrategyAI('offer', prompt, system, (finalRes) => {
       handleSaveGC({
         profile: {
           ...GC.profile,
           offer: { name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
         }
       });
-    } catch (e) {}
-    setLoading(prev => ({ ...prev, offer: false }));
+    });
   };
 
   const runSWOTAnalysis = async () => {
-    setLoading(prev => ({ ...prev, swot: true }));
     const prompt = `Analyze this SWOT Matrix for my business:
 Strengths: "${swotS}"
 Weaknesses: "${swotW}"
 Opportunities: "${swotO}"
 Threats: "${swotT}"
 Provide a summary on how to leverage strengths, close weaknesses, capture opportunities, and protect against threats.`;
-
     const system = `You are a corporate strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    try {
-      const res = await callClaudeAPI(prompt, system, lang, GC);
-      setAiOutputs(prev => ({ ...prev, swot: res }));
+
+    await triggerStrategyAI('swot', prompt, system, (finalRes) => {
       handleSaveGC({
         strategy: {
           ...GC.strategy,
           swot: { s: swotS, w: swotW, o: swotO, t: swotT }
         }
       });
-    } catch (e) {}
-    setLoading(prev => ({ ...prev, swot: false }));
+    });
   };
 
   const runRoadmapBuilder = async () => {
-    setLoading(prev => ({ ...prev, roadmap: true }));
     const prompt = `Build a 90-day Growth Roadmap:
 Current revenue: "${rmCurrent}"
 Revenue goal: "${rmGoal}"
 Hours available/week: "${rmHours}"
 Primary channel: "${rmChannel}"
 Provide a week-by-week implementation guide for the next 12 weeks to hit the target.`;
-
     const system = `You are a scaling strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    try {
-      const res = await callClaudeAPI(prompt, system, lang, GC);
-      setAiOutputs(prev => ({ ...prev, roadmap: res }));
+
+    await triggerStrategyAI('roadmap', prompt, system, (finalRes) => {
       handleSaveGC({
-        strategy: { ...GC.strategy, roadmap: res }
+        strategy: { ...GC.strategy, roadmap: finalRes }
       });
-    } catch (e) {}
-    setLoading(prev => ({ ...prev, roadmap: false }));
+    });
   };
 
   return (
