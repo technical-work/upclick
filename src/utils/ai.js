@@ -1,6 +1,6 @@
 import { auth } from '@/lib/firebase';
 
-export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessContext = {}, toolName = 'General') {
+export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessContext = {}, toolName = 'General', onChunk = null) {
   let gc = businessContext;
   if (!gc || !gc.integrations) {
     try {
