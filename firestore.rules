@@ -67,6 +67,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // AI Logs Collection
+    match /ai_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Projects Collection
     match /projects/{projectId} {
       allow read: if true;
