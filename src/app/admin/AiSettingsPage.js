@@ -476,7 +476,7 @@ const AiSettingsPage = () => {
                             ${Number(log.cost || 0).toFixed(6)}
                           </span>
                         </td>
-                        <td style={tableCellStyle} style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
+                        <td style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
                           {formattedDate}
                         </td>
                       </tr>
