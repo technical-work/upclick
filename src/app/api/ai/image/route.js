@@ -29,6 +29,13 @@ export async function POST(request) {
     const globalData = globalDoc.data();
     const openaiApiKey = globalData.openaiApiKey;
     const defaultUserCredit = globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00;
+    const aiEnabled = globalData.aiEnabled !== false;
+
+    if (!aiEnabled) {
+      return NextResponse.json({ 
+        error: 'خدمات الذكاء الاصطناعي معطلة حالياً من قبل إدارة المنصة.' 
+      }, { status: 503 });
+    }
 
     if (!openaiApiKey) {
       return NextResponse.json({ error: 'OpenAI API is not configured by the system administrator.' }, { status: 500 });
@@ -121,7 +128,9 @@ export async function POST(request) {
     }
 
     // 5. Deduct credits & Log when image generation finishes successfully
-    const newCredits = Math.max(0, aiCredits - cost);
+    const aiMarkupMultiplier = globalData.aiMarkupMultiplier !== undefined ? Number(globalData.aiMarkupMultiplier) : 1.0;
+    const userDeductionCost = cost * aiMarkupMultiplier;
+    const newCredits = Math.max(0, aiCredits - userDeductionCost);
     await userRef.update({
       aiCredits: newCredits
     });

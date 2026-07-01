@@ -10,7 +10,9 @@ import { useAuth } from '../../context/AuthContext';
 const DEFAULTS = {
   openaiApiKey: '',
   defaultUserCredit: 5.00,
-  openaiModel: 'gpt-4o-mini'
+  openaiModel: 'gpt-4o-mini',
+  aiEnabled: true,
+  aiMarkupMultiplier: 1.0
 };
 
 const AiSettingsPage = () => {
@@ -23,6 +25,10 @@ const AiSettingsPage = () => {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  // API Key Testing states
+  const [testingKey, setTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState(null);
 
   // Advanced Logs & Analytics State
   const [logs, setLogs] = useState([]);
@@ -43,7 +49,9 @@ const AiSettingsPage = () => {
         setSettings({
           openaiApiKey: data.openaiApiKey || '',
           defaultUserCredit: data.defaultUserCredit !== undefined ? Number(data.defaultUserCredit) : 5.00,
-          openaiModel: data.openaiModel || 'gpt-4o-mini'
+          openaiModel: data.openaiModel || 'gpt-4o-mini',
+          aiEnabled: data.aiEnabled !== false,
+          aiMarkupMultiplier: data.aiMarkupMultiplier !== undefined ? Number(data.aiMarkupMultiplier) : 1.0
         });
         setGlobalStats({
           totalAiSpend: data.totalAiSpend !== undefined ? Number(data.totalAiSpend) : 0,
@@ -91,6 +99,8 @@ const AiSettingsPage = () => {
         openaiApiKey: settings.openaiApiKey,
         defaultUserCredit: Number(settings.defaultUserCredit),
         openaiModel: settings.openaiModel,
+        aiEnabled: settings.aiEnabled,
+        aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
         updatedAt: serverTimestamp(),
       }, { merge: true });
       setSaved(true);
@@ -102,9 +112,38 @@ const AiSettingsPage = () => {
     }
   };
 
+  const testApiKeyConnection = async () => {
+    if (!settings.openaiApiKey) {
+      setTestResult({ success: false, error: isRTL ? 'الرجاء إدخال المفتاح أولاً' : 'Please enter the API key first' });
+      return;
+    }
+    setTestingKey(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/ai/test-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ apiKey: settings.openaiApiKey })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestResult({ success: true, modelsCount: data.modelsCount });
+      } else {
+        setTestResult({ success: false, error: data.error });
+      }
+    } catch (e) {
+      setTestResult({ success: false, error: e.message || 'Error connecting to test route' });
+    } finally {
+      setTestingKey(false);
+    }
+  };
+
   const handleReset = () => {
     setSettings(DEFAULTS);
     setSaved(false);
+    setTestResult(null);
   };
 
   // Compute stats for Analytics Dashboard
@@ -300,20 +339,58 @@ const AiSettingsPage = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 1 }}>
-              
               {/* OpenAI API Key */}
               <div>
                 <label style={labelStyle}>
                   <Key size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
                   {isRTL ? 'مفتاح OpenAI API (Secret Key)' : 'OpenAI API Secret Key'}
                 </label>
-                <input
-                  type="password"
-                  placeholder="sk-..."
-                  value={settings.openaiApiKey}
-                  onChange={e => handleFieldChange('openaiApiKey', e.target.value)}
-                  style={inputStyle}
-                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="password"
+                    placeholder="sk-..."
+                    value={settings.openaiApiKey}
+                    onChange={e => handleFieldChange('openaiApiKey', e.target.value)}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button
+                    onClick={testApiKeyConnection}
+                    disabled={testingKey}
+                    style={{
+                      background: 'var(--bg3)',
+                      border: '1.5px solid var(--orange)',
+                      borderRadius: '10px',
+                      padding: '0 16px',
+                      color: 'var(--orange)',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {testingKey ? (isRTL ? 'جاري التحقق...' : 'Testing...') : (isRTL ? 'تحقق من المفتاح' : 'Test Key')}
+                  </button>
+                </div>
+                {testResult && (
+                  <div style={{
+                    fontSize: '12px',
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    backgroundColor: testResult.success ? 'rgba(40, 200, 64, 0.08)' : 'rgba(255, 95, 87, 0.08)',
+                    borderColor: testResult.success ? 'rgba(40, 200, 64, 0.2)' : 'rgba(255, 95, 87, 0.2)',
+                    color: testResult.success ? 'var(--green, #28c840)' : 'var(--red, #ff5f57)'
+                  }}>
+                    {testResult.success 
+                      ? (isRTL ? `✓ المفتاح يعمل بنجاح! تم استيراد عدد النماذج المتوفرة: ${testResult.modelsCount}` : `✓ Key verified! Successfully loaded ${testResult.modelsCount} models.`)
+                      : (isRTL ? `⚠️ خطأ في التحقق: ${testResult.error}` : `⚠️ Verification failed: ${testResult.error}`)
+                    }
+                  </div>
+                )}
                 <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
                   {isRTL ? 'سيتم استخدام هذا المفتاح لتشغيل جميع استفسارات الذكاء الاصطناعي لجميع مستخدمي المنصة.' : 'All users will run their queries using this global API key.'}
                 </div>
@@ -358,6 +435,50 @@ const AiSettingsPage = () => {
                 </select>
               </div>
 
+              {/* Global AI Switch (Master Enable/Disable) */}
+              <div>
+                <label style={labelStyle}>
+                  <Settings size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                  {isRTL ? 'حالة خدمات الذكاء الاصطناعي' : 'Global AI Status'}
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg3)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--line2)' }}>
+                  <input
+                    type="checkbox"
+                    id="aiEnabledSwitch"
+                    checked={settings.aiEnabled}
+                    onChange={e => handleFieldChange('aiEnabled', e.target.checked)}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="aiEnabledSwitch" style={{ fontSize: '13px', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', fontWeight: 'bold' }}>
+                    {settings.aiEnabled 
+                      ? (isRTL ? '🟢 مفعّل بالكامل لجميع المستخدمين' : '🟢 Fully Enabled for all users')
+                      : (isRTL ? '🔴 معطّل وموقوف بالكامل للمنصة' : '🔴 Fully Disabled globally')
+                    }
+                  </label>
+                </div>
+              </div>
+
+              {/* Pricing Markup Multiplier */}
+              <div>
+                <label style={labelStyle}>
+                  <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                  {isRTL ? 'مضاعف تسعير الاستهلاك للمستخدمين (Markup Multiplier)' : 'Usage Markup Cost Multiplier'}
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  placeholder="1.0"
+                  value={settings.aiMarkupMultiplier}
+                  onChange={e => handleFieldChange('aiMarkupMultiplier', e.target.value)}
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
+                  {isRTL 
+                    ? 'يتم ضرب تكلفة الاستهلاك الحقيقية بهذا الرقم عند الخصم من رصيد العميل (مثال: 1.5 لربح 50%، أو 2.0 لربح 100%). التكلفة المذكورة في التقارير ستظل تكلفتك الفعلية لترى صافي أرباحك.'
+                    : 'Deducted credits from user balances are multiplied by this factor (e.g., 1.5 adds a 50% markup, 2.0 adds 100%). Platform logs will still show actual costs to display true profits.'}
+                </div>
+              </div>
             </div>
           </div>
 
