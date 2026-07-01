@@ -186,11 +186,35 @@ function DashboardShell() {
           zIndex: 100
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img 
-              src={tenantConfig?.logoUrl || "https://storage.googleapis.com/msgsndr/GRFYul19fkMHp7sNiPF0/media/69447879aca6ab0633721cf7.png"} 
-              alt={tenantConfig?.appName || "UpKlick Logo"} 
-              style={{ maxHeight: '30px', objectFit: 'contain' }}
-            />
+            {(() => {
+              const isDefaultLogo = !tenantConfig?.logoUrl;
+              return isDefaultLogo ? (
+                <div style={{
+                  height: '45px',
+                  width: '120px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <img 
+                    src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                    alt={tenantConfig?.appName || "UpKlick Logo"} 
+                    style={{
+                      height: '120px',
+                      objectFit: 'contain',
+                      marginTop: '-5px'
+                    }}
+                  />
+                </div>
+              ) : (
+                <img 
+                  src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                  alt={tenantConfig?.appName || "UpKlick Logo"} 
+                  style={{ maxHeight: '30px', objectFit: 'contain' }}
+                />
+              );
+            })()}
             <span style={{
               background: 'rgba(239, 68, 68, 0.1)',
               color: 'var(--red)',
