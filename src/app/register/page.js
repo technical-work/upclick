@@ -304,11 +304,36 @@ export default function RegisterPage() {
   return (
     <div style={{ ...styles.container, ...(tenantConfig?.bgColor ? { backgroundColor: tenantConfig.bgColor } : {}) }}>
       <div style={{ ...styles.card, ...(tenantConfig?.panelColor ? { backgroundColor: tenantConfig.panelColor } : {}) }}>
-        <img 
-          src={tenantConfig?.logoUrl || "/upklick-logo.png"} 
-          alt={tenantConfig?.appName || "UpKlick"} 
-          style={styles.logo} 
-        />
+        {(() => {
+          const isDefaultLogo = !tenantConfig?.logoUrl;
+          return isDefaultLogo ? (
+            <div style={{
+              height: '80px',
+              width: '180px',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '24px'
+            }}>
+              <img 
+                src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                alt={tenantConfig?.appName || "UpKlick"} 
+                style={{
+                  height: '240px',
+                  objectFit: 'contain',
+                  marginTop: '-10px'
+                }}
+              />
+            </div>
+          ) : (
+            <img 
+              src={tenantConfig?.logoUrl || "/new-logo.png"} 
+              alt={tenantConfig?.appName || "UpKlick"} 
+              style={styles.logo} 
+            />
+          );
+        })()}
         <h1 style={{ ...styles.title, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>
           {tenantConfig?.appName ? `إنشاء حساب - ${tenantConfig.appName}` : 'إنشاء حساب جديد'}
         </h1>
