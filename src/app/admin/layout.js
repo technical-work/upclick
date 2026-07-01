@@ -73,17 +73,28 @@ const LayoutContent = ({ children }) => {
     <div className="admin-dashboard-theme" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <div className={`sidebar-overlay ${isMobileMenuOpen ? 'show' : ''}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <svg viewBox="0 0 24 24" style={{ width: '17px', height: '17px', fill: 'none', stroke: '#fff', strokeWidth: '2.5', strokeLinecap: 'round', strokeLinejoin: 'round' }}>
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
+        <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '15px 14px', borderBottom: '1px solid var(--edge)', height: '85px', gap: '4px' }}>
+          <div style={{
+            height: '45px',
+            width: '140px',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <img 
+              src="/new-logo.png" 
+              alt="UpKlick Admin" 
+              style={{
+                height: '150px',
+                objectFit: 'contain',
+                marginTop: '-5px'
+              }}
+            />
           </div>
-          <div>
-            <h1>upKlick</h1>
-            <span>إصدار المسؤولين · V2.0</span>
-          </div>
+          <span style={{ fontSize: '9px', color: '#9090b0', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>
+            إصدار المسؤولين · V2.0
+          </span>
         </div>
 
         <div className="user-card">
