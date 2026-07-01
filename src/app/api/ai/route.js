@@ -129,6 +129,7 @@ export async function POST(request) {
         let buffer = '';
         let promptTokens = 0;
         let completionTokens = 0;
+        let fullResponseText = '';
 
         try {
           while (true) {
@@ -153,6 +154,7 @@ export async function POST(request) {
                   // Stream text content chunks to client
                   const textChunk = parsed.choices?.[0]?.delta?.content || '';
                   if (textChunk) {
+                    fullResponseText += textChunk;
                     controller.enqueue(encoder.encode(textChunk));
                   }
 
@@ -166,6 +168,14 @@ export async function POST(request) {
                 }
               }
             }
+          }
+
+          // Fallback token estimation if the proxy doesn't support stream_options
+          if (promptTokens === 0) {
+            promptTokens = Math.max(1, Math.ceil(JSON.stringify(messages).length / 3.0));
+          }
+          if (completionTokens === 0) {
+            completionTokens = Math.max(1, Math.ceil(fullResponseText.length / 3.0));
           }
 
           // 6. Deduct credits & Log when the stream finishes successfully
