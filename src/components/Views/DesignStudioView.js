@@ -2,9 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
+import { storage } from '../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function DesignStudioView() {
-  const { t, L, setAiPanelOpen, GC, saveGC } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC, showToast } = useBusiness();
+  const { user } = useAuth();
+  
+  // Image URL states
+  const [generatedLogoUrl, setGeneratedLogoUrl] = useState('');
+  const [generatedSocialUrl, setGeneratedSocialUrl] = useState('');
+  const [generatedCoverUrl, setGeneratedCoverUrl] = useState('');
+  const [generatedCardUrl, setGeneratedCardUrl] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('logo'); // 'logo', 'social', 'cover', 'card', 'gallery'
   
   const designData = GC.designStudio || {};
@@ -84,11 +95,132 @@ export default function DesignStudioView() {
     saveGC(updatedGC);
   };
 
-  const handleGenerate = () => {
+  const saveSavedDesigns = (updatedList) => {
+    const updatedGC = {
+      ...GC,
+      designStudio: {
+        ...(GC.designStudio || {}),
+        savedDesigns: updatedList
+      }
+    };
+    saveGC(updatedGC);
+  };
+
+  const getPromptForTab = (tab) => {
+    if (tab === 'logo') {
+      return `A high-quality, professional logo design for a brand named "${logoBrandName}". ${logoTagline ? `With tagline "${logoTagline}".` : ''} Logo style is ${logoStyle}. Logo type is ${logoType}. The color scheme is ${logoColor}. The industry is ${logoIndustry}. Modern, clean, vectors, centered, no background, high resolution.`;
+    }
+    if (tab === 'social') {
+      return `A premium, professionally designed social media graphic post. Main headline: "${socialHeadline}". Subtitle: "${socialSubtitle}". Size aspect ratio matches ${socialSize}. Design style is ${socialStyle}. Vibrant, modern graphic design, high contrast, clean typography.`;
+    }
+    if (tab === 'cover') {
+      const coverNames = { linkedin: 'LinkedIn banner', youtube: 'YouTube Channel Art banner', twitter: 'X/Twitter header banner' };
+      return `A high-quality, professional digital banner for ${coverNames[coverType] || 'LinkedIn'}. Suitable for ${logoIndustry} industry. Elegant, abstract, modern corporate style, high resolution, suitable for a horizontal profile banner.`;
+    }
+    if (tab === 'card') {
+      return `A premium modern business card design. Showcases name: "${cardFullName}" and title/role: "${cardTitle}". Sophisticated, elegant, minimal layout, high-end professional corporate style, centered.`;
+    }
+    return '';
+  };
+
+  const handleGenerate = async () => {
+    const prompt = getPromptForTab(activeTab);
+    if (!prompt) return;
+
     setIsGenerating(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/ai/image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: user?.uid,
+          prompt: prompt
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to generate image');
+      }
+
+      const data = await res.json();
+      const url = data.url;
+
+      if (activeTab === 'logo') setGeneratedLogoUrl(url);
+      else if (activeTab === 'social') setGeneratedSocialUrl(url);
+      else if (activeTab === 'cover') setGeneratedCoverUrl(url);
+      else if (activeTab === 'card') setGeneratedCardUrl(url);
+
+      showToast(L('Image generated successfully!', 'تم توليد الصورة بنجاح!'));
+    } catch (e) {
+      console.error("Error generating image:", e);
+      showToast(L(`Error: ${e.message}`, `خطأ: ${e.message}`));
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
+  };
+
+  const handleSave = async (url, type) => {
+    if (!url) return;
+    setIsSaving(true);
+    try {
+      showToast(L('Downloading and processing image...', 'جاري تحميل ومعالجة الصورة...'));
+      const response = await fetch(url);
+      const blob = await response.clone().blob();
+
+      let permanentUrl = '';
+      
+      // 1. If Cloudinary is connected, upload to Cloudinary
+      if (GC?.integrations?.cloudinaryConnected && GC?.integrations?.cloudinaryCloudName && GC?.integrations?.cloudinaryUploadPreset) {
+        showToast(L('Uploading to Cloudinary...', 'جاري الرفع إلى Cloudinary...'));
+        const formData = new FormData();
+        formData.append('file', blob);
+        formData.append('upload_preset', GC.integrations.cloudinaryUploadPreset);
+        
+        const cRes = await fetch(`https://api.cloudinary.com/v1_1/${GC.integrations.cloudinaryCloudName}/auto/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          permanentUrl = cData.secure_url;
+        } else {
+          console.warn("Cloudinary upload failed, falling back to Firebase Storage.");
+        }
+      }
+
+      // 2. If Cloudinary is not connected or failed, upload to Firebase Storage
+      if (!permanentUrl) {
+        showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
+        const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
+        const storageRef = ref(storage, filename);
+        const snapshot = await uploadBytes(storageRef, blob);
+        permanentUrl = await getDownloadURL(snapshot.ref);
+      }
+
+      if (permanentUrl) {
+        const newDesign = {
+          id: Date.now(),
+          type,
+          url: permanentUrl,
+          date: new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')
+        };
+        const updatedDesigns = [newDesign, ...savedDesigns];
+        setSavedDesigns(updatedDesigns);
+        saveSavedDesigns(updatedDesigns);
+        showToast(L('Design saved successfully!', 'تم حفظ التصميم بنجاح!'));
+      } else {
+        throw new Error('Failed to obtain a permanent upload URL.');
+      }
+    } catch (e) {
+      console.error("Error saving image:", e);
+      showToast(L(`Failed to save: ${e.message}`, `فشل الحفظ: ${e.message}`));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const tabs = [
@@ -254,15 +386,28 @@ export default function DesignStudioView() {
               <div className="card" style={{ position: 'sticky', top: '14px' }}>
                 <div className="sec-hd">
                   <div className="sec-title">👁 {L('Live Preview', 'معاينة حية')}</div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '5px 11px' }}>💾 {L('Save', 'حفظ')}</button>
-                  </div>
+                  {generatedLogoUrl && (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ fontSize: '12px', padding: '5px 11px' }}
+                        onClick={() => handleSave(generatedLogoUrl, 'logo')}
+                        disabled={isSaving}
+                      >
+                        💾 {isSaving ? L('Saving...', 'جاري الحفظ...') : L('Save', 'حفظ')}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {isGenerating ? (
                   <div style={{ textAlign: 'center', padding: '28px' }}>
                     <div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>✦</div>
                     <div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Designing your logo...', 'جاري تصميم الشعار...')}</div>
+                  </div>
+                ) : generatedLogoUrl ? (
+                  <div style={{ textAlign: 'center', background: '#111', borderRadius: '14px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+                    <img src={generatedLogoUrl} alt="Generated Logo" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '250px' }} />
                   </div>
                 ) : (
                   <div style={{ background: '#111', borderRadius: '14px', padding: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', transition: 'background .3s' }}>
@@ -357,9 +502,25 @@ export default function DesignStudioView() {
             </div>
 
             <div className="card" style={{ position: 'sticky', top: '14px' }}>
-              <div className="sec-hd"><div className="sec-title">👁 {L('Preview', 'معاينة')}</div></div>
+              <div className="sec-hd">
+                <div className="sec-title">👁 {L('Preview', 'معاينة')}</div>
+                {generatedSocialUrl && (
+                  <button 
+                    className="btn btn-ghost" 
+                    style={{ fontSize: '12px', padding: '5px 11px' }}
+                    onClick={() => handleSave(generatedSocialUrl, 'social')}
+                    disabled={isSaving}
+                  >
+                    💾 {isSaving ? L('Saving...', 'جاري الحفظ...') : L('Save', 'حفظ')}
+                  </button>
+                )}
+              </div>
               {isGenerating ? (
                 <div style={{ textAlign: 'center', padding: '28px' }}><div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>🎨</div><div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Creating your design...', 'يتم إنشاء تصميمك...')}</div></div>
+              ) : generatedSocialUrl ? (
+                <div style={{ textAlign: 'center', background: '#111', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '280px' }}>
+                  <img src={generatedSocialUrl} alt="Generated Social Post" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '300px' }} />
+                </div>
               ) : (
                 <div style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '280px' }}>
                   <div style={{ textAlign: 'center', color: '#555' }}><div style={{ fontSize: '28px', marginBottom: '8px' }}>📱</div><div style={{ fontSize: '13px' }}>{L('Social post design', 'تصميم السوشيال ميديا')}</div></div>
@@ -403,9 +564,25 @@ export default function DesignStudioView() {
             </div>
             
             <div className="card" style={{ position: 'sticky', top: '14px' }}>
-              <div className="sec-hd"><div className="sec-title">👁 {L('Preview', 'معاينة')}</div></div>
+              <div className="sec-hd">
+                <div className="sec-title">👁 {L('Preview', 'معاينة')}</div>
+                {generatedCoverUrl && (
+                  <button 
+                    className="btn btn-ghost" 
+                    style={{ fontSize: '12px', padding: '5px 11px' }}
+                    onClick={() => handleSave(generatedCoverUrl, 'cover')}
+                    disabled={isSaving}
+                  >
+                    💾 {isSaving ? L('Saving...', 'جاري الحفظ...') : L('Save', 'حفظ')}
+                  </button>
+                )}
+              </div>
               {isGenerating ? (
                 <div style={{ textAlign: 'center', padding: '28px' }}><div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>🖼</div><div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Creating banner...', 'يتم تصميم الغلاف...')}</div></div>
+              ) : generatedCoverUrl ? (
+                <div style={{ textAlign: 'center', background: '#111', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+                  <img src={generatedCoverUrl} alt="Generated Cover" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '180px' }} />
+                </div>
               ) : (
                 <div style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ textAlign: 'center', color: '#555' }}><div style={{ fontSize: '28px', marginBottom: '8px' }}>🖼</div><div style={{ fontSize: '13px' }}>{L('Banner preview', 'معاينة الغلاف')}</div></div>
@@ -452,9 +629,25 @@ export default function DesignStudioView() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'sticky', top: '14px' }}>
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">👁 {L('Front', 'الوجه')}</div></div>
+                <div className="sec-hd">
+                  <div className="sec-title">👁 {L('Front', 'الوجه')}</div>
+                  {generatedCardUrl && (
+                    <button 
+                      className="btn btn-ghost" 
+                      style={{ fontSize: '12px', padding: '5px 11px' }}
+                      onClick={() => handleSave(generatedCardUrl, 'card')}
+                      disabled={isSaving}
+                    >
+                      💾 {isSaving ? L('Saving...', 'جاري الحفظ...') : L('Save', 'حفظ')}
+                    </button>
+                  )}
+                </div>
                 {isGenerating ? (
                   <div style={{ textAlign: 'center', padding: '20px' }}><div style={{ fontSize: '24px', animation: 'pulse 1s infinite' }}>💳</div></div>
+                ) : generatedCardUrl ? (
+                  <div style={{ textAlign: 'center', background: '#111', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '170px' }}>
+                    <img src={generatedCardUrl} alt="Generated Business Card" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '150px' }} />
+                  </div>
                 ) : (
                   <div style={{ background: '#111', borderRadius: '10px', overflow: 'hidden', minHeight: '170px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ textAlign: 'center', color: '#555' }}><div style={{ fontSize: '24px', marginBottom: '6px' }}>💳</div><div style={{ fontSize: '12px' }}>{L('Business card front', 'وجه البطاقة')}</div></div>
@@ -469,13 +662,48 @@ export default function DesignStudioView() {
       {/* ═══ SAVED GALLERY ═══ */}
       {activeTab === 'gallery' && (
         <div className="tab-panel on">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
-            <div className="empty-state" style={{ gridColumn: '1/-1', padding: '40px' }}>
-              <div className="es-icon">🎨</div>
-              <div className="es-title">{L('No saved designs yet', 'لا توجد تصاميم محفوظة')}</div>
-              <div className="es-sub">{L('Generate logos, social posts, banners, or cards and save them here', 'قم بتوليد الشعارات واحفظها هنا')}</div>
+          {savedDesigns.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+              {savedDesigns.map((design) => (
+                <div key={design.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px' }}>
+                  <div style={{ background: '#111', borderRadius: '10px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', aspectRatio: '1/1' }}>
+                    <img src={design.url} alt="Saved Design" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, textTransform: 'capitalize' }}>
+                        {design.type === 'logo' ? L('🏷 Logo', '🏷 شعار')
+                         : design.type === 'social' ? L('📱 Social Post', '📱 منشور')
+                         : design.type === 'cover' ? L('🖼 Cover', '🖼 غلاف')
+                         : L('💳 Card', '💳 بطاقة')}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{design.date}</div>
+                    </div>
+                    <button 
+                      className="btn btn-ghost" 
+                      style={{ padding: '6px', color: 'var(--red)', fontSize: '12px' }}
+                      onClick={() => {
+                        const updated = savedDesigns.filter(d => d.id !== design.id);
+                        setSavedDesigns(updated);
+                        saveSavedDesigns(updated);
+                        showToast(L('Design deleted', 'تم حذف التصميم'));
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
+              <div className="empty-state" style={{ gridColumn: '1/-1', padding: '40px' }}>
+                <div className="es-icon">🎨</div>
+                <div className="es-title">{L('No saved designs yet', 'لا توجد تصاميم محفوظة')}</div>
+                <div className="es-sub">{L('Generate logos, social posts, banners, or cards and save them here', 'قم بتوليد الشعارات واحفظها هنا')}</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
