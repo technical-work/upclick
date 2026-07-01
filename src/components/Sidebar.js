@@ -101,14 +101,54 @@ export default function Sidebar() {
         {collapsed ? '›' : '‹'}
       </button>
 
-      <div className="sb-logo" style={{ justifyContent: 'center', padding: '20px 14px' }}>
-        <img 
-          src={tenantConfig?.logoUrl || "https://storage.googleapis.com/msgsndr/GRFYul19fkMHp7sNiPF0/media/69447879aca6ab0633721cf7.png"} 
-          alt={tenantConfig?.appName || "UpKlick Logo"} 
-          style={{ maxHeight: '35px', maxWidth: '100%', objectFit: 'contain', transition: 'all 0.3s ease' }}
-          className={collapsed ? 'logo-collapsed' : 'logo-expanded'}
-        />
-      </div>
+      {(() => {
+        const isDefaultLogo = !tenantConfig?.logoUrl;
+        const logoContainerStyle = isDefaultLogo ? {
+          height: '80px',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderBottom: '1px solid var(--edge)',
+          padding: collapsed ? '10px 5px' : '10px 14px'
+        } : {
+          justifyContent: 'center',
+          padding: '20px 14px',
+          borderBottom: '1px solid var(--edge)',
+          display: 'flex',
+          alignItems: 'center'
+        };
+
+        const logoImgStyle = isDefaultLogo ? (
+          collapsed ? {
+            height: '100px',
+            objectFit: 'contain',
+            marginTop: '20px',
+            transition: 'all 0.3s ease'
+          } : {
+            height: '210px',
+            objectFit: 'contain',
+            transition: 'all 0.3s ease',
+            marginTop: '-6px'
+          }
+        ) : {
+          maxHeight: '35px',
+          maxWidth: '100%',
+          objectFit: 'contain',
+          transition: 'all 0.3s ease'
+        };
+
+        return (
+          <div className="sb-logo" style={logoContainerStyle}>
+            <img 
+              src={tenantConfig?.logoUrl || "/new-logo.png"} 
+              alt={tenantConfig?.appName || "UpKlick Logo"} 
+              style={logoImgStyle}
+              className={collapsed ? 'logo-collapsed' : 'logo-expanded'}
+            />
+          </div>
+        );
+      })()}
 
       <div className="sb-sections">
         <div style={{ padding: '5px 7px 3px' }}>
@@ -201,7 +241,7 @@ export default function Sidebar() {
             justifyContent: 'center',
             boxSizing: 'border-box'
           }}>
-            🤖 {isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${Number(userData.aiCredits).toFixed(2)}
+            🤖 {isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${Number(userData.aiCredits) > 0 && Number(userData.aiCredits) < 0.01 ? Number(userData.aiCredits).toFixed(4) : Number(userData.aiCredits).toFixed(2)}
           </div>
         )}
 
