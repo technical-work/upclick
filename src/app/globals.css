@@ -749,7 +749,6 @@ textarea.inp { resize:vertical; line-height:1.6 }
 [dir=rtl] .sb-user .sb-user-plan { text-align:right; }
 [dir=rtl] .sb-foot { direction:rtl; }
 [dir=rtl] .sb-logout-btn { flex-direction:row-reverse; justify-content:flex-start; }
-[dir=rtl] .pg-header,.sec-hd{flex-direction:row-reverse;}
 [dir=rtl] .card{text-align:right;}
 [dir=rtl] .inp,[dir=rtl] input,[dir=rtl] textarea,[dir=rtl] select{text-align:right;direction:rtl;}
 
@@ -763,9 +762,6 @@ textarea.inp { resize:vertical; line-height:1.6 }
 [dir=rtl] .modal-close{right:auto !important;left:13px !important;}
 [dir=rtl] #support-btn{right:auto !important;left:22px !important;}
 [dir=rtl] #support-panel{right:auto !important;left:22px !important;}
-[dir=rtl] .tabs-bar,[dir=rtl] .tool-tabs{direction:ltr;}
-[dir=rtl] .g2,[dir=rtl] .g3,[dir=rtl] .g4{direction:ltr;}
-[dir=rtl] .g2>*,[dir=rtl] .g3>*,[dir=rtl] .g4>*{direction:rtl;text-align:right;}
 [dir=rtl],[dir=rtl] *{font-family:'IBM Plex Sans Arabic',sans-serif !important;letter-spacing:0 !important;}
 [dir=rtl] .stat-val{font-weight:800 !important;}
 body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:background-color .25s ease,border-color .2s ease,color .2s ease;}
