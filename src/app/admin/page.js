@@ -1150,7 +1150,10 @@ const AdminDashboard = () => {
                             <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
                             <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
                             <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold', marginTop: '2px' }}>
-                              🤖 {isRTL ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${(user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits).toFixed(2)}
+                              🤖 {isRTL ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${(() => {
+                                const val = user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits;
+                                return val > 0 && val < 0.01 ? val.toFixed(4) : val.toFixed(2);
+                              })()}
                             </span>
                           </div>
                         </div>
