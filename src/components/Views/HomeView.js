@@ -127,7 +127,7 @@ Address the user directly by their personal name (${pName}) and refer to their b
 
   useEffect(() => {
     generateDailyBrief();
-  }, [GC.crm.leads.length, GC.tasks.items.length, GC.finance.entries.length, lang]);
+  }, [GC.crm?.leads?.length, GC.tasks?.items?.length, GC.finance?.entries?.length, lang]);
 
   // Compute Health Score
   let healthScore = 40;
