@@ -282,12 +282,12 @@ export default function RevenueView() {
               <div className="sh"><div className="st">{L('Income Breakdown', 'تقسيم الدخل')}</div></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <svg width="100" height="100" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="4.5"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--a)" stroke-width="4.5" stroke-dasharray="65 35" stroke-dashoffset="-25" transform="rotate(-90 18 18)"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--green)" stroke-width="4.5" stroke-dasharray="19 81" stroke-dashoffset="-90" transform="rotate(-90 18 18)"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--red)" stroke-width="4.5" stroke-dasharray="10 90" stroke-dashoffset="-109" transform="rotate(-90 18 18)"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amber)" stroke-width="4.5" stroke-dasharray="6 94" stroke-dashoffset="-119" transform="rotate(-90 18 18)"/>
-                  <text x="18" y="20" text-anchor="middle" font-size="4.5" fill="var(--t1)" font-weight="bold">$4.3K</text>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" strokeWidth="4.5"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--a)" strokeWidth="4.5" strokeDasharray="65 35" strokeDashoffset="-25" transform="rotate(-90 18 18)"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--green)" strokeWidth="4.5" strokeDasharray="19 81" strokeDashoffset="-90" transform="rotate(-90 18 18)"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--red)" strokeWidth="4.5" strokeDasharray="10 90" strokeDashoffset="-109" transform="rotate(-90 18 18)"/>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amber)" strokeWidth="4.5" strokeDasharray="6 94" strokeDashoffset="-119" transform="rotate(-90 18 18)"/>
+                  <text x="18" y="20" textAnchor="middle" fontSize="4.5" fill="var(--t1)" fontWeight="bold">$4.3K</text>
                 </svg>
                 <div className="dleg" style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
                   {(DB.streamsLegend[lang] || []).map((l, idx) => (
@@ -1028,10 +1028,10 @@ export default function RevenueView() {
               <div className="sh"><div className="st">{L('Your Score', 'تقييمك الحالي')}</div></div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0' }}>
                 <svg width="150" height="150" viewBox="0 0 150 150">
-                  <circle cx="75" cy="75" r="56" fill="none" stroke="var(--surface3)" stroke-width="14"/>
-                  <circle cx="75" cy="75" r="56" fill="none" stroke="var(--orange)" stroke-width="14" stroke-dasharray="207 148" stroke-dashoffset="88" transform="rotate(-90 75 75)" stroke-linecap="round"/>
-                  <text x="75" y="71" text-anchor="middle" font-size="26" fill="var(--t1)" font-family="var(--ff)" font-weight="800">58</text>
-                  <text x="75" y="89" text-anchor="middle" font-size="12" fill="var(--t2)">/ 100</text>
+                  <circle cx="75" cy="75" r="56" fill="none" stroke="var(--surface3)" strokeWidth="14"/>
+                  <circle cx="75" cy="75" r="56" fill="none" stroke="var(--orange)" strokeWidth="14" strokeDasharray="207 148" strokeDashoffset="88" transform="rotate(-90 75 75)" strokeLinecap="round"/>
+                  <text x="75" y="71" textAnchor="middle" fontSize="26" fill="var(--t1)" fontFamily="var(--ff)" fontWeight="800">58</text>
+                  <text x="75" y="89" textAnchor="middle" fontSize="12" fill="var(--t2)">/ 100</text>
                 </svg>
                 <div style={{ fontSize: '17px', fontFamily: 'var(--ff)', fontWeight: 800, color: 'var(--orange)', marginTop: '6px' }}>
                   {L('Moderate', 'متوسط التنوع')}
