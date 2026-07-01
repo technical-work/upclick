@@ -404,21 +404,13 @@ export function BusinessProvider({ children }) {
     document.documentElement.setAttribute('lang', lang);
     document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
     localStorage.setItem('upklick_lang', lang);
-
-    if (authContext?.user?.uid) {
-      setDoc(doc(db, 'users', authContext.user.uid), { lang }, { merge: true }).catch(() => {});
-    }
-  }, [lang, authContext?.user?.uid]);
+  }, [lang]);
 
   // Sync theme attributes to HTML
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('upklick_theme', theme);
-
-    if (authContext?.user?.uid) {
-      setDoc(doc(db, 'users', authContext.user.uid), { theme }, { merge: true }).catch(() => {});
-    }
 
     // Apply color accents
     const color = themeColors[theme] || '#FF6B35';
@@ -436,6 +428,27 @@ export function BusinessProvider({ children }) {
       }
     }
   }, [theme]);
+
+  // Custom setters to update Firestore on manual user switches
+  const changeLang = (newLang) => {
+    setLang(newLang);
+    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (targetUid) {
+      setDoc(doc(db, 'users', targetUid), { lang: newLang }, { merge: true }).catch((err) => {
+        console.error("Error saving lang to Firestore:", err);
+      });
+    }
+  };
+
+  const changeTheme = (newTheme) => {
+    setTheme(newTheme);
+    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (targetUid) {
+      setDoc(doc(db, 'users', targetUid), { theme: newTheme }, { merge: true }).catch((err) => {
+        console.error("Error saving theme to Firestore:", err);
+      });
+    }
+  };
 
   // Sync GC to localStorage and Firebase
   // For team members, save to the OWNER's document so the workspace stays shared
@@ -747,9 +760,9 @@ export function BusinessProvider({ children }) {
     <BusinessContext.Provider
       value={{
         lang,
-        setLang,
+        setLang: changeLang,
         theme,
-        setTheme,
+        setTheme: changeTheme,
         currentPage,
         setCurrentPage,
         currency,
