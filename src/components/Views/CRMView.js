@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function CRMView() {
   const {
@@ -17,40 +18,67 @@ export default function CRMView() {
     setLeadModalOpen,
     setLeadModalStage,
     setEditingLead,
-    openAIFor
+    openAIFor,
+    addWorkspace,
+    setActiveWorkspace,
+    updateWorkspace,
+    deleteWorkspace
   } = useBusiness();
 
   const [activeTab, setActiveTab] = useState('pipeline');
   const [aiOutput, setAiOutput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState(null);
+  
+  const [showWsDropdown, setShowWsDropdown] = useState(false);
+  const [showWsModal, setShowWsModal] = useState(false);
+  const [newWsName, setNewWsName] = useState('');
+  const [newWsStages, setNewWsStages] = useState([
+    { key: 'new', label: L('New Lead', 'ليد جديد'), color: '#3b82f6' },
+    { key: 'contacted', label: L('Contacted', 'تم التواصل'), color: '#a855f7' },
+    { key: 'closed', label: L('Closed Won', 'تم الإغلاق'), color: '#10b981' }
+  ]);
 
-  const stages = [
-    { key: 'new', label: L('New Lead', 'ليد جديد'), color: 'var(--blue)' },
-    { key: 'contacted', label: L('Contacted', 'تم التواصل'), color: 'var(--purple)' },
-    { key: 'qualified', label: L('Qualified', 'مؤهل'), color: 'var(--amber)' },
-    { key: 'proposal', label: L('Proposal Sent', 'عرض أُرسل'), color: 'var(--a)' },
-    { key: 'closed', label: L('Closed Won', 'تم الإغلاق'), color: 'var(--green)' },
-    { key: 'lost', label: L('Lost', 'خسارة'), color: 'var(--red)' }
-  ];
+  const [showEditWsModal, setShowEditWsModal] = useState(false);
+  const [editWsName, setEditWsName] = useState('');
+  const [editWsStages, setEditWsStages] = useState([]);
 
-  const leads = GC.crm.leads || [];
-  const activeLeads = leads.filter(l => l.stage !== 'closed' && l.stage !== 'lost');
-  const hotLeads = leads.filter(l => l.stage === 'qualified' || l.stage === 'proposal');
-  const closedLeads = leads.filter(l => l.stage === 'closed');
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState(null);
+
+  const defaultWorkspace = {
+    id: 'default',
+    name: L('Default Workspace', 'مساحة العمل الافتراضية'),
+    stages: [
+      { key: 'new', label: L('New Lead', 'ليد جديد'), color: 'var(--blue)' },
+      { key: 'contacted', label: L('Contacted', 'تم التواصل'), color: 'var(--purple)' },
+      { key: 'qualified', label: L('Qualified', 'مؤهل'), color: 'var(--amber)' },
+      { key: 'proposal', label: L('Proposal Sent', 'عرض أُرسل'), color: 'var(--a)' },
+      { key: 'closed', label: L('Closed Won', 'تم الإغلاق'), color: 'var(--green)' },
+      { key: 'lost', label: L('Lost', 'خسارة'), color: 'var(--red)' }
+    ],
+    leads: GC.crm?.leads || []
+  };
+
+  const workspaces = GC.crm?.workspaces || [defaultWorkspace];
+  const activeWsId = GC.crm?.activeWorkspaceId || 'default';
+  const activeWs = workspaces.find(w => w.id === activeWsId) || workspaces[0];
+  const stages = activeWs.stages || [];
+  const leads = activeWs.leads || [];
+
+  const closedStageKey = stages.length > 0 ? stages[stages.length - 1].key : 'closed';
+  const hotStageKey = stages.length > 1 ? stages[stages.length - 2].key : 'qualified';
+
+  const activeLeads = leads.filter(l => l.stage !== closedStageKey && l.stage !== 'lost');
+  const hotLeads = leads.filter(l => l.stage === hotStageKey || l.stage === 'proposal' || l.stage === 'qualified');
+  const closedLeads = leads.filter(l => l.stage === closedStageKey);
   const pipelineValue = activeLeads.reduce((sum, l) => sum + (parseFloat(l.value) || 0), 0);
 
   const handleGenerateInsights = async () => {
     setAiLoading(true);
     setAiOutput('');
-    const prompt = `I have ${leads.length} leads in my CRM. Active stages summary:
-- New: ${leads.filter(l => l.stage === 'new').length}
-- Contacted: ${leads.filter(l => l.stage === 'contacted').length}
-- Qualified: ${leads.filter(l => l.stage === 'qualified').length}
-- Proposal Sent: ${leads.filter(l => l.stage === 'proposal').length}
-- Closed Won: ${leads.filter(l => l.stage === 'closed').length}
-- Lost: ${leads.filter(l => l.stage === 'lost').length}
-
+    const stagesSummary = stages.map(s => `- ${s.label}: ${leads.filter(l => l.stage === s.key).length}`).join('\n');
+    const prompt = `I have ${leads.length} leads in my CRM workspace "${activeWs.name}". Active stages summary:\n${stagesSummary}\n
 Please analyze this CRM pipeline, identify major sales bottlenecks, point out high-priority deal opportunities, and give me 3 specific next steps to close more deals.`;
 
     const systemPrompt = `You are a CRM and Sales Optimization expert. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Be structured, concise, and highly actionable.`;
@@ -67,11 +95,153 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
 
   return (
     <div className="pg on" id="pg-crm">
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .ws-modal-content {
+          animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          background: var(--surface);
+          border: 1px solid var(--edge);
+          border-radius: 16px;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+          overflow: hidden;
+        }
+        .ws-modal-header {
+          padding: 24px;
+          border-bottom: 1px solid var(--edge2);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: var(--surface2);
+        }
+        .ws-modal-body {
+          padding: 24px;
+          max-height: 60vh;
+          overflow-y: auto;
+        }
+        .ws-modal-footer {
+          padding: 20px 24px;
+          border-top: 1px solid var(--edge2);
+          background: var(--surface2);
+        }
+        .stage-row {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          background: var(--surface2);
+          padding: 12px;
+          border-radius: 12px;
+          margin-bottom: 12px;
+          border: 1px solid transparent;
+          transition: all 0.2s;
+        }
+        .stage-row:hover {
+          border-color: var(--prime);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .color-picker {
+          width: 36px;
+          height: 36px;
+          padding: 0;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          overflow: hidden;
+        }
+        .color-picker::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+        .color-picker::-webkit-color-swatch {
+          border: none;
+          border-radius: 8px;
+        }
+      `}</style>
       {/* Header */}
       <div className="pg-header">
-        <div className="pg-title">
-          <span className="pg-icon">🎯</span>
-          <span>{L('Smart CRM', 'نظام إدارة العملاء')}</span>
+        <div className="pg-title" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div>
+            <span className="pg-icon">🎯</span>
+            <span>{L('Smart CRM', 'نظام إدارة العملاء')}</span>
+          </div>
+          {workspaces.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => setShowWsDropdown(!showWsDropdown)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '6px 14px', height: '36px',
+                    background: 'var(--prime)', color: '#fff',
+                    border: 'none', borderRadius: '18px',
+                    fontSize: '13px', fontWeight: '500',
+                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>
+                    {activeWs.name}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: showWsDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+
+                {showWsDropdown && (
+                  <>
+                    <div 
+                      style={{ position: 'fixed', inset: 0, zIndex: 99 }} 
+                      onClick={() => setShowWsDropdown(false)} 
+                    />
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 8px)', right: lang === 'ar' ? '0' : 'auto', left: lang === 'ar' ? 'auto' : '0',
+                      background: 'var(--surface)', border: '1px solid var(--edge)',
+                      borderRadius: '12px', padding: '6px', minWidth: '180px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.2)', zIndex: 100,
+                      animation: 'fadeIn 0.15s ease-out'
+                    }}>
+                      {workspaces.map(w => (
+                        <button
+                          key={w.id}
+                          onClick={() => { setActiveWorkspace(w.id); setShowWsDropdown(false); }}
+                          style={{
+                            display: 'block', width: '100%', textAlign: lang === 'ar' ? 'right' : 'left',
+                            padding: '10px 12px', background: w.id === activeWs.id ? 'var(--surface2)' : 'transparent',
+                            border: 'none', borderRadius: '8px', color: w.id === activeWs.id ? 'var(--prime)' : 'var(--t1)',
+                            fontSize: '13px', cursor: 'pointer', transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = w.id === activeWs.id ? 'var(--surface2)' : 'transparent'}
+                        >
+                          {w.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button 
+                className="btn btn-ghost" 
+                style={{ padding: '6px', height: '36px', width: '36px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '18px', background: 'var(--surface2)' }}
+                onClick={() => setShowWsModal(true)}
+                title={L('New Workspace', 'مساحة عمل جديدة')}
+              >
+                +
+              </button>
+
+              <button 
+                className="btn btn-ghost" 
+                style={{ padding: '6px', height: '36px', width: '36px', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '18px', background: 'var(--surface2)' }}
+                onClick={() => {
+                  setEditWsName(activeWs.name);
+                  setEditWsStages(activeWs.stages.map(s => ({ ...s })));
+                  setShowEditWsModal(true);
+                }}
+                title={L('Edit Workspace', 'تعديل مساحة العمل')}
+              >
+                ⚙️
+              </button>
+            </div>
+          )}
         </div>
         <div className="pg-actions">
           <button className="btn-ai" onClick={() => openAIFor('crm')}>
@@ -80,7 +250,7 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
           <button
             className="btn btn-prime"
             onClick={() => {
-              setLeadModalStage('new');
+              setLeadModalStage(stages.length > 0 ? stages[0].key : 'new');
               setLeadModalOpen(true);
             }}
           >
@@ -213,11 +383,10 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                             className="btn btn-ghost"
                             style={{ fontSize: '10px', padding: '3px 8px', color: 'var(--red)', borderColor: 'var(--red)', flex: 1 }}
                             onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(L('Are you sure you want to delete this lead?', 'هل أنت متأكد من حذف هذا العميل؟'))) {
-                                deleteLead(lead.id);
-                              }
-                            }}
+                               e.stopPropagation();
+                               setLeadToDelete(lead);
+                               setDeleteConfirmOpen(true);
+                             }}
                           >
                             🗑️ {L('Delete', 'حذف')}
                           </button>
@@ -276,7 +445,7 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                 <div className="es-icon">👥</div>
                 <div className="es-title">{L('No contacts yet', 'لا توجد جهات اتصال بعد')}</div>
                 <div className="es-sub">{L('Add your first lead to start tracking your pipeline', 'أضف عميلك الأول لبدء تتبع المبيعات')}</div>
-                <button className="btn btn-prime" onClick={() => { setLeadModalStage('new'); setLeadModalOpen(true); }}>
+                <button className="btn btn-prime" onClick={() => { setLeadModalStage(stages.length > 0 ? stages[0].key : 'new'); setLeadModalOpen(true); }}>
                   + {L('Add First Lead', 'إضافة العميل الأول')}
                 </button>
               </div>
@@ -339,11 +508,10 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                       <button
                         className="btn btn-ghost"
                         style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
-                        onClick={() => {
-                          if (window.confirm(L('Are you sure you want to delete this lead?', 'هل أنت متأكد من حذف هذا العميل؟'))) {
-                            deleteLead(l.id);
-                          }
-                        }}
+                         onClick={() => {
+                           setLeadToDelete(l);
+                           setDeleteConfirmOpen(true);
+                         }}
                       >
                         {L('Delete', 'حذف')}
                       </button>
@@ -462,13 +630,11 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                 </div>
               </div>
             ) : aiOutput ? (
-              <div
+               <div
                 className="ai-box"
                 style={{ padding: '16px', background: 'var(--surface2)', borderRadius: '10px', lineHeight: '1.6' }}
                 dangerouslySetInnerHTML={{
-                  __html: aiOutput
-                    .replace(/\n/g, '<br>')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  __html: parseMarkdown(aiOutput)
                 }}
               />
             ) : (
@@ -480,6 +646,253 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* New Workspace Modal */}
+      {showWsModal && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="modal-content ws-modal-content" style={{ maxWidth: '540px', width: '90%' }}>
+            <div className="ws-modal-header">
+              <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📁</span> {L('Create New Workspace', 'إنشاء مساحة عمل جديدة')}
+              </h2>
+              <button className="btn-close" style={{ background: 'var(--surface2)', color: 'var(--t1)', width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }} onClick={() => setShowWsModal(false)}>✕</button>
+            </div>
+            <div className="ws-modal-body">
+              <div className="form-group">
+                <label style={{ fontSize: '14px', color: 'var(--t2)', marginBottom: '8px', display: 'block' }}>{L('Workspace Name', 'اسم مساحة العمل')}</label>
+                <input 
+                  type="text" 
+                  className="input" 
+                  style={{ padding: '12px 16px', fontSize: '15px', borderRadius: '10px', background: 'var(--surface2)', color: 'var(--t1)', border: '1px solid var(--edge)', width: '100%' }}
+                  placeholder={L('e.g., Real Estate Deals', 'مثال: صفقات العقارات')} 
+                  value={newWsName} 
+                  onChange={e => setNewWsName(e.target.value)} 
+                />
+              </div>
+              <div className="form-group" style={{ marginTop: '24px' }}>
+                <label style={{ fontSize: '14px', color: 'var(--t2)', marginBottom: '12px', display: 'block', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{L('Sales Stages', 'مراحل المبيعات')}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--t3)' }}>{newWsStages.length} {L('Stages', 'مراحل')}</span>
+                </label>
+                {newWsStages.map((stage, idx) => (
+                  <div key={idx} className="stage-row">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase' }}>{L('Color', 'اللون')}</span>
+                      <input 
+                        type="color" 
+                        className="color-picker"
+                        value={stage.color.startsWith('var') ? '#6c35ff' : stage.color} 
+                        onChange={e => {
+                          const updated = [...newWsStages];
+                          updated[idx].color = e.target.value;
+                          setNewWsStages(updated);
+                        }} 
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase' }}>{L('Stage Name', 'اسم المرحلة')}</span>
+                      <input 
+                        type="text" 
+                        className="input" 
+                        style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--edge)', background: 'var(--surface)', color: 'var(--t1)' }}
+                        placeholder={L('Stage Name', 'اسم المرحلة')} 
+                        value={stage.label} 
+                        onChange={e => {
+                          const updated = [...newWsStages];
+                          updated[idx].label = e.target.value;
+                          updated[idx].key = e.target.value.toLowerCase().replace(/\s+/g, '_');
+                          setNewWsStages(updated);
+                        }} 
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-end' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ color: 'var(--red)', height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,59,48,0.1)', borderRadius: '8px' }}
+                        title={L('Remove Stage', 'حذف المرحلة')}
+                        onClick={() => {
+                          if (newWsStages.length > 1) {
+                            setNewWsStages(newWsStages.filter((_, i) => i !== idx));
+                          }
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button 
+                  className="btn btn-ghost" 
+                  style={{ width: '100%', marginTop: '12px', padding: '12px', border: '1px dashed var(--edge)', borderRadius: '12px', color: 'var(--t2)' }}
+                  onClick={() => setNewWsStages([...newWsStages, { key: 'new_stage', label: 'New Stage', color: '#6c35ff' }])}
+                >
+                  + {L('Add Another Stage', 'إضافة مرحلة أخرى')}
+                </button>
+              </div>
+            </div>
+            <div className="ws-modal-footer">
+              <button className="btn btn-prime" style={{ width: '100%', padding: '14px', fontSize: '15px', borderRadius: '10px' }} onClick={() => {
+                if (!newWsName.trim()) return alert(L('Please enter a workspace name.', 'يرجى إدخال اسم مساحة العمل.'));
+                addWorkspace(newWsName, newWsStages);
+                setShowWsModal(false);
+                setNewWsName('');
+                setNewWsStages([{ key: 'new', label: 'New Lead', color: '#3b82f6' }, { key: 'closed', label: 'Closed', color: '#10b981' }]);
+              }}>
+                {L('Create Workspace', 'إنشاء مساحة العمل')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Workspace Modal */}
+      {showEditWsModal && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="modal-content ws-modal-content" style={{ maxWidth: '540px', width: '90%' }}>
+            <div className="ws-modal-header">
+              <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚙️</span> {L('Edit Workspace', 'تعديل مساحة العمل')}
+              </h2>
+              <button className="btn-close" style={{ background: 'var(--surface2)', color: 'var(--t1)', width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }} onClick={() => setShowEditWsModal(false)}>✕</button>
+            </div>
+            <div className="ws-modal-body">
+              <div className="form-group">
+                <label style={{ fontSize: '14px', color: 'var(--t2)', marginBottom: '8px', display: 'block' }}>{L('Workspace Name', 'اسم مساحة العمل')}</label>
+                <input 
+                  type="text" 
+                  className="input" 
+                  style={{ padding: '12px 16px', fontSize: '15px', borderRadius: '10px', background: 'var(--surface2)', color: 'var(--t1)', border: '1px solid var(--edge)', width: '100%' }}
+                  placeholder={L('e.g., Real Estate Deals', 'مثال: صفقات العقارات')} 
+                  value={editWsName} 
+                  onChange={e => setEditWsName(e.target.value)} 
+                />
+              </div>
+              <div className="form-group" style={{ marginTop: '24px' }}>
+                <label style={{ fontSize: '14px', color: 'var(--t2)', marginBottom: '12px', display: 'block', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{L('Sales Stages', 'مراحل المبيعات')}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--t3)' }}>{editWsStages.length} {L('Stages', 'مراحل')}</span>
+                </label>
+                {editWsStages.map((stage, idx) => (
+                  <div key={idx} className="stage-row">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase' }}>{L('Color', 'اللون')}</span>
+                      <input 
+                        type="color" 
+                        className="color-picker"
+                        value={stage.color.startsWith('var') ? '#6c35ff' : stage.color} 
+                        onChange={e => {
+                          const updated = [...editWsStages];
+                          updated[idx].color = e.target.value;
+                          setEditWsStages(updated);
+                        }} 
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--t3)', textTransform: 'uppercase' }}>{L('Stage Name', 'اسم المرحلة')}</span>
+                      <input 
+                        type="text" 
+                        className="input" 
+                        style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--edge)', background: 'var(--surface)', color: 'var(--t1)' }}
+                        placeholder={L('Stage Name', 'اسم المرحلة')} 
+                        value={stage.label} 
+                        onChange={e => {
+                          const updated = [...editWsStages];
+                          updated[idx].label = e.target.value;
+                          updated[idx].key = e.target.value.toLowerCase().replace(/\s+/g, '_');
+                          setEditWsStages(updated);
+                        }} 
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignSelf: 'flex-end' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ color: 'var(--red)', height: '42px', width: '42px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,59,48,0.1)', borderRadius: '8px' }}
+                        title={L('Remove Stage', 'حذف المرحلة')}
+                        onClick={() => {
+                          if (editWsStages.length > 1) {
+                            setEditWsStages(editWsStages.filter((_, i) => i !== idx));
+                          }
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button 
+                  className="btn btn-ghost" 
+                  style={{ width: '100%', marginTop: '12px', padding: '12px', border: '1px dashed var(--edge)', borderRadius: '12px', color: 'var(--t2)' }}
+                  onClick={() => setEditWsStages([...editWsStages, { key: 'new_stage', label: 'New Stage', color: '#6c35ff' }])}
+                >
+                  + {L('Add Another Stage', 'إضافة مرحلة أخرى')}
+                </button>
+              </div>
+            </div>
+            <div className="ws-modal-footer" style={{ display: 'flex', gap: '12px' }}>
+              {workspaces.length > 1 && activeWs.id !== 'default' && (
+                <button 
+                  className="btn" 
+                  style={{ background: 'rgba(255,59,48,0.1)', color: 'var(--red)', border: '1px solid rgba(255,59,48,0.2)', padding: '14px 20px', borderRadius: '10px', fontSize: '15px', cursor: 'pointer' }}
+                  onClick={() => {
+                    confirmAction(L('Are you sure you want to delete this workspace and all its leads?', 'هل أنت متأكد من حذف مساحة العمل هذه وجميع العملاء بداخلها؟'), () => {
+                      deleteWorkspace(activeWs.id);
+                      setShowEditWsModal(false);
+                    });
+                  }}
+                >
+                  {L('Delete Workspace', 'حذف مساحة العمل')}
+                </button>
+              )}
+              <button className="btn btn-prime" style={{ flex: 1, padding: '14px', fontSize: '15px', borderRadius: '10px' }} onClick={() => {
+                if (!editWsName.trim()) return alert(L('Please enter a workspace name.', 'يرجى إدخال اسم مساحة العمل.'));
+                updateWorkspace(activeWs.id, editWsName, editWsStages);
+                setShowEditWsModal(false);
+              }}>
+                {L('Save Changes', 'حفظ التعديلات')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Delete Lead Confirmation Modal */}
+      {deleteConfirmOpen && leadToDelete && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="modal-content ws-modal-content" style={{ maxWidth: '420px', width: '90%' }}>
+            <div className="ws-modal-header" style={{ borderBottom: 'none', paddingBottom: '12px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--red)' }}>
+                <span>⚠️</span> {L('Confirm Deletion', 'تأكيد الحذف')}
+              </h2>
+              <button className="btn-close" style={{ background: 'var(--surface2)', color: 'var(--t1)', width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }} onClick={() => { setDeleteConfirmOpen(false); setLeadToDelete(null); }}>✕</button>
+            </div>
+            <div className="ws-modal-body" style={{ padding: '0 24px 24px 24px', textAlign: 'center', maxHeight: 'none' }}>
+              <p style={{ fontSize: '14.5px', color: 'var(--t1)', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+                {L(
+                  `Are you sure you want to delete the lead "${leadToDelete.name}"? This action cannot be undone.`,
+                  `هل أنت متأكد من رغبتك في حذف العميل "${leadToDelete.name}"؟ لا يمكن التراجع عن هذا الإجراء.`
+                )}
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  className="btn" 
+                  style={{ flex: 1, background: 'var(--surface2)', color: 'var(--t1)', border: '1px solid var(--edge)', padding: '12px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer' }}
+                  onClick={() => { setDeleteConfirmOpen(false); setLeadToDelete(null); }}
+                >
+                  {L('Cancel', 'إلغاء')}
+                </button>
+                <button 
+                  className="btn" 
+                  style={{ flex: 1, background: 'var(--red)', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer', fontWeight: 'bold' }}
+                  onClick={() => {
+                    deleteLead(leadToDelete.id);
+                    setDeleteConfirmOpen(false);
+                    setLeadToDelete(null);
+                  }}
+                >
+                  {L('Delete', 'حذف')}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

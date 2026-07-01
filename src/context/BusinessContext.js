@@ -22,7 +22,24 @@ const initialGC = {
     goal: ''
   },
   strategy: { idea_analysis: '', icp: '', swot: { s: '', w: '', o: '', t: '' }, roadmap: '' },
-  crm: { leads: [] },
+  crm: { 
+    workspaces: [
+      {
+        id: 'default',
+        name: 'Default Workspace',
+        stages: [
+          { key: 'new', label: 'New Lead', color: 'var(--blue)' },
+          { key: 'contacted', label: 'Contacted', color: 'var(--purple)' },
+          { key: 'qualified', label: 'Qualified', color: 'var(--amber)' },
+          { key: 'proposal', label: 'Proposal Sent', color: 'var(--a)' },
+          { key: 'closed', label: 'Closed Won', color: 'var(--green)' },
+          { key: 'lost', label: 'Lost', color: 'var(--red)' }
+        ],
+        leads: []
+      }
+    ],
+    activeWorkspaceId: 'default'
+  },
   tasks: { items: [] },
   finance: { entries: [], subscriptions: [] },
   calendar: { events: [] },
@@ -225,6 +242,32 @@ export function BusinessProvider({ children }) {
   const [lpPreviewHtml, setLpPreviewHtml] = useState('');
   const [dpDetailOpen, setDpDetailOpen] = useState(false);
   const [dpDetailIndex, setDpDetailIndex] = useState(null);
+  const [globalAlert, setGlobalAlert] = useState(null);
+  const [globalConfirm, setGlobalConfirm] = useState(null); // { message, callback }
+
+  const [rates, setRates] = useState({ USD: 1, EGP: 48.5, EUR: 0.92, SAR: 3.75, AED: 3.67 });
+
+  const confirmAction = (message, callback) => {
+    setGlobalConfirm({ message, callback });
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.alert = (msg) => {
+        setGlobalAlert(msg);
+      };
+      
+      // Fetch live exchange rates relative to USD
+      fetch('https://open.er-api.com/v6/latest/USD')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.rates) {
+            setRates(data.rates);
+          }
+        })
+        .catch(err => console.log('Error fetching exchange rates:', err));
+    }
+  }, []);
 
   // Load state from local storage on mount
   useEffect(() => {
@@ -517,7 +560,9 @@ export function BusinessProvider({ children }) {
   // Money formatter
   const formatMoney = (amount) => {
     const amt = parseFloat(amount) || 0;
-    return `${currency.symbol}${amt.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency.code}`;
+    const rate = rates[currency.code] || 1;
+    const converted = amt * rate;
+    return `${currency.symbol}${converted.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency.code}`;
   };
 
   // Profile management
@@ -566,55 +611,162 @@ export function BusinessProvider({ children }) {
   };
 
   // CRM management
+  const getActiveWorkspace = () => {
+    let crm = GC.crm;
+    // Migration logic on the fly if needed
+    if (!crm.workspaces && crm.leads) {
+      crm = {
+        workspaces: [
+          {
+            id: 'default',
+            name: 'Default Workspace',
+            stages: [
+              { key: 'new', label: 'New Lead', color: 'var(--blue)' },
+              { key: 'contacted', label: 'Contacted', color: 'var(--purple)' },
+              { key: 'qualified', label: 'Qualified', color: 'var(--amber)' },
+              { key: 'proposal', label: 'Proposal Sent', color: 'var(--a)' },
+              { key: 'closed', label: 'Closed Won', color: 'var(--green)' },
+              { key: 'lost', label: 'Lost', color: 'var(--red)' }
+            ],
+            leads: crm.leads || []
+          }
+        ],
+        activeWorkspaceId: 'default'
+      };
+    } else if (!crm.workspaces) {
+      crm = initialGC.crm;
+    }
+    const activeWs = crm.workspaces.find(w => w.id === crm.activeWorkspaceId) || crm.workspaces[0];
+    return { crm, activeWs };
+  };
+
   const addLead = (lead) => {
+    const { crm, activeWs } = getActiveWorkspace();
     const newLead = {
       id: Date.now(),
       name: lead.name || 'Unnamed Lead',
       phone: lead.phone || '',
       email: lead.email || '',
       value: parseFloat(lead.value) || 0,
-      stage: lead.stage || 'Prospect',
+      stage: lead.stage || (activeWs.stages.length > 0 ? activeWs.stages[0].key : 'new'),
       followupDate: lead.followupDate || '',
-      created: new Date().toISOString()
+      created: new Date().toISOString(),
+      source: lead.source || ''
     };
+    
+    const updatedWs = { ...activeWs, leads: [...(activeWs.leads || []), newLead] };
     const updated = {
       ...GC,
       crm: {
-        ...GC.crm,
-        leads: [...GC.crm.leads, newLead]
+        ...crm,
+        workspaces: crm.workspaces.map(w => w.id === updatedWs.id ? updatedWs : w)
       }
     };
     saveGC(updated);
   };
 
   const updateLeadStage = (leadId, stage) => {
+    const { crm, activeWs } = getActiveWorkspace();
+    const updatedWs = {
+      ...activeWs,
+      leads: (activeWs.leads || []).map((l) => (l.id === leadId ? { ...l, stage } : l))
+    };
     const updated = {
       ...GC,
       crm: {
-        ...GC.crm,
-        leads: GC.crm.leads.map((l) => (l.id === leadId ? { ...l, stage } : l))
+        ...crm,
+        workspaces: crm.workspaces.map(w => w.id === updatedWs.id ? updatedWs : w)
       }
     };
     saveGC(updated);
   };
 
   const updateLead = (leadId, updates) => {
+    const { crm, activeWs } = getActiveWorkspace();
+    const updatedWs = {
+      ...activeWs,
+      leads: (activeWs.leads || []).map((l) => (l.id === leadId ? { ...l, ...updates } : l))
+    };
     const updated = {
       ...GC,
       crm: {
-        ...GC.crm,
-        leads: GC.crm.leads.map((l) => (l.id === leadId ? { ...l, ...updates } : l))
+        ...crm,
+        workspaces: crm.workspaces.map(w => w.id === updatedWs.id ? updatedWs : w)
       }
     };
     saveGC(updated);
   };
 
   const deleteLead = (leadId) => {
+    const { crm, activeWs } = getActiveWorkspace();
+    const updatedWs = {
+      ...activeWs,
+      leads: (activeWs.leads || []).filter((l) => l.id !== leadId)
+    };
     const updated = {
       ...GC,
       crm: {
-        ...GC.crm,
-        leads: GC.crm.leads.filter((l) => l.id !== leadId)
+        ...crm,
+        workspaces: crm.workspaces.map(w => w.id === updatedWs.id ? updatedWs : w)
+      }
+    };
+    saveGC(updated);
+  };
+
+  const addWorkspace = (name, stages) => {
+    const { crm } = getActiveWorkspace();
+    const newWs = {
+      id: 'ws_' + Date.now(),
+      name: name || 'New Workspace',
+      stages: stages || [],
+      leads: []
+    };
+    const updated = {
+      ...GC,
+      crm: {
+        ...crm,
+        workspaces: [...crm.workspaces, newWs],
+        activeWorkspaceId: newWs.id
+      }
+    };
+    saveGC(updated);
+  };
+
+  const setActiveWorkspace = (id) => {
+    const { crm } = getActiveWorkspace();
+    const updated = {
+      ...GC,
+      crm: {
+        ...crm,
+        activeWorkspaceId: id
+      }
+    };
+    saveGC(updated);
+  };
+
+  const updateWorkspace = (id, name, stages) => {
+    const { crm } = getActiveWorkspace();
+    const updated = {
+      ...GC,
+      crm: {
+        ...crm,
+        workspaces: crm.workspaces.map(w => w.id === id ? { ...w, name, stages } : w)
+      }
+    };
+    saveGC(updated);
+  };
+
+  const deleteWorkspace = (id) => {
+    const { crm } = getActiveWorkspace();
+    if (crm.workspaces.length <= 1) return;
+    const remaining = crm.workspaces.filter(w => w.id !== id);
+    const fallbackId = remaining[0].id;
+    const updated = {
+      ...GC,
+      crm: {
+        ...crm,
+        workspaces: remaining,
+        activeWorkspaceId: crm.activeWorkspaceId === id ? fallbackId : crm.activeWorkspaceId
       }
     };
     saveGC(updated);
@@ -774,11 +926,15 @@ export function BusinessProvider({ children }) {
         L,
         showToast,
         formatDate,
-        updateProfile,
+        saveGC,
         addLead,
-        updateLead,
         updateLeadStage,
+        updateLead,
         deleteLead,
+        addWorkspace,
+        setActiveWorkspace,
+        updateWorkspace,
+        deleteWorkspace,
         addTask,
         toggleTask,
         deleteTask,
@@ -818,13 +974,82 @@ export function BusinessProvider({ children }) {
         setLpPreviewHtml,
         dpDetailOpen,
         setDpDetailOpen,
-        dpDetailIndex,
-        setDpDetailIndex,
+         setDpDetailIndex,
         tenantConfig,
-        isTeamMember
+        isTeamMember,
+        confirmAction,
+        rates
       }}
     >
       {children}
+      {globalAlert && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out', zIndex: 999999, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+            .alert-modal-content {
+              animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+              background: var(--surface);
+              border: 1px solid var(--edge);
+              border-radius: 16px;
+              box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+              overflow: hidden;
+              width: 90%;
+              max-width: 420px;
+            }
+            .alert-modal-body {
+              padding: 24px;
+              text-align: center;
+            }
+          `}</style>
+          <div className="alert-modal-content">
+            <div className="alert-modal-body">
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}>💡</div>
+              <p style={{ fontSize: '14.5px', color: 'var(--t1)', lineHeight: '1.6', margin: '0 0 24px 0', whiteSpace: 'pre-line' }}>
+                {globalAlert}
+              </p>
+              <button 
+                className="btn btn-prime" 
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+                onClick={() => setGlobalAlert(null)}
+              >
+                {L('OK', 'موافق')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {globalConfirm && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out', zIndex: 999999, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="alert-modal-content" style={{ maxWidth: '420px' }}>
+            <div className="alert-modal-body" style={{ padding: '24px', textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}>⚠️</div>
+              <p style={{ fontSize: '14.5px', color: 'var(--t1)', lineHeight: '1.6', margin: '0 0 24px 0', whiteSpace: 'pre-line' }}>
+                {globalConfirm.message}
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button 
+                  className="btn" 
+                  style={{ flex: 1, background: 'var(--surface2)', color: 'var(--t1)', border: '1px solid var(--edge)', padding: '12px', borderRadius: '10px', fontSize: '14px', cursor: 'pointer' }}
+                  onClick={() => setGlobalConfirm(null)}
+                >
+                  {L('Cancel', 'إلغاء')}
+                </button>
+                <button 
+                  className="btn btn-prime" 
+                  style={{ flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+                  onClick={() => {
+                    if (globalConfirm.callback) globalConfirm.callback();
+                    setGlobalConfirm(null);
+                  }}
+                >
+                  {L('Confirm', 'تأكيد')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </BusinessContext.Provider>
   );
 }

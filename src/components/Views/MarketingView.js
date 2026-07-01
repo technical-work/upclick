@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function MarketingView() {
-  const { lang, L, t, GC, saveGC, formatMoney } = useBusiness();
+  const { lang, L, t, GC, saveGC, formatMoney, confirmAction } = useBusiness();
   const [activeTab, setActiveTab] = useState('research');
 
   const [competitorsCount, setCompetitorsCount] = useState(0);
@@ -171,19 +172,20 @@ export default function MarketingView() {
   };
 
   const handleDeleteReport = (id) => {
-    if (!confirm(L('Are you sure you want to delete this report?', 'هل أنت متأكد من حذف هذا التقرير؟'))) return;
-    const updated = savedReports.filter(r => r.id !== id);
-    setSavedReports(updated);
-    if (selectedReportId === id) setSelectedReportId(null);
-    
-    const updatedGC = {
-      ...GC,
-      marketing: {
-        ...(GC?.marketing || {}),
-        savedReports: updated
-      }
-    };
-    saveGC(updatedGC);
+    confirmAction(L('Are you sure you want to delete this report?', 'هل أنت متأكد من حذف هذا التقرير؟'), () => {
+      const updated = savedReports.filter(r => r.id !== id);
+      setSavedReports(updated);
+      if (selectedReportId === id) setSelectedReportId(null);
+      
+      const updatedGC = {
+        ...GC,
+        marketing: {
+          ...(GC?.marketing || {}),
+          savedReports: updated
+        }
+      };
+      saveGC(updatedGC);
+    });
   };
 
   const handleCopyText = (text) => {
@@ -217,9 +219,13 @@ export default function MarketingView() {
             </button>
           )}
         </div>
-        <div className="ai-box" style={{ whiteSpace: 'pre-line', flex: 1 }}>
-          {isLoading ? loadingMsg : (content || placeholder)}
-        </div>
+        <div 
+          className="ai-box" 
+          style={{ flex: 1 }}
+          dangerouslySetInnerHTML={{ 
+            __html: isLoading ? loadingMsg : parseMarkdown(content || placeholder) 
+          }}
+        />
       </div>
     );
   };

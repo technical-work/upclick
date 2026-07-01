@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 const MICRO_NICHES = {
   coaching: ['Business Coaching', 'Life Coaching', 'Career Coaching', 'Relationship Coaching', 'Health Coaching', 'Mindset & Productivity'],
@@ -794,9 +795,11 @@ export default function DigitalProductsView() {
                 )}
 
                 {!generatingPlan && builderPlanText && (
-                  <div className="ai-box" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                    {builderPlanText}
-                  </div>
+                  <div 
+                    className="ai-box" 
+                    style={{ lineHeight: '1.6' }}
+                    dangerouslySetInnerHTML={{ __html: parseMarkdown(builderPlanText) }}
+                  />
                 )}
               </div>
             </div>

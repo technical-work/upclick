@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function AnalyticsView() {
   const { lang, L, t, GC } = useBusiness();
@@ -144,9 +145,11 @@ export default function AnalyticsView() {
               {L('⚡ Analyzing business data...', '⚡ جاري فحص وتحليل بيانات البزنس...')}
             </div>
           ) : aiAnalysisText ? (
-            <div className="ai-box" style={{ whiteSpace: 'pre-line', fontSize: '13px', lineHeight: '1.6' }}>
-              {aiAnalysisText}
-            </div>
+            <div 
+              className="ai-box" 
+              style={{ fontSize: '13px', lineHeight: '1.6' }}
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(aiAnalysisText) }}
+            />
           ) : (
             <div className="empty-state" style={{ padding: '20px' }}>
               <div className="es-icon">✦</div>

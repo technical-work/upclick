@@ -9,7 +9,7 @@ import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { db, firebaseConfig } from '../../lib/firebase';
 
 export default function TeamManagementView() {
-  const { t, L, setAiPanelOpen, GC, saveGC, formatMoney } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC, formatMoney, confirmAction } = useBusiness();
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('members');
   
@@ -214,7 +214,7 @@ export default function TeamManagementView() {
   };
 
   const handleDeleteMember = (memberIndex) => {
-    if (confirm(L('Are you sure you want to remove this member?', 'هل أنت متأكد من إزالة هذا العضو؟'))) {
+    confirmAction(L('Are you sure you want to remove this member?', 'هل أنت متأكد من إزالة هذا العضو؟'), () => {
       const removed = members[memberIndex];
       const updatedMembers = members.filter((_, i) => i !== memberIndex);
       const newLog = {
@@ -234,7 +234,7 @@ export default function TeamManagementView() {
       if (selectedPermMemberIndex >= updatedMembers.length) {
         setSelectedPermMemberIndex(Math.max(0, updatedMembers.length - 1));
       }
-    }
+    });
   };
 
   const handleToggleMemberPermission = async (memberIndex, permId) => {
@@ -320,7 +320,7 @@ export default function TeamManagementView() {
   };
 
   const handleDeleteTask = (taskId) => {
-    if (confirm(L('Are you sure you want to delete this task?', 'هل أنت متأكد من حذف هذه المهمة؟'))) {
+    confirmAction(L('Are you sure you want to delete this task?', 'هل أنت متأكد من حذف هذه المهمة؟'), () => {
       const updatedTasks = tasks.filter(tk => tk.id !== taskId);
       saveGC({
         ...GC,
@@ -329,11 +329,11 @@ export default function TeamManagementView() {
           tasks: updatedTasks
         }
       });
-    }
+    });
   };
 
   const handleClearLogs = () => {
-    if (confirm(L('Are you sure you want to clear the activity log?', 'هل أنت متأكد من مسح سجل النشاط؟'))) {
+    confirmAction(L('Are you sure you want to clear the activity log?', 'هل أنت متأكد من مسح سجل النشاط؟'), () => {
       saveGC({
         ...GC,
         team: {
@@ -341,7 +341,7 @@ export default function TeamManagementView() {
           logs: []
         }
       });
-    }
+    });
   };
 
   const handlePayAll = () => {
@@ -349,7 +349,7 @@ export default function TeamManagementView() {
       alert(L('No salaries to pay.', 'لا توجد رواتب لدفعها.'));
       return;
     }
-    if (confirm(L(`Pay total monthly payroll of $${monthlyPayroll.toLocaleString()}? This will create expense entries in Finance dashboard.`, `هل تريد دفع إجمالي رواتب بقيمة $${monthlyPayroll.toLocaleString()}؟ سيؤدي ذلك لإنشاء قيود مصاريف في المالية.`))) {
+    confirmAction(L(`Pay total monthly payroll of $${monthlyPayroll.toLocaleString()}? This will create expense entries in Finance dashboard.`, `هل تريد دفع إجمالي رواتب بقيمة $${monthlyPayroll.toLocaleString()}؟ سيؤدي ذلك لإنشاء قيود مصاريف في المالية.`), () => {
       // Create finance expense entries
       const newEntries = members.filter(m => (parseFloat(m.salary) || 0) > 0).map(m => ({
         id: Date.now() + Math.random(),
@@ -380,7 +380,7 @@ export default function TeamManagementView() {
       });
 
       alert(L('Payroll paid successfully! 💸', 'تم دفع الرواتب بنجاح! 💸'));
-    }
+    });
   };
 
   const copyCredsToClipboard = () => {

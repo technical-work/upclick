@@ -14,8 +14,23 @@ export default function LeadModal() {
     editingLead,
     setEditingLead,
     addLead,
-    updateLead
+    updateLead,
+    GC
   } = useBusiness();
+
+  const defaultStages = [
+    { key: 'new', label: L('New Lead', 'ليد جديد') },
+    { key: 'contacted', label: L('Contacted', 'تم التواصل') },
+    { key: 'qualified', label: L('Qualified', 'مؤهل') },
+    { key: 'proposal', label: L('Proposal Sent', 'تم إرسال العرض') },
+    { key: 'closed', label: L('Closed Won', 'صفقة ناجحة') },
+    { key: 'lost', label: L('Lost', 'صفقة خاسرة') }
+  ];
+
+  const workspaces = GC.crm?.workspaces || [];
+  const activeWsId = GC.crm?.activeWorkspaceId || 'default';
+  const activeWs = workspaces.find(w => w.id === activeWsId) || workspaces[0];
+  const stages = activeWs?.stages || defaultStages;
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -32,7 +47,7 @@ export default function LeadModal() {
         setName(editingLead.name || '');
         setPhone(editingLead.phone || '');
         setEmail(editingLead.email || '');
-        setStage(editingLead.stage || 'new');
+        setStage(editingLead.stage || (stages.length > 0 ? stages[0].key : 'new'));
         setValue(editingLead.value || '');
         setSource(editingLead.source || 'Instagram DM');
         setNotes(editingLead.notes || '');
@@ -41,14 +56,14 @@ export default function LeadModal() {
         setName('');
         setPhone('');
         setEmail('');
-        setStage(leadModalStage || 'new');
+        setStage(leadModalStage || (stages.length > 0 ? stages[0].key : 'new'));
         setValue('');
         setSource('Instagram DM');
         setNotes('');
         setFollowupDate('');
       }
     }
-  }, [leadModalOpen, leadModalStage, editingLead]);
+  }, [leadModalOpen, leadModalStage, editingLead, stages]);
 
   if (!leadModalOpen) return null;
 
@@ -145,12 +160,11 @@ export default function LeadModal() {
                   value={stage}
                   onChange={(e) => setStage(e.target.value)}
                 >
-                  <option value="new">🆕 {L('New Lead', 'عميل جديد')}</option>
-                  <option value="contacted">📞 {L('Contacted', 'تم التواصل')}</option>
-                  <option value="qualified">✅ {L('Qualified', 'مؤهل')}</option>
-                  <option value="proposal">📋 {L('Proposal Sent', 'تم إرسال العرض')}</option>
-                  <option value="closed">🏆 {L('Closed Won', 'صفقة ناجحة')}</option>
-                  <option value="lost">❌ {L('Lost', 'صفقة خاسرة')}</option>
+                  {stages.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

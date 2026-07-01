@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function StrategyView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
@@ -207,8 +208,10 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
           </div>
           <div className="card">
             <div className="sec-hd"><div className="sec-title">✦ {L('AI Strategy Insights', 'توصيات الاستراتيجية بالـ AI')}</div></div>
-            <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-              {GC.strategy.idea_analysis ? GC.strategy.idea_analysis : (
+            <div className="ai-box">
+              {GC.strategy.idea_analysis ? (
+                <div dangerouslySetInnerHTML={{ __html: parseMarkdown(GC.strategy.idea_analysis) }} />
+              ) : (
                 <div className="empty-state">
                   <div className="es-icon">🧠</div>
                   <div className="es-title">{L('Complete your strategy setup', 'أكمل بيانات الاستراتيجية')}</div>
@@ -257,9 +260,12 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
           </div>
           <div className="card">
             <div className="sec-hd"><div className="sec-title">{L('AI Analysis Output', 'نتيجة تحليل الذكاء الاصطناعي')}</div></div>
-            <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-              {loading.idea ? L('Analyzing concept...', 'جاري التحليل...') : (aiOutputs.idea || L('Your analysis report will appear here.', 'سيظهر تقرير التحليل هنا.'))}
-            </div>
+            <div 
+              className="ai-box"
+              dangerouslySetInnerHTML={{ 
+                __html: loading.idea ? L('Analyzing concept...', 'جاري التحليل...') : parseMarkdown(aiOutputs.idea || L('Your analysis report will appear here.', 'سيظهر تقرير التحليل هنا.'))
+              }}
+            />
           </div>
         </div>
       )}
@@ -293,9 +299,12 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
           </div>
           <div className="card">
             <div className="sec-hd"><div className="sec-title">{L('ICP Profile Output', 'ملف العميل المثالي')}</div></div>
-            <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-              {loading.icp ? L('Building profile...', 'جاري بناء الملف...') : (aiOutputs.icp || L('Detailed client profile suggestions will show here.', 'سيظهر ملف العميل التفصيلي هنا.'))}
-            </div>
+            <div 
+              className="ai-box"
+              dangerouslySetInnerHTML={{ 
+                __html: loading.icp ? L('Building profile...', 'جاري بناء الملف...') : parseMarkdown(aiOutputs.icp || L('Detailed client profile suggestions will show here.', 'سيظهر ملف العميل التفصيلي هنا.'))
+              }}
+            />
           </div>
         </div>
       )}
@@ -335,9 +344,12 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
           </div>
           <div className="card">
             <div className="sec-hd"><div className="sec-title">{L('Offer Analysis Output', 'تحليل وهيكلة العرض')}</div></div>
-            <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-              {loading.offer ? L('Analyzing offer...', 'جاري التحليل...') : (aiOutputs.offer || L('Recommendations for pricing, packaging, and headlines.', 'توصيات الهيكلة، التسعير، والعناوين الجذابة.'))}
-            </div>
+            <div 
+              className="ai-box"
+              dangerouslySetInnerHTML={{ 
+                __html: loading.offer ? L('Analyzing offer...', 'جاري التحليل...') : parseMarkdown(aiOutputs.offer || L('Recommendations for pricing, packaging, and headlines.', 'توصيات الهيكلة، التسعير، والعناوين الجذابة.'))
+              }}
+            />
           </div>
         </div>
       )}
@@ -371,9 +383,12 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
           </div>
           <div className="card">
             <div className="sec-hd"><div className="sec-title">{L('AI SWOT Insights', 'تحليلات وتوصيات SWOT')}</div></div>
-            <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-              {loading.swot ? L('Generating SWOT matrix insights...', 'جاري كتابة التحليلات...') : (aiOutputs.swot || L('Actionable SWOT strategies will show here.', 'ستظهر هنا كيفية استغلال الفرص وتفادي المخاطر.'))}
-            </div>
+            <div 
+              className="ai-box"
+              dangerouslySetInnerHTML={{ 
+                __html: loading.swot ? L('Generating SWOT matrix insights...', 'جاري كتابة التحليلات...') : parseMarkdown(aiOutputs.swot || L('Actionable SWOT strategies will show here.', 'ستظهر هنا كيفية استغلال الفرص وتفادي المخاطر.'))
+              }}
+            />
           </div>
         </div>
       )}
@@ -417,9 +432,12 @@ Provide a week-by-week implementation guide for the next 12 weeks to hit the tar
                 🗺️ {L('Build My 90-Day Roadmap', 'أعد خطتي لـ ٩٠ يوماً قادمة')}
               </button>
             </div>
-            <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-              {loading.roadmap ? L('Building week-by-week roadmap...', 'جاري بناء خطة العمل...') : (aiOutputs.roadmap || L('Your personalized 12-week roadmap will appear here.', 'ستظهر خطتك الأسبوعية لـ ١٢ أسبوعاً القادمة هنا.'))}
-            </div>
+            <div 
+              className="ai-box"
+              dangerouslySetInnerHTML={{ 
+                __html: loading.roadmap ? L('Building week-by-week roadmap...', 'جاري بناء خطة العمل...') : parseMarkdown(aiOutputs.roadmap || L('Your personalized 12-week roadmap will appear here.', 'ستظهر خطتك الأسبوعية لـ ١٢ أسبوعاً القادمة هنا.'))
+              }}
+            />
           </div>
         </div>
       )}

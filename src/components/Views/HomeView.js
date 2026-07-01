@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function HomeView() {
   const {
@@ -18,7 +19,8 @@ export default function HomeView() {
     setFinanceModalOpen,
     setFinanceModalType,
     setAiPanelOpen,
-    toggleTask
+    toggleTask,
+    theme
   } = useBusiness();
   const { user, userData } = useAuth();
 
@@ -34,7 +36,11 @@ export default function HomeView() {
     .filter(e => e.type === 'expense')
     .reduce((a, b) => a + b.amount, 0);
 
-  const activeDeals = GC.crm.leads.filter(l => l.stage !== 'won' && l.stage !== 'lost').length;
+  const allLeads = GC.crm?.workspaces 
+    ? GC.crm.workspaces.flatMap(w => w.leads || [])
+    : (GC.crm?.leads || []);
+
+  const activeDeals = allLeads.filter(l => l.stage !== 'won' && l.stage !== 'lost' && l.stage !== 'closed').length;
   const openTasks = GC.tasks.items.filter(t => !t.done).length;
 
   // Calculate dynamic follower counts based on connected profiles
@@ -102,7 +108,7 @@ export default function HomeView() {
       day: 'numeric'
     });
 
-    const overdueLeads = GC.crm.leads.filter(l => {
+    const overdueLeads = allLeads.filter(l => {
       if (!l.followupDate) return false;
       return new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost';
     }).length;
@@ -114,7 +120,7 @@ export default function HomeView() {
 
     const prompt = `Generate a concise daily business brief for ${today}.
 User Personal Name: ${pName}, Business/Company Name: ${bName}.
-Data: ${openTasks} open tasks (${highPri} high priority), ${GC.crm.leads.length} CRM leads (${overdueLeads} overdue follow-ups), Monthly income so far: $${monthlyIncome}, Monthly expenses: $${monthlyExpenses}.
+Data: ${openTasks} open tasks (${highPri} high priority), ${allLeads.length} CRM leads (${overdueLeads} overdue follow-ups), Monthly income so far: $${monthlyIncome}, Monthly expenses: $${monthlyExpenses}.
 Business Niche: ${GC.profile.niche || 'Not specified'}, Stage: ${GC.profile.stage || 'Getting started'}.
 Address the user directly by their personal name (${pName}) and refer to their business (${bName}). Be direct and motivating. 3-4 sentences max.`;
 
@@ -127,12 +133,12 @@ Address the user directly by their personal name (${pName}) and refer to their b
 
   useEffect(() => {
     generateDailyBrief();
-  }, [GC.crm?.leads?.length, GC.tasks?.items?.length, GC.finance?.entries?.length, lang]);
+  }, [allLeads.length, GC.tasks?.items?.length, GC.finance?.entries?.length, lang]);
 
   // Compute Health Score
   let healthScore = 40;
   if (GC.profile.name) healthScore += 10;
-  if (GC.crm.leads.length > 0) healthScore += 10;
+  if (allLeads.length > 0) healthScore += 10;
   if (GC.tasks.items.length > 0) healthScore += 10;
   if (GC.finance.entries.length > 0) healthScore += 15;
   if (GC.profile.niche) healthScore += 10;
@@ -145,7 +151,7 @@ Address the user directly by their personal name (${pName}) and refer to their b
 
   const healthChecks = [
     { label: L('Business Profile', 'ملف البزنس'), val: GC.profile.name ? 100 : 10 },
-    { label: L('CRM Active', 'CRM نشط'), val: Math.min(GC.crm.leads.length * 20, 100) },
+    { label: L('CRM Active', 'CRM نشط'), val: Math.min(allLeads.length * 20, 100) },
     { label: L('Tasks Tracked', 'مهام مسجّلة'), val: Math.min(GC.tasks.items.length * 20, 100) },
     { label: L('Finance Tracked', 'مالية مسجّلة'), val: Math.min(GC.finance.entries.length * 15, 100) }
   ];
@@ -160,7 +166,7 @@ Address the user directly by their personal name (${pName}) and refer to their b
     { key: 'lost', label: L('Lost', 'خسارة'), color: 'var(--red)' }
   ];
 
-  const overdueLeadsList = GC.crm.leads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost');
+  const overdueLeadsList = allLeads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost');
   const highPriorityTasks = GC.tasks.items.filter(t => !t.done && t.priority === 'high');
 
   return (
@@ -263,40 +269,68 @@ Address the user directly by their personal name (${pName}) and refer to their b
       {/* Stats Row */}
       <div className="g4 stagger" id="home-stats">
         <div className="stat-card" style={{
-          background: 'linear-gradient(135deg, var(--bg2), rgba(59, 130, 246, 0.04))',
-          border: '1px solid rgba(59, 130, 246, 0.15)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-          borderRadius: 'var(--radius)'
+          background: theme === 'light'
+            ? 'rgba(236, 92, 49, 0.04)'
+            : 'linear-gradient(135deg, var(--bg2), rgba(236, 92, 49, 0.04))',
+          border: theme === 'light'
+            ? '1px solid rgba(236, 92, 49, 0.12)'
+            : '1px solid rgba(236, 92, 49, 0.15)',
+          borderInlineStart: '4px solid var(--orange)',
+          boxShadow: theme === 'light'
+            ? '0 8px 20px -8px rgba(236, 92, 49, 0.15)'
+            : '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+          borderRadius: '12px'
         }}>
           <div className="stat-lbl">💰 {t('t-s4')}</div>
           <div className="stat-val" id="stat-revenue" style={{ color: 'var(--t1)' }}>{formatMoney(monthlyIncome)}</div>
           <div className="stat-ch ch-up" style={{ color: 'var(--green)' }}>↑ {L('Getting started', 'في البداية')}</div>
         </div>
         <div className="stat-card" style={{
-          background: 'linear-gradient(135deg, var(--bg2), rgba(139, 92, 246, 0.04))',
-          border: '1px solid rgba(139, 92, 246, 0.15)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-          borderRadius: 'var(--radius)'
+          background: theme === 'light'
+            ? 'rgba(108, 53, 255, 0.04)'
+            : 'linear-gradient(135deg, var(--bg2), rgba(108, 53, 255, 0.04))',
+          border: theme === 'light'
+            ? '1px solid rgba(108, 53, 255, 0.12)'
+            : '1px solid rgba(108, 53, 255, 0.15)',
+          borderInlineStart: '4px solid var(--purple)',
+          boxShadow: theme === 'light'
+            ? '0 8px 20px -8px rgba(108, 53, 255, 0.15)'
+            : '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+          borderRadius: '12px'
         }}>
           <div className="stat-lbl">🎯 {t('Active Deals')}</div>
           <div className="stat-val" id="stat-deals" style={{ color: 'var(--t1)' }}>{activeDeals}</div>
           <div className="stat-ch ch-nu">{L('in pipeline', 'في الخط')}</div>
         </div>
         <div className="stat-card" style={{
-          background: 'linear-gradient(135deg, var(--bg2), rgba(16, 185, 129, 0.04))',
-          border: '1px solid rgba(16, 185, 129, 0.15)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-          borderRadius: 'var(--radius)'
+          background: theme === 'light'
+            ? 'rgba(0, 217, 139, 0.04)'
+            : 'linear-gradient(135deg, var(--bg2), rgba(16, 185, 129, 0.04))',
+          border: theme === 'light'
+            ? '1px solid rgba(0, 217, 139, 0.12)'
+            : '1px solid rgba(16, 185, 129, 0.15)',
+          borderInlineStart: '4px solid var(--green)',
+          boxShadow: theme === 'light'
+            ? '0 8px 20px -8px rgba(0, 217, 139, 0.15)'
+            : '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+          borderRadius: '12px'
         }}>
           <div className="stat-lbl">◉ {L('Open Tasks', 'المهام المفتوحة')}</div>
           <div className="stat-val" id="stat-tasks" style={{ color: 'var(--t1)' }}>{openTasks}</div>
           <div className="stat-ch ch-nu">{L('to complete', 'للإكمال')}</div>
         </div>
         <div className="stat-card" style={{
-          background: 'linear-gradient(135deg, var(--bg2), rgba(245, 158, 11, 0.04))',
-          border: '1px solid rgba(245, 158, 11, 0.15)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-          borderRadius: 'var(--radius)'
+          background: theme === 'light'
+            ? 'rgba(255, 184, 0, 0.04)'
+            : 'linear-gradient(135deg, var(--bg2), rgba(245, 158, 11, 0.04))',
+          border: theme === 'light'
+            ? '1px solid rgba(255, 184, 0, 0.12)'
+            : '1px solid rgba(245, 158, 11, 0.15)',
+          borderInlineStart: '4px solid var(--amber)',
+          boxShadow: theme === 'light'
+            ? '0 8px 20px -8px rgba(255, 184, 0, 0.15)'
+            : '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+          borderRadius: '12px'
         }}>
           <div className="stat-lbl">👥 {t('t-s1')}</div>
           <div className="stat-val" style={{ color: 'var(--t1)' }}>{dynamicFollowers}</div>
@@ -317,9 +351,13 @@ Address the user directly by their personal name (${pName}) and refer to their b
               </button>
             </div>
             <div id="ai-brief">
-              <div className="ai-box" id="ai-brief-content" style={{ whiteSpace: 'pre-line' }}>
-                {briefLoading ? L('Generating brief...', 'جاري توليد الملخص...') : dailyBrief}
-              </div>
+              <div 
+                className="ai-box" 
+                id="ai-brief-content" 
+                dangerouslySetInnerHTML={{ 
+                  __html: briefLoading ? L('Generating brief...', 'جاري توليد الملخص...') : parseMarkdown(dailyBrief)
+                }}
+              />
             </div>
           </div>
 
@@ -496,7 +534,7 @@ Address the user directly by their personal name (${pName}) and refer to their b
               <div className="sec-title">📊 {L('Pipeline Summary', 'ملخص الصفقات')}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {GC.crm.leads.length === 0 ? (
+              {allLeads.length === 0 ? (
                 <div className="empty-state" style={{ padding: '16px' }}>
                   <div className="es-icon">🎯</div>
                   <div className="es-title">{L('No leads yet', 'لا يوجد عملاء بعد')}</div>
@@ -506,7 +544,7 @@ Address the user directly by their personal name (${pName}) and refer to their b
                 </div>
               ) : (
                 pipelineStages.map(stage => {
-                  const cnt = GC.crm.leads.filter(l => l.stage === stage.key).length;
+                  const cnt = allLeads.filter(l => l.stage === stage.key).length;
                   if (cnt === 0) return null;
                   return (
                     <div className="row" key={stage.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--edge)' }}>

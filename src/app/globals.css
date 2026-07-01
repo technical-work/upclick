@@ -106,6 +106,10 @@
   --ag: rgba(236, 92, 49, 0.12);
   --ag2: rgba(236, 92, 49, 0.06);
   --ah: rgba(236, 92, 49, 0.2);
+
+  /* Legacy aliases dynamic override */
+  --bg: var(--ink); --bg2: var(--surface); --bg3: var(--surface2); --bg4: var(--surface3);
+  --tx: var(--t1); --tx2: var(--t2); --tx3: var(--t3);
 }
 
 /* Light Theme Button Customizations to match the Image */
@@ -141,6 +145,8 @@
   --t1: #d0fff5; --t2: #40a090; --t3: #1a5048; --t4: #0a2820;
   --a: #00f0b0; --a-rgb: 0,240,176; --ag: rgba(0,240,176,.1); --ag2: rgba(0,240,176,.05); --ah: rgba(0,240,176,.18);
   --lime: #00f0b0;
+  --bg: var(--ink); --bg2: var(--surface); --bg3: var(--surface2); --bg4: var(--surface3);
+  --tx: var(--t1); --tx2: var(--t2); --tx3: var(--t3);
 }
 [data-theme="cosmic"] {
   --ink: #050210; --surface: #0a0520; --surface2: #110a2e; --surface3: #180f3e; --surface4: #22154e;
@@ -148,6 +154,8 @@
   --t1: #ede8ff; --t2: #7055cc; --t3: #3a2066; --t4: #1a0e40;
   --a: #b060ff; --a-rgb: 176,96,255; --ag: rgba(176,96,255,.12); --ag2: rgba(176,96,255,.06); --ah: rgba(176,96,255,.2);
   --lime: #b060ff;
+  --bg: var(--ink); --bg2: var(--surface); --bg3: var(--surface2); --bg4: var(--surface3);
+  --tx: var(--t1); --tx2: var(--t2); --tx3: var(--t3);
 }
 
 /* ── RESET ── */

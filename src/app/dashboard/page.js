@@ -9,7 +9,6 @@ import { useAuth } from '@/context/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import AIPanel from '@/components/AIPanel';
-import SupportWidget from '@/components/SupportWidget';
 import Onboarding from '@/components/Onboarding';
 
 // Modals
@@ -381,7 +380,6 @@ function DashboardShell() {
       </div>
 
       <AIPanel />
-      <SupportWidget />
 
       {/* Setup wizard onboarding overlay */}
       {!onboardingDone && <Onboarding />}

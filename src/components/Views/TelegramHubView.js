@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 import { collection, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Papa from 'papaparse';
@@ -14,7 +15,8 @@ export default function TelegramHubView() {
     t,
     GC,
     saveGC,
-    setAiPanelOpen
+    setAiPanelOpen,
+    confirmAction
   } = useBusiness();
 
   const [activeTab, setActiveTab] = useState('inbox');
@@ -78,10 +80,10 @@ export default function TelegramHubView() {
   const [selectedContactsForTmpl, setSelectedContactsForTmpl] = useState([]);
   const [sendingTmpl, setSendingTmpl] = useState(false);
 
-  // Chat UI states
   const [chatMessages, setChatMessages] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -351,11 +353,11 @@ export default function TelegramHubView() {
   };
 
   const handleDeleteAutomation = (id) => {
-    if (window.confirm(L('Are you sure you want to delete this automation?', 'هل أنت متأكد من حذف هذه الأتمتة؟'))) {
+    confirmAction(L('Are you sure you want to delete this automation?', 'هل أنت متأكد من حذف هذه الأتمتة؟'), () => {
       const updated = automations.filter(a => a.id !== id);
       setAutomations(updated);
       saveTGHub({ automations: updated });
-    }
+    });
   };
 
   const fetchDiagnostics = async () => {
@@ -670,6 +672,21 @@ export default function TelegramHubView() {
 
   return (
     <div className="pg on" id="pg-telegram">
+      <style>{`
+        @keyframes chatBubbleAnim {
+          0% { opacity: 0; transform: translateY(10px) scale(0.97); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .chat-bubble-enter {
+          animation: chatBubbleAnim 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+      `}</style>
+      {fullscreenImage && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', backdropFilter: 'blur(5px)' }} onClick={() => setFullscreenImage(null)}>
+          <img src={fullscreenImage} alt="Fullscreen" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
+          <div style={{ position: 'absolute', top: '20px', right: '30px', color: '#fff', fontSize: '30px', cursor: 'pointer' }}>✕</div>
+        </div>
+      )}
       {/* Header */}
       <div className="pg-header">
         <div className="pg-title">
@@ -774,37 +791,60 @@ export default function TelegramHubView() {
               )}
             </div>
           </div>
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'var(--surface)', border: 'none' }}>
             {selectedChat ? (
               <>
                 {/* Chat Header */}
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--edge)', background: 'var(--surface2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{selectedChat.contactId || 'Unknown'}</div>
-                  <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => setSelectedChat(null)}>✕</button>
+                <div style={{ padding: '10px 16px', background: 'var(--surface2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--edge)' }}>
+                  <div style={{ fontWeight: '600', fontSize: '15px', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                      👤
+                    </div>
+                    <div>
+                      <div style={{ color: 'var(--t1)', fontSize: '16px' }}>{selectedChat.contactId || 'Unknown'}</div>
+                      <div style={{ color: 'var(--prime)', fontSize: '13px', fontWeight: 'normal' }}>{L('Online', 'متصل الآن')}</div>
+                    </div>
+                  </div>
+                  <button className="btn btn-ghost" style={{ padding: '8px', fontSize: '18px', color: 'var(--t2)' }} onClick={() => setSelectedChat(null)}>✕</button>
                 </div>
                 {/* Messages List */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px 6%', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--surface)', backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/y_/r/5lsJeP6vJq1.png")', backgroundRepeat: 'repeat', backgroundSize: '400px', opacity: 0.9 }}>
                   {chatMessages.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'var(--t3)', fontSize: '12px', marginTop: '20px' }}>
+                    <div style={{ textAlign: 'center', color: 'var(--t2)', fontSize: '12.5px', marginTop: '20px', background: 'var(--surface2)', padding: '6px 12px', borderRadius: '8px', alignSelf: 'center', boxShadow: '0 1px 0.5px rgba(0,0,0,0.13)' }}>
                       {L('Loading messages...', 'جاري تحميل الرسائل...')}
                     </div>
                   ) : (
-                    chatMessages.map(msg => {
+                    chatMessages.map((msg, index) => {
                       const isOutbound = msg.direction === 'outbound';
+                      // Adding a slight delay based on index so multiple messages animate sequentially if loaded together, but capping it.
+                      const animDelay = Math.min(index * 0.05, 0.5) + 's';
                       return (
-                        <div key={msg.id} style={{ alignSelf: isOutbound ? (lang==='ar'?'flex-start':'flex-end') : (lang==='ar'?'flex-end':'flex-start'), maxWidth: '75%' }}>
-                          <div style={{ background: isOutbound ? 'var(--prime)' : 'var(--surface2)', color: isOutbound ? '#fff' : 'var(--t1)', padding: '10px 14px', borderRadius: '12px', borderBottomLeftRadius: isOutbound || lang==='ar' ? '12px' : '2px', borderBottomRightRadius: isOutbound && lang!=='ar' ? '2px' : '12px', fontSize: '13px', direction: 'ltr' }}>
+                        <div key={msg.id} className="chat-bubble-enter" style={{ alignSelf: isOutbound ? 'flex-end' : 'flex-start', maxWidth: '75%', animationDelay: animDelay }}>
+                          <div style={{ 
+                            background: isOutbound ? '#1a1a1a' : 'var(--prime, #ff6b00)', 
+                            color: '#fff', 
+                            padding: '6px 7px 8px 9px', 
+                            borderRadius: '7.5px', 
+                            borderTopRightRadius: isOutbound ? (lang==='ar'?'7.5px':'0px') : (lang==='ar'?'0px':'7.5px'),
+                            borderTopLeftRadius: isOutbound ? (lang==='ar'?'0px':'7.5px') : (lang==='ar'?'7.5px':'0px'),
+                            fontSize: '14.2px', 
+                            lineHeight: '19px',
+                            direction: lang==='ar'?'rtl':'ltr',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                            position: 'relative',
+                            minWidth: '100px'
+                          }}>
                             {msg.cloudinaryUrl ? (
-                              <div style={{ marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '8px' : '0' }}>
+                              <div style={{ marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '4px' : '0' }}>
                                 {msg.mediaType === 'photo' ? (
-                                  <img src={msg.cloudinaryUrl} alt="media" onLoad={scrollToBottom} style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                  <img src={msg.cloudinaryUrl} alt="media" onLoad={scrollToBottom} style={{ maxWidth: '320px', width: '100%', maxHeight: '320px', objectFit: 'cover', borderRadius: '6px', cursor: 'zoom-in' }} onClick={() => setFullscreenImage(msg.cloudinaryUrl)} />
                                 ) : msg.mediaType === 'video' ? (
-                                  <video src={msg.cloudinaryUrl} controls onLoadedData={scrollToBottom} style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                                  <video src={msg.cloudinaryUrl} controls onLoadedData={scrollToBottom} style={{ maxWidth: '320px', width: '100%', borderRadius: '6px' }} />
                                 ) : msg.mediaType === 'voice' || msg.mediaType === 'audio' ? (
-                                  <audio src={msg.cloudinaryUrl} controls onLoadedData={scrollToBottom} style={{ maxWidth: '100%' }} />
+                                  <audio src={msg.cloudinaryUrl} controls onLoadedData={scrollToBottom} style={{ maxWidth: '250px', height: '40px' }} />
                                 ) : (
-                                  <a href={msg.cloudinaryUrl} target="_blank" rel="noopener noreferrer" style={{ color: isOutbound ? '#fff' : 'var(--prime)', textDecoration: 'underline', fontSize: '13px', fontWeight: 'bold' }}>
-                                    📎 {L('Download Document', 'تحميل المستند')}
+                                  <a href={msg.cloudinaryUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '6px' }}>
+                                    <span style={{fontSize: '24px'}}>📄</span> <span style={{flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{L('Download Document', 'تحميل المستند')}</span>
                                   </a>
                                 )}
                               </div>
@@ -812,31 +852,34 @@ export default function TelegramHubView() {
                               <div 
                                 onClick={() => handleViewMedia(msg.mediaFileId)}
                                 style={{ 
-                                  display: 'inline-block', 
-                                  marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '8px' : '0', 
-                                  padding: '6px 12px', 
-                                  background: 'rgba(0,0,0,0.15)', 
+                                  display: 'flex', 
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  marginBottom: msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]` ? '4px' : '0', 
+                                  padding: '12px', 
+                                  background: 'rgba(255,255,255,0.2)', 
                                   borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: 'bold'
+                                  fontSize: '14px',
+                                  color: '#fff'
                                 }}
                                 title={L('Click to view media', 'اضغط لعرض الميديا')}
                               >
-                                {msg.mediaType === 'photo' ? '📷 ' + L('Photo', 'صورة') :
-                                 msg.mediaType === 'video' ? '🎥 ' + L('Video', 'فيديو') :
-                                 msg.mediaType === 'voice' ? '🎤 ' + L('Voice Message', 'رسالة صوتية') :
-                                 msg.mediaType === 'document' ? '📄 ' + L('Document', 'مستند') :
-                                 msg.mediaType === 'sticker' ? '🎭 ' + L('Sticker', 'ملصق') :
-                                 '📎 ' + L('Media', 'ميديا')}
+                                {msg.mediaType === 'photo' ? <><span style={{fontSize: '24px'}}>📷</span> {L('Photo', 'صورة')}</> :
+                                 msg.mediaType === 'video' ? <><span style={{fontSize: '24px'}}>🎥</span> {L('Video', 'فيديو')}</> :
+                                 msg.mediaType === 'voice' ? <><span style={{fontSize: '24px'}}>🎤</span> {L('Voice Message', 'رسالة صوتية')}</> :
+                                 msg.mediaType === 'document' ? <><span style={{fontSize: '24px'}}>📄</span> {L('Document', 'مستند')}</> :
+                                 msg.mediaType === 'sticker' ? <><span style={{fontSize: '24px'}}>🎭</span> {L('Sticker', 'ملصق')}</> :
+                                 <><span style={{fontSize: '24px'}}>📎</span> {L('Media', 'ميديا')}</>}
                               </div>
                             ) : null}
                             {(!msg.mediaType || (msg.text && msg.text !== `[${msg.mediaType.toUpperCase()}]`)) && (
-                              <div>{msg.text}</div>
+                              <div style={{ padding: '2px 4px 10px 4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.text}</div>
                             )}
-                          </div>
-                          <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px', textAlign: isOutbound ? (lang==='ar'?'left':'right') : (lang==='ar'?'right':'left') }}>
-                            {new Date(msg.date * 1000).toLocaleTimeString()}
+                            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', position: 'absolute', bottom: '4px', right: lang==='ar' ? 'auto' : '8px', left: lang==='ar' ? '8px' : 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {new Date(msg.date * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              {isOutbound && <span style={{ color: '#fff', fontSize: '14px', marginLeft: '2px', marginRight: '2px' }}>✓✓</span>}
+                            </div>
                           </div>
                         </div>
                       );
@@ -845,21 +888,21 @@ export default function TelegramHubView() {
                   <div ref={messagesEndRef} />
                 </div>
                 {/* Chat Input */}
-                <div style={{ padding: '12px', borderTop: '1px solid var(--edge)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ padding: '10px 16px', background: 'var(--surface2)', display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <input type="file" style={{ display: 'none' }} ref={fileInputRef} onChange={handleMediaUpload} />
-                  <button className="btn btn-ghost" style={{ padding: '0 12px', fontSize: '18px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => fileInputRef.current?.click()} disabled={uploadingMedia || replyLoading} title={L('Attach File', 'إرفاق ملف')}>
+                  <button className="btn btn-ghost" style={{ padding: '8px', fontSize: '24px', color: 'var(--t2)', background: 'transparent', border: 'none' }} onClick={() => fileInputRef.current?.click()} disabled={uploadingMedia || replyLoading} title={L('Attach File', 'إرفاق ملف')}>
                     {uploadingMedia ? '⏳' : '📎'}
                   </button>
                   <input 
                     className="inp"  
-                    placeholder={L('Type a message...', 'اكتب رسالة...')} 
-                    style={{ flex: 1 }} 
+                    placeholder={L('Type a message', 'اكتب رسالة')} 
+                    style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '8px', padding: '12px 16px', color: 'var(--t1)', fontSize: '15px' }} 
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
                   />
-                  <button className="btn btn-prime" onClick={handleSendReply} disabled={replyLoading || !replyText.trim()}>
-                    {replyLoading ? '...' : L('Send', 'إرسال')}
+                  <button className="btn btn-ghost" style={{ padding: '8px', fontSize: '20px', color: replyText.trim() ? 'var(--prime)' : 'var(--t3)', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleSendReply} disabled={replyLoading || !replyText.trim()}>
+                    {replyLoading ? '⏳' : (lang==='ar' ? '◀' : '▶')}
                   </button>
                 </div>
               </>
@@ -972,7 +1015,7 @@ export default function TelegramHubView() {
               </div>
               <div style={{ minHeight: '150px', background: 'var(--surface3)', padding: '12px', borderRadius: '8px', overflowY: 'auto' }}>
                 {agentOutput ? (
-                  <div className="ai-box" dangerouslySetInnerHTML={{ __html: agentOutput.replace(/\n/g, '<br>') }} />
+                  <div className="ai-box" dangerouslySetInnerHTML={{ __html: parseMarkdown(agentOutput) }} />
                 ) : (
                   <div className="empty-state" style={{ padding: '20px' }}>
                     <div className="es-icon">🤖</div>
@@ -1410,7 +1453,7 @@ export default function TelegramHubView() {
                 {tmplLoading ? L('Generating...', 'جاري التوليد...') : L('✦ Generate Template', '✦ توليد القالب')}
               </button>
               {tmplOutput && (
-                <div className="ai-box" style={{ marginTop: '8px' }} dangerouslySetInnerHTML={{ __html: tmplOutput.replace(/\n/g, '<br>') }} />
+                 <div className="ai-box" style={{ marginTop: '8px' }} dangerouslySetInnerHTML={{ __html: parseMarkdown(tmplOutput) }} />
               )}
             </div>
           </div>

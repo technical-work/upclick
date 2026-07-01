@@ -21,8 +21,11 @@ export default function Sidebar() {
   const isRtl = lang === 'ar';
 
   // Compute badges
-  const hotLeads = GC.crm.leads.filter(l => l.stage === 'qualified' || l.stage === 'proposal').length;
-  const highTasks = GC.tasks.items.filter(t => !t.done && t.priority === 'high').length;
+  const allLeads = GC.crm?.workspaces 
+    ? GC.crm.workspaces.flatMap(w => w.leads || [])
+    : (GC.crm?.leads || []);
+  const hotLeads = allLeads.filter(l => l.stage === 'qualified' || l.stage === 'proposal').length;
+  const highTasks = GC.tasks?.items?.filter(t => !t.done && t.priority === 'high').length || 0;
 
   const displayName = userData?.name || GC?.profile?.name || userData?.email?.split('@')[0] || 'User';
   const initials = displayName

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import { GUIDE_FLOWS } from '../data/mockData';
 import { callClaudeAPI } from '../utils/ai';
+import { parseMarkdown } from '../utils/markdown';
 
 export default function AIPanel() {
   const {
@@ -38,6 +39,25 @@ export default function AIPanel() {
   const recognitionRef = useRef(null);
 
   const chatBodyRef = useRef(null);
+  const panelRef = useRef(null);
+
+  // Close panel on click outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (aiPanelOpen && panelRef.current && !panelRef.current.contains(event.target)) {
+        const isToggle = event.target.closest('.tb-icon') || event.target.closest('.btn-ai') || event.target.closest('.sidebar-ai-btn') || event.target.closest('.ai-qa-btn');
+        const isModal = event.target.closest('.modal-overlay') || event.target.closest('.modal-box') || event.target.closest('#toast');
+        if (!isToggle && !isModal) {
+          setAiPanelOpen(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [aiPanelOpen, setAiPanelOpen]);
 
   // Add initial message on mount
   useEffect(() => {
@@ -392,7 +412,7 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
   if (!aiPanelOpen) return null;
 
   return (
-    <div id="ai-panel" className="open">
+    <div id="ai-panel" className="open" ref={panelRef}>
       <div className="ai-panel-hd">
         <div className="ai-panel-title">
           <div className="ai-status-dot"></div>
@@ -477,7 +497,7 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
             <div className="ai-msg-label">{m.sender === 'user' ? t('You') : t('Business Architect AI')}</div>
             <div
               className={m.sender === 'user' ? 'ai-msg-user' : 'ai-msg-ai'}
-              dangerouslySetInnerHTML={{ __html: m.text.replace(/\n/g, '<br>') }}
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(m.text) }}
             ></div>
           </div>
         ))}

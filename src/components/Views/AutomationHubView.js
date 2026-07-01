@@ -39,6 +39,36 @@ export default function AutomationHubView() {
   const [savingJson, setSavingJson] = useState(false);
   const [jsonError, setJsonError] = useState('');
 
+  const [isImportingWf, setIsImportingWf] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importWfName, setImportWfName] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+
+  const [editorTab, setEditorTab] = useState('code'); // 'code' or 'ui'
+  const [selectedNodeName, setSelectedNodeName] = useState(null);
+  const [newParamKey, setNewParamKey] = useState('');
+  const [newParamVal, setNewParamVal] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [togglingWf, setTogglingWf] = useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const closeModals = () => {
+    setEditingJsonWf(null);
+    setIsImportingWf(false);
+    setJsonContent('');
+    setImportJson('');
+    setImportWfName('');
+    setJsonError('');
+    setImportError('');
+    setEditorTab('code');
+    setSelectedNodeName(null);
+    setNewParamKey('');
+    setNewParamVal('');
+  };
+
   // Sync state if database updates
   useEffect(() => {
     if (GC.automationHub) {
@@ -51,6 +81,21 @@ export default function AutomationHubView() {
       setBuildResult(GC.automationHub.buildResult || '');
     }
   }, [GC.automationHub]);
+
+  // Raise main container z-index when full-screen modal is open to overlay the sidebar
+  useEffect(() => {
+    const mn = document.getElementById('mn');
+    if (mn) {
+      if (isImportingWf || editingJsonWf) {
+        mn.style.zIndex = '99999';
+      } else {
+        mn.style.zIndex = '';
+      }
+    }
+    return () => {
+      if (mn) mn.style.zIndex = '';
+    };
+  }, [isImportingWf, editingJsonWf]);
 
   const refreshWorkflows = () => {
     if (authHub.connected && authHub.connectionUrl && authHub.apiKey) {
@@ -116,6 +161,73 @@ export default function AutomationHubView() {
     }
   };
 
+  const sanitizeN8nNode = (node) => {
+    if (!node || typeof node !== 'object') return {};
+    const cleanNode = {
+      name: node.name,
+      type: node.type,
+      typeVersion: parseFloat(node.typeVersion) || 1,
+      position: Array.isArray(node.position) ? [parseFloat(node.position[0]), parseFloat(node.position[1])] : [100, 100],
+      parameters: node.parameters || {},
+    };
+    if (node.id) cleanNode.id = node.id;
+    if (node.credentials) cleanNode.credentials = node.credentials;
+    if (typeof node.disabled === 'boolean') cleanNode.disabled = node.disabled;
+    if (node.notes) cleanNode.notes = node.notes;
+    if (typeof node.notesInFlow === 'boolean') cleanNode.notesInFlow = node.notesInFlow;
+    if (typeof node.continueOnFail === 'boolean') cleanNode.continueOnFail = node.continueOnFail;
+    if (typeof node.retryOnFail === 'boolean') cleanNode.retryOnFail = node.retryOnFail;
+    if (typeof node.maxTries === 'number') cleanNode.maxTries = node.maxTries;
+    if (typeof node.waitBetweenTries === 'number') cleanNode.waitBetweenTries = node.waitBetweenTries;
+    if (typeof node.alwaysOutputData === 'boolean') cleanNode.alwaysOutputData = node.alwaysOutputData;
+    if (typeof node.executeOnce === 'boolean') cleanNode.executeOnce = node.executeOnce;
+    return cleanNode;
+  };
+
+  const sanitizeN8nConnections = (connections) => {
+    if (!connections || typeof connections !== 'object') return {};
+    const cleanConns = {};
+    Object.entries(connections).forEach(([sourceName, connectionPorts]) => {
+      if (connectionPorts && typeof connectionPorts === 'object') {
+        const cleanPorts = {};
+        Object.entries(connectionPorts).forEach(([portType, connectionArray]) => {
+          if (Array.isArray(connectionArray)) {
+            cleanPorts[portType] = connectionArray.map((outputGroup) => {
+              if (Array.isArray(outputGroup)) {
+                return outputGroup.map((target) => {
+                  const cleanTarget = {
+                    node: target.node,
+                    type: target.type,
+                    index: typeof target.index === 'number' ? target.index : 0
+                  };
+                  return cleanTarget;
+                }).filter(t => t.node && t.type);
+              }
+              return [];
+            });
+          }
+        });
+        cleanConns[sourceName] = cleanPorts;
+      }
+    });
+    return cleanConns;
+  };
+
+  const sanitizeN8nPayload = (payload) => {
+    const clean = {
+      name: payload.name || L('Imported Custom Automation', 'قالب أتمتة مستورد'),
+      nodes: Array.isArray(payload.nodes) ? payload.nodes.map(sanitizeN8nNode) : [],
+      connections: sanitizeN8nConnections(payload.connections),
+      settings: payload.settings || {},
+    };
+    if (payload.staticData) clean.staticData = payload.staticData;
+    if (payload.meta) clean.meta = payload.meta;
+    if (payload.pinData) clean.pinData = payload.pinData;
+    if (typeof payload.active === 'boolean') clean.active = payload.active;
+    if (Array.isArray(payload.tags)) clean.tags = payload.tags;
+    return clean;
+  };
+
   const handleSaveJson = async () => {
     setSavingJson(true);
     setJsonError('');
@@ -129,6 +241,8 @@ export default function AutomationHubView() {
       return;
     }
     
+    const cleanPayload = sanitizeN8nPayload(parsedPayload);
+    
     try {
       const res = await fetch('/api/n8n/proxy', {
         method: 'POST',
@@ -138,12 +252,12 @@ export default function AutomationHubView() {
           apiKey: authHub.apiKey,
           endpoint: `/workflows/${editingJsonWf.id}`,
           method: 'PUT',
-          payload: parsedPayload
+          payload: cleanPayload
         })
       });
       const result = await res.json();
       if (result.ok) {
-        setEditingJsonWf(null);
+        closeModals();
         refreshWorkflows();
       } else {
         setJsonError(result.error || L('Failed to save workflow', 'فشل في حفظ المشروع'));
@@ -153,6 +267,454 @@ export default function AutomationHubView() {
     } finally {
       setSavingJson(false);
     }
+  };
+
+  const handleImportWorkflow = async () => {
+    setImporting(true);
+    setImportError('');
+    let parsedPayload;
+    
+    try {
+      parsedPayload = JSON.parse(importJson);
+    } catch (e) {
+      setImportError(L('Invalid JSON format', 'تنسيق JSON غير صالح، يرجى مراجعة الكود'));
+      setImporting(false);
+      return;
+    }
+    
+    const cleanPayload = sanitizeN8nPayload(parsedPayload);
+    if (importWfName.trim()) {
+      cleanPayload.name = importWfName.trim();
+    }
+    
+    if (!cleanPayload.nodes || !Array.isArray(cleanPayload.nodes)) {
+      setImportError(L('Missing "nodes" array in n8n JSON schema', 'مصفوفة "nodes" مفقودة في هيكل n8n JSON'));
+      setImporting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/n8n/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: authHub.connectionUrl,
+          apiKey: authHub.apiKey,
+          endpoint: '/workflows',
+          method: 'POST',
+          payload: cleanPayload
+        })
+      });
+      
+      const result = await res.json();
+      if (result.ok) {
+        closeModals();
+        alert(L('Workflow imported successfully! ⚡', 'تم استيراد قالب الأتمتة بنجاح! ⚡'));
+        refreshWorkflows();
+      } else {
+        setImportError(result.error || L('Failed to import workflow', 'فشل في استيراد المشروع'));
+      }
+    } catch (err) {
+      setImportError(L('Network error', 'خطأ في الشبكة'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleImportNameChange = (newName) => {
+    setImportWfName(newName);
+    try {
+      if (importJson && importJson.trim()) {
+        const parsed = JSON.parse(importJson);
+        parsed.name = newName;
+        setImportJson(JSON.stringify(parsed, null, 2));
+      }
+    } catch (e) {}
+  };
+
+  const handleImportJsonChange = (val) => {
+    setImportJson(val);
+    try {
+      const parsed = JSON.parse(val);
+      if (parsed && parsed.name) {
+        setImportWfName(parsed.name);
+      }
+    } catch (e) {}
+  };
+
+  // UI parsing & mapping utilities
+  const currentContent = editingJsonWf ? jsonContent : importJson;
+  let parsedWorkflow = null;
+  let parseError = null;
+
+  try {
+    if (currentContent && currentContent.trim()) {
+      parsedWorkflow = JSON.parse(currentContent);
+      if (!parsedWorkflow.nodes) parsedWorkflow.nodes = [];
+      if (!parsedWorkflow.connections) parsedWorkflow.connections = {};
+    }
+  } catch (e) {
+    parseError = e.message;
+  }
+
+  const updateWorkflowInJson = (updated) => {
+    const jsonStr = JSON.stringify(updated, null, 2);
+    if (editingJsonWf) {
+      setJsonContent(jsonStr);
+    } else {
+      setImportJson(jsonStr);
+    }
+  };
+
+  const handleRenameNode = (oldName, newName) => {
+    if (!parsedWorkflow) return;
+    const updated = { ...parsedWorkflow };
+    updated.nodes = updated.nodes.map(n => n.name === oldName ? { ...n, name: newName } : n);
+    
+    if (updated.connections) {
+      const newConnections = {};
+      Object.entries(updated.connections).forEach(([source, connData]) => {
+        const key = source === oldName ? newName : source;
+        const newConnData = { ...connData };
+        if (newConnData.main) {
+          newConnData.main = newConnData.main.map(group => {
+            if (Array.isArray(group)) {
+              return group.map(target => target.node === oldName ? { ...target, node: newName } : target);
+            }
+            return group;
+          });
+        }
+        newConnections[key] = newConnData;
+      });
+      updated.connections = newConnections;
+    }
+    
+    updateWorkflowInJson(updated);
+    if (selectedNodeName === oldName) {
+      setSelectedNodeName(newName);
+    }
+  };
+
+  const handleUpdateParam = (key, value) => {
+    if (!parsedWorkflow || !selectedNodeName) return;
+    const updated = { ...parsedWorkflow };
+    updated.nodes = updated.nodes.map(n => {
+      if (n.name === selectedNodeName) {
+        return {
+          ...n,
+          parameters: {
+            ...(n.parameters || {}),
+            [key]: value
+          }
+        };
+      }
+      return n;
+    });
+    updateWorkflowInJson(updated);
+  };
+
+  const handleDeleteParam = (key) => {
+    if (!parsedWorkflow || !selectedNodeName) return;
+    const updated = { ...parsedWorkflow };
+    updated.nodes = updated.nodes.map(n => {
+      if (n.name === selectedNodeName) {
+        const params = { ...(n.parameters || {}) };
+        delete params[key];
+        return {
+          ...n,
+          parameters: params
+        };
+      }
+      return n;
+    });
+    updateWorkflowInJson(updated);
+  };
+
+  const handleAddParam = () => {
+    if (!newParamKey.trim()) return;
+    handleUpdateParam(newParamKey.trim(), newParamVal);
+    setNewParamKey('');
+    setNewParamVal('');
+  };
+
+  const renderVisualCanvas = () => {
+    if (parseError) {
+      return (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', padding: '24px', background: '#1e1e1e', borderRadius: '8px' }}>
+          <div>
+            <div style={{ fontSize: '24px', marginBottom: '8px', textAlign: 'center' }}>⚠️</div>
+            <div style={{ fontWeight: 600 }}>{L('Invalid JSON structure for Visual Editor', 'تنسيق كود JSON غير صالح لعرض الواجهة المرئية')}</div>
+            <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>{parseError}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!parsedWorkflow || !parsedWorkflow.nodes || parsedWorkflow.nodes.length === 0) {
+      return (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t2)', padding: '24px', background: 'var(--surface2)', borderRadius: '8px', border: '1px dashed var(--edge)' }}>
+          <div>
+            <div style={{ fontSize: '24px', marginBottom: '8px', textAlign: 'center' }}>⚡</div>
+            <div style={{ fontWeight: 600 }}>{L('No nodes in this workflow', 'لا توجد عناصر في هذا القالب')}</div>
+            <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.8 }}>{L('Paste code on JSON Code tab first to render nodes.', 'ألصق كود JSON في التبويب الآخر أولاً لتظهر العناصر هنا.')}</div>
+          </div>
+        </div>
+      );
+    }
+
+    const nodes = parsedWorkflow.nodes.map((node, idx) => {
+      let x = 0;
+      let y = 0;
+      if (node.position && Array.isArray(node.position) && node.position.length >= 2) {
+        x = parseFloat(node.position[0]);
+        y = parseFloat(node.position[1]);
+        if (isNaN(x)) x = 100 + (idx * 220) % 600;
+        if (isNaN(y)) y = 100 + Math.floor(idx / 3) * 120;
+      } else {
+        x = 100 + (idx * 220) % 600;
+        y = 100 + Math.floor(idx / 3) * 120;
+      }
+      return { ...node, position: [x, y] };
+    });
+
+    const minX = Math.min(...nodes.map(n => n.position[0]));
+    const minY = Math.min(...nodes.map(n => n.position[1]));
+    const offsetX = minX < 0 ? -minX + 50 : 50;
+    const offsetY = minY < 0 ? -minY + 50 : 50;
+
+    const maxX = Math.max(...nodes.map(n => n.position[0]));
+    const maxY = Math.max(...nodes.map(n => n.position[1]));
+    const canvasWidth = Math.max(maxX + offsetX + 300, 1000);
+    const canvasHeight = Math.max(maxY + offsetY + 200, 800);
+
+    const connectionsList = [];
+    if (parsedWorkflow.connections) {
+      Object.entries(parsedWorkflow.connections).forEach(([sourceName, connectionData]) => {
+        if (connectionData) {
+          Object.entries(connectionData).forEach(([connType, connectionTypeArray]) => {
+            if (Array.isArray(connectionTypeArray)) {
+              connectionTypeArray.forEach((outputGroup) => {
+                if (Array.isArray(outputGroup)) {
+                  outputGroup.forEach((target) => {
+                    if (target && target.node) {
+                      connectionsList.push({
+                        source: sourceName,
+                        target: target.node,
+                        type: connType
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    const selectedNode = selectedNodeName ? nodes.find(n => n.name === selectedNodeName) : null;
+
+    const renderNodeIcon = (type) => {
+      const t = String(type || '').toLowerCase();
+      if (t.includes('webhook')) return '🌐';
+      if (t.includes('openai') || t.includes('chat') || t.includes('agent')) return '🤖';
+      if (t.includes('telegram')) return '💬';
+      if (t.includes('sheet') || t.includes('excel')) return '📊';
+      if (t.includes('email') || t.includes('gmail') || t.includes('mail')) return '✉️';
+      if (t.includes('code') || t.includes('javascript')) return '💻';
+      if (t.includes('schedule') || t.includes('cron') || t.includes('interval')) return '⏰';
+      if (t.includes('slack')) return '🔌';
+      return '⚡';
+    };
+
+    const getLineColor = (type) => {
+      const t = String(type || '').toLowerCase();
+      if (t.includes('languagemodel') || t.includes('agent')) return 'var(--purple)';
+      if (t.includes('memory')) return '#10B981';
+      return 'var(--orange)';
+    };
+
+    const getLineColorName = (type) => {
+      const t = String(type || '').toLowerCase();
+      if (t.includes('languagemodel') || t.includes('agent')) return 'purple';
+      if (t.includes('memory')) return 'green';
+      return 'orange';
+    };
+
+    return (
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', height: '100%', border: '1px solid var(--edge)', borderRadius: '8px' }}>
+        <div style={{ flex: 1, overflow: 'auto', position: 'relative', background: 'var(--surface2)', backgroundImage: 'radial-gradient(var(--edge) 1.5px, transparent 1.5px)', backgroundSize: '20px 20px' }}>
+          <svg style={{ position: 'absolute', top: 0, left: 0, width: `${canvasWidth}px`, height: `${canvasHeight}px`, pointerEvents: 'none', zIndex: 1 }}>
+            <defs>
+              <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 6 5 L 0 8.5 z" fill="var(--orange)" />
+              </marker>
+              <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 6 5 L 0 8.5 z" fill="var(--purple)" />
+              </marker>
+              <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 6 5 L 0 8.5 z" fill="#10B981" />
+              </marker>
+            </defs>
+            {connectionsList.map((conn, idx) => {
+              const srcNode = nodes.find(n => String(n.name).trim().toLowerCase() === String(conn.source).trim().toLowerCase());
+              const dstNode = nodes.find(n => String(n.name).trim().toLowerCase() === String(conn.target).trim().toLowerCase());
+              if (!srcNode || !dstNode) return null;
+
+              const x1 = srcNode.position[0] + offsetX + 180;
+              const y1 = srcNode.position[1] + offsetY + 35;
+              const x2 = dstNode.position[0] + offsetX;
+              const y2 = dstNode.position[1] + offsetY + 35;
+
+              const diffX = Math.abs(x2 - x1);
+              const ctrlX1 = x1 + Math.max(40, diffX * 0.4);
+              const ctrlX2 = x2 - Math.max(40, diffX * 0.4);
+
+              const d = `M ${x1} ${y1} C ${ctrlX1} ${y1}, ${ctrlX2} ${y2}, ${x2} ${y2}`;
+
+              return (
+                <path
+                  key={idx}
+                  d={d}
+                  fill="none"
+                  stroke={getLineColor(conn.type)}
+                  strokeWidth="2.5"
+                  markerEnd={`url(#arrow-${getLineColorName(conn.type)})`}
+                  style={{ opacity: 0.75 }}
+                />
+              );
+            })}
+          </svg>
+
+          {nodes.map((node, idx) => (
+            <div
+              key={idx}
+              onClick={() => setSelectedNodeName(node.name)}
+              style={{
+                position: 'absolute',
+                left: `${node.position[0] + offsetX}px`,
+                top: `${node.position[1] + offsetY}px`,
+                width: '180px',
+                height: '70px',
+                background: selectedNodeName === node.name ? 'var(--surface3)' : 'var(--surface)',
+                border: selectedNodeName === node.name ? '2px solid var(--prime)' : '1px solid var(--edge)',
+                borderRadius: '10px',
+                padding: '10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                boxShadow: selectedNodeName === node.name ? '0 4px 15px rgba(236,92,49,0.2)' : '0 4px 10px rgba(0,0,0,0.1)',
+                zIndex: 10,
+                transition: 'border-color 0.2s, background-color 0.2s'
+              }}
+            >
+              <div style={{ fontSize: '22px' }}>{renderNodeIcon(node.type)}</div>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.name}</div>
+                <div style={{ fontSize: '9.5px', color: 'var(--t3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.type.split('.').pop()}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {selectedNode && (
+          <div style={{ width: '300px', borderLeft: '1px solid var(--edge)', background: 'var(--surface)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '15px', overflowY: 'auto', zIndex: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
+              <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>⚙️ {L('Node Parameters', 'إعدادات العنصر')}</h4>
+              <button onClick={() => setSelectedNodeName(null)} style={{ background: 'transparent', border: 'none', color: 'var(--t2)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+            
+            <div>
+              <label style={{ fontSize: '10px', color: 'var(--t3)', display: 'block', marginBottom: '4px', fontWeight: 600 }}>{L('NAME', 'الاسم')}</label>
+              <input 
+                type="text" 
+                className="inp" 
+                value={selectedNode.name} 
+                onChange={(e) => handleRenameNode(selectedNode.name, e.target.value)} 
+                style={{ width: '100%', fontSize: '12px' }}
+              />
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--t3)', fontWeight: 600, borderBottom: '1px solid var(--edge)', paddingBottom: '4px' }}>{L('PARAMETERS', 'المعلمات')}</div>
+              {Object.entries(selectedNode.parameters || {}).map(([key, val]) => (
+                <div key={key} style={{ background: 'var(--surface2)', padding: '8px', borderRadius: '6px', border: '1px solid var(--edge)', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--purple)', fontWeight: 600 }}>{key}</span>
+                    <button 
+                      onClick={() => handleDeleteParam(key)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '12px' }}
+                      title={L('Delete', 'حذف')}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {typeof val === 'boolean' ? (
+                    <select 
+                      className="inp" 
+                      value={String(val)} 
+                      onChange={(e) => handleUpdateParam(key, e.target.value === 'true')}
+                      style={{ width: '100%', fontSize: '11px', padding: '2px 6px' }}
+                    >
+                      <option value="true">True</option>
+                      <option value="false">False</option>
+                    </select>
+                  ) : typeof val === 'object' ? (
+                    <textarea 
+                      className="inp" 
+                      value={JSON.stringify(val)} 
+                      onChange={(e) => {
+                        try {
+                          handleUpdateParam(key, JSON.parse(e.target.value));
+                        } catch (err) {}
+                      }}
+                      style={{ width: '100%', fontSize: '10.5px', padding: '4px', fontFamily: 'monospace', height: '50px', resize: 'vertical' }}
+                    />
+                  ) : (
+                    <input 
+                      type="text" 
+                      className="inp" 
+                      value={String(val)} 
+                      onChange={(e) => handleUpdateParam(key, e.target.value)}
+                      style={{ width: '100%', fontSize: '11px', padding: '2px 6px' }}
+                    />
+                  )}
+                </div>
+              ))}
+
+              <div style={{ marginTop: '6px', borderTop: '1px dashed var(--edge)', paddingTop: '10px' }}>
+                <div style={{ fontSize: '10.5px', color: 'var(--t2)', marginBottom: '6px', fontWeight: 600 }}>{L('+ Add Parameter', '+ إضافة معلمة')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <input 
+                    type="text" 
+                    className="inp" 
+                    placeholder={L('Key', 'المفتاح')} 
+                    value={newParamKey} 
+                    onChange={e => setNewParamKey(e.target.value)}
+                    style={{ width: '100%', fontSize: '11px', padding: '4px 6px' }}
+                  />
+                  <input 
+                    type="text" 
+                    className="inp" 
+                    placeholder={L('Value', 'القيمة')} 
+                    value={newParamVal} 
+                    onChange={e => setNewParamVal(e.target.value)}
+                    style={{ width: '100%', fontSize: '11px', padding: '4px 6px' }}
+                  />
+                  <button 
+                    onClick={handleAddParam}
+                    style={{ background: 'var(--prime)', border: 'none', color: '#fff', padding: '5px', borderRadius: '4px', fontSize: '10.5px', cursor: 'pointer', width: '100%' }}
+                  >
+                    {L('Add Parameter', 'إضافة')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const workflowCategories = authHub.workflowCategories || {};
@@ -169,6 +731,24 @@ export default function AutomationHubView() {
           return tn.includes(tabStr) || tabStr.includes(tn);
         });
       });
+
+  const searchedAndSortedWorkflows = [...filteredWorkflows]
+    .filter(wf => {
+      if (statusFilter === 'active') return wf.active;
+      if (statusFilter === 'inactive') return !wf.active;
+      return true;
+    })
+    .filter(wf => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (wf.name || '').toLowerCase().includes(q) || 
+             (wf.description || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0);
+      const dateB = new Date(b.updatedAt || b.createdAt || 0);
+      return dateB - dateA;
+    });
 
   // Helper for tab switching
   const handleTabClick = (tabId) => {
@@ -188,9 +768,7 @@ export default function AutomationHubView() {
     });
   };
 
-  const [togglingWf, setTogglingWf] = useState(null);
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+
 
   const toggleWorkflow = async (wf) => {
     if (togglingWf) return;
@@ -315,6 +893,11 @@ export default function AutomationHubView() {
           </span>
         </div>
         <div className="pg-actions">
+          {authHub.connected && (
+            <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 13px', display: 'flex', alignItems: 'center', gap: '5px' }} onClick={() => setIsImportingWf(true)}>
+              ➕ {L('Import Template (JSON)', 'استيراد قالب (JSON)')}
+            </button>
+          )}
           <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 13px' }} onClick={() => setActiveTab('custom')}>
             📋 {L('My Automations', 'أتمتاتي')}
           </button>
@@ -426,16 +1009,36 @@ export default function AutomationHubView() {
               <div className="es-title">{L('No workflows found', 'لا توجد مشاريع')}</div>
               <div className="es-sub">{L('You dont have any workflows in this category.', 'لا توجد مشاريع في هذا التصنيف.')}</div>
             </div>
+          ) : searchedAndSortedWorkflows.length === 0 ? (
+            <div className="empty-state" style={{ padding: '40px' }}>
+              <div className="es-icon">🔍</div>
+              <div className="es-title">{L('No matching workflows found', 'لا توجد مشاريع تطابق بحثك')}</div>
+              <div className="es-sub">{L('Try typing a different name or keyword.', 'جرّب البحث بكلمة أو عبارة أخرى.')}</div>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px', gap: '16px', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--t1)', margin: 0 }}>
                   {activeTab === 'all' ? L('Your Workflows', 'جميع المشاريع') : tabs.find(t => t.id === activeTab)?.label}
                 </h3>
-                <div style={{ display: 'flex', gap: '4px', background: 'var(--surface)', padding: '4px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
-                  <button onClick={() => setStatusFilter('all')} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: statusFilter === 'all' ? 'var(--surface2)' : 'transparent', color: statusFilter === 'all' ? 'var(--t1)' : 'var(--t2)', border: 'none', fontWeight: statusFilter === 'all' ? 600 : 400 }}>{L('All', 'الكل')}</button>
-                  <button onClick={() => setStatusFilter('active')} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: statusFilter === 'active' ? 'var(--surface2)' : 'transparent', color: statusFilter === 'active' ? 'var(--t1)' : 'var(--t2)', border: 'none', fontWeight: statusFilter === 'active' ? 600 : 400 }}>{L('Active', 'نشط')}</button>
-                  <button onClick={() => setStatusFilter('inactive')} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: statusFilter === 'inactive' ? 'var(--surface2)' : 'transparent', color: statusFilter === 'inactive' ? 'var(--t1)' : 'var(--t2)', border: 'none', fontWeight: statusFilter === 'inactive' ? 600 : 400 }}>{L('Inactive', 'غير نشط')}</button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Search Input Box */}
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      className="inp" 
+                      placeholder={L('Search projects...', 'ابحث عن مشروع...')} 
+                      value={searchQuery} 
+                      onChange={e => setSearchQuery(e.target.value)} 
+                      style={{ fontSize: '12px', padding: '6px 12px 6px 30px', minWidth: '200px' }}
+                    />
+                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--t3)', fontSize: '13px' }}>🔍</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '2px', background: 'var(--surface)', padding: '4px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                    <button onClick={() => setStatusFilter('all')} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: statusFilter === 'all' ? 'var(--surface2)' : 'transparent', color: statusFilter === 'all' ? 'var(--t1)' : 'var(--t2)', border: 'none', fontWeight: statusFilter === 'all' ? 600 : 400 }}>{L('All', 'الكل')}</button>
+                    <button onClick={() => setStatusFilter('active')} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: statusFilter === 'active' ? 'var(--surface2)' : 'transparent', color: statusFilter === 'active' ? 'var(--t1)' : 'var(--t2)', border: 'none', fontWeight: statusFilter === 'active' ? 600 : 400 }}>{L('Active', 'نشط')}</button>
+                    <button onClick={() => setStatusFilter('inactive')} style={{ padding: '6px 16px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', background: statusFilter === 'inactive' ? 'var(--surface2)' : 'transparent', color: statusFilter === 'inactive' ? 'var(--t1)' : 'var(--t2)', border: 'none', fontWeight: statusFilter === 'inactive' ? 600 : 400 }}>{L('Inactive', 'غير نشط')}</button>
+                  </div>
                 </div>
               </div>
               <div style={{ overflow: 'visible', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--edge)' }}>
@@ -450,11 +1053,7 @@ export default function AutomationHubView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredWorkflows.filter(wf => {
-                      if (statusFilter === 'active') return wf.active;
-                      if (statusFilter === 'inactive') return !wf.active;
-                      return true;
-                    }).map(wf => (
+                    {searchedAndSortedWorkflows.map(wf => (
                       <tr key={wf.id} style={{ borderBottom: '1px solid var(--edge)', transition: 'background 0.2s', background: 'transparent' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface2)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                         <td style={{ padding: '16px', fontSize: '14px', color: 'var(--t1)', fontWeight: 600, maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={wf.name}>
                           <span onClick={() => handleOpenJsonEditor(wf)} style={{ cursor: 'pointer', borderBottom: '1px dashed var(--t3)' }}>
@@ -728,14 +1327,26 @@ export default function AutomationHubView() {
       )}
       {editingJsonWf && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--surface)', width: '90%', maxWidth: '800px', height: '80%', borderRadius: '16px', border: '1px solid var(--edge)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
+          <div style={{ background: 'var(--surface)', width: editorTab === 'ui' ? '98vw' : '90%', maxWidth: editorTab === 'ui' ? 'none' : '800px', height: editorTab === 'ui' ? '96vh' : '80%', borderRadius: '16px', border: '1px solid var(--edge)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', transition: 'all 0.3s ease' }}>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--edge)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)' }}>
-              <div style={{ fontWeight: 600, color: 'var(--t1)' }}>{L('Edit Workflow Code', 'تعديل كود المشروع')}: {editingJsonWf.name}</div>
-              <button onClick={() => setEditingJsonWf(null)} style={{ background: 'transparent', border: 'none', color: 'var(--t2)', fontSize: '20px', cursor: 'pointer' }}>&times;</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--t1)' }}>{L('Edit Workflow', 'تعديل مشروع الأتمتة')}: {editingJsonWf.name}</div>
+                <div style={{ display: 'flex', gap: '2px', background: 'var(--surface)', padding: '2px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                  <button onClick={() => setEditorTab('code')} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: 'none', background: editorTab === 'code' ? 'var(--surface2)' : 'transparent', color: editorTab === 'code' ? 'var(--t1)' : 'var(--t2)', fontWeight: editorTab === 'code' ? 600 : 400 }}>
+                    {L('JSON Code', 'كود JSON')}
+                  </button>
+                  <button onClick={() => setEditorTab('ui')} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: 'none', background: editorTab === 'ui' ? 'var(--surface2)' : 'transparent', color: editorTab === 'ui' ? 'var(--t1)' : 'var(--t2)', fontWeight: editorTab === 'ui' ? 600 : 400 }}>
+                    {L('Visual Interface', 'الواجهة المرئية')}
+                  </button>
+                </div>
+              </div>
+              <button onClick={closeModals} style={{ background: 'transparent', border: 'none', color: 'var(--t2)', fontSize: '20px', cursor: 'pointer' }}>&times;</button>
             </div>
             
-            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-              {fetchingJson ? (
+            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+              {editorTab === 'ui' ? (
+                renderVisualCanvas()
+              ) : fetchingJson ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t2)' }}>
                   {L('Loading JSON...', 'جاري تحميل الكود...')}
                 </div>
@@ -757,11 +1368,78 @@ export default function AutomationHubView() {
             )}
             
             <div style={{ padding: '16px 24px', borderTop: '1px solid var(--edge)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--surface2)' }}>
-              <button onClick={() => setEditingJsonWf(null)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--edge)', background: 'var(--surface3)', color: 'var(--t1)', cursor: 'pointer' }}>
+              <button onClick={closeModals} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--edge)', background: 'var(--surface3)', color: 'var(--t1)', cursor: 'pointer' }}>
                 {L('Cancel', 'إلغاء')}
               </button>
               <button onClick={handleSaveJson} disabled={fetchingJson || savingJson} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: 'var(--prime)', color: '#fff', cursor: 'pointer', opacity: (fetchingJson || savingJson) ? 0.5 : 1 }}>
                 {savingJson ? L('Saving...', 'جاري الحفظ...') : L('Save Changes', 'حفظ التعديلات')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isImportingWf && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--surface)', width: editorTab === 'ui' ? '98vw' : '90%', maxWidth: editorTab === 'ui' ? 'none' : '800px', height: editorTab === 'ui' ? '96vh' : '80%', borderRadius: '16px', border: '1px solid var(--edge)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', transition: 'all 0.3s ease' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--edge)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ fontWeight: 600, color: 'var(--t1)' }}>{L('Import Custom n8n Workflow (JSON)', 'استيراد قالب أتمتة مخصص n8n بكود JSON')}</div>
+                <div style={{ display: 'flex', gap: '2px', background: 'var(--surface)', padding: '2px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                  <button onClick={() => setEditorTab('code')} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: 'none', background: editorTab === 'code' ? 'var(--surface2)' : 'transparent', color: editorTab === 'code' ? 'var(--t1)' : 'var(--t2)', fontWeight: editorTab === 'code' ? 600 : 400 }}>
+                    {L('JSON Code', 'كود JSON')}
+                  </button>
+                  <button onClick={() => setEditorTab('ui')} style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', border: 'none', background: editorTab === 'ui' ? 'var(--surface2)' : 'transparent', color: editorTab === 'ui' ? 'var(--t1)' : 'var(--t2)', fontWeight: editorTab === 'ui' ? 600 : 400 }}>
+                    {L('Visual Interface', 'الواجهة المرئية')}
+                  </button>
+                </div>
+              </div>
+              <button onClick={closeModals} style={{ background: 'transparent', border: 'none', color: 'var(--t2)', fontSize: '20px', cursor: 'pointer' }}>&times;</button>
+            </div>
+            
+            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>{L('Workflow Name', 'اسم مشروع الأتمتة')}</label>
+                <input 
+                  type="text" 
+                  className="inp" 
+                  value={importWfName} 
+                  onChange={e => handleImportNameChange(e.target.value)} 
+                  placeholder={L('Enter automation name...', 'أدخل اسماً لمشروع الأتمتة...')}
+                  style={{ width: '100%', fontSize: '12.5px', padding: '8px 12px' }}
+                />
+              </div>
+
+              {editorTab === 'ui' ? (
+                renderVisualCanvas()
+              ) : (
+                <>
+                  <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
+                    {L('Paste the n8n workflow JSON structure. Make sure it contains valid nodes and connections fields.', 'ألصق كود JSON الخاص بالمشروع من n8n. تأكد من صحة الحقول والعلاقات.')}
+                  </div>
+                  <textarea 
+                    dir="ltr"
+                    value={importJson}
+                    onChange={e => handleImportJsonChange(e.target.value)}
+                    placeholder='{ "nodes": [ ... ], "connections": { ... }, "name": "My Custom Workflow" }'
+                    style={{ flex: 1, width: '100%', padding: '16px', background: '#1e1e1e', color: '#d4d4d4', border: '1px solid var(--edge)', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', resize: 'none', textAlign: 'left', direction: 'ltr' }}
+                    spellCheck={false}
+                  />
+                </>
+              )}
+            </div>
+            
+            {importError && (
+              <div style={{ padding: '8px 24px', color: 'var(--red)', fontSize: '13px', background: 'rgba(239, 68, 68, 0.1)' }}>
+                {importError}
+              </div>
+            )}
+            
+            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--edge)', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--surface2)' }}>
+              <button onClick={closeModals} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid var(--edge)', background: 'var(--surface3)', color: 'var(--t1)', cursor: 'pointer' }}>
+                {L('Cancel', 'إلغاء')}
+              </button>
+              <button onClick={handleImportWorkflow} disabled={importing} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: 'var(--prime)', color: '#fff', cursor: 'pointer', opacity: importing ? 0.5 : 1 }}>
+                {importing ? L('Importing...', 'جاري الاستيراد...') : L('Import Workflow', 'استيراد القالب')}
               </button>
             </div>
           </div>

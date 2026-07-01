@@ -10,7 +10,8 @@ export default function UpClickBuilderView() {
     t,
     setAiPanelOpen,
     GC,
-    saveGC
+    saveGC,
+    confirmAction
   } = useBusiness();
 
   const funnels = GC.upclickFunnels?.funnels || [];
@@ -101,10 +102,10 @@ export default function UpClickBuilderView() {
   };
 
   const handleDeleteFunnel = (id) => {
-    if (confirm(L('Are you sure you want to delete this funnel?', 'هل أنت متأكد من حذف هذا الفانل؟'))) {
+    confirmAction(L('Are you sure you want to delete this funnel?', 'هل أنت متأكد من حذف هذا الفانل؟'), () => {
       const updated = funnels.filter(f => f.id !== id);
       saveFunnels(updated);
-    }
+    });
   };
 
   const handleAIStrategy = () => {

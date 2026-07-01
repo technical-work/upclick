@@ -5,7 +5,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 
 export default function OpsHubView() {
-  const { lang, L, t, GC, saveGC } = useBusiness();
+  const { lang, L, t, GC, saveGC, confirmAction } = useBusiness();
 
   // Tab state inside Ops Hub
   const [activeSubTab, setActiveSubTab] = useState('ops-automations');
@@ -64,7 +64,7 @@ export default function OpsHubView() {
   };
 
   const handleDeleteSOP = (id) => {
-    if (confirm(L('Are you sure you want to delete this SOP?', 'هل أنت متأكد من حذف دليل التشغيل هذا؟'))) {
+    confirmAction(L('Are you sure you want to delete this SOP?', 'هل أنت متأكد من حذف دليل التشغيل هذا؟'), () => {
       const updatedSops = sopsList.filter(s => s.id !== id);
       saveGC({
         ...GC,
@@ -73,7 +73,7 @@ export default function OpsHubView() {
           sopsList: updatedSops
         }
       });
-    }
+    });
   };
 
   const handleAddTeamMember = () => {
@@ -113,7 +113,7 @@ export default function OpsHubView() {
   };
 
   const handleDeleteTeamMember = (index) => {
-    if (confirm(L('Are you sure you want to remove this member?', 'هل أنت متأكد من إزالة هذا العضو؟'))) {
+    confirmAction(L('Are you sure you want to remove this member?', 'هل أنت متأكد من إزالة هذا العضو؟'), () => {
       const removed = teamList[index];
       const updatedMembers = teamList.filter((_, i) => i !== index);
       const newLog = {
@@ -129,7 +129,7 @@ export default function OpsHubView() {
           logs: [newLog, ...(GC.team?.logs || [])]
         }
       });
-    }
+    });
   };
 
   const activeAutomationsCount = Object.values(automations).filter(Boolean).length;

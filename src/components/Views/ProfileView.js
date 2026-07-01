@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function ProfileView() {
   const {
@@ -20,7 +21,8 @@ export default function ProfileView() {
     updateProfile,
     resetOnboarding,
     formatMoney,
-    setCurrentPage
+    setCurrentPage,
+    confirmAction
   } = useBusiness();
 
   const { user, userData, updateUserAccount } = useAuth();
@@ -438,7 +440,7 @@ export default function ProfileView() {
                 {L('Analyzing your profile...', 'جارٍ تحليل ملفك الشخصي...')}
               </div>
             ) : aiAnalysis ? (
-              <div className="ai-box" style={{ padding: '12px', lineHeight: '1.5', fontSize: '13px' }} dangerouslySetInnerHTML={{ __html: aiAnalysis.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+              <div className="ai-box" style={{ padding: '12px', lineHeight: '1.5', fontSize: '13px' }} dangerouslySetInnerHTML={{ __html: parseMarkdown(aiAnalysis) }} />
             ) : (
               <div className="empty-state" style={{ padding: '20px' }}>
                 <div className="es-icon">✦</div>
@@ -462,7 +464,7 @@ export default function ProfileView() {
               <button className="btn btn-ghost" style={{ justifyContent: 'flex-start' }} onClick={() => setCurrentPage('finance')}>
                 💳 {L('Finance Overview', 'نظرة عامة على المالية')}
               </button>
-              <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--red)' }} onClick={() => { if (confirm(L('Reset onboarding setup?', 'هل تريد إعادة تشغيل إعداد التوجيه؟'))) resetOnboarding(); }}>
+              <button className="btn btn-ghost" style={{ justifyContent: 'flex-start', color: 'var(--red)' }} onClick={() => { confirmAction(L('Reset onboarding setup?', 'هل تريد إعادة تشغيل إعداد التوجيه؟'), () => resetOnboarding()); }}>
                 ↺ {L('Reset Onboarding', 'إعادة تعيين التوجيه')}
               </button>
             </div>

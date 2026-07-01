@@ -19,7 +19,9 @@ export default function Topbar() {
     setMobileMenuOpen,
     tenantConfig,
     GC,
-    saveGC
+    saveGC,
+    L,
+    rates
   } = useBusiness();
 
   const { userData } = useAuth();
@@ -109,6 +111,27 @@ export default function Topbar() {
       </div>
 
       <div className="tb-actions">
+        {/* EGP Rate Box */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(255,107,53,0.06), rgba(108,53,255,0.06))',
+          border: '1px solid var(--edge)',
+          borderRadius: '10px',
+          padding: '4px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontSize: '11.5px',
+          color: 'var(--t1)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          marginLeft: lang === 'ar' ? '0' : '8px',
+          marginRight: lang === 'ar' ? '8px' : '0'
+        }}>
+          <span style={{ fontWeight: 'bold' }}>🇪🇬 {L('EGP Exchange:', 'صرف الجنيه:')}</span>
+          <span>💵 $1 = {(rates?.EGP || 48.50).toFixed(2)} ج.م</span>
+          <span style={{ color: 'var(--edge2)' }}>|</span>
+          <span>💶 €1 = {(rates?.EGP && rates?.EUR ? (rates.EGP / rates.EUR) : 52.30).toFixed(2)} ج.م</span>
+        </div>
+
         {/* AI Model Selector */}
         <div className="model-sel">
           <select 
@@ -182,7 +205,11 @@ export default function Topbar() {
             <span id="curr-label">{currency.code}</span> ▾
           </button>
           {currOpen && (
-            <div className="curr-menu" id="curr-menu">
+            <div 
+              className="curr-menu open" 
+              id="curr-menu"
+              style={lang === 'ar' ? { left: 0, right: 'auto' } : { right: 0, left: 'auto' }}
+            >
               <div className="curr-search-wrap">
                 <input
                   className="inp curr-search"

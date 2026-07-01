@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function LaunchpadView() {
   const { lang, L, t, setCurrentPage } = useBusiness();
@@ -253,9 +254,11 @@ export default function LaunchpadView() {
               )}
 
               {!generatingCoachPlan && aiCoachOutput && (
-                <div className="ai-box" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                  {aiCoachOutput}
-                </div>
+                <div 
+                  className="ai-box" 
+                  style={{ lineHeight: '1.6' }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(aiCoachOutput) }}
+                />
               )}
             </div>
           </div>

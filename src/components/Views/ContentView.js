@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { DB, tvDB, soundsDB } from '../../data/mockData';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function ContentView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
@@ -929,9 +930,11 @@ export default function ContentView() {
                   </div>
                 )}
                 {!generatingTrendVersion && trendIdeasOut && (
-                  <div className="ai-box" style={{ whiteSpace: 'pre-line', fontSize: '12.5px', lineHeight: '1.6' }}>
-                    {trendIdeasOut}
-                  </div>
+                  <div 
+                    className="ai-box" 
+                    style={{ fontSize: '12.5px', lineHeight: '1.6' }}
+                    dangerouslySetInnerHTML={{ __html: parseMarkdown(trendIdeasOut) }}
+                  />
                 )}
               </div>
             </div>
@@ -1134,9 +1137,11 @@ export default function ContentView() {
                   </div>
                 )}
                 {!generatingQA && qaAnswer && (
-                  <div className="ai-box" style={{ whiteSpace: 'pre-line', fontSize: '13px', lineHeight: '1.6' }}>
-                    {qaAnswer}
-                  </div>
+                  <div 
+                    className="ai-box" 
+                    style={{ fontSize: '13px', lineHeight: '1.6' }}
+                    dangerouslySetInnerHTML={{ __html: parseMarkdown(qaAnswer) }}
+                  />
                 )}
               </div>
             </div>

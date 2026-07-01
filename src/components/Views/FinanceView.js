@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function FinanceView() {
   const {
@@ -160,9 +161,13 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
         </div>
         <div className="card" style={{ height: '220px', overflowY: 'auto' }}>
           <div className="sec-hd"><div className="sec-title">✦ {L('AI Financial Insights', 'رؤى مالية بالذكاء الاصطناعي')}</div></div>
-          <div className="ai-box" style={{ whiteSpace: 'pre-line', fontSize: '12.5px' }}>
-            {aiLoading ? L('Calculating metrics...', 'جاري حساب المقاييس...') : (aiAnalysis || L('Add transactions to view financial health suggestions.', 'أضف عمليات مالية لرؤية نصائح تعزيز الأرباح.'))}
-          </div>
+          <div 
+            className="ai-box" 
+            style={{ fontSize: '12.5px' }}
+            dangerouslySetInnerHTML={{ 
+              __html: aiLoading ? L('Calculating metrics...', 'جاري حساب المقاييس...') : parseMarkdown(aiAnalysis || L('Add transactions to view financial health suggestions.', 'أضف عمليات مالية لرؤية نصائح تعزيز الأرباح.'))
+            }}
+          />
         </div>
       </div>
 
@@ -258,15 +263,21 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
 
           <div className="card">
             <div className="sec-hd"><div className="sec-title">💡 {L('Subscription Insights', 'رؤى الاشتراكات')}</div></div>
-            <div className="ai-box" style={{ fontSize: '12.5px' }}>
-              {subscriptions.length === 0 ? L('Add subscriptions to get insights.', 'أضف اشتراكات للحصول على تحليلات ذكية.') : (
-                lang === 'ar' ? (
-                  `• إجمالي تكلفة البرمجيات: ${formatMoney(totalRecurring)} شهرياً.\n• التوصية: قم بمراجعة الاشتراكات غير النشطة بانتظام لتجنب الهدر المالي.`
-                ) : (
-                  `• Total software overhead: ${formatMoney(totalRecurring)}/mo.\n• Recommendation: Do an audit of your software stack once every 6 months to cancel unused accounts.`
+            <div 
+              className="ai-box" 
+              style={{ fontSize: '12.5px' }}
+              dangerouslySetInnerHTML={{
+                __html: parseMarkdown(
+                  subscriptions.length === 0 ? L('Add subscriptions to get insights.', 'أضف اشتراكات للحصول على تحليلات ذكية.') : (
+                    lang === 'ar' ? (
+                      `• إجمالي تكلفة البرمجيات: ${formatMoney(totalRecurring)} شهرياً.\n• التوصية: قم بمراجعة الاشتراكات غير النشطة بانتظام لتجنب الهدر المالي.`
+                    ) : (
+                      `• Total software overhead: ${formatMoney(totalRecurring)}/mo.\n• Recommendation: Do an audit of your software stack once every 6 months to cancel unused accounts.`
+                    )
+                  )
                 )
-              )}
-            </div>
+              }}
+            />
           </div>
         </div>
       )}
