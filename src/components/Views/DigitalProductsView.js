@@ -17,7 +17,7 @@ const MICRO_NICHES = {
 };
 
 export default function DigitalProductsView() {
-  const { lang, L, t, GC, saveGC, setDpDetailOpen, setDpDetailIndex } = useBusiness();
+  const { lang, L, t, GC, saveGC, setDpDetailOpen, setDpDetailIndex, confirmAction, promptAction } = useBusiness();
 
   // Tab state
   const [activeSubTab, setActiveSubTab] = useState('trending'); // 'trending', 'niche', 'builder', 'myproducts'
@@ -47,6 +47,13 @@ export default function DigitalProductsView() {
   const [builderPlanText, setBuilderPlanText] = useState('');
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [currentPlanObject, setCurrentPlanObject] = useState(null);
+  const [builderNiche, setBuilderNiche] = useState('marketing');
+  const [builderAudienceSize, setBuilderAudienceSize] = useState('Under 5k followers');
+  const [builderFormat, setBuilderFormat] = useState('Notion Workspace');
+  const [builderChannel, setBuilderChannel] = useState('Instagram Reels');
+  const [builderPlanJson, setBuilderPlanJson] = useState(null);
+  const [selectedManageProduct, setSelectedManageProduct] = useState(null);
+  const [generatingOutline, setGeneratingOutline] = useState(false);
 
   // My Products list state
   const myProducts = GC.digitalProducts?.products || [];
@@ -61,6 +68,26 @@ export default function DigitalProductsView() {
       }
     });
   };
+
+  // Pre-select niche on mount or profile change
+  useEffect(() => {
+    if (GC.profile?.niche) {
+      const userNiche = GC.profile.niche.toLowerCase();
+      const matchedKey = Object.keys(MICRO_NICHES).find(key => 
+        userNiche.includes(key) || key.includes(userNiche)
+      );
+      if (matchedKey) {
+        setSelectedNiche(matchedKey);
+        setBuilderNiche(matchedKey);
+      } else {
+        setSelectedNiche('marketing'); // default fallback
+        setBuilderNiche('marketing');
+      }
+    } else {
+      setSelectedNiche('marketing'); // default fallback
+      setBuilderNiche('marketing');
+    }
+  }, [GC.profile?.niche]);
 
   // Fallback trending data
   const getFallbackTrends = () => {
@@ -81,13 +108,40 @@ export default function DigitalProductsView() {
     setHasLoadedTrends(true);
 
     try {
-      const promptText = `Generate 6 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}. Market: ${market}. ${typeFilter !== 'all' ? `Type filter: ${typeFilter}` : ''}. Each object must have: {title, type, platform, price(number), monthly_sales(number), rating(1-5 with decimal), demand_score(1-10), category, emoji, description(one line), opportunity_score(1-10), why_trending(one sentence), ai_tools(array of 3 tools to create it), sell_on(array of 3 platforms), creation_days(number)}. Focus on products relevant to Arab entrepreneurs and creators. Return JSON array ONLY.`;
+      const promptText = `Generate 6 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}.
+Market: ${market}.
+${typeFilter !== 'all' ? `Type filter: ${typeFilter}` : ''}
+${selectedNiche && selectedNiche !== 'all' ? `Niche category filter: ${selectedNiche}` : ''}
+
+You MUST return a valid JSON array. Each object in the array must look exactly like this example structure:
+[
+  {
+    "title": "Arabic Social Media Templates Bundle",
+    "type": "Canva Templates",
+    "platform": "Etsy",
+    "price": 25,
+    "monthly_sales": 320,
+    "rating": 4.8,
+    "demand_score": 8,
+    "category": "Design",
+    "emoji": "🎨",
+    "description": "50 high-converting Arabic Canva templates for instagram posts.",
+    "opportunity_score": 9,
+    "why_trending": "Arab content creators need professional visual designs.",
+    "ai_tools": ["Canva", "Midjourney", "Claude"],
+    "sell_on": ["Etsy", "Gumroad", "Payhip"],
+    "creation_days": 2
+  }
+]
+
+Focus on trending products relevant to Arab entrepreneurs and creators.
+DO NOT write any introduction, description, markdown explanation, or formatting outside of the JSON array. Start your response directly with [ and end with ].`;
+
       const systemText = 'You are a digital product market researcher. Return ONLY a valid JSON array, no markdown or extra text.';
 
       const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
       
       if (typeof rawText === 'string' && rawText.includes('❌')) {
-        alert(rawText);
         setTrendingProducts(getFallbackTrends());
         setLoadingTrends(false);
         return;
@@ -101,7 +155,6 @@ export default function DigitalProductsView() {
       setTrendingProducts(parsed);
     } catch (e) {
       console.warn("API failed in loadDPTrends, using fallback data:", e);
-      alert(`❌ Error parsing AI response: ${e.message}`);
       setTrendingProducts(getFallbackTrends());
     } finally {
       setLoadingTrends(false);
@@ -110,12 +163,63 @@ export default function DigitalProductsView() {
 
   // Filter trends client side
   const getFilteredTrends = () => {
-    if (!searchQuery.trim()) return trendingProducts;
-    return trendingProducts.filter(p =>
-      (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.category || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let list = trendingProducts;
+
+    // 1. Search Query Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(p =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.type || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.why_trending || '').toLowerCase().includes(q)
+      );
+    }
+
+    // 2. Platform Filter
+    if (platform !== 'all') {
+      const plat = platform.toLowerCase();
+      list = list.filter(p => (p.platform || '').toLowerCase().includes(plat));
+    }
+
+    // 3. Type Filter
+    if (typeFilter !== 'all') {
+      const t = typeFilter.toLowerCase();
+      list = list.filter(p => {
+        const typeStr = (p.type || '').toLowerCase();
+        if (t === 'notion') return typeStr.includes('notion');
+        if (t === 'canva') return typeStr.includes('canva');
+        if (t === 'prompt') return typeStr.includes('prompt') || typeStr.includes('ai');
+        if (t === 'excel') return typeStr.includes('excel') || typeStr.includes('sheet');
+        if (t === 'pdf') return typeStr.includes('pdf') || typeStr.includes('guide') || typeStr.includes('ebook');
+        if (t === 'course') return typeStr.includes('course') || typeStr.includes('academy');
+        if (t === 'swipe') return typeStr.includes('swipe') || typeStr.includes('script');
+        if (t === 'toolkit') return typeStr.includes('toolkit') || typeStr.includes('bundle');
+        return typeStr.includes(t);
+      });
+    }
+
+    // 4. Niche Filter (🎯 حسب المجال)
+    if (selectedNiche && selectedNiche !== 'all') {
+      const nicheStr = selectedNiche.toLowerCase();
+      list = list.filter(p => {
+        const cat = (p.category || '').toLowerCase();
+        const title = (p.title || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        
+        if (nicheStr === 'coaching') return cat.includes('coach') || title.includes('coach') || desc.includes('coach');
+        if (nicheStr === 'marketing') return cat.includes('market') || title.includes('market') || desc.includes('market') || cat.includes('content') || title.includes('content');
+        if (nicheStr === 'finance') return cat.includes('finance') || title.includes('finance') || desc.includes('finance') || cat.includes('money') || title.includes('money');
+        if (nicheStr === 'ai') return cat.includes('ai') || title.includes('ai') || desc.includes('ai') || cat.includes('prompt') || title.includes('prompt');
+        if (nicheStr === 'fitness') return cat.includes('fit') || title.includes('fit') || desc.includes('fit') || cat.includes('health') || title.includes('health');
+        if (nicheStr === 'content') return cat.includes('content') || title.includes('content') || desc.includes('content') || title.includes('write') || desc.includes('write');
+        if (nicheStr === 'business') return cat.includes('business') || title.includes('business') || desc.includes('business') || cat.includes('startup') || title.includes('startup');
+        if (nicheStr === 'design') return cat.includes('design') || title.includes('design') || desc.includes('design') || cat.includes('art') || title.includes('art');
+        return cat.includes(nicheStr) || title.includes(nicheStr) || desc.includes(nicheStr);
+      });
+    }
+
+    return list;
   };
 
   const handleOpenDPDetail = (product) => {
@@ -144,13 +248,28 @@ export default function DigitalProductsView() {
     setNicheProducts([]);
 
     try {
-      const promptText = `Generate 6 digital product ideas for micro-niche: "${micro}" in the ${mainNiche} space. Target: Arab creators and entrepreneurs. Each: {title, type, price(number), monthly_sales(number), emoji, creation_days(number), description(one line)}. JSON only.`;
+      const promptText = `Generate 6 digital product ideas for micro-niche: "${micro}" in the "${mainNiche}" space.
+Target: Arab creators and entrepreneurs.
+
+You MUST return a valid JSON array. Each object in the array must look exactly like this example structure:
+[
+  {
+    "title": "Ultimate ${micro} Guidebook",
+    "type": "PDF Guide",
+    "price": 19,
+    "monthly_sales": 150,
+    "emoji": "📖",
+    "creation_days": 3,
+    "description": "Step-by-step workbook to dominate ${micro} space."
+  }
+]
+
+DO NOT write any introduction, description, markdown explanation, or formatting outside of the JSON array. Start your response directly with [ and end with ].`;
       const systemText = 'Digital product researcher. Return ONLY JSON array.';
 
       const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
       
       if (typeof rawText === 'string' && rawText.includes('❌')) {
-        alert(rawText);
         setNicheProducts([
           { title: `Ultimate ${micro} Guidebook`, type: 'PDF Guide', price: 19, monthly_sales: 150, emoji: '📖', creation_days: 3, description: `Step-by-step workbook to dominate ${micro} space.` },
           { title: `${micro} Workflow Dashboard`, type: 'Notion Template', price: 29, monthly_sales: 95, emoji: '⚡', creation_days: 5, description: `A robust digital planning workspace for ${micro} professionals.` },
@@ -168,7 +287,6 @@ export default function DigitalProductsView() {
       setNicheProducts(parsed);
     } catch (e) {
       console.warn("API failed in loadMicroNicheProducts, using fallback:", e);
-      alert(`❌ Error parsing AI response: ${e.message}`);
       // Fallback micro niche products
       setNicheProducts([
         { title: `Ultimate ${micro} Guidebook`, type: 'PDF Guide', price: 19, monthly_sales: 150, emoji: '📖', creation_days: 3, description: `Step-by-step workbook to dominate ${micro} space.` },
@@ -189,15 +307,81 @@ export default function DigitalProductsView() {
 
     setGeneratingPlan(true);
     setBuilderPlanText('');
+    setBuilderPlanJson(null);
     setCurrentPlanObject(null);
 
+    const fallbackJson = {
+      monthly_revenue_low: Math.round(parseInt(builderPrice) * 5),
+      monthly_revenue_high: Math.round(parseInt(builderPrice) * 20),
+      break_even_copies: 10,
+      timeline_steps: [
+        { day: L("Day 1", "اليوم ١"), task: L("Market outline & planning", "التخطيط وتحديد الفصول"), detail: L("Outline the modules using Claude based on target niche.", "صياغة فصول وهيكل المنتج الرقمي باستخدام Claude بناءً على النيش.") },
+        { day: L("Day 2", "اليوم ٢"), task: L("Asset Design", "تصميم الأصول والروابط"), detail: L("Build the Notion or Canva layout and design custom graphics.", "تصميم الهيكل على Notion أو Canva وإعداد التصاميم الرسومية.") },
+        { day: L("Day 3", "اليوم ٣"), task: L("Landing Page & Copywriting", "صفحة الهبوط والتسويق"), detail: L("Write copy, set up standard payout links on Gumroad/Payhip.", "كتابة نصوص البيع وربط بوابات الدفع على Gumroad أو Payhip.") }
+      ],
+      ai_tools: [
+        { name: "Claude.ai", use: L("Generate outlines, hooks and copywriting scripts", "توليد نصوص تسويقية وصياغة هيكل المنتج") },
+        { name: "Canva AI", use: L("Design high-quality mockups and visual cover art", "تصميم أغلفة كروت وعروض بصرية للمنتج") }
+      ],
+      platforms: [
+        { name: "Gumroad", reason: L("Extremely simple setup and Arab region payout compatibility", "سهولة تامة في إعداد صفحة المنتج ومناسب للمشترين العرب") }
+      ],
+      marketing_hooks: [
+        { hook: `هل سئمت من التخطيط اليدوي العشوائي؟ احصل على "${builderName}" الجاهز الآن!`, angle: L("Pain point", "التركيز على حل مشكلة قائمة") },
+        { hook: "نفس النظام الذي أستخدمه لإنجاز عملي في دقائق، متاح لك الآن لتنسخه بضغطة زر.", angle: L("Authority", "التركيز على الفعالية والسرعة") }
+      ],
+      risk: L("No audience to pitch the product directly to.", "عدم وجود جمهور كافي للشراء الفوري عند الإطلاق الأولى."),
+      mitigation: L("Offer a 50% discount pre-sale link on social reels/stories to validate interest first.", "تقديم رابط بيع مسبق بخصم ٥٠٪ على المنصات للتحقق من الرغبة قبل بناء الأصول بالكامل.")
+    };
+
     try {
-      const promptText = `Create a complete execution plan for this digital product:\nName: ${builderName}\nType: ${builderType}\nAudience: ${builderAudience || 'Arab entrepreneurs'}\nPrice: $${builderPrice}\nTime available: ${builderTime}\nProblem solved: ${builderProblem || 'not specified'}\n\nProvide:\n1. Expected Monthly Revenue estimate (be specific with numbers)\n2. Days to complete with specific daily tasks\n3. Required AI tools (with specific use for each)\n4. Best platforms to sell on (with reasoning)\n5. 3 marketing hooks/angles for launch\n6. One biggest risk and how to avoid it\n\nBe concrete and actionable.`;
-      const systemText = 'You are a digital product launch strategist specializing in the Arab creator economy. Be specific and realistic.';
+      const promptText = `Create a realistic, actionable execution plan for this digital product:
+Name: ${builderName}
+Type: ${builderType}
+Niche: ${builderNiche}
+Target Audience: ${builderAudience || 'Arab creators'}
+Audience Size: ${builderAudienceSize}
+Format: ${builderFormat}
+Primary Promo Channel: ${builderChannel}
+Price Point: $${builderPrice}
+Time Available: ${builderTime}
+Problem Solved: ${builderProblem || 'saving time/effort'}
+
+You MUST return a valid JSON object. Follow this exact structure:
+{
+  "monthly_revenue_low": number,
+  "monthly_revenue_high": number,
+  "break_even_copies": number,
+  "timeline_steps": [
+    { "day": "Day 1", "task": "Task Title in Arabic", "detail": "Specific actionable steps in Arabic..." }
+  ],
+  "ai_tools": [
+    { "name": "Tool Name", "use": "How to use it specifically for this product in Arabic" }
+  ],
+  "platforms": [
+    { "name": "Platform Name", "reason": "Why this platform is best for Arab sellers in Arabic" }
+  ],
+  "marketing_hooks": [
+    { "hook": "Arabic hook text...", "angle": "Hook angle/theme in Arabic (e.g. FOMO, Time-saving)" }
+  ],
+  "risk": "Biggest launch risk in Arabic",
+  "mitigation": "Concrete steps to mitigate this risk in Arabic"
+}
+
+Be highly realistic. Adjust revenue numbers based on the user's audience size: if audience size is small, keep revenue realistic (e.g. $100-$500). If it is large, scale it up. Write the text content (hooks, descriptions, details, reasons) in Arabic since the target market is Arab.
+Return ONLY valid JSON. Start directly with { and end with }.`;
+
+      const systemText = 'You are a digital product launch strategist specializing in the Arab creator economy. Return ONLY a valid JSON object.';
 
       const reply = await callClaudeAPI(promptText, systemText, lang, GC);
 
-      setBuilderPlanText(reply || '');
+      let cleaned = (reply || '{}').replace(/```json/g, '').replace(/```/g, '').trim();
+      if (cleaned.indexOf('{') > -1) {
+        cleaned = cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
+      }
+      const parsed = JSON.parse(cleaned);
+
+      setBuilderPlanJson(parsed);
       setCurrentPlanObject({
         name: builderName,
         type: builderType,
@@ -209,8 +393,7 @@ export default function DigitalProductsView() {
       });
     } catch (e) {
       console.warn("API failed in buildDPPlan, using fallback plan:", e);
-      const fallbackText = `### ⚡ Execution Plan: ${builderName}\n\n**1. Expected Monthly Revenue:**\nEst. $950 - $2,500/month based on selling ~35-90 copies at $${builderPrice}.\n\n**2. Timeline (${builderTime}):**\n• Day 1: Brainstorm modules and outline details. Use Claude to draft the structure.\n• Day 2: Create assets in Canva/Notion.\n• Day 3: Build a simple landing page, write marketing copywriting and post on socials.\n\n**3. Required AI Tools:**\n• Claude.ai (Content structuring & Copywriting)\n• Canva AI (Visual cover templates)\n• UpKlick AI (Sales script generation)\n\n**4. Target Platforms:**\n• Gumroad (Easy setup & international payouts)\n• Payhip (Low transaction fees)\n\n**5. Marketing Hooks:**\n• "Stop wasting hours manually formatting. Get this plug-and-play template instead!"\n• "The exact framework I used to scale my ${builderType} workflow, now yours."`;
-      setBuilderPlanText(fallbackText);
+      setBuilderPlanJson(fallbackJson);
       setCurrentPlanObject({
         name: builderName,
         type: builderType,
@@ -245,6 +428,71 @@ export default function DigitalProductsView() {
   const handleDeleteProduct = (id) => {
     const updated = myProducts.filter(p => p.id !== id);
     saveMyProducts(updated);
+  };
+
+  const handleUpdateProduct = (updatedProd) => {
+    const list = myProducts.map(p => p.id === updatedProd.id ? updatedProd : p);
+    saveMyProducts(list);
+    setSelectedManageProduct(updatedProd);
+  };
+
+  const handleAddSale = () => {
+    if (!selectedManageProduct) return;
+    const priceVal = parseFloat(selectedManageProduct.price) || 0;
+    const updated = {
+      ...selectedManageProduct,
+      sales: (selectedManageProduct.sales || 0) + 1,
+      revenue: (selectedManageProduct.revenue || 0) + priceVal
+    };
+    handleUpdateProduct(updated);
+    alert(L('Sale recorded successfully!', 'تم تسجيل البيع بنجاح وتحديث الأرباح!'));
+  };
+
+  const handleToggleTask = (taskIndex) => {
+    if (!selectedManageProduct) return;
+    const currentChecked = selectedManageProduct.checklist || [];
+    let nextChecked;
+    if (currentChecked.includes(taskIndex)) {
+      nextChecked = currentChecked.filter(idx => idx !== taskIndex);
+    } else {
+      nextChecked = [...currentChecked, taskIndex];
+    }
+    const updated = {
+      ...selectedManageProduct,
+      checklist: nextChecked
+    };
+    handleUpdateProduct(updated);
+  };
+
+  const handleGenerateOutline = async () => {
+    if (!selectedManageProduct) return;
+    setGeneratingOutline(true);
+    try {
+      const promptText = `Generate a comprehensive outline/syllabus for this digital product:
+Name: ${selectedManageProduct.name}
+Type: ${selectedManageProduct.type}
+Target Audience: ${selectedManageProduct.audience}
+
+Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic. Focus on practical deliverables.`;
+      const systemText = 'You are a digital product creator. Return a clean markdown list outline.';
+      
+      const res = await callClaudeAPI(promptText, systemText, lang, GC);
+      const updated = {
+        ...selectedManageProduct,
+        outline: res || ''
+      };
+      handleUpdateProduct(updated);
+    } catch (e) {
+      console.warn("API failed in outline generation:", e);
+      const fallbackOutline = `### 📋 الهيكل المقترح للمنتج:\n\n**الموديول ١: الأساسيات والتهيئة**\n• تحديد الأهداف وجدولة النشر\n• اختيار القوالب المناسبة\n\n**الموديول ٢: بناء المحتوى البصري**\n• اختيار الألوان والخطوط المتناسقة\n• تصميم غلاف وبوستات احترافية`;
+      const updated = {
+        ...selectedManageProduct,
+        outline: fallbackOutline
+      };
+      handleUpdateProduct(updated);
+    } finally {
+      setGeneratingOutline(false);
+    }
   };
 
   // Calculations for Stats Card
@@ -306,12 +554,6 @@ export default function DigitalProductsView() {
           🔥 {L('Trending Products', 'المنتجات الرائجة')}
         </button>
         <button 
-          className={`tab-btn ${activeSubTab === 'niche' ? 'on' : ''}`}
-          onClick={() => setActiveSubTab('niche')}
-        >
-          🎯 {L('By Niche', 'حسب المجال')}
-        </button>
-        <button 
           className={`tab-btn ${activeSubTab === 'builder' ? 'on' : ''}`}
           onClick={() => setActiveSubTab('builder')}
         >
@@ -328,8 +570,39 @@ export default function DigitalProductsView() {
       {/* ================= TAB 1: TRENDING ================= */}
       {activeSubTab === 'trending' && (
         <div className="tab-panel on" id="dp-trending">
+          <div className="card mb" style={{ background: 'linear-gradient(135deg, var(--surface2), var(--surface3))', border: '1px solid var(--edge)', display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', marginBottom: '14px' }}>
+            <div style={{ fontSize: '32px' }}>🕵️‍♂️</div>
+            <div>
+              <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--t1)', marginBottom: '4px' }}>
+                {L('Tailored Smart Spy Engine Active', 'مستشعر التجسس الذكي المخصص نشط')}
+              </h4>
+              <p style={{ fontSize: '12px', color: 'var(--t2)', margin: 0, lineHeight: 1.5 }}>
+                {L(
+                  `Scanning trends optimized for your niche: "${GC.profile?.niche || 'Fashion & Beauty'}" and target market: "${GC.profile?.offer?.market || 'Middle Class'}". Click on any card to automatically adapt it to your profile.`,
+                  `يتم فحص التريندات وتوجيهها لتناسب مجالك الحالي: "${GC.profile?.niche || 'الموضة والجمال'}" وسوقك المستهدف. اضغط على أي كارت لتخصيصه فورياً ليناسب بياناتك.`
+                )}
+              </p>
+            </div>
+          </div>
+
           <div className="card mb" style={{ padding: '14px' }}>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Niche', 'المجال')}
+                </label>
+                <select className="inp" value={selectedNiche || 'all'} onChange={(e) => setSelectedNiche(e.target.value)} style={{ width: '160px' }}>
+                  <option value="all">{L('All Niches', 'جميع المجالات')}</option>
+                  <option value="coaching">{L('Coaching', 'كوتشينج')}</option>
+                  <option value="marketing">{L('Marketing', 'تسويق')}</option>
+                  <option value="finance">{L('Finance', 'مالية')}</option>
+                  <option value="ai">{L('AI Tools', 'ذكاء اصطناعي')}</option>
+                  <option value="fitness">{L('Fitness & Health', 'رياضة وصحة')}</option>
+                  <option value="content">{L('Content Creation', 'صناعة محتوى')}</option>
+                  <option value="business">{L('Business', 'أعمال بيزنس')}</option>
+                  <option value="design">{L('Design & Arts', 'تصميم')}</option>
+                </select>
+              </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                   {L('Platform', 'المنصة')}
@@ -497,156 +770,7 @@ export default function DigitalProductsView() {
         </div>
       )}
 
-      {/* ================= TAB 2: BY NICHE ================= */}
-      {activeSubTab === 'niche' && (
-        <div className="tab-panel on" id="dp-niche">
-          <div className="g2">
-            <div>
-              <div className="card mb">
-                <div className="sec-hd">
-                  <div className="sec-title">🎯 {L('Choose Your Niche', 'اختر مجالك')}</div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }} id="dp-niche-grid">
-                  {[
-                    { key: 'coaching', emoji: '🎓', nameAr: 'كوتشينج', nameEn: 'Coaching', count: 23 },
-                    { key: 'marketing', emoji: '📢', nameAr: 'تسويق', nameEn: 'Marketing', count: 31 },
-                    { key: 'finance', emoji: '💰', nameAr: 'مالية', nameEn: 'Finance', count: 18 },
-                    { key: 'ai', emoji: '🤖', nameAr: 'ذكاء اصطناعي', nameEn: 'AI Tools', count: 42 },
-                    { key: 'fitness', emoji: '💪', nameAr: 'رياضة وصحة', nameEn: 'Fitness', count: 15 },
-                    { key: 'content', emoji: '✍️', nameAr: 'صناعة محتوى', nameEn: 'Content', count: 27 },
-                    { key: 'business', emoji: '🚀', nameAr: 'أعمال بيزنس', nameEn: 'Business', count: 35 },
-                    { key: 'design', emoji: '🎨', nameAr: 'تصميم', nameEn: 'Design', count: 29 },
-                  ].map((n) => (
-                    <div 
-                      key={n.key}
-                      className="dp-niche-card" 
-                      onClick={() => handleSelectNiche(n.key)}
-                      style={{
-                        background: selectedNiche === n.key ? 'var(--orange-d)' : 'var(--surface2)',
-                        border: selectedNiche === n.key ? '2px solid var(--orange)' : '2px solid var(--edge)',
-                        borderRadius: '10px',
-                        padding: '12px',
-                        cursor: 'pointer',
-                        transition: 'all .14s',
-                        textAlign: 'center'
-                      }}
-                    >
-                      <div style={{ fontSize: '26px', marginBottom: '5px' }}>{n.emoji}</div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>
-                        {L(n.nameEn, n.nameAr)}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
-                        {n.count} {L('products', 'منتج')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              {selectedNiche && (
-                <div className="card" id="dp-microniche-card">
-                  <div className="sec-hd">
-                    <div className="sec-title" id="dp-microniche-title">
-                      🔍 {selectedNiche.charAt(0).toUpperCase() + selectedNiche.slice(1)} — {L('Micro-Niches', 'المجالات الفرعية')}
-                    </div>
-                  </div>
-                  <div id="dp-microniche-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {(MICRO_NICHES[selectedNiche] || []).map((m, idx) => (
-                      <div 
-                        key={idx}
-                        style={{
-                          background: selectedMicroNiche === m ? 'var(--orange-d)' : 'var(--surface2)',
-                          border: selectedMicroNiche === m ? '1px solid var(--orange)' : '1px solid var(--edge)',
-                          borderRadius: '8px',
-                          padding: '9px 12px',
-                          cursor: 'pointer',
-                          transition: 'all .14s',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}
-                        onClick={() => handleLoadMicroNicheProducts(m, selectedNiche)}
-                      >
-                        <span style={{ fontSize: '12.5px', color: 'var(--t1)' }}>{m}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('View →', 'عرض ←')}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="card" id="dp-niche-products-card">
-              <div className="sec-hd">
-                <div className="sec-title" id="dp-niche-result-title">
-                  {selectedMicroNiche ? `📦 ${selectedMicroNiche} ${L('Products', 'منتجات')}` : L('Select a niche to see products →', 'اختر مجالاً لرؤية المنتجات ←')}
-                </div>
-              </div>
-              <div id="dp-niche-products">
-                {loadingNicheProducts && (
-                  <div style={{ textAlign: 'center', padding: '24px' }}>
-                    <div style={{ fontSize: '24px', animation: 'pulse 1s infinite' }}>⚡</div>
-                    <div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>
-                      {L('Loading product ideas...', 'جاري تحميل أفكار المنتجات...')}
-                    </div>
-                  </div>
-                )}
-
-                {!loadingNicheProducts && nicheProducts.length === 0 && (
-                  <div className="empty-state" style={{ padding: '30px' }}>
-                    <div className="es-icon">🎯</div>
-                    <div className="es-title">{L('Pick your niche', 'حدد مجالك')}</div>
-                    <div className="es-sub">
-                      {L('Choose a niche and a micro-niche on the left to see curated product ideas with estimated sales and prices', 'اختر مجالأ فرعياً على اليسار لتظهر لك أفكار المنتجات الجاهزة والتقديرات المادية لها')}
-                    </div>
-                  </div>
-                )}
-
-                {!loadingNicheProducts && nicheProducts.map((p, i) => (
-                  <div 
-                    key={i}
-                    style={{
-                      border: '1px solid var(--edge)',
-                      borderRadius: '9px',
-                      padding: '12px',
-                      marginBottom: '8px',
-                      cursor: 'pointer',
-                      transition: 'all .14s',
-                      display: 'flex',
-                      gap: '10px',
-                      alignItems: 'flex-start'
-                    }}
-                  >
-                    <div style={{ fontSize: '22px', flexShrink: 0 }}>{p.emoji || '📦'}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)', marginBottom: '3px' }}>
-                        {p.title}
-                      </div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '6px' }}>
-                        {p.description || ''}
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span className="badge b-green">${p.price}</span>
-                        <span className="badge b-ai">{p.monthly_sales} {L('sales/mo', 'مبيعات/شهر')}</span>
-                        <span className="badge" style={{ background: 'var(--surface3)', color: 'var(--t2)' }}>
-                          {p.creation_days}{L('d to build', 'أيام للبناء')}
-                        </span>
-                        <button 
-                          className="btn btn-prime" 
-                          style={{ fontSize: '11px', padding: '3px 10px', marginLeft: 'auto' }}
-                          onClick={() => handleQuickBuildFromTrend(p)}
-                        >
-                          ⚡ {L('Build', 'بناء')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ================= TAB 3: BUILD PLAN ================= */}
       {activeSubTab === 'builder' && (
@@ -703,6 +827,35 @@ export default function DigitalProductsView() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                      {L('Niche', 'المجال')}
+                    </label>
+                    <select className="inp" value={builderNiche} onChange={(e) => setBuilderNiche(e.target.value)}>
+                      <option value="coaching">{L('Coaching', 'كوتشينج')}</option>
+                      <option value="marketing">{L('Marketing', 'تسويق')}</option>
+                      <option value="finance">{L('Finance', 'مالية')}</option>
+                      <option value="ai">{L('AI Tools', 'ذكاء اصطناعي')}</option>
+                      <option value="fitness">{L('Fitness & Health', 'رياضة وصحة')}</option>
+                      <option value="content">{L('Content Creation', 'صناعة محتوى')}</option>
+                      <option value="business">{L('Business', 'أعمال بيزنس')}</option>
+                      <option value="design">{L('Design & Arts', 'تصميم')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                      {L('Audience Size', 'حجم جمهورك الحالي')}
+                    </label>
+                    <select className="inp" value={builderAudienceSize} onChange={(e) => setBuilderAudienceSize(e.target.value)}>
+                      <option value="0 - Just starting">{L('0 - Just starting', '٠ - مبتدئ تماماً')}</option>
+                      <option value="Under 5k followers">{L('Under 5k followers', 'أقل من ٥ آلاف متابع')}</option>
+                      <option value="5k - 20k followers">{L('5k - 20k followers', 'من ٥ إلى ٢٠ ألف متابع')}</option>
+                      <option value="20k - 100k followers">{L('20k - 100k followers', 'من ٢٠ إلى ١٠٠ ألف متابع')}</option>
+                      <option value="100k+ followers">{L('100k+ followers', 'أكثر من ١٠٠ ألف متابع')}</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Price Point', 'نقطة السعر')}
                     </label>
                     <select 
@@ -731,6 +884,33 @@ export default function DigitalProductsView() {
                       <option>1 week</option>
                       <option>2 weeks</option>
                       <option>1 month</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                      {L('Deliverable Format', 'صيغة تسليم المنتج')}
+                    </label>
+                    <select className="inp" value={builderFormat} onChange={(e) => setBuilderFormat(e.target.value)}>
+                      <option value="Notion Workspace">{L('Notion Workspace', 'مساحة عمل Notion')}</option>
+                      <option value="Canva templates link">{L('Canva templates link', 'رابط قالب Canva قابل للتعديل')}</option>
+                      <option value="PDF / Google Doc">{L('PDF / Google Doc', 'ملف PDF / مستند جوجل')}</option>
+                      <option value="Video course files">{L('Video course files', 'ملفات كورس فيديو')}</option>
+                      <option value="ZIP file with assets">{L('ZIP file with assets', 'ملف ZIP مضغوط يحتوي على ملفات')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                      {L('Primary Traffic Channel', 'قناة الترويج الأساسية')}
+                    </label>
+                    <select className="inp" value={builderChannel} onChange={(e) => setBuilderChannel(e.target.value)}>
+                      <option value="Instagram Reels">{L('Instagram Reels', 'فيديوهات إنستغرام ريلز')}</option>
+                      <option value="TikTok">{L('TikTok', 'تيك توك')}</option>
+                      <option value="YouTube">{L('YouTube', 'يوتيوب')}</option>
+                      <option value="LinkedIn Articles">{L('LinkedIn Articles', 'منشورات لينكد إن')}</option>
+                      <option value="Email Newsletter">{L('Email Newsletter', 'قائمة بريدية / نيوزليتر')}</option>
+                      <option value="Paid Ads">{L('Paid Ads', 'إعلانات ممولة')}</option>
                     </select>
                   </div>
                 </div>
@@ -784,7 +964,7 @@ export default function DigitalProductsView() {
                   </div>
                 )}
 
-                {!generatingPlan && !builderPlanText && (
+                {!generatingPlan && !builderPlanJson && (
                   <div className="empty-state" style={{ padding: '30px' }}>
                     <div className="es-icon">⚡</div>
                     <div className="es-title">{L('Your plan will appear here', 'ستظهر خطتك هنا')}</div>
@@ -794,12 +974,137 @@ export default function DigitalProductsView() {
                   </div>
                 )}
 
-                {!generatingPlan && builderPlanText && (
-                  <div 
-                    className="ai-box" 
-                    style={{ lineHeight: '1.6' }}
-                    dangerouslySetInnerHTML={{ __html: parseMarkdown(builderPlanText) }}
-                  />
+                {!generatingPlan && builderPlanJson && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    
+                    {/* 1. Revenue Projections Gauge Cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="stat-card" style={{ background: 'var(--surface3)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div className="stat-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>💵 {L('Monthly Revenue Estimate', 'تقدير الإيرادات الشهرية')}</div>
+                        <div className="stat-val" style={{ color: 'var(--green)', fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>
+                          ${builderPlanJson.monthly_revenue_low} - ${builderPlanJson.monthly_revenue_high}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '2px' }}>
+                          {L('Based on target market size', 'بناءً على حجم السوق المستهدف')}
+                        </div>
+                      </div>
+                      
+                      <div className="stat-card" style={{ background: 'var(--surface3)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+                        <div className="stat-lbl" style={{ color: 'var(--t2)', fontSize: '11px', fontWeight: 600 }}>🎯 {L('Break-Even Copies', 'نسخ للوصول لنقطة التعادل')}</div>
+                        <div className="stat-val" style={{ color: 'var(--orange)', fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>
+                          {builderPlanJson.break_even_copies} {L('copies', 'نسخة')}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '2px' }}>
+                          {L('To cover production & hosting', 'لتغطية رسوم الإنتاج والاستضافة')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Timeline Roadmap */}
+                    <div>
+                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)', marginBottom: '8px', borderBottom: '1px solid var(--edge)', paddingBottom: '4px' }}>
+                        📅 {L('Implementation Roadmap', 'خريطة الطريق التنفيذية')}
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {(builderPlanJson.timeline_steps || []).map((step, idx) => (
+                          <div 
+                            key={idx} 
+                            style={{ 
+                              background: 'var(--surface2)', 
+                              border: '1px solid var(--edge2)', 
+                              borderRadius: '10px', 
+                              padding: '10px 14px', 
+                              display: 'flex', 
+                              gap: '12px', 
+                              alignItems: 'flex-start' 
+                            }}
+                          >
+                            <div style={{ background: 'var(--orange-d)', color: 'var(--orange)', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', fontWeight: 'bold', flexShrink: 0 }}>
+                              {step.day}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px' }}>{step.task}</div>
+                              <div style={{ fontSize: '11.5px', color: 'var(--t2)', lineHeight: 1.4 }}>{step.detail}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. AI Creator Tools */}
+                    <div>
+                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)', marginBottom: '8px', borderBottom: '1px solid var(--edge)', paddingBottom: '4px' }}>
+                        🤖 {L('AI Creator Toolkit', 'حقيبة أدوات الذكاء الاصطناعي')}
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        {(builderPlanJson.ai_tools || []).map((tool, idx) => (
+                          <div key={idx} style={{ background: 'var(--surface3)', border: '1px solid var(--edge2)', borderRadius: '8px', padding: '8px 12px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--t1)', marginBottom: '2px' }}>⚡ {tool.name}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--t2)', lineHeight: 1.3 }}>{tool.use}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 4. Sales Platforms */}
+                    <div>
+                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)', marginBottom: '8px', borderBottom: '1px solid var(--edge)', paddingBottom: '4px' }}>
+                        🛒 {L('Distribution & Sales Platforms', 'منصات البيع والتوزيع')}
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {(builderPlanJson.platforms || []).map((plat, idx) => (
+                          <div key={idx} style={{ fontSize: '11.5px', color: 'var(--t2)', background: 'var(--surface2)', padding: '6px 12px', borderRadius: '8px' }}>
+                            <strong style={{ color: 'var(--t1)' }}>{plat.name}</strong>: {plat.reason}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 5. Marketing Launch Hooks */}
+                    <div>
+                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)', marginBottom: '8px', borderBottom: '1px solid var(--edge)', paddingBottom: '4px' }}>
+                        📣 {L('Marketing Launch Hooks', 'زوايا النصوص التسويقية')}
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {(builderPlanJson.marketing_hooks || []).map((hk, idx) => (
+                          <div 
+                            key={idx} 
+                            style={{ 
+                              background: 'var(--surface3)', 
+                              borderRight: '4px solid var(--orange)', 
+                              padding: '10px 14px', 
+                              borderRadius: '4px 10px 10px 4px', 
+                              position: 'relative' 
+                            }}
+                          >
+                            <div style={{ fontSize: '10px', color: 'var(--orange)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
+                              🎯 {hk.angle}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--t1)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                              "{hk.hook}"
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 6. Risks & Mitigation */}
+                    <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '18px' }}>⚠️</span>
+                        <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--red)', margin: 0 }}>
+                          {L('Launch Risk Warning', 'تنبيه مخاطر الإطلاق')}
+                        </h4>
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)', marginBottom: '4px' }}>
+                        {builderPlanJson.risk}
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--t2)', lineHeight: 1.4 }}>
+                        <strong style={{ color: 'var(--green)' }}>✓ {L('Mitigation Strategy:', 'خطة التخفيف:')}</strong> {builderPlanJson.mitigation}
+                      </div>
+                    </div>
+
+                  </div>
                 )}
               </div>
             </div>
@@ -840,7 +1145,27 @@ export default function DigitalProductsView() {
                 const statusColor = p.status === 'active' ? 'var(--green)' : 'var(--amber)';
                 const statusBg = p.status === 'active' ? 'var(--green-d)' : 'var(--amber-d)';
                 return (
-                  <div className="fin-entry" key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div 
+                    className="fin-entry" 
+                    key={p.id} 
+                    onClick={() => setSelectedManageProduct(p)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '12px', 
+                      cursor: 'pointer',
+                      transition: 'background 0.2s, transform 0.2s',
+                      borderRadius: '10px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--surface3)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--surface2)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                  >
                     <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
                       📦
                     </div>
@@ -868,7 +1193,7 @@ export default function DigitalProductsView() {
                       {p.status || 'draft'}
                     </span>
                     <button 
-                      onClick={() => handleDeleteProduct(p.id)} 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteProduct(p.id); }} 
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--t3)', padding: '4px' }}
                     >
                       ✕
@@ -877,6 +1202,263 @@ export default function DigitalProductsView() {
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= PRODUCT MANAGER MODAL ================= */}
+      {selectedManageProduct && (
+        <div className="modal-overlay active" style={{ zIndex: 1100 }}>
+          <div className="modal-box" style={{ width: '80%', maxWidth: '850px', display: 'flex', flexDirection: 'column', height: '85vh', padding: '24px', boxSizing: 'border-box' }}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--edge)', paddingBottom: '12px', marginBottom: '14px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '24px' }}>📦</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--t1)' }}>
+                    {L('Product Workspace Manager', 'مساحة إدارة وتطوير المنتج')}
+                  </h3>
+                  <small style={{ color: 'var(--t3)' }}>{selectedManageProduct.type}</small>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedManageProduct(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--t2)', fontSize: '20px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', paddingRight: '4px' }}>
+              
+              {/* Left Column: Form Editor & Sales Simulator */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* 1. Details Form */}
+                <div className="card" style={{ background: 'var(--surface3)', padding: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--orange)', marginBottom: '10px' }}>
+                    ⚙️ {L('Product Configurations', 'تعديل بيانات المنتج الأساسية')}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '2px' }}>
+                        {L('Product Name', 'اسم المنتج')}
+                      </label>
+                      <input 
+                        className="inp" 
+                        value={selectedManageProduct.name}
+                        onChange={(e) => handleUpdateProduct({ ...selectedManageProduct, name: e.target.value })}
+                      />
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '2px' }}>
+                          {L('Price Point ($)', 'نقطة السعر ($)')}
+                        </label>
+                        <input 
+                          type="number"
+                          className="inp" 
+                          value={selectedManageProduct.price}
+                          onChange={(e) => handleUpdateProduct({ ...selectedManageProduct, price: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '2px' }}>
+                          {L('Status', 'حالة المنتج')}
+                        </label>
+                        <select 
+                          className="inp" 
+                          value={selectedManageProduct.status}
+                          onChange={(e) => handleUpdateProduct({ ...selectedManageProduct, status: e.target.value })}
+                        >
+                          <option value="draft">{L('Draft', 'مسودة')}</option>
+                          <option value="active">{L('Launched / Active', 'مطلق / نشط')}</option>
+                          <option value="paused">{L('Paused', 'موقوف مؤقتاً')}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '2px' }}>
+                        {L('Target Audience', 'الجمهور المستهدف')}
+                      </label>
+                      <input 
+                        className="inp" 
+                        value={selectedManageProduct.audience || ''}
+                        onChange={(e) => handleUpdateProduct({ ...selectedManageProduct, audience: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Mock Payout & Sales Simulator */}
+                <div className="card" style={{ background: 'var(--surface3)', padding: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--green)', marginBottom: '10px' }}>
+                    📈 {L('Live Shop Sales Simulator', 'محاكي المبيعات الفورية للأرباح')}
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ background: 'var(--surface2)', borderRadius: '8px', padding: '10px', textAlign: 'center', border: '1px solid var(--edge2)' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--t2)' }}>💵 {L('Revenue Generated', 'إجمالي أرباح المنتج')}</span>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--green)', marginTop: '4px' }}>
+                        ${selectedManageProduct.revenue || 0}
+                      </div>
+                    </div>
+                    <div style={{ background: 'var(--surface2)', borderRadius: '8px', padding: '10px', textAlign: 'center', border: '1px solid var(--edge2)' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--t2)' }}>🛒 {L('Units Sold', 'الكمية المباعة')}</span>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--t1)', marginTop: '4px' }}>
+                        {selectedManageProduct.sales || 0}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--surface2)', borderRadius: '8px', padding: '10px', border: '1px dashed var(--edge)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--t2)', marginBottom: '6px', lineHeight: 1.3 }}>
+                      {L('Test the sales tracking dashboard! Click below to simulate a real customer checkout sale at your active price point.', 'اختبر لوحة التتبع! اضغط أدناه لمحاكاة عملية شراء حقيقية وقيد أرباحها فورياً.')}
+                    </div>
+                    <button 
+                      className="btn btn-prime"
+                      style={{ width: '100%', padding: '6px', fontSize: '12px', justifyContent: 'center', background: 'var(--green)', border: 'none' }}
+                      onClick={handleAddSale}
+                    >
+                      ➕ {L('Record 1 Test Sale (+$', 'تسجيل عملية بيع تجريبية (+$')}{selectedManageProduct.price})
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column: Setup Checklist & AI Outlining */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* 1. Setup Checklist */}
+                <div className="card" style={{ background: 'var(--surface3)', padding: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--orange)', marginBottom: '10px' }}>
+                    📅 {L('Launch Roadmap Checklist', 'خطوات تجهيز وإطلاق المنتج')}
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {[
+                      L('Outline modules & syllabus', 'تحديد محتوى وهيكل فصول المنتج'),
+                      L('Build digital assets & files', 'تصميم الأصول والملفات الرقمية'),
+                      L('Setup checkout page on Gumroad/Payhip', 'إعداد بوابة ورابط الدفع للمشترين'),
+                      L('Write launch marketing hooks & scripts', 'كتابة النصوص الإعلانية والترويجية'),
+                      L('Post & promote on primary traffic channels', 'النشر والترويج على حساباتك الاجتماعية')
+                    ].map((stepText, idx) => {
+                      const isChecked = (selectedManageProduct.checklist || []).includes(idx);
+                      return (
+                        <div 
+                          key={idx} 
+                          onClick={() => handleToggleTask(idx)}
+                          style={{ 
+                            display: 'flex', 
+                            flexDirection: 'row',
+                            alignItems: 'center', 
+                            gap: '10px', 
+                            cursor: 'pointer', 
+                            padding: '8px 12px', 
+                            background: isChecked ? 'rgba(249, 115, 22, 0.08)' : 'var(--surface2)', 
+                            borderRadius: '8px',
+                            border: isChecked ? '1px solid var(--orange)' : '1px solid var(--edge2)',
+                            transition: 'all 0.2s',
+                            width: '100%',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <span style={{ 
+                            width: '18px', 
+                            height: '18px', 
+                            borderRadius: '4px', 
+                            border: isChecked ? '2px solid var(--orange)' : '2px solid var(--t3)', 
+                            background: isChecked ? 'var(--orange)' : 'none', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            color: '#fff', 
+                            fontSize: '11px', 
+                            fontWeight: 'bold',
+                            flexShrink: 0
+                          }}>
+                            {isChecked && '✓'}
+                          </span>
+                          <span style={{ 
+                            fontSize: '12px', 
+                            color: isChecked ? 'var(--t1)' : 'var(--t2)', 
+                            textDecoration: isChecked ? 'line-through' : 'none',
+                            lineHeight: '1.4'
+                          }}>
+                            {stepText}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. AI Brainstorm Outlining */}
+                <div className="card" style={{ background: 'var(--surface3)', padding: '12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)' }}>
+                      🧠 {L('AI Content Outline Builder', 'مولد هيكل المنتج بالذكاء')}
+                    </div>
+                    <button 
+                      className="btn-ai"
+                      style={{ fontSize: '10.5px', padding: '3px 8px' }}
+                      onClick={handleGenerateOutline}
+                      disabled={generatingOutline}
+                    >
+                      {generatingOutline ? '...' : L('Generate Outline', 'توليد الهيكل')}
+                    </button>
+                  </div>
+
+                  <div style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '6px', padding: '12px', fontSize: '12px', color: 'var(--t2)', overflowY: 'auto', minHeight: '260px' }}>
+                    {generatingOutline ? (
+                      <div style={{ animation: 'pulse 1s infinite', textAlign: 'center', padding: '20px' }}>
+                        ⚡ {L('Creating syllabus outline...', 'جاري كتابة الفصول والهيكل...')}
+                      </div>
+                    ) : selectedManageProduct.outline ? (
+                      <div 
+                        style={{ lineHeight: '1.5' }}
+                        dangerouslySetInnerHTML={{ __html: parseMarkdown(selectedManageProduct.outline) }}
+                      />
+                    ) : (
+                      <div style={{ color: 'var(--t3)', textAlign: 'center', paddingTop: '30px' }}>
+                        {L('Click "Generate Outline" to brainstorm the complete structure of this product with AI.', 'اضغط على "توليد الهيكل" لمساعدتك في بناء فصول المنتج بالذكاء الاصطناعي.')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Bottom bar */}
+            <div style={{ borderTop: '1px solid var(--edge)', paddingTop: '10px', marginTop: '12px', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+              <button 
+                className="btn"
+                style={{ 
+                  padding: '8px 24px', 
+                  fontSize: '13px', 
+                  fontWeight: 600,
+                  color: '#fff',
+                  background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                onClick={() => setSelectedManageProduct(null)}
+              >
+                {L('Done', 'تم الحفظ')}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

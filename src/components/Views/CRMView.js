@@ -5,7 +5,60 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
 
+const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
+  if (!itemDate) return rangeType === 'all';
+  const date = new Date(itemDate);
+  if (isNaN(date.getTime())) return rangeType === 'all';
+
+  const now = new Date();
+
+  switch (rangeType) {
+    case 'today': {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return date >= today;
+    }
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'year': {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return date >= startOfYear;
+    }
+    case 'last30': {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      return date >= thirtyDaysAgo;
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+      }
+      return true;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
+
 export default function CRMView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   const {
     lang,
     L,
@@ -67,9 +120,14 @@ export default function CRMView() {
   const closedStageKey = stages.length > 0 ? stages[stages.length - 1].key : 'closed';
   const hotStageKey = stages.length > 1 ? stages[stages.length - 2].key : 'qualified';
 
-  const activeLeads = leads.filter(l => l.stage !== closedStageKey && l.stage !== 'lost');
-  const hotLeads = leads.filter(l => l.stage === hotStageKey || l.stage === 'proposal' || l.stage === 'qualified');
-  const closedLeads = leads.filter(l => l.stage === closedStageKey);
+  const dateFilteredLeads = leads.filter(l => {
+    const leadDate = l.created || l.id || '';
+    return filterByDateRange(leadDate, filterPeriod, customStartDate, customEndDate);
+  });
+
+  const activeLeads = dateFilteredLeads.filter(l => l.stage !== closedStageKey && l.stage !== 'lost');
+  const hotLeads = dateFilteredLeads.filter(l => l.stage === hotStageKey || l.stage === 'proposal' || l.stage === 'qualified');
+  const closedLeads = dateFilteredLeads.filter(l => l.stage === closedStageKey);
   const pipelineValue = activeLeads.reduce((sum, l) => sum + (parseFloat(l.value) || 0), 0);
 
 
@@ -224,6 +282,45 @@ export default function CRMView() {
           )}
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <button className="btn-ai" onClick={() => openAIFor('crm')}>
             {L('AI Follow-up Suggestions', 'اقتراحات المتابعة بالذكاء الاصطناعي')}
           </button>
@@ -243,7 +340,7 @@ export default function CRMView() {
       <div className="g4 stagger mb">
         <div className="stat-card">
           <div className="stat-lbl">👥 {L('Total Leads', 'إجمالي العملاء')}</div>
-          <div className="stat-val">{leads.length}</div>
+          <div className="stat-val">{dateFilteredLeads.length}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">🔥 {L('Hot Leads', 'العملاء الساخنون')}</div>
@@ -287,7 +384,7 @@ export default function CRMView() {
       {activeTab === 'pipeline' && (
         <div className="kanban" id="crm-kanban-board">
           {stages.map((stage) => {
-            const stageLeads = leads.filter((l) => l.stage === stage.key);
+            const stageLeads = dateFilteredLeads.filter((l) => l.stage === stage.key);
             return (
               <div className="kanban-col" key={stage.key}>
                 <div className="kanban-col-hd">
@@ -414,7 +511,7 @@ export default function CRMView() {
       {activeTab === 'contacts' && (
         <div className="card">
           <div id="crm-contacts-list">
-            {leads.length === 0 ? (
+            {dateFilteredLeads.length === 0 ? (
               <div className="empty-state">
                 <div className="es-icon">👥</div>
                 <div className="es-title">{L('No contacts yet', 'لا توجد جهات اتصال بعد')}</div>
@@ -424,7 +521,7 @@ export default function CRMView() {
                 </button>
               </div>
             ) : (
-              leads.map((l) => {
+              dateFilteredLeads.map((l) => {
                 const leadStage = stages.find(s => s.key === l.stage) || stages[0];
                 return (
                   <div className="row" key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -507,13 +604,13 @@ export default function CRMView() {
               <div className="sec-title">⏰ {L('Overdue Follow-ups', 'متابعات متأخرة')}</div>
             </div>
             <div id="crm-overdue">
-              {leads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost').length === 0 ? (
+              {dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost').length === 0 ? (
                 <div className="empty-state" style={{ padding: '20px' }}>
                   <div className="es-icon">✅</div>
                   <div className="es-title">{L('All caught up!', 'كل شيء مكتمل!')}</div>
                 </div>
               ) : (
-                leads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost').map(l => (
+                dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost').map(l => (
                   <div className="row" key={l.id}>
                     <div style={{ flex: 1 }}>
                       <div className="rn">{l.name}</div>
@@ -542,12 +639,12 @@ export default function CRMView() {
               <div className="sec-title">📅 {L("Today's Follow-ups", "متابعات اليوم")}</div>
             </div>
             <div id="crm-today-fu">
-              {leads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).length === 0 ? (
+              {dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).length === 0 ? (
                 <div style={{ fontSize: '12px', color: 'var(--t3)', padding: '16px 0', textAlign: 'center' }}>
                   {L('No follow-ups scheduled for today', 'لا توجد متابعات مجدولة اليوم')}
                 </div>
               ) : (
-                leads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).map(l => {
+                dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).map(l => {
                   const leadStage = stages.find(s => s.key === l.stage) || stages[0];
                   return (
                     <div className="row" key={l.id}>

@@ -10,7 +10,7 @@ export default function ContentView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
 
   // Tab state inside Content Hub
-  const [activeSubTab, setActiveSubTab] = useState('ct-cal'); // 'ct-cal', 'ct-ideas', etc.
+  const [activeSubTab, setActiveSubTab] = useState('ct-ideas'); // 'ct-ideas', etc.
 
   // 1. Calendar Tab States
   const events = GC.calendar?.events || [];
@@ -21,7 +21,7 @@ export default function ContentView() {
   const tMonth = todayDate.getMonth();
   const tYear = todayDate.getFullYear();
 
-  const [currentMonth, setCurrentMonth] = useState(tMonth); 
+  const [currentMonth, setCurrentMonth] = useState(tMonth);
   const [currentYear, setCurrentYear] = useState(tYear);
   const [selectedDay, setSelectedDay] = useState(tDay);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -378,7 +378,6 @@ export default function ContentView() {
 
       <div className="tool-tabs" id="content-tabs" style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
         {[
-          { key: 'ct-cal', label: L('Calendar', 'تقويم النشر'), emoji: '📅' },
           { key: 'ct-ideas', label: L('Ideas Lab', 'مختبر الأفكار'), emoji: '💡' },
           { key: 'ct-cap', label: L('Captions', 'كتابة كابشن'), emoji: '✍️' },
           { key: 'ct-script', label: L('Script Writer', 'كاتب السكريبت'), emoji: '🎬' },
@@ -388,7 +387,7 @@ export default function ContentView() {
           { key: 'ct-qa', label: L('Q&A', 'الأسئلة والأجوبة'), emoji: '💬' },
           { key: 'ct-burn', label: L('Burnout', 'حماية الإرهاق'), emoji: '💚' }
         ].map(tab => (
-          <button 
+          <button
             key={tab.key}
             className={`tbb ${activeSubTab === tab.key ? 'on' : ''}`}
             onClick={() => setActiveSubTab(tab.key)}
@@ -398,260 +397,7 @@ export default function ContentView() {
         ))}
       </div>
 
-      {/* ================= CALENDAR PANEL ================= */}
-      {activeSubTab === 'ct-cal' && (
-        <div className="tool-panel on" id="ct-cal">
-          <div className="g21">
-            <div className="card mb">
-              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button className="btn-chevron" onClick={handlePrevMonth} title={L('Previous Month', 'الشهر السابق')}>◀</button>
-                  <div className="st" style={{ fontSize: '15px', fontWeight: 800, minWidth: '110px', textAlign: 'center' }}>
-                    {L(`${monthNamesEn[currentMonth]} ${currentYear}`, `${monthNamesAr[currentMonth]} ${currentYear}`)}
-                  </div>
-                  <button className="btn-chevron" onClick={handleNextMonth} title={L('Next Month', 'الشهر التالي')}>▶</button>
-                </div>
-                <button className="btn btn-prime" style={{ padding: '5px 12px', fontSize: '11.5px' }} onClick={() => handleAddPostClick(selectedDay)}>
-                  + {L('Add Post', 'منشور جديد')}
-                </button>
-              </div>
-              <div className="cald" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', textAlign: 'center', marginBottom: '6px' }}>
-                {(lang === 'ar' ? ['أح', 'اث', 'ثلا', 'أر', 'خم', 'جم', 'سب'] : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']).map(d => (
-                  <div className="cal-lbl" style={{ fontWeight: 600, fontSize: '11px', color: 'var(--t2)' }} key={d}>{d}</div>
-                ))}
-              </div>
-              <div className="cald" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-                {gridCells.map((day, idx) => {
-                  if (day === null) {
-                    return (
-                      <div 
-                        key={`empty-${idx}`} 
-                        style={{ 
-                          aspectRatio: '1', 
-                          background: 'transparent', 
-                          border: '1px dashed rgba(255, 255, 255, 0.05)',
-                          borderRadius: '6px'
-                        }} 
-                      />
-                    );
-                  }
 
-                  const dayEvents = visibleEvents.filter(e => e.day === day && e.type === 'content');
-                  const hasEv = dayEvents.length > 0;
-                  const isToday = day === tDay && currentMonth === tMonth && currentYear === tYear;
-                  const isSelected = day === selectedDay;
-
-                  return (
-                    <div 
-                      key={`day-${day}`}
-                      className={`cal-day cal-day-cell ${hasEv ? 'has-event' : ''} ${isToday ? 'today' : ''}`}
-                      style={{
-                        aspectRatio: '1',
-                        padding: '8px 6px',
-                        borderRadius: '8px',
-                        background: isToday 
-                          ? 'linear-gradient(135deg, var(--orange-d), var(--purple-dim))' 
-                          : isSelected 
-                            ? 'var(--surface3)' 
-                            : 'var(--surface2)',
-                        border: isToday 
-                          ? '2px solid var(--orange)' 
-                          : isSelected 
-                            ? '2px solid var(--purple)' 
-                            : hasEv 
-                              ? '1px solid rgba(255,107,53,0.3)' 
-                              : '1px solid var(--edge)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'flex-start',
-                        alignItems: 'stretch',
-                        fontSize: '13px',
-                        fontWeight: isToday || isSelected ? 700 : 500,
-                        color: isToday ? 'var(--orange)' : isSelected ? 'var(--purple)' : 'var(--t1)',
-                        boxShadow: isSelected ? '0 0 10px rgba(108, 53, 255, 0.25)' : 'none',
-                        minWidth: 0,
-                        overflow: 'hidden'
-                      }}
-                      onClick={() => handleAddPostClick(day)}
-                    >
-                      {/* Day Number Header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 700 }}>{day}</span>
-                        {isToday && (
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--orange)', boxShadow: '0 0 6px var(--orange)' }} />
-                        )}
-                      </div>
-                      
-                      {/* Event pills */}
-                      {hasEv && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%', overflow: 'hidden' }}>
-                          {dayEvents.slice(0, 2).map((ev, i) => (
-                            <div 
-                              key={ev.id} 
-                              style={{ 
-                                width: '100%', 
-                                fontSize: '9.5px', 
-                                padding: '2px 4px', 
-                                borderRadius: '4px', 
-                                background: 'rgba(108, 53, 255, 0.12)', 
-                                color: 'var(--purple)',
-                                borderLeft: '2.5px solid var(--purple)',
-                                textAlign: lang === 'ar' ? 'right' : 'left',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                boxSizing: 'border-box',
-                                lineHeight: '1.2'
-                              }}
-                              title={`${ev.time} - ${ev.title}`}
-                            >
-                              <span style={{ fontWeight: 700, marginRight: '3px' }}>{ev.time.replace(/ AM| PM/g, '')}</span>
-                              {ev.title}
-                            </div>
-                          ))}
-                          {dayEvents.length > 2 && (
-                            <div style={{ fontSize: '8.5px', color: 'var(--t3)', fontWeight: 700, paddingLeft: '4px', paddingTop: '1px' }}>
-                              +{dayEvents.length - 2} {L('more', 'المزيد')}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div>
-              <div className="card mb">
-                <div className="sh"><div className="st">🕐 {L('Upcoming', 'القادم قريباً')}</div></div>
-                <div id="uplist" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {visibleEvents.filter(e => e.type === 'content').length === 0 ? (
-                    <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '12px' }}>
-                      {L('No posts scheduled yet.', 'لا توجد منشورات مجدولة بعد.')}
-                    </div>
-                  ) : (
-                    visibleEvents.filter(e => e.type === 'content').map((p, idx) => (
-                      <div className="row" key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--edge)' }}>
-                        <div style={{ fontSize: '16px' }}>📱</div>
-                        <div style={{ flex: 1 }}>
-                          <div className="rn" style={{ 
-                            fontWeight: 600, 
-                            fontSize: '12.5px',
-                            display: '-webkit-box',
-                            WebkitLineClamp: '2',
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>{p.title}</div>
-                          <div className="rs" style={{ fontSize: '11px', color: 'var(--t2)' }}>
-                            {L(`Day ${p.day} @ ${p.time}`, `اليوم ${p.day} @ ${p.time}`)}
-                          </div>
-                        </div>
-                        <button 
-                          className="btn btn-ghost" 
-                          onClick={() => {
-                            const updatedEvents = events.filter(ev => ev.id !== p.id);
-                            saveGC({ ...GC, calendar: { ...GC.calendar, events: updatedEvents } });
-                          }}
-                          style={{ padding: '2px 6px', color: 'var(--red)', border: 'none', background: 'none', cursor: 'pointer' }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-              <div className="card mb">
-                <div className="sh"><div className="st">📊 {L('Content Mix', 'توزيع المحتوى')}</div></div>
-                <div id="cmixlist" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {(lang === 'ar' ? [
-                    { l: 'ريلز', v: '٨.٢٪', p: 80, c: 'var(--orange)' },
-                    { l: 'كاروسيل', v: '٦.١٪', p: 61, c: 'var(--purple)' },
-                    { l: 'ستوريز', v: '٤.٣٪', p: 43, c: 'var(--green)' }
-                  ] : [
-                    { l: 'Reels', v: '8.2%', p: 80, c: 'var(--orange)' },
-                    { l: 'Carousel', v: '6.1%', p: 61, c: 'var(--purple)' },
-                    { l: 'Stories', v: '4.3%', p: 43, c: 'var(--green)' }
-                  ]).map((x, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ flex: 1, fontSize: '12.5px', color: 'var(--t1)' }}>{x.l}</div>
-                      <div className="mw" style={{ width: '100px', background: 'var(--surface3)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div className="mf" style={{ width: `${x.p}%`, background: x.c, height: '100%' }}></div>
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)', marginLeft: '7px' }}>{x.v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Content Post Scheduling Modal */}
-          {showAddModal && (
-            <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-              <div className="modal-box" style={{ maxWidth: '500px', padding: '24px' }} onClick={e => e.stopPropagation()}>
-                <button className="modal-close" onClick={() => setShowAddModal(false)}>✕</button>
-                
-                <div className="sec-hd" style={{ marginBottom: '16px', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
-                  <div className="sec-title" style={{ fontSize: '16px', fontWeight: 800 }}>
-                    ✍️ {L(`Schedule Post: ${monthNamesEn[currentMonth]} ${newPostDay}, ${currentYear}`, `جدولة منشور: ${newPostDay} ${monthNamesAr[currentMonth]}، ${currentYear}`)}
-                  </div>
-                </div>
-                
-                <form onSubmit={handleAddPostSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Post Title', 'عنوان المنشور')}</label>
-                    <input 
-                      className="inp" 
-                      value={newPostTitle} 
-                      onChange={e => setNewPostTitle(e.target.value)} 
-                      placeholder={L('e.g. 5 Content Calendar Tips', 'مثال: ٥ نصائح لتقويم المحتوى')} 
-                      required 
-                      autoFocus
-                    />
-                  </div>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '10px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L(`Day (1-${daysInMonth})`, `اليوم (١-${daysInMonth})`)}</label>
-                      <input 
-                        className="inp" 
-                        type="number" 
-                        min="1" 
-                        max={daysInMonth} 
-                        value={newPostDay} 
-                        onChange={e => setNewPostDay(e.target.value)} 
-                        required 
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Posting Time', 'وقت النشر')}</label>
-                      <input 
-                        className="inp" 
-                        value={newPostTime} 
-                        onChange={e => setNewPostTime(e.target.value)} 
-                        placeholder="e.g. 6:00 PM" 
-                        required 
-                      />
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
-                    <button type="button" className="btn btn-ghost" onClick={() => setShowAddModal(false)}>
-                      {L('Cancel', 'إلغاء')}
-                    </button>
-                    <button type="submit" className="btn btn-prime">
-                      + {L('Schedule Post', 'جدولة المنشور')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ================= IDEAS PANEL ================= */}
       {activeSubTab === 'ct-ideas' && (
@@ -712,11 +458,11 @@ export default function ContentView() {
           <div className="g2">
             <div className="card mb">
               <div className="sh"><div className="st">{L('Describe Your Post', 'وصف موضوع المنشور')}</div></div>
-              <textarea 
-                className="nb-area" 
-                value={capInp} 
-                onChange={(e) => setCapInp(e.target.value)} 
-                rows="4" 
+              <textarea
+                className="nb-area"
+                value={capInp}
+                onChange={(e) => setCapInp(e.target.value)}
+                rows="4"
                 placeholder={L('Morning coffee, productive vibes...', 'قهوة الصباح، أجواء الإنتاجية...')}
                 style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--edge)', color: 'var(--t1)', padding: '10px', borderRadius: '8px' }}
               ></textarea>
@@ -724,9 +470,9 @@ export default function ContentView() {
                 <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '6px' }}>{L('Tone', 'النبرة')}</div>
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                   {[L('😄 Funny', '😄 كوميدي'), L('💡 Educational', '💡 تعليمي'), L('❤️ Emotional', '❤️ عاطفي'), L('🎯 CTA', '🎯 تفاعلي')].map((tText, tIdx) => (
-                    <button 
+                    <button
                       key={tIdx}
-                      className={`btn ${selectedTone === tIdx ? 'btn-prime' : 'btn-ghost'}`} 
+                      className={`btn ${selectedTone === tIdx ? 'btn-prime' : 'btn-ghost'}`}
                       onClick={() => setSelectedTone(tIdx)}
                       style={{ fontSize: '11.5px', padding: '5px 10px' }}
                     >
@@ -751,8 +497,8 @@ export default function ContentView() {
                     <div className="ai mb" key={idx} style={{ background: 'var(--orange-dim)', padding: '12px', borderRadius: '8px', border: '1px solid var(--orange-d)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '7px' }}>
                         <div style={{ fontSize: '13px', lineHeight: 1.6 }}>{caption}</div>
-                        <button 
-                          className="btn btn-ghost" 
+                        <button
+                          className="btn btn-ghost"
                           style={{ padding: '2px 8px', fontSize: '11px', flexShrink: 0 }}
                           onClick={() => {
                             navigator.clipboard.writeText(caption);
@@ -781,11 +527,11 @@ export default function ContentView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Video Topic / Idea', 'فكرة أو موضوع الفيديو')}
                   </label>
-                  <textarea 
-                    className="nb-area" 
-                    value={scrTopic} 
-                    onChange={(e) => setScrTopic(e.target.value)} 
-                    rows="3" 
+                  <textarea
+                    className="nb-area"
+                    value={scrTopic}
+                    onChange={(e) => setScrTopic(e.target.value)}
+                    rows="3"
                     placeholder="e.g. 5 morning habits that changed my life..."
                     style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--edge)', color: 'var(--t1)', padding: '10px', borderRadius: '8px' }}
                   ></textarea>
@@ -821,9 +567,9 @@ export default function ContentView() {
                       { key: 'story', label: L('📖 Story', '📖 قصة') },
                       { key: 'challenge', label: L('🎯 Challenge', '🎯 تحدي') }
                     ].map(h => (
-                      <button 
+                      <button
                         key={h.key}
-                        className={`btn ${scrHookType === h.key ? 'btn-prime' : 'btn-ghost'}`} 
+                        className={`btn ${scrHookType === h.key ? 'btn-prime' : 'btn-ghost'}`}
                         onClick={() => setScrHookType(h.key)}
                         style={{ fontSize: '11px', padding: '4px 10px' }}
                       >
@@ -881,7 +627,7 @@ export default function ContentView() {
               </div>
               <div id="trending-videos-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {getTrendingVideos().map((v, i) => (
-                  <div 
+                  <div
                     key={i}
                     style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '10px', padding: '13px' }}
                   >
@@ -899,8 +645,8 @@ export default function ContentView() {
                     <div style={{ background: 'var(--orange-dim)', borderRadius: '6px', padding: '6px 10px', fontSize: '11.5px', color: 'var(--t2)' }}>
                       💡 {v.w}
                     </div>
-                    <button 
-                      className="btn btn-prime" 
+                    <button
+                      className="btn btn-prime"
                       style={{ marginTop: '8px', padding: '4px 12px', fontSize: '11.5px', width: '100%', justifyContent: 'center' }}
                       onClick={() => handleGenFromTrend(v.t)}
                     >
@@ -930,8 +676,8 @@ export default function ContentView() {
                   </div>
                 )}
                 {!generatingTrendVersion && trendIdeasOut && (
-                  <div 
-                    className="ai-box" 
+                  <div
+                    className="ai-box"
                     style={{ fontSize: '12.5px', lineHeight: '1.6' }}
                     dangerouslySetInnerHTML={{ __html: parseMarkdown(trendIdeasOut) }}
                   />
@@ -966,11 +712,11 @@ export default function ContentView() {
           <div className="g2">
             <div className="card mb">
               <div className="sh"><div className="st">{L('Your Original Content', 'محتواك الأصلي')}</div></div>
-              <textarea 
-                className="nb-area" 
-                value={repInp} 
-                onChange={(e) => setRepInp(e.target.value)} 
-                rows="5" 
+              <textarea
+                className="nb-area"
+                value={repInp}
+                onChange={(e) => setRepInp(e.target.value)}
+                rows="5"
                 placeholder={L('Paste your script, blog, or video transcript...', 'الصق السكريبت، التغريدات، أو المقال هنا...')}
                 style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--edge)', color: 'var(--t1)', padding: '10px', borderRadius: '8px' }}
               ></textarea>
@@ -1079,11 +825,11 @@ export default function ContentView() {
         <div className="tool-panel on" id="ct-qa">
           <div className="g2">
             <div className="card mb">
-              <textarea 
-                className="nb-area" 
-                value={qaInp} 
-                onChange={(e) => setQaInp(e.target.value)} 
-                rows="3" 
+              <textarea
+                className="nb-area"
+                value={qaInp}
+                onChange={(e) => setQaInp(e.target.value)}
+                rows="3"
                 placeholder={L('e.g. How did you grow to 284K followers?', 'مثال: كيف وصلت لـ ٢٨٤ ألف متابع؟')}
                 style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--edge)', color: 'var(--t1)', padding: '10px', borderRadius: '8px' }}
               ></textarea>
@@ -1113,9 +859,9 @@ export default function ContentView() {
                 <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '7px' }}>{L('Frequently Asked', 'الأسئلة المتكررة')}</div>
                 <div id="qa-freq-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   {(DB.qaFreq[lang] || []).map((qText, idx) => (
-                    <div 
-                      className="idea" 
-                      key={idx} 
+                    <div
+                      className="idea"
+                      key={idx}
                       style={{ background: 'var(--surface2)', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer' }}
                       onClick={() => setQaInp(qText)}
                     >
@@ -1137,8 +883,8 @@ export default function ContentView() {
                   </div>
                 )}
                 {!generatingQA && qaAnswer && (
-                  <div 
-                    className="ai-box" 
+                  <div
+                    className="ai-box"
                     style={{ fontSize: '13px', lineHeight: '1.6' }}
                     dangerouslySetInnerHTML={{ __html: parseMarkdown(qaAnswer) }}
                   />
@@ -1201,14 +947,14 @@ export default function ContentView() {
                     { label: L('😊 Good', '😊 جيد'), level: 80, emoji: '😊' },
                     { label: L('🔥 Amazing', '🔥 رائع'), level: 100, emoji: '🔥' }
                   ].map(lvl => (
-                    <button 
+                    <button
                       key={lvl.level}
-                      className={`btn ${energyLevel === lvl.level ? 'btn-prime' : 'btn-ghost'}`} 
+                      className={`btn ${energyLevel === lvl.level ? 'btn-prime' : 'btn-ghost'}`}
                       onClick={() => {
                         setEnergyLevel(lvl.level);
                         setEnergyLoggedEmoji(lvl.emoji);
                         alert(L(`Energy logged: ${lvl.emoji}`, `تم تسجيل الطاقة: ${lvl.emoji}`));
-                      }} 
+                      }}
                       style={{ fontSize: '12px' }}
                     >
                       {lvl.label}

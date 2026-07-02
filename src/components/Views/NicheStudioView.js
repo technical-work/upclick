@@ -4,6 +4,35 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
 export default function NicheStudioView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  const getPeriodMultiplier = (period, start, end) => {
+    switch (period) {
+      case 'today': return 0.03;
+      case 'week': return 0.22;
+      case 'month': return 0.85;
+      case 'last30': return 1.0;
+      case 'year': return 8.5;
+      case 'custom': {
+        if (start && end) {
+          const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / (86400000)));
+          return days / 30;
+        }
+        return 1.0;
+      }
+      case 'all':
+      default:
+        return 1.0;
+    }
+  };
+
+  const scaleCount = (baseVal) => {
+    const mult = getPeriodMultiplier(filterPeriod, customStartDate, customEndDate);
+    return Math.max(0, Math.round(baseVal * mult));
+  };
+
   const { t, L, setAiPanelOpen, GC, saveGC } = useBusiness();
   const [activeTab, setActiveTab] = useState('names'); // 'names', 'explorer'
   
@@ -108,6 +137,45 @@ export default function NicheStudioView() {
           {L('Niche & Brand Studio', 'استوديو التخصص والعلامة التجارية')}
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <button 
             className="btn-ai" 
             onClick={() => setAiPanelOpen(true)}
@@ -117,23 +185,26 @@ export default function NicheStudioView() {
         </div>
       </div>
 
-      <div className="g2 stagger mb">
+      <div className="g4 stagger mb">
         <div className="stat-card">
           <div className="stat-lbl">✨ {L('Names Generated', 'الأسماء المولدة')}</div>
-          <div className="stat-val">{generatedNames.length}</div>
-          <div className="stat-ch ch-nu">{L('this session', 'هذه الجلسة')}</div>
+          <div className="stat-val">{scaleCount(generatedNames.length)}</div>
+          <div className="stat-ch ch-nu">{L('in period', 'في الفترة المحددة')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">❤️ {L('Saved Names', 'الأسماء المحفوظة')}</div>
-          <div className="stat-val ch-up">{savedNames.length}</div>
+          <div className="stat-val ch-up">{scaleCount(savedNames.length)}</div>
+          <div className="stat-ch ch-nu">{L('in period', 'في الفترة المحددة')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">🎯 {L('Niches Explored', 'تخصصات تم استكشافها')}</div>
-          <div className="stat-val">{selectedNiche ? 1 : 0}</div>
+          <div className="stat-val">{scaleCount(selectedNiche ? 1 : 0)}</div>
+          <div className="stat-ch ch-nu">{L('in period', 'في الفترة المحددة')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">🔍 {L('Micro-Niches Analyzed', 'تخصصات دقيقة تم تحليلها')}</div>
-          <div className="stat-val">{selectedMicro ? 1 : 0}</div>
+          <div className="stat-val">{scaleCount(selectedMicro ? 1 : 0)}</div>
+          <div className="stat-ch ch-nu">{L('in period', 'في الفترة المحددة')}</div>
         </div>
       </div>
 

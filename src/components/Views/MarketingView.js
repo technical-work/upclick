@@ -891,7 +891,7 @@ Generate the campaign structure containing:
           {funTab === 'builder' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">🔄 {L('Sales Funnel Builder', 'منشئ مسارات المبيعات')}</div></div>
+                <div className="sec-hd"><div className="sec-title">🔄 {L('Sales Funnel Builder', 'منشئ مسارات المبيعات')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Product / Offer', 'المنتج الأساسي / العرض')}</label>
@@ -927,7 +927,7 @@ Generate the campaign structure containing:
           {funTab === 'magnet' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">🧲 {L('Lead Magnet Builder', 'منشئ مغناطيس العملاء')}</div></div>
+                <div className="sec-hd"><div className="sec-title">🧲 {L('Lead Magnet Builder', 'منشئ مغناطيس العملاء')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your Main Product', 'منتجك الأساسي')}</label>
@@ -955,7 +955,7 @@ Generate the campaign structure containing:
           {funTab === 'lp' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">⚡ {L('Landing Page Planner', 'مخطط صفحة الهبوط')}</div></div>
+                <div className="sec-hd"><div className="sec-title">⚡ {L('Landing Page Planner', 'مخطط صفحة الهبوط')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Offer / Product', 'العرض / المنتج')}</label>
@@ -987,7 +987,7 @@ Generate the campaign structure containing:
           {funTab === 'conv' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">📈 {L('Conversion Optimizer', 'مُحسن معدلات التحويل')}</div></div>
+                <div className="sec-hd"><div className="sec-title">📈 {L('Conversion Optimizer', 'مُحسن معدلات التحويل')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Describe your current funnel', 'صف مسار المبيعات الحالي الخاص بك')}</label>
@@ -1036,7 +1036,7 @@ Generate the campaign structure containing:
           {analTab === 'kpi' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">📊 {L('KPI Planner', 'مخطط مؤشرات الأداء')}</div></div>
+                <div className="sec-hd"><div className="sec-title">📊 {L('KPI Planner', 'مخطط مؤشرات الأداء')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Model', 'نموذج العمل')}</label>
@@ -1068,7 +1068,7 @@ Generate the campaign structure containing:
           {analTab === 'rev' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">💰 {L('Revenue Forecast', 'توقعات الأرباح')}</div></div>
+                <div className="sec-hd"><div className="sec-title">💰 {L('Revenue Forecast', 'توقعات الأرباح')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
@@ -1104,7 +1104,7 @@ Generate the campaign structure containing:
           {analTab === 'leads' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">👥 {L('Lead Forecast', 'توقعات العملاء المحتملين')}</div></div>
+                <div className="sec-hd"><div className="sec-title">👥 {L('Lead Forecast', 'توقعات العملاء المحتملين')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Audience Size', 'حجم الجمهور الحالي')}</label>
@@ -1132,7 +1132,7 @@ Generate the campaign structure containing:
           {analTab === 'roi' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">📈 {L('ROI Calculator', 'حاسبة عائد الاستثمار')}</div></div>
+                <div className="sec-hd"><div className="sec-title">📈 {L('ROI Calculator', 'حاسبة عائد الاستثمار')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
@@ -1160,7 +1160,7 @@ Generate the campaign structure containing:
                 </div>
               </div>
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">{L('ROI Analysis', 'تحليل العائد')}</div></div>
+                <div className="sec-hd"><div className="sec-title">{L('ROI Analysis', 'تحليل العائد')}</div></div>
                 <div className="ai-box" dangerouslySetInnerHTML={{ __html: outputs['roi-out'] || L('Fill in details and calculate.', 'أدخل البيانات واضغط للحساب.') }}>
                 </div>
               </div>

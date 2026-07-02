@@ -244,11 +244,16 @@ export function BusinessProvider({ children }) {
   const [dpDetailIndex, setDpDetailIndex] = useState(null);
   const [globalAlert, setGlobalAlert] = useState(null);
   const [globalConfirm, setGlobalConfirm] = useState(null); // { message, callback }
+  const [globalPrompt, setGlobalPrompt] = useState(null); // { message, defaultValue, callback }
 
   const [rates, setRates] = useState({ USD: 1, EGP: 48.5, EUR: 0.92, SAR: 3.75, AED: 3.67 });
 
   const confirmAction = (message, callback) => {
     setGlobalConfirm({ message, callback });
+  };
+
+  const promptAction = (message, defaultValue, callback) => {
+    setGlobalPrompt({ message, defaultValue, callback });
   };
 
   useEffect(() => {
@@ -773,11 +778,15 @@ export function BusinessProvider({ children }) {
   };
 
   // Tasks management
-  const addTask = (title, priority = 'medium') => {
+  const addTask = (title, priority = 'medium', desc = '', due = '', category = 'General', assignee = '') => {
     const newTask = {
       id: Date.now(),
       title,
       priority,
+      desc,
+      due,
+      category,
+      assignee,
       done: false,
       created: new Date().toISOString()
     };
@@ -785,7 +794,7 @@ export function BusinessProvider({ children }) {
       ...GC,
       tasks: {
         ...GC.tasks,
-        items: [...GC.tasks.items, newTask]
+        items: [...(GC.tasks.items || []), newTask]
       }
     };
     saveGC(updated);
@@ -814,14 +823,14 @@ export function BusinessProvider({ children }) {
   };
 
   // Finance management
-  const addFinanceEntry = (type, amount, desc, category) => {
+  const addFinanceEntry = (type, amount, desc, category, date) => {
     const newEntry = {
       id: Date.now(),
       type, // 'income' or 'expense'
       amount: parseFloat(amount) || 0,
       desc: desc || '',
       category: category || 'General',
-      date: new Date().toLocaleDateString('en-US')
+      date: date ? new Date(date).toLocaleDateString('en-US') : new Date().toLocaleDateString('en-US')
     };
     const updated = {
       ...GC,
@@ -978,6 +987,7 @@ export function BusinessProvider({ children }) {
         tenantConfig,
         isTeamMember,
         confirmAction,
+        promptAction,
         rates
       }}
     >
@@ -1039,8 +1049,79 @@ export function BusinessProvider({ children }) {
                   className="btn btn-prime" 
                   style={{ flex: 1, padding: '12px', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
                   onClick={() => {
-                    if (globalConfirm.callback) globalConfirm.callback();
+                    const cb = globalConfirm.callback;
                     setGlobalConfirm(null);
+                    if (cb) cb();
+                  }}
+                >
+                  {L('Confirm', 'تأكيد')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {globalPrompt && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease-out', zIndex: 999999, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="alert-modal-content" style={{ maxWidth: '440px', width: '90%' }}>
+            <div className="alert-modal-body" style={{ padding: '24px', textAlign: 'start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '24px' }}>✍️</span>
+                <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--t1)', fontFamily: 'var(--ff)' }}>
+                  {L('Input Required', 'مطلوب إدخال بيانات')}
+                </span>
+              </div>
+              <p style={{ fontSize: '13.5px', color: 'var(--t2)', lineHeight: '1.6', margin: '0 0 16px 0', whiteSpace: 'pre-wrap' }}>
+                {globalPrompt.message}
+              </p>
+              <div style={{ marginBottom: '24px' }}>
+                <input 
+                  type="text" 
+                  className="inp"
+                  id="global-prompt-input"
+                  defaultValue={globalPrompt.defaultValue}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = e.target.value;
+                      const cb = globalPrompt.callback;
+                      setGlobalPrompt(null);
+                      if (cb) cb(val);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--edge2)',
+                    background: 'var(--surface3)',
+                    color: 'var(--t1)',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button 
+                  className="btn" 
+                  style={{ background: 'var(--surface2)', color: 'var(--t1)', border: '1px solid var(--edge)', padding: '8px 16px', borderRadius: '10px', fontSize: '13px', cursor: 'pointer' }}
+                  onClick={() => {
+                    const cb = globalPrompt.callback;
+                    setGlobalPrompt(null);
+                    if (cb) cb(null);
+                  }}
+                >
+                  {L('Cancel', 'إلغاء')}
+                </button>
+                <button 
+                  className="btn btn-prime" 
+                  style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+                  onClick={() => {
+                    const input = document.getElementById('global-prompt-input');
+                    const val = input ? input.value : '';
+                    const cb = globalPrompt.callback;
+                    setGlobalPrompt(null);
+                    if (cb) cb(val);
                   }}
                 >
                   {L('Confirm', 'تأكيد')}

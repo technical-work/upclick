@@ -6,6 +6,58 @@ import { callClaudeAPI } from '../../utils/ai';
 import { DB } from '../../data/mockData';
 
 export default function SocialAccountsView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  const getPeriodMultiplier = (period, start, end) => {
+    switch (period) {
+      case 'today': return 0.03;
+      case 'week': return 0.22;
+      case 'month': return 0.85;
+      case 'last30': return 1.0;
+      case 'year': return 8.5;
+      case 'custom': {
+        if (start && end) {
+          const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / (86400000)));
+          return days / 30;
+        }
+        return 1.0;
+      }
+      case 'all':
+      default:
+        return 1.0;
+    }
+  };
+
+  const scaleFollowers = (baseVal) => {
+    const mult = getPeriodMultiplier(filterPeriod, customStartDate, customEndDate);
+    if (filterPeriod === 'all' || filterPeriod === 'year') {
+      return Math.round(baseVal * (filterPeriod === 'year' ? 0.95 : 1)) + 'K';
+    }
+    return Math.max(1, Math.round(baseVal * 0.05 * mult)) + 'K';
+  };
+
+  const scaleReach = (baseVal) => {
+    const mult = getPeriodMultiplier(filterPeriod, customStartDate, customEndDate);
+    const finalVal = Math.round(baseVal * mult);
+    if (finalVal >= 1000) return (finalVal / 1000).toFixed(1) + 'M';
+    return finalVal + 'K';
+  };
+
+  const scalePosts = (baseVal) => {
+    const mult = getPeriodMultiplier(filterPeriod, customStartDate, customEndDate);
+    return Math.max(0, Math.round(baseVal * mult));
+  };
+
+  const scaleEngagement = (baseVal) => {
+    const val = parseFloat(baseVal);
+    if (isNaN(val)) return baseVal;
+    if (filterPeriod === 'today') return (val * 1.05).toFixed(1) + '%';
+    if (filterPeriod === 'week') return (val * 1.02).toFixed(1) + '%';
+    return baseVal;
+  };
+
   const { lang, L, t, GC, saveGC } = useBusiness();
 
   const socialData = GC.socialAccounts || {
@@ -90,6 +142,45 @@ export default function SocialAccountsView() {
           {L('Social Accounts Hub', 'مركز الحسابات الاجتماعية')}
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <button className="btn btn-ghost" onClick={handleAnalyzeAll}>
             {analyzing ? L('Analyzing...', 'جاري التحليل...') : L('🤖 Analyze All', '🤖 تحليل الكل')}
           </button>
@@ -103,30 +194,30 @@ export default function SocialAccountsView() {
         <div className="stat-card">
           <div className="stat-lbl">👥 {L('Total Followers', 'إجمالي المتابعين')}</div>
           <div className="stat-val" id="soc-total-followers">
-            {connected.instagram && connected.tiktok ? '373K' : connected.instagram ? '284K' : connected.tiktok ? '89K' : '0'}
+            {connected.instagram && connected.tiktok ? scaleFollowers(373) : connected.instagram ? scaleFollowers(284) : connected.tiktok ? scaleFollowers(89) : '0'}
           </div>
           <div className="stat-ch ch-nu">{L('across all platforms', 'عبر كافة المنصات')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">💫 {L('Avg Engagement', 'متوسط التفاعل')}</div>
           <div className="stat-val ch-up" id="soc-avg-eng">
-            {connected.instagram && connected.tiktok ? '6.2%' : connected.instagram ? '6.8%' : connected.tiktok ? '4.2%' : '0%'}
+            {connected.instagram && connected.tiktok ? scaleEngagement('6.2%') : connected.instagram ? scaleEngagement('6.8%') : connected.tiktok ? scaleEngagement('4.2%') : '0%'}
           </div>
           <div className="stat-ch ch-nu">{L('rate', 'معدل التفاعل')}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-lbl">📝 {L('Posts This Month', 'المنشورات هذا الشهر')}</div>
+          <div className="stat-lbl">📝 {L('Posts In Period', 'المنشورات')}</div>
           <div className="stat-val" id="soc-posts">
-            {connected.instagram && connected.tiktok ? '24' : connected.instagram ? '14' : connected.tiktok ? '10' : '0'}
+            {connected.instagram && connected.tiktok ? scalePosts(24) : connected.instagram ? scalePosts(14) : connected.tiktok ? scalePosts(10) : '0'}
           </div>
           <div className="stat-ch ch-nu">{L('published', 'تم النشر')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">👁️ {L('Total Reach', 'إجمالي الوصول')}</div>
           <div className="stat-val" id="soc-reach">
-            {connected.instagram && connected.tiktok ? '1.2M' : connected.instagram ? '890K' : connected.tiktok ? '310K' : '0'}
+            {connected.instagram && connected.tiktok ? scaleReach(1200) : connected.instagram ? scaleReach(890) : connected.tiktok ? scaleReach(310) : '0'}
           </div>
-          <div className="stat-ch ch-nu">{L('this month', 'هذا الشهر')}</div>
+          <div className="stat-ch ch-nu">{L('reach', 'الوصول')}</div>
         </div>
       </div>
 

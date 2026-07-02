@@ -3,7 +3,60 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 
+const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
+  if (!itemDate) return rangeType === 'all';
+  const date = new Date(itemDate);
+  if (isNaN(date.getTime())) return rangeType === 'all';
+
+  const now = new Date();
+
+  switch (rangeType) {
+    case 'today': {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return date >= today;
+    }
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'year': {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return date >= startOfYear;
+    }
+    case 'last30': {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      return date >= thirtyDaysAgo;
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+      }
+      return true;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
+
 export default function AutomationHubView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   const { t, L, setAiPanelOpen, GC, saveGC, lang } = useBusiness();
   const [activeTab, setActiveTab] = useState('all');
 
@@ -719,9 +772,14 @@ export default function AutomationHubView() {
 
   const workflowCategories = authHub.workflowCategories || {};
   
+  const dateFilteredWorkflows = workflows.filter(w => {
+    const wfDate = w.createdAt || w.updatedAt || '';
+    return filterByDateRange(wfDate, filterPeriod, customStartDate, customEndDate);
+  });
+
   const filteredWorkflows = activeTab === 'all' 
-    ? workflows 
-    : workflows.filter(wf => {
+    ? dateFilteredWorkflows 
+    : dateFilteredWorkflows.filter(wf => {
         const customCat = workflowCategories[wf.id];
         if (customCat) return customCat === activeTab;
 
@@ -893,6 +951,45 @@ export default function AutomationHubView() {
           </span>
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           {authHub.connected && (
             <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 13px', display: 'flex', alignItems: 'center', gap: '5px' }} onClick={() => setIsImportingWf(true)}>
               ➕ {L('Import Template (JSON)', 'استيراد قالب (JSON)')}
@@ -914,17 +1011,17 @@ export default function AutomationHubView() {
       <div className="g4 stagger mb">
         <div className="stat-card">
           <div className="stat-lbl">⚡ {L('Total Workflows', 'إجمالي المشاريع')}</div>
-          <div className="stat-val ch-up">{workflows.length || 0}</div>
+          <div className="stat-val ch-up">{dateFilteredWorkflows.length || 0}</div>
           <div className="stat-ch ch-nu">{L('currently available', 'مشاريعك الحالية')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">✅ {L('Active Workflows', 'المشاريع النشطة')}</div>
-          <div className="stat-val">{workflows.filter(w => w.active).length || 0}</div>
+          <div className="stat-val">{dateFilteredWorkflows.filter(w => w.active).length || 0}</div>
           <div className="stat-ch ch-nu">{L('currently running', 'تعمل حالياً')}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">⏸️ {L('Inactive Workflows', 'المشاريع المتوقفة')}</div>
-          <div className="stat-val" style={{ color: 'var(--t3)' }}>{workflows.filter(w => !w.active).length || 0}</div>
+          <div className="stat-val" style={{ color: 'var(--t3)' }}>{dateFilteredWorkflows.filter(w => !w.active).length || 0}</div>
           <div className="stat-ch ch-nu">{L('needs activation', 'بحاجة لتفعيل')}</div>
         </div>
         <div className="stat-card" style={{ background: authHub.connected ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.02)', borderColor: authHub.connected ? 'var(--green)' : 'var(--edge)' }}>

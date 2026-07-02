@@ -5,7 +5,60 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
 
+const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
+  if (!itemDate) return rangeType === 'all';
+  const date = new Date(itemDate);
+  if (isNaN(date.getTime())) return rangeType === 'all';
+
+  const now = new Date();
+
+  switch (rangeType) {
+    case 'today': {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return date >= today;
+    }
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'year': {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return date >= startOfYear;
+    }
+    case 'last30': {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      return date >= thirtyDaysAgo;
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+      }
+      return true;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
+
 export default function AnalyticsView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   const { lang, L, t, GC } = useBusiness();
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -13,11 +66,26 @@ export default function AnalyticsView() {
   const [period, setPeriod] = useState('30d');
 
   // Compute stats from global context GC
-  const totalLeads = GC.crm.leads.length;
-  const completedTasks = GC.tasks.items.filter(t => t.done).length;
+  const allLeads = (GC.crm?.workspaces || []).flatMap(w => w.leads || []);
+  const dateFilteredLeads = allLeads.filter(l => {
+    const leadDate = l.created || l.id || '';
+    return filterByDateRange(leadDate, filterPeriod, customStartDate, customEndDate);
+  });
+  const totalLeads = dateFilteredLeads.length;
+
+  const allTasks = [...(GC.tasks?.items || []), ...(GC.team?.tasks || [])];
+  const dateFilteredTasks = allTasks.filter(t => {
+    const taskDate = t.created || t.id || '';
+    return filterByDateRange(taskDate, filterPeriod, customStartDate, customEndDate);
+  });
+  const completedTasks = dateFilteredTasks.filter(t => t.done || t.status === 'completed').length;
 
   // Compute total monthly revenue from finance entries
-  const totalRevenueThisMonth = GC.finance.entries
+  const dateFilteredFinance = (GC.finance?.entries || []).filter(e => {
+    const entryDate = e.date || e.id || '';
+    return filterByDateRange(entryDate, filterPeriod, customStartDate, customEndDate);
+  });
+  const totalRevenueThisMonth = dateFilteredFinance
     .filter(e => e.type === 'income')
     .reduce((sum, e) => sum + (e.amount || 0), 0);
 
@@ -46,6 +114,45 @@ export default function AnalyticsView() {
           {L('Analytics', 'التحليلات')}
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <button className="btn-ai" onClick={handleAIAnalysis}>
             ✦ {L('AI Analysis', 'تحليل الذكاء')}
           </button>

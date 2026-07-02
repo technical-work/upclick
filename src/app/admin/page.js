@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslation } from '../../hooks/useTranslation';
 import {
@@ -31,6 +31,8 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  updateDoc,
+  arrayUnion,
   serverTimestamp,
   query,
   where,
@@ -88,6 +90,280 @@ const AVAILABLE_TOOLS = [
   { key: 'integrations', labelAr: 'الربط والدمج', labelEn: 'Integrations' },
   { key: 'analytics', labelAr: 'التحليلات', labelEn: 'Analytics' }
 ];
+
+const AdminSupportTab = ({ isRTL, t }) => {
+  const { currentUser, userData } = useAuth();
+  const [tickets, setTickets] = useState([]);
+  const [activeTicket, setActiveTicket] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [replyInput, setReplyInput] = useState('');
+  const chatEndRef = useRef(null);
+
+  // Subscribe to ALL support tickets
+  useEffect(() => {
+    const q = collection(db, 'support_tickets');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Sort by updatedAt or createdAt desc
+      list.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
+
+      setTickets(list);
+
+      if (activeTicket) {
+        const updatedActive = list.find(t => t.id === activeTicket.id);
+        if (updatedActive) {
+          setActiveTicket(updatedActive);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [activeTicket?.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeTicket?.messages?.length]);
+
+  const handleSendReply = async (e) => {
+    e.preventDefault();
+    if (!replyInput.trim() || !activeTicket) return;
+
+    const msgObj = {
+      sender: 'admin',
+      senderName: userData?.name || currentUser?.email?.split('@')[0] || 'Support Admin',
+      text: replyInput.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      const ticketRef = doc(db, 'support_tickets', activeTicket.id);
+      await updateDoc(ticketRef, {
+        messages: arrayUnion(msgObj),
+        updatedAt: new Date().toISOString()
+      });
+      setReplyInput('');
+    } catch (err) {
+      console.error("Error sending reply: ", err);
+    }
+  };
+
+  const handleUpdateStatus = async (statusVal) => {
+    if (!activeTicket) return;
+    try {
+      const ticketRef = doc(db, 'support_tickets', activeTicket.id);
+      await updateDoc(ticketRef, {
+        status: statusVal,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Error updating status: ", err);
+    }
+  };
+
+  const filtered = tickets.filter(t => {
+    const matchesSearch = 
+      (t.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.userName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.userEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusLabel = (st) => {
+    if (st === 'open') return isRTL ? 'مفتوحة' : 'Open';
+    if (st === 'in_progress') return isRTL ? 'قيد المتابعة' : 'In Progress';
+    return isRTL ? 'مغلقة' : 'Closed';
+  };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minHeight: '65vh' }}>
+      
+      {/* Tickets List */}
+      <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>
+            🛠️ {isRTL ? 'إدارة تذاكر الدعم الفني' : 'Technical Support Tickets'}
+          </h3>
+        </div>
+
+        {/* Filter controls */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+          <input 
+            className="form-control"
+            placeholder={isRTL ? 'البحث عن مستخدم، إيميل أو موضوع...' : 'Search subject, user or email...'}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select 
+            className="form-control"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all">{isRTL ? 'كل الحالات' : 'All Statuses'}</option>
+            <option value="open">{isRTL ? 'مفتوحة' : 'Open'}</option>
+            <option value="in_progress">{isRTL ? 'قيد المتابعة' : 'In Progress'}</option>
+            <option value="closed">{isRTL ? 'مغلقة' : 'Closed'}</option>
+          </select>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '55vh' }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text3)' }}>
+              {isRTL ? 'لا توجد تذاكر دعم مطابقة للبحث.' : 'No support tickets found.'}
+            </div>
+          ) : (
+            filtered.map((t) => {
+              const isActive = activeTicket?.id === t.id;
+              const statusColor = t.status === 'open' ? 'var(--green)' : t.status === 'in_progress' ? 'var(--amber)' : 'var(--text3)';
+              const statusBg = t.status === 'open' ? 'rgba(16, 185, 129, 0.08)' : t.status === 'in_progress' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.02)';
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => setActiveTicket(t)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: isActive ? 'rgba(255,107,53,0.06)' : 'rgba(255,255,255,0.01)',
+                    border: isActive ? '1px solid var(--orange)' : '1px solid var(--line)',
+                    cursor: 'pointer',
+                    transition: 'all 0.14s'
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.01)'; }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text)' }}>{t.title}</div>
+                    <span style={{ fontSize: '10.5px', padding: '3px 8px', borderRadius: '4px', color: statusColor, background: statusBg, border: `1px solid ${statusColor}33` }}>
+                      {getStatusLabel(t.status)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text3)' }}>
+                    <span>{t.userName} ({t.userEmail})</span>
+                    <span>
+                      {t.createdAt?.toDate ? t.createdAt.toDate().toLocaleDateString() : new Date(t.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Chat Thread Panel */}
+      <div className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {activeTicket ? (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
+            {/* Header */}
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--text)' }}>{activeTicket.title}</h4>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>
+                  {activeTicket.userName} ({activeTicket.userEmail})
+                </div>
+              </div>
+              
+              {/* Status Update Control */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'تعديل الحالة:' : 'Change Status:'}</span>
+                <select
+                  className="form-control"
+                  style={{ width: '120px', fontSize: '12px', padding: '4px 8px' }}
+                  value={activeTicket.status}
+                  onChange={(e) => handleUpdateStatus(e.target.value)}
+                >
+                  <option value="open">{isRTL ? 'مفتوحة' : 'Open'}</option>
+                  <option value="in_progress">{isRTL ? 'قيد المتابعة' : 'In Progress'}</option>
+                  <option value="closed">{isRTL ? 'مغلقة' : 'Closed'}</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Chat Board Messages */}
+            <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(0,0,0,0.1)' }}>
+              {(activeTicket.messages || []).map((msg, index) => {
+                const isAdmin = msg.sender === 'admin';
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: isAdmin ? 'flex-end' : 'flex-start',
+                      width: '100%'
+                    }}
+                  >
+                    <div style={{ fontSize: '10px', color: 'var(--text3)', marginBottom: '2px', display: 'flex', gap: '4px' }}>
+                      <strong>{msg.senderName}</strong>
+                      <span>·</span>
+                      <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div
+                      style={{
+                        maxWidth: '75%',
+                        padding: '10px 14px',
+                        borderRadius: isAdmin ? '12px 12px 0px 12px' : '0px 12px 12px 12px',
+                        background: isAdmin ? 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)' : 'rgba(255,255,255,0.04)',
+                        border: isAdmin ? 'none' : '1px solid var(--line)',
+                        color: '#fff',
+                        fontSize: '12.5px',
+                        lineHeight: '1.4'
+                      }}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Reply Input Bar */}
+            <form
+              onSubmit={handleSendReply}
+              style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)', display: 'flex', gap: '10px' }}
+            >
+              <input
+                className="form-control"
+                style={{ flex: 1 }}
+                value={replyInput}
+                onChange={(e) => setReplyInput(e.target.value)}
+                placeholder={isRTL ? 'اكتب رد الدعم الفني هنا...' : 'Write agent reply...'}
+              />
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ padding: '8px 24px', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none' }}
+              >
+                {isRTL ? 'رد وإرسال' : 'Send'}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text3)', minHeight: '65vh' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>💬</div>
+              <div style={{ fontSize: '13px' }}>
+                {isRTL ? 'حدد تذكرة دعم من القائمة لبدء التحدث والرد الفوري' : 'Select a support ticket to start agent chat'}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
   const { currentUser, userData, loading: authLoading } = useAuth();
@@ -616,6 +892,7 @@ const AdminDashboard = () => {
              activeTab === 'sales' ? t('admin.salesTitle') :
              activeTab === 'branding' ? t('admin.brandingTitle') :
              activeTab === 'payments' ? t('admin.paymentsTitle') :
+             activeTab === 'support' ? (isRTL ? 'الدعم الفني والشكاوى' : 'Support Tickets') :
              t('admin.statsTitle')}
           </h2>
           <p style={{ color: 'var(--text2)', fontSize: '14px' }}>
@@ -623,6 +900,7 @@ const AdminDashboard = () => {
              activeTab === 'sales' ? t('admin.salesDesc') :
              activeTab === 'branding' ? t('admin.brandingDesc') :
              activeTab === 'payments' ? t('admin.paymentsDesc') :
+             activeTab === 'support' ? (isRTL ? 'متابعة وحل مشكلات العملاء وفتح المحادثات الفورية' : 'Manage customer issues and open chat threads') :
              t('admin.statsDesc')}
           </p>
           {error && <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', padding: '10px 15px', borderRadius: '8px', marginTop: '10px', fontSize: '13px', border: '1px solid rgba(239,68,68,0.2)' }}>⚠️ {error}</div>}
@@ -1104,6 +1382,8 @@ const AdminDashboard = () => {
         <PaymentSettingsPage />
       ) : activeTab === 'ai' && userData?.role === 'admin' ? (
         <AiSettingsPage />
+      ) : activeTab === 'support' && userData?.role === 'admin' ? (
+        <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
           <div style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -77,67 +77,126 @@
 /* ── THEMES ── */
 [data-theme="dark"]  { }
 [data-theme="light"] {
-  --orange: #EC5C31;
-  --purple: #433367;
-  --orange-d: rgba(236, 92, 49, 0.14);
-  --orange-dim: rgba(236, 92, 49, 0.07);
-  --purple-d: rgba(67, 51, 103, 0.14);
-  --purple-dim: rgba(67, 51, 103, 0.07);
+  --orange: #FF5A1F;
+  --purple: #6366F1;
+  --orange-d: rgba(255, 90, 31, 0.1);
+  --orange-dim: rgba(255, 90, 31, 0.05);
+  --purple-d: rgba(99, 102, 241, 0.1);
+  --purple-dim: rgba(99, 102, 241, 0.05);
 
-  --ink: #FBFBFE;
+  --ink: #F8F9FC;
   --surface: #ffffff;
-  --surface2: #F4F2F8;
-  --surface3: #EAE7F2;
-  --surface4: #DBD6E8;
-  --edge: rgba(67, 51, 103, 0.08);
-  --edge2: rgba(67, 51, 103, 0.14);
-  --edge3: rgba(67, 51, 103, 0.22);
-  --glass: rgba(67, 51, 103, 0.02);
-  --glass2: rgba(67, 51, 103, 0.04);
+  --surface2: #F1F3FA;
+  --surface3: #E6EAF4;
+  --surface4: #D8DEEC;
+  --edge: rgba(99, 102, 241, 0.08);
+  --edge2: rgba(99, 102, 241, 0.15);
+  --edge3: rgba(99, 102, 241, 0.22);
+  --glass: rgba(99, 102, 241, 0.02);
+  --glass2: rgba(99, 102, 241, 0.04);
   
-  /* Text colors matching the image */
-  --t1: #1A0F30;       /* Dark purple-black for main titles */
-  --t2: #5C527A;       /* Gray-purple for body text */
-  --t3: #8A81A8;
-  --t4: #B8B2CD;
+  /* Modern clean slate-indigo typography */
+  --t1: #0F172A;       /* Deep slate-black */
+  --t2: #475569;       /* Slate grey */
+  --t3: #64748B;
+  --t4: #94A3B8;
 
-  --a: #EC5C31;
-  --a-rgb: 236, 92, 49;
-  --ag: rgba(236, 92, 49, 0.12);
-  --ag2: rgba(236, 92, 49, 0.06);
-  --ah: rgba(236, 92, 49, 0.2);
+  --a: #FF5A1F;
+  --a-rgb: 255, 90, 31;
+  --ag: rgba(255, 90, 31, 0.1);
+  --ag2: rgba(255, 90, 31, 0.05);
+  --ah: rgba(255, 90, 31, 0.18);
 
-  /* Legacy aliases dynamic override */
+  /* Legacy aliases override */
   --bg: var(--ink); --bg2: var(--surface); --bg3: var(--surface2); --bg4: var(--surface3);
   --tx: var(--t1); --tx2: var(--t2); --tx3: var(--t3);
 }
 
-/* Light Theme Button Customizations to match the Image */
+/* Light Theme Premium UI Customizations */
 [data-theme="light"] .btn-prime {
-  background: #EC5C31 !important;
+  background: #FF5A1F !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(236, 92, 49, 0.25) !important;
+  box-shadow: 0 4px 14px rgba(255, 90, 31, 0.22) !important;
   border-radius: 24px !important;
   font-family: var(--fa) !important;
 }
 [data-theme="light"] .btn-prime:hover {
-  opacity: 0.92;
+  opacity: 0.95;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(236, 92, 49, 0.35) !important;
+  box-shadow: 0 6px 18px rgba(255, 90, 31, 0.3) !important;
 }
 
 [data-theme="light"] .btn-ghost,
 [data-theme="light"] .btn-outline {
   background: #ffffff !important;
-  color: #433367 !important;
-  border: 1.5px solid #433367 !important;
+  color: #6366F1 !important;
+  border: 1.5px solid #6366F1 !important;
   border-radius: 24px !important;
   font-family: var(--fa) !important;
 }
 [data-theme="light"] .btn-ghost:hover,
 [data-theme="light"] .btn-outline:hover {
-  background: #F8F6FC !important;
-  border-color: #433367 !important;
+  background: #F1F5F9 !important;
+  border-color: #6366F1 !important;
+}
+
+/* Make cards pop and separate beautifully in Light Mode */
+[data-theme="light"] .card,
+[data-theme="light"] .stat-card {
+  background: #ffffff !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(99, 102, 241, 0.02) !important;
+}
+[data-theme="light"] .card:hover,
+[data-theme="light"] .stat-card:hover {
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Sidebar and Top bar clean high-contrast borders */
+[data-theme="light"] #sb {
+  background: #ffffff !important;
+  border-right: 1px solid #E2E8F0 !important;
+}
+[data-theme="light"] #tb {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+[data-theme="light"] #ct {
+  background: #F8FAFC !important;
+}
+
+/* Beautiful high-contrast input fields */
+[data-theme="light"] .inp, 
+[data-theme="light"] .nb-area,
+[data-theme="light"] select.inp {
+  background: #ffffff !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #0F172A !important;
+}
+[data-theme="light"] .inp:focus,
+[data-theme="light"] .nb-area:focus {
+  border-color: #6366F1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Active tab state */
+[data-theme="light"] .sb-btn.on {
+  background: #F1F5F9 !important;
+  color: #FF5A1F !important;
+  font-weight: 700 !important;
+}
+[data-theme="light"] .sb-btn.on::before {
+  background: #FF5A1F !important;
+  box-shadow: 0 0 8px #FF5A1F !important;
+}
+
+/* Clean up active tab buttons */
+[data-theme="light"] .tab-btn.on {
+  background: #F1F5F9 !important;
+  color: #FF5A1F !important;
+  font-weight: 700 !important;
 }
 [data-theme="neon"] {
   --ink: #010a05; --surface: #020f07; --surface2: #041520; --surface3: #06202e; --surface4: #0a2f40;
@@ -290,6 +349,9 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
 [data-theme="light"] #tb { background: rgba(255,255,255,.9) !important }
 [data-theme="light"] #ai-panel { background: rgba(250,248,255,.96) !important }
 [data-theme="light"] #ct { background: var(--ink) }
+[data-theme="light"] .sb-logo img {
+  filter: invert(1) hue-rotate(180deg);
+}
 
 /* ── SIDEBAR COMPONENTS ── */
 .sb-logo { padding:15px 14px; border-bottom:1px solid var(--edge); display:flex; align-items:center; gap:10px; flex-shrink:0 }
@@ -307,7 +369,9 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
 .sb-sections::-webkit-scrollbar { width:2px }
 .sb-sections::-webkit-scrollbar-thumb { background:var(--edge2); border-radius:1px }
 .sb-sec { padding:2px 7px; margin-bottom:1px }
-.sb-sec-title { font-size:8.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:1.1px; padding:8px 8px 3px; white-space:nowrap; overflow:hidden }
+.sb-sec-header { transition: background-color 0.12s; }
+.sb-sec-header:hover { background-color: var(--glass2); }
+.sb-sec-title { font-size:8.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:1.1px; white-space:nowrap; overflow:hidden }
 .sb-btn {
   display:flex; align-items:center; gap:8px;
   width:100%; padding:7px 8px; border-radius:8px;
@@ -413,9 +477,10 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
 .g3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:18px }
 .g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px }
 .g21 { display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:18px }
+.g12 { display:grid; grid-template-columns:1.2fr 2fr; gap:14px; margin-bottom:18px }
 .g31 { display:grid; grid-template-columns:3fr 1fr; gap:14px; margin-bottom:18px }
 .mb { margin-bottom:16px }
-@media(max-width:1100px) { .g4{grid-template-columns:repeat(2,1fr)} .g21,.g31{grid-template-columns:1fr} }
+@media(max-width:1100px) { .g4{grid-template-columns:repeat(2,1fr)} .g21,.g12,.g31{grid-template-columns:1fr} }
 
 /* ── PAGE HEADER ── */
 .pg-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:10px }
@@ -773,7 +838,7 @@ textarea.inp { resize:vertical; line-height:1.6 }
 [dir=rtl] #support-panel{right:auto !important;left:22px !important;}
 [dir=rtl],[dir=rtl] *{font-family:'IBM Plex Sans Arabic',sans-serif !important;letter-spacing:0 !important;}
 [dir=rtl] .stat-val{font-weight:800 !important;}
-body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:background-color .25s ease,border-color .2s ease,color .2s ease;}
+body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
 .pg.on{animation:pgIn .22s cubic-bezier(.4,0,.2,1)}
 
 

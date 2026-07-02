@@ -56,6 +56,12 @@ const LayoutContent = ({ children }) => {
         { path: '/admin?tab=payments', label: t('nav.paymentSettings'), step: 3, roles: ['admin'] },
         { path: '/admin?tab=ai', label: i18n.language === 'ar' ? 'إعدادات الذكاء الاصطناعي' : 'AI Settings', step: 4, roles: ['admin'] }
       ]
+    },
+    {
+      label: i18n.language === 'ar' ? 'الدعم الفني والشكاوى' : 'Support Tickets',
+      items: [
+        { path: '/admin?tab=support', label: i18n.language === 'ar' ? 'تذاكر الدعم' : 'Support Tickets', step: 1, roles: ['admin'] }
+      ]
     }
   ];
 

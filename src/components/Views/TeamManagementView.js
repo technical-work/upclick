@@ -1,17 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'firebase/auth';
-import { doc, setDoc, getFirestore } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db, firebaseConfig } from '../../lib/firebase';
+import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function TeamManagementView() {
-  const { t, L, setAiPanelOpen, GC, saveGC, formatMoney, confirmAction } = useBusiness();
-  const { user: currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('members');
+  const { t, L, lang, GC, saveGC, formatMoney, confirmAction, isTeamMember } = useBusiness();
+  const { user: currentUser, userData } = useAuth();
+  
+  // Tab states: chat, members, tasks, permissions, payroll, logs
+  const [activeTab, setActiveTab] = useState('chat');
   
   // Modals state
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
@@ -35,6 +39,18 @@ export default function TeamManagementView() {
   const [mPassword, setMPassword] = useState('');
   const [mPermissions, setMPermissions] = useState(['dashboard']);
 
+  // Edit Member Form State
+  const [isEditMemberOpen, setIsEditMemberOpen] = useState(false);
+  const [editingMemberIdx, setEditingMemberIdx] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState('Sales');
+  const [editDept, setEditDept] = useState('');
+  const [editSalary, setEditSalary] = useState('1500');
+  const [editContract, setEditContract] = useState('Full-time');
+  const [editJoinDate, setEditJoinDate] = useState('');
+  const [editPermissions, setEditPermissions] = useState([]);
+
   // Task Form State
   const [tTitle, setTTitle] = useState('');
   const [tAssignee, setTAssignee] = useState('');
@@ -42,10 +58,31 @@ export default function TeamManagementView() {
   const [tDueDate, setTDueDate] = useState('');
   const [tDesc, setTDesc] = useState('');
 
+  // 💬 CHAT STATES
+  const [messageText, setMessageText] = useState('');
+  const [activeChannelId, setActiveChannelId] = useState('general');
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [newChanName, setNewChanName] = useState('');
+  const [newChanType, setNewChanType] = useState('public');
+  const [newChanDesc, setNewChanDesc] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
+  const chatEndRef = useRef(null);
+
   // Bind properties to GC
   const members = GC.team?.members || [];
   const tasks = GC.team?.tasks || [];
   const logs = GC.team?.logs || [];
+  const channels = GC.teamChat?.channels || [
+    { id: 'general', name: 'general', type: 'public', desc: 'General workspace discussion' },
+    { id: 'marketing', name: 'marketing', type: 'public', desc: 'Marketing OS updates' },
+    { id: 'announcements', name: 'announcements', type: 'public', desc: 'Company-wide announcements' }
+  ];
+  const channelMsgs = GC.teamChat?.messages?.[activeChannelId] || [];
+  const activeChannel = channels.find(c => c.id === activeChannelId) || channels[0];
+
+  // Task filter states
+  const [taskFilter, setTaskFilter] = useState('all'); // all, pending, completed
 
   // Helper values
   const monthlyPayroll = members.reduce((sum, m) => sum + (parseFloat(m.salary) || 0), 0);
@@ -55,6 +92,13 @@ export default function TeamManagementView() {
   // Calculate revenue from GC.finance.entries
   const totalRevenue = GC.finance?.entries?.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0) || 0;
   const payrollRatio = totalRevenue > 0 ? ((monthlyPayroll / totalRevenue) * 100).toFixed(1) + '%' : '0%';
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    if (activeTab === 'chat' && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [channelMsgs.length, activeChannelId, activeTab]);
 
   // Permission IDs to allowedTools mapping
   const permToToolMap = {
@@ -69,8 +113,8 @@ export default function TeamManagementView() {
     analytics: 'analytics',
     integrations: 'integrations',
     team: 'team',
-    teamchat: 'teamchat',
-    calendar: 'calendar'
+    calendar: 'calendar',
+    support: 'support'
   };
 
   const handleToggleFormPerm = (permId) => {
@@ -91,137 +135,350 @@ export default function TeamManagementView() {
     return pwd;
   };
 
-  const handleSaveMember = async (e) => {
-    e.preventDefault();
-    if (!mName.trim()) {
-      alert(L('Please enter Full Name', 'الرجاء إدخال الاسم الكامل'));
-      return;
-    }
+  // CHAT SEND MESSAGE
+  const getAuthorName = () => {
+    if (isTeamMember && userData?.name) return userData.name;
+    return userData?.name || GC.profile?.name || 'User';
+  };
 
-    const memberEmail = mEmail || `${mName.toLowerCase().replace(/\s/g, '')}@team.upklick.com`;
-    const memberPassword = mPassword || generatePassword();
+  const handleSendMessage = async (textToSend = messageText) => {
+    const cleanText = textToSend || messageText;
+    if (!cleanText.trim()) return;
 
-    // If email is provided, try to create a Firebase Auth account
-    let memberUid = null;
-    if (mEmail.trim()) {
-      if (!mPassword && !memberPassword) {
-        alert(L('Please enter a password for the team member login', 'الرجاء إدخال كلمة مرور لتسجيل دخول عضو الفريق'));
-        return;
-      }
-      
-      setIsCreating(true);
-      try {
-        // Use secondary app to avoid logging out the current user
-        const existingApp = getApps().find(a => a.name === 'TeamMemberCreator');
-        if (existingApp) await deleteApp(existingApp);
-        
-        const secondaryApp = initializeApp(firebaseConfig, 'TeamMemberCreator');
-        const secondaryAuth = getAuth(secondaryApp);
-        
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, mEmail, memberPassword);
-        memberUid = userCredential.user.uid;
-
-        // Build allowedTools from permissions
-        const allowedTools = mPermissions.map(p => permToToolMap[p] || p).filter(Boolean);
-        // Always include home, profile, teamchat
-        if (!allowedTools.includes('home')) allowedTools.push('home');
-        if (!allowedTools.includes('teamchat')) allowedTools.push('teamchat');
-
-        // Use secondary app's Firestore (authenticated as the new user) to write their document
-        // This avoids permission errors since Firestore rules require auth.uid == document ID
-        const secondaryDb = getFirestore(secondaryApp);
-        await setDoc(doc(secondaryDb, 'users', memberUid), {
-          uid: memberUid,
-          name: mName,
-          email: mEmail,
-          phone: mPhone,
-          role: 'team_member',
-          teamRole: mRole,
-          department: mDept || 'Staff',
-          adminId: currentUser.uid,
-          ownerUid: currentUser.uid,
-          allowedTools: allowedTools,
-          createdAt: new Date()
-        });
-
-        await fbSignOut(secondaryAuth);
-        await deleteApp(secondaryApp);
-
-        // Show credentials modal
-        setCredsInfo({ email: mEmail, password: memberPassword, name: mName });
-        
-      } catch (err) {
-        setIsCreating(false);
-        console.error('Error creating team member account:', err);
-        if (err.code === 'auth/email-already-in-use') {
-          alert(L('This email is already registered. Please use a different email.', 'هذا البريد مسجل بالفعل. يرجى استخدام بريد آخر.'));
-        } else {
-          alert(L(`Error creating account: ${err.message}`, `خطأ في إنشاء الحساب: ${err.message}`));
-        }
-        return;
-      }
-      setIsCreating(false);
-    }
-
-    const newMember = {
-      name: mName,
-      email: memberEmail,
-      phone: mPhone,
-      role: mRole,
-      department: mDept || 'Staff',
-      salary: parseFloat(mSalary) || 0,
-      contractType: mContract,
-      joinDate: mJoinDate || new Date().toLocaleDateString('en-GB'),
-      permissions: mPermissions,
-      status: 'active',
-      uid: memberUid || null
-    };
-    
-    const updatedMembers = [...members, newMember];
-    const newLog = {
+    const authorName = getAuthorName();
+    const newMessage = {
       id: Date.now(),
-      action: L(`Added team member ${mName} (${mRole})${memberUid ? ' — Account Created ✓' : ''}`, `تم إضافة عضو الفريق ${mName} (${mRole})${memberUid ? ' — تم إنشاء الحساب ✓' : ''}`),
-      date: new Date().toLocaleString()
+      author: authorName,
+      content: cleanText.trim(),
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      reactions: {}
     };
-    
-    saveGC({
+
+    const currentChannelMsgs = GC.teamChat?.messages?.[activeChannelId] || [];
+    const updatedMessagesMap = {
+      ...(GC.teamChat?.messages || {}),
+      [activeChannelId]: [...currentChannelMsgs, newMessage]
+    };
+
+    const updatedGC = {
       ...GC,
-      team: {
-        ...GC.team,
-        members: updatedMembers,
-        logs: [newLog, ...logs]
+      teamChat: {
+        ...GC.teamChat,
+        messages: updatedMessagesMap
       }
-    });
+    };
 
-    // Reset Form
-    setMName('');
-    setMEmail('');
-    setMPhone('');
-    setMRole('Sales');
-    setMDept('');
-    setMSalary('1500');
-    setMContract('Full-time');
-    setMJoinDate('');
-    setMPassword('');
-    setMPermissions(['dashboard']);
-    setIsAddMemberOpen(false);
+    saveGC(updatedGC);
+    setMessageText('');
 
-    if (memberUid) {
-      setIsCredsModalOpen(true);
-    } else {
-      alert(L('Member added successfully! 🚀', 'تم إضافة عضو الفريق بنجاح! 🚀'));
+    // Trigger AI response if message starts with @ai or mentions bot
+    if (cleanText.trim().toLowerCase().startsWith('@ai')) {
+      await handleTriggerAiBot(cleanText.trim().slice(3).trim(), [...currentChannelMsgs, newMessage]);
     }
   };
 
-  const handleDeleteMember = (memberIndex) => {
-    confirmAction(L('Are you sure you want to remove this member?', 'هل أنت متأكد من إزالة هذا العضو؟'), () => {
-      const removed = members[memberIndex];
-      const updatedMembers = members.filter((_, i) => i !== memberIndex);
-      const newLog = {
-        id: Date.now(),
-        action: L(`Removed team member ${removed.name}`, `تم إزالة عضو الفريق ${removed.name}`),
-        date: new Date().toLocaleString()
+  // Chat AI Meeting Bot Integration
+  const handleTriggerAiBot = async (queryText, historyMsgs) => {
+    const activeMsgs = historyMsgs.slice(-10); // last 10 messages for context
+    const chatContext = activeMsgs.map(m => `${m.author}: ${m.content}`).join('\n');
+    
+    const prompt = `You are a helpful AI Team Bot named "@ai" inside the Team Chat.
+Active Channel: #${activeChannel.name}
+Recent Chat messages:
+${chatContext}
+
+User Query: "${queryText}"
+
+Provide a useful, direct, and actionable answer to the team. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Keep it concise (2-3 sentences).`;
+
+    const system = "You are a professional business advisor and team assistant. Keep replies concise and formatted in markdown.";
+    
+    // Temporarily insert typing indicator
+    const typingMessage = {
+      id: 'typing',
+      author: '🤖 AI Bot',
+      content: lang === 'ar' ? 'جاري التفكير...' : 'Thinking...',
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      reactions: {}
+    };
+
+    const updatedWithTyping = {
+      ...GC,
+      teamChat: {
+        ...GC.teamChat,
+        messages: {
+          ...(GC.teamChat?.messages || {}),
+          [activeChannelId]: [...historyMsgs, typingMessage]
+        }
+      }
+    };
+    saveGC(updatedWithTyping);
+
+    try {
+      const aiReply = await callClaudeAPI(prompt, system, lang, GC);
+      
+      const responseMessage = {
+        id: Date.now() + 1,
+        author: '🤖 AI Bot',
+        content: aiReply,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        reactions: {}
       };
+
+      const finalMessages = {
+        ...(GC.teamChat?.messages || {}),
+        [activeChannelId]: [...historyMsgs, responseMessage]
+      };
+
+      saveGC({
+        ...GC,
+        teamChat: {
+          ...GC.teamChat,
+          messages: finalMessages
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      // Remove typing indicator if failed
+      saveGC({
+        ...GC,
+        teamChat: {
+          ...GC.teamChat,
+          messages: {
+            ...(GC.teamChat?.messages || {}),
+            [activeChannelId]: historyMsgs
+          }
+        }
+      });
+    }
+  };
+
+  // Summarize channel chat with AI
+  const handleSummarizeChannel = async () => {
+    if (channelMsgs.length === 0) return;
+    setAiLoading(true);
+    setAiSummary('');
+
+    const contextText = channelMsgs.slice(-30).map(m => `${m.author}: ${m.content}`).join('\n');
+    const prompt = `Review this recent team chat conversation:
+${contextText}
+
+Generate a concise summary of discussions, key decisions made, and a bulleted action checklist of items for team members. Write it in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+
+    const system = "You are a professional administrative assistant. Format your output with clear markdown headings and checkbox items.";
+
+    try {
+      const summaryRes = await callClaudeAPI(prompt, system, lang, GC);
+      setAiSummary(summaryRes);
+    } catch (err) {
+      setAiSummary(L('Failed to generate summary.', 'فشل توليد التلخيص الذكي.'));
+    }
+    setAiLoading(false);
+  };
+
+  const handleCreateChannel = (e) => {
+    e.preventDefault();
+    if (!newChanName.trim()) return;
+
+    const cleanChanName = newChanName.toLowerCase().replace(/\s/g, '-').replace(/[^a-z0-9-_]/g, '');
+    const newChan = {
+      id: cleanChanName,
+      name: cleanChanName,
+      type: newChanType,
+      desc: newChanDesc
+    };
+
+    saveGC({
+      ...GC,
+      teamChat: {
+        ...GC.teamChat,
+        channels: [...channels, newChan]
+      }
+    });
+
+    setNewChanName('');
+    setNewChanDesc('');
+    setIsGroupModalOpen(false);
+    setActiveChannelId(cleanChanName);
+  };
+
+  const handleDeleteMessage = (msgId) => {
+    const updatedMsgs = channelMsgs.filter(m => m.id !== msgId);
+    saveGC({
+      ...GC,
+      teamChat: {
+        ...GC.teamChat,
+        messages: {
+          ...(GC.teamChat?.messages || {}),
+          [activeChannelId]: updatedMsgs
+        }
+      }
+    });
+  };
+
+  // MEMBER SAVE HANDLER
+  const handleSaveMember = async (e) => {
+    e.preventDefault();
+    if (!mName.trim() || !mEmail.trim()) {
+      alert(L('Please enter Name and Email', 'الرجاء إدخال الاسم والبريد الإلكتروني'));
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      // 1. Initialize secondary Firebase app to register member authentication credentials
+      let secondaryApp;
+      const apps = getApps();
+      const tempAppName = 'temp-team-register';
+      
+      const existing = apps.find(app => app.name === tempAppName);
+      if (existing) {
+        secondaryApp = existing;
+      } else {
+        secondaryApp = initializeApp(firebaseConfig, tempAppName);
+      }
+
+      const secondaryAuth = getAuth(secondaryApp);
+      const pass = mPassword.trim() || generatePassword();
+
+      // Create authentication profile
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, mEmail.trim(), pass);
+      const uid = userCredential.user.uid;
+
+      // 2. Set client document in users table
+      const allowedTools = mPermissions.map(p => permToToolMap[p]).filter(Boolean);
+      await setDoc(doc(db, 'users', uid), {
+        uid: uid,
+        name: mName.trim(),
+        email: mEmail.trim(),
+        role: 'team_member',
+        adminId: currentUser?.uid || '',
+        allowedTools: allowedTools,
+        aiCredits: 5.0,
+        createdAt: new Date().toISOString()
+      });
+
+      // 3. Log metadata in project scope
+      const newMember = {
+        uid: uid,
+        name: mName.trim(),
+        email: mEmail.trim(),
+        phone: mPhone,
+        role: mRole,
+        dept: mDept || mRole,
+        salary: mSalary,
+        contract: mContract,
+        joinDate: mJoinDate || new Date().toLocaleDateString(),
+        permissions: mPermissions,
+        status: 'Offline' // Default simulated status
+      };
+
+      const newLog = {
+        action: L(`Created team member: ${mName}`, `تم إضافة عضو فريق جديد: ${mName}`),
+        date: new Date().toLocaleString(),
+        user: getAuthorName()
+      };
+
+      saveGC({
+        ...GC,
+        team: {
+          ...GC.team,
+          members: [...members, newMember],
+          logs: [newLog, ...logs]
+        }
+      });
+
+      // Cleanup
+      await secondaryAuth.signOut();
+      await deleteApp(secondaryApp);
+
+      setCredsInfo({ email: mEmail.trim(), password: pass, name: mName.trim() });
+      setIsAddMemberOpen(false);
+      setIsCredsModalOpen(true);
+      
+      // Clear forms
+      setMName('');
+      setMEmail('');
+      setMPhone('');
+      setMRole('Sales');
+      setMDept('');
+      setMSalary('1500');
+      setMContract('Full-time');
+      setMJoinDate('');
+      setMPassword('');
+      setMPermissions(['dashboard']);
+    } catch (err) {
+      console.error(err);
+      alert(L(`Registration error: ${err.message}`, `حدث خطأ أثناء التسجيل: ${err.message}`));
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // EDIT MEMBER HANDLERS
+  const handleOpenEditMember = (idx) => {
+    const m = members[idx];
+    if (!m) return;
+    setEditingMemberIdx(idx);
+    setEditName(m.name || '');
+    setEditPhone(m.phone || '');
+    setEditRole(m.role || 'Sales');
+    setEditDept(m.dept || m.role || '');
+    setEditSalary(m.salary || '1500');
+    setEditContract(m.contract || 'Full-time');
+    setEditJoinDate(m.joinDate || '');
+    setEditPermissions(m.permissions || ['dashboard']);
+    setIsEditMemberOpen(true);
+  };
+
+  const handleToggleEditFormPerm = (permId) => {
+    if (editPermissions.includes(permId)) {
+      setEditPermissions(editPermissions.filter(p => p !== permId));
+    } else {
+      setEditPermissions([...editPermissions, permId]);
+    }
+  };
+
+  const handleSaveEditMember = async (e) => {
+    e.preventDefault();
+    if (editingMemberIdx === null) return;
+    
+    const targetMember = members[editingMemberIdx];
+    if (!targetMember) return;
+    
+    setIsCreating(true);
+    
+    try {
+      // 1. Sync updated fields to Firebase users table
+      const allowedTools = editPermissions.map(p => permToToolMap[p]).filter(Boolean);
+      await setDoc(doc(db, 'users', targetMember.uid), {
+        name: editName.trim(),
+        allowedTools: allowedTools
+      }, { merge: true });
+      
+      // 2. Build the updated member object
+      const updatedMember = {
+        ...targetMember,
+        name: editName.trim(),
+        phone: editPhone,
+        role: editRole,
+        dept: editDept || editRole,
+        salary: editSalary,
+        contract: editContract,
+        joinDate: editJoinDate || targetMember.joinDate,
+        permissions: editPermissions
+      };
+      
+      const updatedMembers = [...members];
+      updatedMembers[editingMemberIdx] = updatedMember;
+      
+      const newLog = {
+        action: L(`Updated member details for: ${editName}`, `تم تحديث بيانات العضو: ${editName}`),
+        date: new Date().toLocaleString(),
+        user: getAuthorName()
+      };
+      
       saveGC({
         ...GC,
         team: {
@@ -230,65 +487,44 @@ export default function TeamManagementView() {
           logs: [newLog, ...logs]
         }
       });
-      // Adjust selected index if out of bounds
-      if (selectedPermMemberIndex >= updatedMembers.length) {
-        setSelectedPermMemberIndex(Math.max(0, updatedMembers.length - 1));
-      }
-    });
-  };
-
-  const handleToggleMemberPermission = async (memberIndex, permId) => {
-    const updatedMembers = [...members];
-    const m = { ...updatedMembers[memberIndex] };
-    const perms = m.permissions || [];
-    if (perms.includes(permId)) {
-      m.permissions = perms.filter(p => p !== permId);
-    } else {
-      m.permissions = [...perms, permId];
+      
+      setIsEditMemberOpen(false);
+      setEditingMemberIdx(null);
+      alert(L('Member details updated successfully.', 'تم تحديث بيانات عضو الفريق بنجاح.'));
+    } catch (err) {
+      console.error(err);
+      alert(L('Error updating member: ' + err.message, 'حدث خطأ أثناء تعديل البيانات: ' + err.message));
+    } finally {
+      setIsCreating(false);
     }
-    updatedMembers[memberIndex] = m;
-    
-    saveGC({
-      ...GC,
-      team: {
-        ...GC.team,
-        members: updatedMembers
-      }
-    });
-
-    // Note: Permission changes are saved in GC.team.members (shared workspace).
-    // The member's Firestore allowedTools was set at account creation.
-    // To update their Firebase allowedTools, use the Admin panel or recreate the member.
   };
 
+  // TASK SAVE HANDLER
   const handleSaveTask = (e) => {
     e.preventDefault();
-    if (!tTitle.trim()) {
-      alert(L('Please enter Task Title', 'الرجاء إدخال عنوان المهمة'));
-      return;
-    }
+    if (!tTitle.trim()) return;
+
     const newTask = {
       id: Date.now(),
       title: tTitle,
-      assignee: tAssignee,
+      assignee: tAssignee || 'Unassigned',
       priority: tPriority,
-      dueDate: tDueDate || new Date().toLocaleDateString('en-GB'),
+      dueDate: tDueDate || '—',
       desc: tDesc,
       done: false
     };
 
-    const updatedTasks = [newTask, ...tasks];
     const newLog = {
-      id: Date.now(),
-      action: L(`Created team task: "${tTitle}" assigned to ${tAssignee || 'Unassigned'}`, `تم إنشاء مهمة فريق: "${tTitle}" وتعيينها لـ ${tAssignee || 'غير معين'}`),
-      date: new Date().toLocaleString()
+      action: L(`Assigned task: "${tTitle}" to ${newTask.assignee}`, `تم إسناد مهمة: "${tTitle}" إلى ${newTask.assignee}`),
+      date: new Date().toLocaleString(),
+      user: getAuthorName()
     };
 
     saveGC({
       ...GC,
       team: {
         ...GC.team,
-        tasks: updatedTasks,
+        tasks: [newTask, ...tasks],
         logs: [newLog, ...logs]
       }
     });
@@ -299,17 +535,17 @@ export default function TeamManagementView() {
     setTDueDate('');
     setTDesc('');
     setIsAddTaskOpen(false);
-    alert(L('Task created successfully! 🚀', 'تم إنشاء المهمة بنجاح! 🚀'));
   };
 
-  const handleToggleTaskDone = (taskId) => {
-    const updatedTasks = tasks.map(tk => {
-      if (tk.id === taskId) {
-        const nextDone = !tk.done;
-        return { ...tk, done: nextDone };
+  const handleToggleTask = (taskId) => {
+    const updatedTasks = tasks.map(t => {
+      if (t.id === taskId) {
+        const doneState = !t.done;
+        return { ...t, done: doneState };
       }
-      return tk;
+      return t;
     });
+
     saveGC({
       ...GC,
       team: {
@@ -320,574 +556,909 @@ export default function TeamManagementView() {
   };
 
   const handleDeleteTask = (taskId) => {
-    confirmAction(L('Are you sure you want to delete this task?', 'هل أنت متأكد من حذف هذه المهمة؟'), () => {
-      const updatedTasks = tasks.filter(tk => tk.id !== taskId);
-      saveGC({
-        ...GC,
-        team: {
-          ...GC.team,
-          tasks: updatedTasks
-        }
-      });
-    });
-  };
-
-  const handleClearLogs = () => {
-    confirmAction(L('Are you sure you want to clear the activity log?', 'هل أنت متأكد من مسح سجل النشاط؟'), () => {
-      saveGC({
-        ...GC,
-        team: {
-          ...GC.team,
-          logs: []
-        }
-      });
-    });
-  };
-
-  const handlePayAll = () => {
-    if (monthlyPayroll <= 0) {
-      alert(L('No salaries to pay.', 'لا توجد رواتب لدفعها.'));
-      return;
-    }
-    confirmAction(L(`Pay total monthly payroll of $${monthlyPayroll.toLocaleString()}? This will create expense entries in Finance dashboard.`, `هل تريد دفع إجمالي رواتب بقيمة $${monthlyPayroll.toLocaleString()}؟ سيؤدي ذلك لإنشاء قيود مصاريف في المالية.`), () => {
-      // Create finance expense entries
-      const newEntries = members.filter(m => (parseFloat(m.salary) || 0) > 0).map(m => ({
-        id: Date.now() + Math.random(),
-        type: 'expense',
-        amount: parseFloat(m.salary) || 0,
-        desc: L(`Payroll: ${m.name} (${m.role})`, `رواتب: ${m.name} (${m.role})`),
-        category: 'Payroll',
-        date: new Date().toLocaleDateString('en-US')
-      }));
-
-      const updatedEntries = [...newEntries, ...(GC.finance?.entries || [])];
+    const taskToDelete = tasks.find(t => t.id === taskId);
+    confirmAction(L('Delete this task?', 'هل تريد حذف هذه المهمة؟'), () => {
+      const updated = tasks.filter(t => t.id !== taskId);
       const newLog = {
-        id: Date.now(),
-        action: L(`Paid monthly payroll to team: $${monthlyPayroll.toLocaleString()}`, `تم دفع الرواتب الشهرية للفريق بقيمة: $${monthlyPayroll.toLocaleString()}`),
-        date: new Date().toLocaleString()
+        action: L(`Deleted task: "${taskToDelete?.title}"`, `تم حذف مهمة: "${taskToDelete?.title}"`),
+        date: new Date().toLocaleString(),
+        user: getAuthorName()
       };
-
       saveGC({
         ...GC,
-        finance: {
-          ...GC.finance,
-          entries: updatedEntries
-        },
         team: {
           ...GC.team,
+          tasks: updated,
           logs: [newLog, ...logs]
         }
       });
-
-      alert(L('Payroll paid successfully! 💸', 'تم دفع الرواتب بنجاح! 💸'));
     });
   };
 
-  const copyCredsToClipboard = () => {
-    const text = `${L('Team Member Login Credentials', 'بيانات تسجيل دخول عضو الفريق')}\n${L('Name', 'الاسم')}: ${credsInfo.name}\n${L('Email', 'البريد')}: ${credsInfo.email}\n${L('Password', 'كلمة المرور')}: ${credsInfo.password}`;
-    navigator.clipboard.writeText(text).then(() => {
-      alert(L('Credentials copied to clipboard! 📋', 'تم نسخ البيانات! 📋'));
+  const handleDeleteMember = (idx) => {
+    const memberToDelete = members[idx];
+    confirmAction(L(`Are you sure you want to remove ${memberToDelete.name} from the team?`, `هل أنت متأكد من إزالة ${memberToDelete.name} من الفريق؟`), () => {
+      const updated = members.filter((_, i) => i !== idx);
+      const newLog = {
+        action: L(`Removed team member: ${memberToDelete.name}`, `تمت إزالة عضو فريق: ${memberToDelete.name}`),
+        date: new Date().toLocaleString(),
+        user: getAuthorName()
+      };
+      saveGC({
+        ...GC,
+        team: {
+          ...GC.team,
+          members: updated,
+          logs: [newLog, ...logs]
+        }
+      });
+      if (selectedPermMemberIndex >= updated.length) {
+        setSelectedPermMemberIndex(Math.max(0, updated.length - 1));
+      }
     });
   };
 
-  // Tabs configuration
-  const tabs = [
-    { id: 'members', label: L('👥 Members', '👥 الأعضاء') },
-    { id: 'payroll', label: L('💰 Payroll', '💰 الرواتب') },
-    { id: 'perms', label: L('🔐 Permissions', '🔐 الصلاحيات') },
-    { id: 'tasks', label: L('✅ Tasks', '✅ المهام') },
-    { id: 'log', label: L('📋 Activity Log', '📋 سجل النشاط') },
-  ];
+  const handleUpdatePermissions = async (memberIdx, newPerms) => {
+    const member = members[memberIdx];
+    const updatedMembers = [...members];
+    updatedMembers[memberIdx] = {
+      ...member,
+      permissions: newPerms
+    };
+
+    // Push permission sync log
+    const newLog = {
+      action: L(`Updated permissions for ${member.name}`, `تحديث صلاحيات الموظف: ${member.name}`),
+      date: new Date().toLocaleString(),
+      user: getAuthorName()
+    };
+
+    saveGC({
+      ...GC,
+      team: {
+        ...GC.team,
+        members: updatedMembers,
+        logs: [newLog, ...logs]
+      }
+    });
+
+    // Write rules to database
+    try {
+      const allowedTools = newPerms.map(p => permToToolMap[p]).filter(Boolean);
+      await setDoc(doc(db, 'users', member.uid), {
+        allowedTools: allowedTools
+      }, { merge: true });
+      alert(L('Permissions updated successfully in database.', 'تم تحديث صلاحيات الموظف في قاعدة البيانات بنجاح.'));
+    } catch (err) {
+      console.error(err);
+      alert(L('Error syncing permissions: ' + err.message, 'خطأ في مزامنة الصلاحيات: ' + err.message));
+    }
+  };
+
+  // Helper status color mapping
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Active':
+      case 'Online':
+        return 'var(--green)';
+      case 'Away':
+        return 'var(--amber)';
+      default:
+        return 'var(--t3)';
+    }
+  };
+
+  // Tasks Filter Logic
+  const filteredTasks = tasks.filter(t => {
+    if (taskFilter === 'pending') return !t.done;
+    if (taskFilter === 'completed') return t.done;
+    return true;
+  });
 
   return (
-    <div className="pg on" id="pg-team">
+    <div className="pg on" id="pg-team-hub">
       <div className="pg-header">
         <div className="pg-title">
           <span className="pg-icon">👥</span>
-          {L('Team Management', 'إدارة الفريق')}
+          {L('Team Collaboration Hub', 'مركز إدارة وتفاعل الفريق')}
         </div>
-        <div className="pg-actions">
-          <button 
-            className="btn-ai" 
-            onClick={() => setAiPanelOpen(true)}
-          >
-            ✦ {L('AI Analysis', 'تحليل الذكاء')}
-          </button>
-          <button 
-            className="btn btn-prime" 
-            onClick={() => setIsAddMemberOpen(true)}
-          >
-            + {L('Add Member', 'إضافة عضو')}
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="g4 stagger mb">
-        <div className="stat-card">
-          <div className="stat-lbl">👥 {L('Team Members', 'أعضاء الفريق')}</div>
-          <div className="stat-val">{members.length}</div>
-          <div className="stat-ch ch-nu">{members.filter(m => m.uid).length} {L('linked', 'مربوط')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-lbl">💰 {L('Monthly Payroll', 'الرواتب الشهرية')}</div>
-          <div className="stat-val">${monthlyPayroll.toLocaleString()}</div>
-          <div className="stat-ch ch-nu">{L('total salaries', 'إجمالي الرواتب')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-lbl">✅ {L('Tasks Done', 'المهام المنجزة')}</div>
-          <div className="stat-val ch-up">{tasksDoneCount}</div>
-          <div className="stat-ch ch-nu">{L('all tasks', 'كل المهام')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-lbl">📊 {L('Payroll / Revenue', 'الرواتب / الدخل')}</div>
-          <div className="stat-val">{payrollRatio}</div>
-          <div className="stat-ch ch-nu">{L('of revenue', 'من الدخل')}</div>
+        <div className="pg-actions" style={{ display: 'flex', gap: '8px' }}>
+          {activeTab === 'members' && (
+            <button className="btn btn-prime" onClick={() => setIsAddMemberOpen(true)}>
+              ➕ {L('Invite Member', 'إضافة عضو جديد')}
+            </button>
+          )}
+          {activeTab === 'tasks' && (
+            <button className="btn btn-prime" onClick={() => setIsAddMemberOpen(false) || setIsAddTaskOpen(true)}>
+              ➕ {L('Create Task', 'إنشاء مهمة فريق')}
+            </button>
+          )}
+          {activeTab === 'chat' && (
+            <>
+              <button className="btn" style={{ background: 'var(--surface3)', border: '1px solid var(--edge2)' }} onClick={handleSummarizeChannel}>
+                🧠 {L('AI Recap Channel', 'التلخيص الذكي للقناة')}
+              </button>
+              <button className="btn btn-prime" onClick={() => setIsGroupModalOpen(true)}>
+                ➕ {L('Create Channel', 'إنشاء قناة')}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="tabs-bar">
-        {tabs.map(tab => (
+      {/* Tabs list */}
+      <div style={{ 
+        marginBottom: '20px', 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '8px', 
+        background: 'var(--surface2)', 
+        padding: '6px', 
+        borderRadius: '12px', 
+        border: '1px solid var(--edge2)' 
+      }}>
+        {[
+          { key: 'chat', label: L('Team Chat', 'دردشة الفريق'), icon: '💬' },
+          { key: 'members', label: L('Members Directory', 'أعضاء الفريق'), icon: '👥' },
+          { key: 'tasks', label: L('Team Tasks', 'مهام الفريق'), icon: '📋' },
+          { key: 'permissions', label: L('Role Permissions', 'الصلاحيات'), icon: '🔑' },
+          { key: 'payroll', label: L('Payroll & Costs', 'الرواتب والتكاليف'), icon: '📊' },
+          { key: 'logs', label: L('Activity Logs', 'سجل النشاط'), icon: '📜' }
+        ].map((tab) => (
           <button 
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? 'on' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            key={tab.key}
+            style={{
+              padding: '8px 16px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: activeTab === tab.key ? 'var(--orange)' : 'transparent',
+              color: activeTab === tab.key ? '#fff' : 'var(--t2)',
+              transition: 'all 0.2s ease',
+              outline: 'none'
+            }}
+            onClick={() => setActiveTab(tab.key)}
           >
-            {tab.label}
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* TAB 1: MEMBERS */}
-      {activeTab === 'members' && (
-        <div className="tab-panel on">
-          {members.length === 0 ? (
-            <div className="empty-state" style={{ padding: '40px' }}>
-              <div className="es-icon">👥</div>
-              <div className="es-title">{L('No team members yet', 'لا يوجد أعضاء في الفريق بعد')}</div>
-              <div className="es-sub">
-                {L('Add your first team member to get started. Members with email & password can log in to view their tasks and chat.', 'أضف أول عضو في فريقك للبدء. الأعضاء بالبريد الإلكتروني وكلمة المرور يمكنهم تسجيل الدخول لعرض مهامهم والدردشة.')}
+      {/* Content Area */}
+      <div>
+
+        {/* 1. CHAT TAB */}
+        {activeTab === 'chat' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px', height: '65vh' }}>
+            {/* Chat Sidebar: Channels & Members statuses */}
+            <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--surface2)', border: '1px solid var(--edge2)' }}>
+              
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--orange)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
+                  📺 {L('Channels', 'القنوات')}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {channels.map((chan) => (
+                    <button
+                      key={chan.id}
+                      onClick={() => setActiveChannelId(chan.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: activeChannelId === chan.id ? 'var(--orange)' : 'var(--surface3)',
+                        color: activeChannelId === chan.id ? '#fff' : 'var(--t2)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        textAlign: lang === 'ar' ? 'right' : 'left',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        width: '100%',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <span># {chan.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button className="btn btn-prime" onClick={() => setIsAddMemberOpen(true)}>
-                + {L('Add First Member', 'إضافة أول عضو')}
-              </button>
+
+              <div style={{ borderTop: '1px solid var(--edge2)', paddingTop: '12px', flex: 1, overflowY: 'auto' }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--t3)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  🟢 {L('Members Active', 'نشاط الفريق')}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {members.map((m, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--t2)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: getStatusColor(m.status || 'Online'), flexShrink: 0 }}></span>
+                      <span style={{ fontWeight: 500 }}>{m.name}</span>
+                      <small style={{ color: 'var(--t3)', fontSize: '9.5px' }}>({m.role})</small>
+                    </div>
+                  ))}
+                  {members.length === 0 && (
+                    <div style={{ fontSize: '11px', color: 'var(--t3)', textAlign: 'center', padding: '10px' }}>
+                      {L('Invite team members to see activity here.', 'ادعُ الموظفين لمشاهدة نشاطهم.')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
-          ) : (
-            <div className="card" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
-                    <th style={{ padding: '12px' }}>{L('Name', 'الاسم')}</th>
-                    <th style={{ padding: '12px' }}>{L('Role', 'الدور')}</th>
-                    <th style={{ padding: '12px' }}>{L('Department', 'القسم')}</th>
-                    <th style={{ padding: '12px' }}>{L('Salary', 'الراتب')}</th>
-                    <th style={{ padding: '12px' }}>{L('Status', 'الحالة')}</th>
-                    <th style={{ padding: '12px' }}>{L('Join Date', 'تاريخ الانضمام')}</th>
-                    <th style={{ padding: '12px', textAlign: 'right' }}>{L('Actions', 'الإجراءات')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map((m, index) => (
-                    <tr key={index} style={{ borderBottom: '1px solid var(--edge)' }}>
-                      <td style={{ padding: '12px', fontWeight: 600, color: 'var(--t1)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: m.uid ? 'linear-gradient(135deg, var(--orange-d), var(--purple-d, rgba(108,53,255,0.14)))' : 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--orange)' }}>
-                            {m.name[0]?.toUpperCase() || '?'}
+
+            {/* Chat Body */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
+              {aiSummary && (
+                <div className="card" style={{ background: 'rgba(255, 107, 53, 0.04)', border: '1px dashed var(--orange)', padding: '14px', fontSize: '12px', color: 'var(--t1)', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', borderBottom: '1px dashed rgba(255,107,53,0.15)', paddingBottom: '4px' }}>
+                    <strong>🧠 {L('AI Channel Summary & Action Items', 'التلخيص التلقائي للمحادثة والمهام الفورية')}</strong>
+                    <button className="btn btn-ghost" style={{ fontSize: '10px', padding: '2px 6px' }} onClick={() => setAiSummary('')}>✕</button>
+                  </div>
+                  <div dangerouslySetInnerHTML={{ __html: parseMarkdown(aiSummary) }} style={{ lineHeight: '1.4' }}></div>
+                </div>
+              )}
+
+              <div className="card" style={{ padding: '0', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', border: '1px solid var(--edge2)', background: 'var(--surface2)' }}>
+                
+                {/* Header */}
+                <div style={{ padding: '14px 18px', background: 'var(--surface3)', borderBottom: '1px solid var(--edge)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <div>
+                    <strong style={{ fontSize: '14px', color: 'var(--t1)' }}># {activeChannel.name}</strong>
+                    <span style={{ fontSize: '12px', color: 'var(--t3)', marginInlineStart: '10px' }}>
+                      {activeChannel.desc}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Messages Board */}
+                <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--surface1)' }}>
+                  {channelMsgs.map((msg) => {
+                    const isAi = msg.author.includes('AI') || msg.author.includes('Bot');
+                    const isCurrentUser = msg.author === getAuthorName();
+                    
+                    return (
+                      <div 
+                        key={msg.id} 
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: isCurrentUser ? 'flex-start' : 'flex-end',
+                          width: '100%'
+                        }}
+                      >
+                        <div 
+                          style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '4px', 
+                            maxWidth: '75%',
+                            alignItems: isCurrentUser ? 'flex-start' : 'flex-end'
+                          }}
+                        >
+                          <div style={{ fontSize: '10.5px', color: 'var(--t3)', display: 'flex', gap: '4px', direction: 'ltr' }}>
+                            <strong>{msg.author}</strong>
+                            <span>·</span>
+                            <span>{msg.date}</span>
                           </div>
-                          <div>
-                            <div>{m.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--t2)', fontWeight: 400 }}>{m.email}</div>
+                          <div
+                            style={{
+                              padding: '10px 14px',
+                              borderRadius: isCurrentUser ? '0px 12px 12px 12px' : '12px 12px 0px 12px',
+                              background: isCurrentUser ? 'var(--surface3)' : (isAi ? 'rgba(249, 115, 22, 0.08)' : 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)'),
+                              border: isCurrentUser ? '1px solid var(--edge2)' : (isAi ? '1px solid var(--orange)' : 'none'),
+                              color: (isCurrentUser || isAi) ? 'var(--t1)' : '#fff',
+                              fontSize: '12.5px',
+                              lineHeight: '1.5'
+                            }}
+                          >
+                            <div dangerouslySetInnerHTML={{ __html: parseMarkdown(msg.content) }} />
                           </div>
                         </div>
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--t2)' }}>{m.role}</td>
-                      <td style={{ padding: '12px', color: 'var(--t2)' }}>{m.department}</td>
-                      <td style={{ padding: '12px', fontWeight: 700 }}>${parseFloat(m.salary).toLocaleString()}</td>
-                      <td style={{ padding: '12px' }}>
-                        {m.uid ? (
-                          <span className="badge b-green" style={{ fontSize: '10px', padding: '3px 8px' }}>
-                            ✓ {L('Linked', 'مربوط')}
-                          </span>
-                        ) : (
-                          <span className="badge" style={{ background: 'var(--surface3)', color: 'var(--t3)', fontSize: '10px', padding: '3px 8px' }}>
-                            {L('Local Only', 'محلي فقط')}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--t3)' }}>{m.joinDate}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <button 
-                          className="btn btn-ghost" 
-                          style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
-                          onClick={() => handleDeleteMember(index)}
-                        >
-                          {L('Remove', 'إزالة')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                      </div>
+                    );
+                  })}
+                  {channelMsgs.length === 0 && (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t3)', fontSize: '12.5px', textAlign: 'center', padding: '40px' }}>
+                      {L('Welcome to #' + activeChannel.name + '! Start conversation or type @ai for instant advisor assistant.', 'مرحباً بك في القناة! ابدأ الكتابة، أو اكتب @ai متبوعاً بسؤالك للرد بالذكاء الاصطناعي.')}
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
 
-      {/* TAB 2: PAYROLL */}
-      {activeTab === 'payroll' && (
-        <div className="tab-panel on">
-          <div className="g3 stagger mb">
-            <div className="stat-card">
-              <div className="stat-lbl">💰 {L('Monthly Payroll', 'الرواتب الشهرية')}</div>
-              <div className="stat-val">${monthlyPayroll.toLocaleString()}</div>
+                {/* Input Pinned Form */}
+                <div style={{ padding: '12px 16px', background: 'var(--surface3)', borderTop: '1px solid var(--edge)', display: 'flex', gap: '10px', flexShrink: 0 }}>
+                  <input
+                    className="inp"
+                    style={{ flex: 1 }}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
+                    placeholder={L('Type messages here... Use @ai to query copilot bot', 'اكتب رسالتك هنا... استخدم @ai للاستعانة بالذكاء الاصطناعي')}
+                  />
+                  <button 
+                    className="btn btn-prime" 
+                    style={{ padding: '8px 24px', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px', fontWeight: 600 }} 
+                    onClick={() => handleSendMessage()}
+                  >
+                    {L('Send', 'إرسال')}
+                  </button>
+                </div>
+
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-lbl">📅 {L('Annual Payroll', 'الرواتب السنوية')}</div>
-              <div className="stat-val">${annualPayroll.toLocaleString()}</div>
+
+          </div>
+        )}
+
+        {/* 2. MEMBERS DIRECTORY TAB */}
+        {activeTab === 'members' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', marginBottom: '4px' }}>
+              👥 {L('Active Team Members', 'قائمة الموظفين وأعضاء الفريق')}
             </div>
-            <div className="stat-card">
-              <div className="stat-lbl">📊 {L('Total Staff Count', 'عدد الموظفين')}</div>
-              <div className="stat-val">{members.length}</div>
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', 
+              gap: '16px' 
+            }}>
+              {members.map((m, idx) => {
+                const initials = m.name ? m.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : 'M';
+                return (
+                  <div 
+                    key={idx} 
+                    className="card" 
+                    style={{ 
+                      padding: '16px', 
+                      background: 'var(--surface2)', 
+                      border: '1px solid var(--edge2)', 
+                      borderRadius: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      position: 'relative'
+                    }}
+                  >
+                    {/* Header: Avatar, Name, Role badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        borderRadius: '50%', 
+                        background: 'var(--orange-d)', 
+                        color: 'var(--orange)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        position: 'relative',
+                        flexShrink: 0
+                      }}>
+                        {initials}
+                        <span style={{ 
+                          width: '10px', 
+                          height: '10px', 
+                          borderRadius: '50%', 
+                          background: getStatusColor(m.status || 'Offline'), 
+                          position: 'absolute', 
+                          bottom: '0', 
+                          right: '0', 
+                          border: '2px solid var(--surface2)' 
+                        }}></span>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--t1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {m.name}
+                        </div>
+                        <span className="badge b-blue" style={{ fontSize: '10px', padding: '2px 6px', marginTop: '2px', display: 'inline-block' }}>
+                          {m.role}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Member details list */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px', color: 'var(--t2)', borderTop: '1px solid var(--edge2)', paddingTop: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--t3)' }}>📧 {L('Email:', 'البريد:')}</span>
+                        <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{m.email}</span>
+                      </div>
+                      {m.phone && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--t3)' }}>📞 {L('Phone:', 'الهاتف:')}</span>
+                          <span style={{ fontWeight: 500 }}>{m.phone}</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--t3)' }}>💼 {L('Department:', 'القسم:')}</span>
+                        <span style={{ fontWeight: 500 }}>{m.dept || m.role}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--t3)' }}>🤝 {L('Contract:', 'التعاقد:')}</span>
+                        <span style={{ fontWeight: 500 }}>{m.contract}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--t3)' }}>💵 {L('Salary:', 'الراتب:')}</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--green)' }}>{formatMoney(m.salary)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--t3)' }}>📅 {L('Joined:', 'الانضمام:')}</span>
+                        <span>{m.joinDate}</span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ marginTop: 'auto', paddingTop: '8px', display: 'flex', gap: '8px' }}>
+                      <button 
+                        className="btn" 
+                        style={{ 
+                          flex: 1,
+                          justifyContent: 'center', 
+                          padding: '6px', 
+                          background: 'var(--surface3)', 
+                          color: 'var(--t1)', 
+                          border: '1px solid var(--edge2)',
+                          fontSize: '12px'
+                        }} 
+                        onClick={() => handleOpenEditMember(idx)}
+                      >
+                        ✏️ {L('Edit Details', 'تعديل البيانات')}
+                      </button>
+                      <button 
+                        className="btn" 
+                        style={{ 
+                          padding: '6px 10px', 
+                          background: 'rgba(239, 68, 68, 0.12)', 
+                          color: 'var(--red)', 
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          fontSize: '12px'
+                        }} 
+                        onClick={() => handleDeleteMember(idx)}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })}
+              {members.length === 0 && (
+                <div className="card" style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', color: 'var(--t3)' }}>
+                  {L('No team members added yet. Click "Invite Member" at top-right to register one.', 'لم يتم إضافة موظفين بعد. اضغط على "إضافة عضو جديد" بالأعلى لإنشاء حساب.')}
+                </div>
+              )}
             </div>
           </div>
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">💰 {L('Payroll Table', 'جدول الرواتب')}</div>
-              <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={handlePayAll}>
-                💸 {L('Pay All', 'دفع للكل')}
-              </button>
+        )}
+
+        {/* 3. TEAM TASKS TAB */}
+        {activeTab === 'tasks' && (
+          <div className="card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
+              <div className="sec-title">📋 {L('Team Tasks Board', 'لوحة وجدول مهام الفريق')}</div>
+              {/* Task filters */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {['all', 'pending', 'completed'].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setTaskFilter(f)}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      background: taskFilter === f ? 'var(--orange)' : 'var(--surface3)',
+                      color: taskFilter === f ? '#fff' : 'var(--t2)',
+                      border: '1px solid var(--edge2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {f === 'all' ? L('All', 'الكل') : f === 'pending' ? L('Pending', 'قيد التنفيذ') : L('Completed', 'مكتملة')}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {filteredTasks.map((t) => (
+                <div
+                  key={t.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 18px',
+                    background: t.done ? 'rgba(16, 185, 129, 0.04)' : 'var(--surface3)',
+                    border: t.done ? '1px solid var(--green)' : '1px solid var(--edge2)',
+                    borderRadius: '12px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={t.done}
+                      onChange={() => handleToggleTask(t.id)}
+                      style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        cursor: 'pointer',
+                        accentColor: 'var(--orange)'
+                      }}
+                    />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: t.done ? 'var(--t3)' : 'var(--t1)',
+                        textDecoration: t.done ? 'line-through' : 'none',
+                        lineHeight: '1.4'
+                      }}>
+                        {t.title}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                        <span className="badge b-blue" style={{ fontSize: '10px', padding: '2px 8px' }}>👤 {t.assignee}</span>
+                        {t.priority === 'high' && <span className="badge b-red" style={{ fontSize: '10px', padding: '2px 8px' }}>High</span>}
+                        {t.priority === 'medium' && <span className="badge b-ai" style={{ fontSize: '10px', padding: '2px 8px' }}>Medium</span>}
+                        {t.priority === 'low' && <span className="badge" style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--surface3)' }}>Low</span>}
+                        <span style={{ fontSize: '11px', color: 'var(--t3)' }}>📅 {L('Due:', 'تاريخ الاستحقاق:')} {t.dueDate}</span>
+                      </div>
+                      {t.desc && (
+                        <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: 'var(--t3)', lineHeight: '1.4' }}>
+                          {t.desc}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    className="btn"
+                    style={{ 
+                      padding: '6px 12px', 
+                      background: 'rgba(239, 68, 68, 0.12)', 
+                      color: 'var(--red)', 
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      fontSize: '12px'
+                    }}
+                    onClick={() => handleDeleteTask(t.id)}
+                  >
+                    🗑️ {L('Delete', 'حذف')}
+                  </button>
+                </div>
+              ))}
+
+              {filteredTasks.length === 0 && (
+                <div className="empty-state" style={{ padding: '40px' }}>
+                  <div className="es-icon">📋</div>
+                  <div className="es-title">{L('No tasks found', 'لا توجد مهام')}</div>
+                  <div className="es-sub">{L('You have no tasks matching this filter.', 'لا توجد مهام مطابقة لفلتر البحث الحالي.')}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 4. ROLE PERMISSIONS TAB */}
+        {activeTab === 'permissions' && (
+          <div className="card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)' }}>
+            <div className="sec-hd">
+              <div className="sec-title">🔑 {L('Feature & Module Permissions', 'توزيع وتعيين صلاحيات الموظفين')}</div>
+            </div>
+            
             {members.length === 0 ? (
-              <div className="empty-state" style={{ padding: '30px' }}>
-                <div className="es-icon">💰</div>
-                <div className="es-sub">{L('No team members to show payroll', 'لا يوجد أعضاء لعرض رواتبهم')}</div>
+              <div className="empty-state" style={{ padding: '40px' }}>
+                <div className="es-icon">🔑</div>
+                <div className="es-title">{L('No team members registered', 'لا يوجد موظفون مسجلون')}</div>
+                <div className="es-sub">{L('Register a team member first to configure their portal access dashboard permissions.', 'قم بإضافة عضو فريق أولاً لتتمكن من إسناد صلاحيات فتح الأقسام له.')}</div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
-                      <th style={{ padding: '12px' }}>{L('Employee', 'الموظف')}</th>
-                      <th style={{ padding: '12px' }}>{L('Role', 'الدور')}</th>
-                      <th style={{ padding: '12px' }}>{L('Monthly Salary', 'الراتب الشهري')}</th>
-                      <th style={{ padding: '12px' }}>{L('Annual Salary', 'الراتب السنوي')}</th>
-                      <th style={{ padding: '12px' }}>{L('Status', 'الحالة')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {members.map((m, index) => (
-                      <tr key={index} style={{ borderBottom: '1px solid var(--edge)' }}>
-                        <td style={{ padding: '12px', fontWeight: 600 }}>{m.name}</td>
-                        <td style={{ padding: '12px', color: 'var(--t2)' }}>{m.role}</td>
-                        <td style={{ padding: '12px', fontWeight: 700, color: 'var(--green)' }}>${parseFloat(m.salary).toLocaleString()}</td>
-                        <td style={{ padding: '12px', color: 'var(--t2)' }}>${(parseFloat(m.salary) * 12).toLocaleString()}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span className="badge b-green">{L('Ready to Pay', 'جاهز للدفع')}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '20px' }}>
+                {/* Selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {members.map((m, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedPermMemberIndex(idx)}
+                      style={{
+                        padding: '12px 14px',
+                        background: selectedPermMemberIndex === idx ? 'var(--orange)' : 'var(--surface3)',
+                        color: selectedPermMemberIndex === idx ? '#fff' : 'var(--t2)',
+                        border: selectedPermMemberIndex === idx ? 'none' : '1px solid var(--edge2)',
+                        borderRadius: '8px',
+                        textAlign: lang === 'ar' ? 'right' : 'left',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {m.name} ({m.role})
+                    </button>
+                  ))}
+                </div>
+
+                {/* Checklist editor */}
+                {(() => {
+                  const m = members[selectedPermMemberIndex];
+                  if (!m) return null;
+                  
+                  return (
+                    <div className="card" style={{ background: 'var(--surface3)', padding: '20px', border: '1px solid var(--edge2)', borderRadius: '12px' }}>
+                      <div style={{ fontSize: '14.5px', fontWeight: 'bold', color: 'var(--t1)', marginBottom: '14px' }}>
+                        🛡️ {L('Allowed Modules for ' + m.name, 'الأقسام المتاحة للموظف: ' + m.name)}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                        {Object.keys(permToToolMap).map((permId) => {
+                          const isAllowed = (m.permissions || []).includes(permId);
+                          return (
+                            <div
+                              key={permId}
+                              onClick={() => {
+                                const list = m.permissions || [];
+                                const nextPerms = list.includes(permId)
+                                  ? list.filter(p => p !== permId)
+                                  : [...list, permId];
+                                
+                                const updated = [...members];
+                                updated[selectedPermMemberIndex] = {
+                                  ...m,
+                                  permissions: nextPerms
+                                };
+                                
+                                saveGC({
+                                  ...GC,
+                                  team: {
+                                    ...GC.team,
+                                    members: updated
+                                  }
+                                });
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '10px 14px',
+                                background: isAllowed ? 'rgba(249, 115, 22, 0.08)' : 'var(--surface2)',
+                                border: isAllowed ? '1px solid var(--orange)' : '1px solid var(--edge2)',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                width: '100%',
+                                boxSizing: 'border-box'
+                              }}
+                            >
+                              <span style={{ 
+                                width: '18px', 
+                                height: '18px', 
+                                borderRadius: '4px', 
+                                border: isAllowed ? '2px solid var(--orange)' : '2px solid var(--t3)', 
+                                background: isAllowed ? 'var(--orange)' : 'none', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                color: '#fff', 
+                                fontSize: '11px', 
+                                fontWeight: 'bold',
+                                flexShrink: 0
+                              }}>
+                                {isAllowed && '✓'}
+                              </span>
+                              <span style={{ fontSize: '12.5px', color: isAllowed ? 'var(--t1)' : 'var(--t2)', fontWeight: isAllowed ? 600 : 500 }}>
+                                {permId.toUpperCase()} - {
+                                  permId === 'dashboard' ? L('Main Home', 'الرئيسية') :
+                                  permId === 'crm' ? L('CRM & Leads', 'إدارة العملاء والصفقات') :
+                                  permId === 'telegram' ? L('Telegram Hub', 'مركز التليجرام') :
+                                  permId === 'marketing' ? L('Marketing OS', 'مركز التسويق') :
+                                  permId === 'content' ? L('Content Ideas', 'صناعة المحتوى') :
+                                  permId === 'finance' ? L('Accounting Ledger', 'المحاسبة والمالية') :
+                                  permId === 'tasks' ? L('Task Boards', 'لوحات المهام') :
+                                  permId === 'calendar' ? L('Calendar Hub', 'التقويم') :
+                                  permId === 'support' ? L('Technical Support', 'الدعم الفني') :
+                                  L(permId, permId)
+                                }
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        className="btn btn-prime"
+                        style={{ padding: '10px 24px', fontSize: '13px', fontWeight: 600, background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px' }}
+                        onClick={() => handleUpdatePermissions(selectedPermMemberIndex, m.permissions || [])}
+                      >
+                        💾 {L('Save & Sync Database', 'حفظ ومزامنة الصلاحيات')}
+                      </button>
+                    </div>
+                  );
+                })()}
+
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* TAB 3: PERMISSIONS */}
-      {activeTab === 'perms' && (
-        <div className="tab-panel on">
-          <div className="card">
-            <div className="sec-hd"><div className="sec-title">🔐 {L('Permissions Matrix', 'مصفوفة الصلاحيات')}</div></div>
-            {members.length === 0 ? (
-              <div className="empty-state" style={{ padding: '30px' }}>
-                <div className="es-icon">🔐</div>
-                <div className="es-sub">{L('Please add team members first', 'الرجاء إضافة أعضاء في الفريق أولاً')}</div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px' }}>
-                    {L('Select Member', 'اختر العضو')}
-                  </label>
-                  <select 
-                    className="inp" 
-                    style={{ maxWidth: '300px' }}
-                    value={selectedPermMemberIndex}
-                    onChange={(e) => setSelectedPermMemberIndex(parseInt(e.target.value))}
-                  >
-                    {members.map((m, i) => (
-                      <option key={i} value={i}>{m.name} ({m.role}) {m.uid ? '✓' : ''}</option>
-                    ))}
-                  </select>
+        {/* 5. PAYROLL & STATS TAB */}
+        {activeTab === 'payroll' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Visual Stats Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              {[
+                { label: L('Active Staff', 'عدد الموظفين'), value: members.length, color: 'var(--orange)' },
+                { label: L('Monthly Payroll', 'إجمالي الرواتب الشهرية'), value: formatMoney(monthlyPayroll), color: 'var(--green)' },
+                { label: L('Annual Estimate', 'تقدير الرواتب السنوي'), value: formatMoney(annualPayroll), color: 'var(--t1)' },
+                { label: L('Payroll/Revenue Ratio', 'نسبة الرواتب للمبيعات'), value: payrollRatio, color: 'var(--blue)' }
+              ].map((stat, idx) => (
+                <div 
+                  key={idx}
+                  style={{ 
+                    background: 'var(--surface3)', 
+                    border: '1px solid var(--edge2)', 
+                    padding: '16px 20px', 
+                    borderRadius: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <div style={{ fontSize: '12px', color: 'var(--t3)', fontWeight: 600 }}>{stat.label}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: stat.color }}>{stat.value}</div>
                 </div>
+              ))}
+            </div>
 
-                {members[selectedPermMemberIndex] && (
-                  <div style={{ background: 'var(--surface2)', padding: '20px', borderRadius: '10px', border: '1px solid var(--edge)' }}>
-                    <div style={{ fontWeight: 700, marginBottom: '6px', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {L('Access Controls for ', 'صلاحيات الوصول لـ ')} {members[selectedPermMemberIndex].name}
-                      {members[selectedPermMemberIndex].uid && (
-                        <span className="badge b-green" style={{ fontSize: '10px', padding: '2px 8px' }}>
-                          {L('Firebase Linked ✓', 'مربوط بالنظام ✓')}
-                        </span>
-                      )}
+            {/* Department Breakdown card */}
+            <div className="card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '20px' }}>
+              <div className="sec-hd" style={{ marginBottom: '14px' }}>
+                <div className="sec-title">📊 {L('Department payroll breakdown', 'تحليل تكلفة الرواتب حسب الأقسام')}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {members.map((m, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface3)', border: '1px solid var(--edge2)', borderRadius: '8px' }}>
+                    <div>
+                      <strong style={{ fontSize: '13.5px', color: 'var(--t1)' }}>{m.name}</strong>
+                      <span style={{ fontSize: '11px', color: 'var(--t3)', marginInlineStart: '8px' }}>{m.role} ({m.contract})</span>
                     </div>
-                    {members[selectedPermMemberIndex].uid && (
-                      <div style={{ fontSize: '11px', color: 'var(--t3)', marginBottom: '12px' }}>
-                        {L('Changes sync automatically to the member\'s login account', 'التغييرات تتم مزامنتها تلقائياً مع حساب تسجيل الدخول')}
-                      </div>
-                    )}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                      {[
-                        { id: 'dashboard', label: L('🏠 Dashboard', '🏠 لوحة التحكم') },
-                        { id: 'crm', label: L('🎯 Smart CRM', '🎯 إدارة العملاء') },
-                        { id: 'telegram', label: L('💬 Telegram Hub', '💬 تليجرام هاب') },
-                        { id: 'marketing', label: L('📣 Marketing OS', '📣 ماركتنج سنتر') },
-                        { id: 'content', label: L('✦ Content Hub', '✦ صناعة المحتوى') },
-                        { id: 'finance', label: L('💳 Finance', '💳 الحسابات والمالية') },
-                        { id: 'tasks', label: L('◉ Task Board', '◉ لوحة المهام') },
-                        { id: 'calendar', label: L('📅 Calendar', '📅 التقويم') },
-                        { id: 'community', label: L('Hub Community', 'المجتمع والمنتدى') },
-                        { id: 'analytics', label: L('📊 Analytics', '📊 التحليلات') },
-                        { id: 'integrations', label: L('⛓ Integrations', '⛓ الربط والربط البرمجي') },
-                        { id: 'team', label: L('👥 Team Mgmt', '👥 إدارة الفريق') },
-                        { id: 'teamchat', label: L('💬 Team Chat', '💬 دردشة الفريق') }
-                      ].map(perm => {
-                        const hasPerm = (members[selectedPermMemberIndex].permissions || []).includes(perm.id);
-                        return (
-                          <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px', background: 'var(--surface3)', borderRadius: '6px', border: '1px solid var(--edge)' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={hasPerm} 
-                              onChange={() => handleToggleMemberPermission(selectedPermMemberIndex, perm.id)}
-                              style={{ accentColor: 'var(--orange)' }} 
-                            />
-                            <span style={{ fontSize: '13px', color: 'var(--t1)' }}>{perm.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <span style={{ fontWeight: 'bold', color: 'var(--green)', fontSize: '13px' }}>{formatMoney(m.salary)} / mo</span>
+                  </div>
+                ))}
+                {members.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>
+                    {L('No payroll data to visualize.', 'لا تتوفر تكاليف رواتب حالياً.')}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: TASKS */}
-      {activeTab === 'tasks' && (
-        <div className="tab-panel on">
-          <div className="sec-hd" style={{ marginBottom: '14px' }}>
-            <div className="sec-title">✅ {L('Team Tasks', 'مهام الفريق')}</div>
-            <button className="btn btn-prime" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={() => setIsAddTaskOpen(true)}>
-              + {L('Add Task', 'إضافة مهمة')}
-            </button>
-          </div>
-          {tasks.length === 0 ? (
-            <div className="empty-state" style={{ padding: '30px' }}>
-              <div className="es-icon">✅</div>
-              <div className="es-sub">{L('No tasks found. Create tasks for your team.', 'لا توجد مهام حالياً. أنشئ مهام جديدة لفريقك.')}</div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {tasks.map(tk => (
-                <div 
-                  key={tk.id} 
-                  style={{ 
-                    background: 'var(--surface2)', 
-                    padding: '14px', 
-                    borderRadius: '10px', 
-                    border: '1px solid var(--edge)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    opacity: tk.done ? 0.6 : 1
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={tk.done} 
-                      onChange={() => handleToggleTaskDone(tk.id)} 
-                      style={{ accentColor: 'var(--orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '13.5px', textDecoration: tk.done ? 'line-through' : 'none', color: 'var(--t1)' }}>{tk.title}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>
-                        👤 {L('Assignee:', 'المكلف:')} <strong style={{ color: 'var(--orange)' }}>{tk.assignee || L('Unassigned', 'غير معين')}</strong> · 📅 {L('Due:', 'تاريخ الاستحقاق:')} {tk.dueDate}
-                      </div>
-                      {tk.desc && <div style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '4px', fontStyle: 'italic' }}>{tk.desc}</div>}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className={`badge ${tk.priority === 'high' ? 'b-red' : tk.priority === 'medium' ? 'b-amber' : 'b-green'}`}>
-                      {tk.priority?.toUpperCase()}
-                    </span>
-                    <button 
-                      className="btn btn-ghost" 
-                      style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
-                      onClick={() => handleDeleteTask(tk.id)}
-                    >
-                      {L('Delete', 'حذف')}
-                    </button>
+
+          </div>
+        )}
+
+        {/* 6. ACTIVITY LOGS TAB */}
+        {activeTab === 'logs' && (
+          <div className="card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '20px' }}>
+            <div className="sec-hd" style={{ marginBottom: '14px' }}>
+              <div className="sec-title">📜 {L('Workspace Logs & History', 'سجل عمليات الفريق وسير العمل')}</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '50vh', overflowY: 'auto' }}>
+              {logs.map((log, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--surface3)', borderRadius: '8px', border: '1px solid var(--edge2)', alignItems: 'center' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--t1)', fontWeight: 500 }}>{log.action}</div>
+                  <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--t3)' }}>
+                    <span>👤 {log.user}</span>
+                    <span>·</span>
+                    <span>{log.date}</span>
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 5: ACTIVITY LOG */}
-      {activeTab === 'log' && (
-        <div className="tab-panel on">
-          <div className="sec-hd" style={{ marginBottom: '14px' }}>
-            <div className="sec-title">📋 {L('Activity Log', 'سجل النشاط')}</div>
-            {logs.length > 0 && (
-              <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '6px 14px' }} onClick={handleClearLogs}>
-                {L('Clear Log', 'مسح السجل')}
-              </button>
-            )}
-          </div>
-          {logs.length === 0 ? (
-            <div className="empty-state" style={{ padding: '30px' }}>
-              <div className="es-icon">📋</div>
-              <div className="es-sub">{L('Activity will appear here as you manage your team', 'سيظهر النشاط هنا عندما تدير فريقك')}</div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {logs.map(log => (
-                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--surface2)', borderRadius: '8px', border: '1px solid var(--edge)', fontSize: '12px' }}>
-                  <span style={{ color: 'var(--t1)', fontWeight: 500 }}>{log.action}</span>
-                  <span style={{ color: 'var(--t3)' }}>{log.date}</span>
+              {logs.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--t3)' }}>
+                  {L('No logged actions yet.', 'سجل العمليات فارغ تماماً.')}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+
+      </div>
+
+      {/* ================= MODALS & FORMS ================= */}
 
       {/* ADD MEMBER MODAL */}
       {isAddMemberOpen && (
         <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setIsAddMemberOpen(false); }}>
-          <div className="modal-box" style={{ maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-box" style={{ maxWidth: '580px', padding: '24px', boxSizing: 'border-box' }}>
             <div className="modal-close" onClick={() => setIsAddMemberOpen(false)}>✕</div>
-            <div style={{ padding: '24px' }}>
-              <div style={{ fontFamily: 'var(--ff)', fontSize: '18px', fontWeight: 800, marginBottom: '5px', color: 'var(--t1)' }}>
-                + {L('Add Team Member', 'إضافة عضو جديد')}
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--t2)', marginBottom: '20px' }}>
-                {L('Members with email & password can log in to view tasks & chat', 'الأعضاء بالبريد الإلكتروني وكلمة المرور يمكنهم تسجيل الدخول')}
+            <div>
+              <div style={{ fontFamily: 'var(--ff)', fontSize: '17px', fontWeight: 800, marginBottom: '16px', color: 'var(--t1)' }}>
+                👤 {L('Register New Team Member', 'إضافة وتسجيل موظف جديد للفريق')}
               </div>
               
               <form onSubmit={handleSaveMember}>
-                {/* Login credentials section */}
-                <div style={{ background: 'linear-gradient(135deg, rgba(108,53,255,0.06), rgba(255,107,53,0.06))', border: '1px solid var(--edge)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    🔑 {L('Login Credentials (Required for Team Login)', 'بيانات تسجيل الدخول (مطلوبة لتسجيل الدخول)')}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Email *', 'البريد الإلكتروني *')}</label>
-                      <input className="inp" placeholder="member@company.com" type="email" value={mEmail} onChange={(e) => setMEmail(e.target.value)} required />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Password *', 'كلمة المرور *')}</label>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <input className="inp" style={{ flex: 1 }} placeholder="Min 6 characters" type="text" value={mPassword} onChange={(e) => setMPassword(e.target.value)} minLength={6} required />
-                        <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '11px', whiteSpace: 'nowrap' }} onClick={() => setMPassword(generatePassword())}>
-                          🎲 {L('Generate', 'توليد')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Full Name *', 'الاسم الكامل *')}</label>
-                    <input className="inp" placeholder="Ahmed Al-Rashid" value={mName} onChange={(e) => setMName(e.target.value)} required />
+                    <input className="inp" required placeholder="e.g. Ali Ahmed" value={mName} onChange={(e) => setMName(e.target.value)} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Phone', 'رقم الهاتف')}</label>
-                    <input className="inp" placeholder="+966 50 123 4567" value={mPhone} onChange={(e) => setMPhone(e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Role *', 'الدور *')}</label>
-                    <select className="inp" value={mRole} onChange={(e) => setMRole(e.target.value)}>
-                      <option value="Admin">🔑 Admin</option>
-                      <option value="Sales">💼 Sales</option>
-                      <option value="Content">✍️ Content</option>
-                      <option value="Trainer/Coach">🎓 Trainer/Coach</option>
-                      <option value="Support">🎧 Support</option>
-                      <option value="Marketing">📣 Marketing</option>
-                      <option value="Finance">💰 Finance</option>
-                      <option value="Operations">⚙️ Operations</option>
-                      <option value="Developer">💻 Developer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Department', 'القسم')}</label>
-                    <input className="inp" placeholder="e.g. Growth, Content, Finance" value={mDept} onChange={(e) => setMDept(e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Salary (USD) *', 'الراتب الشهري (دولار) *')}</label>
-                    <input className="inp" type="number" placeholder="1500" min="0" value={mSalary} onChange={(e) => setMSalary(e.target.value)} required />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Contract Type', 'نوع العقد')}</label>
-                    <select className="inp" value={mContract} onChange={(e) => setMContract(e.target.value)}>
-                      <option>Full-time</option><option>Part-time</option><option>Freelancer</option><option>Intern</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Join Date', 'تاريخ الانضمام')}</label>
-                    <input className="inp" type="text" placeholder="dd/mm/yyyy" value={mJoinDate} onChange={(e) => setMJoinDate(e.target.value)} onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }} />
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Email Address *', 'البريد الإلكتروني *')}</label>
+                    <input className="inp" required type="email" placeholder="ali@upklick.com" value={mEmail} onChange={(e) => setMEmail(e.target.value)} />
                   </div>
                 </div>
 
-                <div style={{ marginTop: '16px' }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)', marginBottom: '10px' }}>🔐 {L('Platform Permissions', 'صلاحيات المنصة')}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Mobile Number', 'رقم الهاتف')}</label>
+                    <input className="inp" placeholder="+20 1xxxxxxxxx" value={mPhone} onChange={(e) => setMPhone(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Password *', 'كلمة المرور الافتراضية *')}</label>
+                    <input className="inp" required placeholder="Generate password or write one" value={mPassword} onChange={(e) => setMPassword(e.target.value)} />
+                    <button type="button" style={{ fontSize: '10px', background: 'none', border: 'none', color: 'var(--orange)', cursor: 'pointer', padding: '2px 0' }} onClick={() => setMPassword(generatePassword())}>
+                      ⚡ {L('Generate Password', 'توليد تلقائي')}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Job Title / Role', 'الدور / المسمى الوظيفي')}</label>
+                    <select className="inp" value={mRole} onChange={(e) => setMRole(e.target.value)}>
+                      <option value="Sales">Sales Agent</option>
+                      <option value="Marketing">Marketing Lead</option>
+                      <option value="Content">Content Writer</option>
+                      <option value="Support">Support Desk</option>
+                      <option value="Finance">Accountant</option>
+                      <option value="Developer">Developer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Salary ($)', 'الراتب الشهري ($)')}</label>
+                    <input className="inp" type="number" value={mSalary} onChange={(e) => setMSalary(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Contract', 'نوع العقد')}</label>
+                    <select className="inp" value={mContract} onChange={(e) => setMContract(e.target.value)}>
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contractor">Freelance/Contractor</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--edge2)', paddingTop: '10px', marginTop: '12px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--t2)', marginBottom: '8px' }}>
+                    🔑 {L('Assign Initial Access Permissions', 'تحديد الأقسام والصلاحيات الأولية للموظف')}
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                    {[
-                      { id: 'dashboard', label: 'Dashboard' },
-                      { id: 'crm', label: 'Smart CRM' },
-                      { id: 'telegram', label: 'Telegram Hub' },
-                      { id: 'marketing', label: 'Marketing OS' },
-                      { id: 'content', label: 'Content Hub' },
-                      { id: 'finance', label: 'Finance' },
-                      { id: 'tasks', label: 'Task Board' },
-                      { id: 'calendar', label: 'Calendar' },
-                      { id: 'community', label: 'Community' },
-                      { id: 'analytics', label: 'Analytics' },
-                      { id: 'integrations', label: 'Integrations' },
-                      { id: 'team', label: 'Team Mgmt' },
-                      { id: 'teamchat', label: 'Team Chat' }
-                    ].map(perm => {
-                      const isChecked = mPermissions.includes(perm.id);
+                    {Object.keys(permToToolMap).map((permId) => {
+                      const isAllowed = mPermissions.includes(permId);
                       return (
-                        <label key={perm.id} style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', fontSize: '13px', color: 'var(--t2)' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={isChecked} 
-                            onChange={() => handleToggleFormPerm(perm.id)}
-                            style={{ accentColor: 'var(--orange)' }} 
-                          /> 
-                          {perm.label}
+                        <label key={permId} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', cursor: 'pointer', color: isAllowed ? 'var(--t1)' : 'var(--t3)' }}>
+                          <input type="checkbox" checked={isAllowed} onChange={() => handleToggleFormPerm(permId)} />
+                          <span>{permId.toUpperCase()}</span>
                         </label>
                       );
                     })}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
                   <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsAddMemberOpen(false)}>
                     {L('Cancel', 'إلغاء')}
                   </button>
-                  <button type="submit" className="btn btn-prime" style={{ flex: 1, justifyContent: 'center' }} disabled={isCreating}>
-                    {isCreating ? L('Creating Account...', 'جاري إنشاء الحساب...') : `+ ${L('Add Member', 'إضافة عضو')}`}
+                  <button type="submit" disabled={isCreating} className="btn btn-prime" style={{ flex: 1, justifyContent: 'center', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px', padding: '10px' }}>
+                    {isCreating ? '...' : `➕ ${L('Register & Create Account', 'تسجيل وحفظ الموظف')}`}
                   </button>
                 </div>
               </form>
@@ -896,12 +1467,98 @@ export default function TeamManagementView() {
         </div>
       )}
 
-      {/* CREDENTIALS MODAL */}
+      {/* EDIT MEMBER MODAL */}
+      {isEditMemberOpen && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setIsEditMemberOpen(false); }}>
+          <div className="modal-box" style={{ maxWidth: '580px', padding: '24px', boxSizing: 'border-box' }}>
+            <div className="modal-close" onClick={() => setIsEditMemberOpen(false)}>✕</div>
+            <div>
+              <div style={{ fontFamily: 'var(--ff)', fontSize: '17px', fontWeight: 800, marginBottom: '16px', color: 'var(--t1)' }}>
+                ✏️ {L('Edit Team Member Details', 'تعديل بيانات عضو الفريق')}
+              </div>
+              
+              <form onSubmit={handleSaveEditMember}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Full Name *', 'الاسم الكامل *')}</label>
+                    <input className="inp" required placeholder="e.g. Ali Ahmed" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Mobile Number', 'رقم الهاتف')}</label>
+                    <input className="inp" placeholder="+20 1xxxxxxxxx" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Job Title / Role', 'الدور / المسمى الوظيفي')}</label>
+                    <select className="inp" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                      <option value="Sales">Sales Agent</option>
+                      <option value="Marketing">Marketing Lead</option>
+                      <option value="Content">Content Writer</option>
+                      <option value="Support">Support Desk</option>
+                      <option value="Finance">Accountant</option>
+                      <option value="Developer">Developer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Salary ($)', 'الراتب الشهري ($)')}</label>
+                    <input className="inp" type="number" value={editSalary} onChange={(e) => setEditSalary(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Contract', 'نوع العقد')}</label>
+                    <select className="inp" value={editContract} onChange={(e) => setEditContract(e.target.value)}>
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contractor">Freelance/Contractor</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Department', 'الجمع / القسم')}</label>
+                    <input className="inp" placeholder="e.g. Sales" value={editDept} onChange={(e) => setEditDept(e.target.value)} />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--edge2)', paddingTop: '10px', marginTop: '12px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--t2)', marginBottom: '8px' }}>
+                    🔑 {L('Assign Access Permissions', 'تحديد الأقسام والصلاحيات المتاحة للموظف')}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    {Object.keys(permToToolMap).map((permId) => {
+                      const isAllowed = editPermissions.includes(permId);
+                      return (
+                        <label key={permId} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', cursor: 'pointer', color: isAllowed ? 'var(--t1)' : 'var(--t3)' }}>
+                          <input type="checkbox" checked={isAllowed} onChange={() => handleToggleEditFormPerm(permId)} />
+                          <span>{permId.toUpperCase()}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+                  <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsEditMemberOpen(false)}>
+                    {L('Cancel', 'إلغاء')}
+                  </button>
+                  <button type="submit" disabled={isCreating} className="btn btn-prime" style={{ flex: 1, justifyContent: 'center', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px', padding: '10px' }}>
+                    {isCreating ? '...' : `💾 ${L('Save Changes', 'حفظ التعديلات')}`}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREDENTIALS SUCCESS MODAL */}
       {isCredsModalOpen && (
         <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setIsCredsModalOpen(false); }}>
-          <div className="modal-box" style={{ maxWidth: '440px' }}>
+          <div className="modal-box" style={{ maxWidth: '440px', padding: '24px', boxSizing: 'border-box' }}>
             <div className="modal-close" onClick={() => setIsCredsModalOpen(false)}>✕</div>
-            <div style={{ padding: '28px', textAlign: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
               <div style={{ fontFamily: 'var(--ff)', fontSize: '18px', fontWeight: 800, color: 'var(--t1)', marginBottom: '8px' }}>
                 {L('Team Member Account Created!', 'تم إنشاء حساب عضو الفريق!')}
@@ -929,7 +1586,10 @@ export default function TeamManagementView() {
                 <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsCredsModalOpen(false)}>
                   {L('Close', 'إغلاق')}
                 </button>
-                <button className="btn btn-prime" style={{ flex: 1, justifyContent: 'center' }} onClick={copyCredsToClipboard}>
+                <button className="btn btn-prime" style={{ flex: 1, justifyContent: 'center', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px' }} onClick={() => {
+                  navigator.clipboard.writeText(`Email: ${credsInfo.email}\nPassword: ${credsInfo.password}`);
+                  alert(L('Credentials copied to clipboard!', 'تم نسخ بيانات الدخول إلى الحافظة!'));
+                }}>
                   📋 {L('Copy Credentials', 'نسخ البيانات')}
                 </button>
               </div>
@@ -941,9 +1601,9 @@ export default function TeamManagementView() {
       {/* ADD TASK MODAL */}
       {isAddTaskOpen && (
         <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setIsAddTaskOpen(false); }}>
-          <div className="modal-box" style={{ maxWidth: '480px' }}>
+          <div className="modal-box" style={{ maxWidth: '480px', padding: '24px', boxSizing: 'border-box' }}>
             <div className="modal-close" onClick={() => setIsAddTaskOpen(false)}>✕</div>
-            <div style={{ padding: '22px' }}>
+            <div>
               <div style={{ fontFamily: 'var(--ff)', fontSize: '17px', fontWeight: 800, marginBottom: '16px', color: 'var(--t1)' }}>
                 + {L('New Team Task', 'مهمة فريق جديدة')}
               </div>
@@ -985,7 +1645,7 @@ export default function TeamManagementView() {
                   <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsAddTaskOpen(false)}>
                     {L('Cancel', 'إلغاء')}
                   </button>
-                  <button type="submit" className="btn btn-prime" style={{ flex: 1, justifyContent: 'center' }}>
+                  <button type="submit" className="btn btn-prime" style={{ flex: 1, justifyContent: 'center', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px' }}>
                     + {L('Add Task', 'إضافة مهمة')}
                   </button>
                 </div>
@@ -994,6 +1654,48 @@ export default function TeamManagementView() {
           </div>
         </div>
       )}
+
+      {/* CREATE CHANNEL MODAL */}
+      {isGroupModalOpen && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target.className === 'modal-overlay') setIsGroupModalOpen(false); }}>
+          <div className="modal-box" style={{ maxWidth: '440px', padding: '24px', boxSizing: 'border-box' }}>
+            <div className="modal-close" onClick={() => setIsGroupModalOpen(false)}>✕</div>
+            <div>
+              <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 800, marginBottom: '14px', color: 'var(--t1)' }}>
+                ➕ {L('Create New Chat Channel', 'إنشاء قناة دردشة جديدة')}
+              </div>
+              <form onSubmit={handleCreateChannel}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Channel Name *', 'اسم القناة *')}</label>
+                    <input className="inp" required placeholder="e.g. design-updates" value={newChanName} onChange={(e) => setNewChanName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Channel Purpose', 'الغرض / الوصف')}</label>
+                    <input className="inp" placeholder="e.g. Sharing design drafts" value={newChanDesc} onChange={(e) => setNewChanDesc(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Channel Privacy', 'الخصوصية')}</label>
+                    <select className="inp" value={newChanType} onChange={(e) => setNewChanType(e.target.value)}>
+                      <option value="public">🔓 Public Channel</option>
+                      <option value="private">🔒 Private Channel</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <button type="button" className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsGroupModalOpen(false)}>
+                    {L('Cancel', 'إلغاء')}
+                  </button>
+                  <button type="submit" className="btn btn-prime" style={{ flex: 1, justifyContent: 'center', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px' }}>
+                    {L('Create Channel', 'إنشاء القناة')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

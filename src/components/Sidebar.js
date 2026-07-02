@@ -20,8 +20,51 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const isRtl = lang === 'ar';
 
+  const [openSections, setOpenSections] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sb_open_sections_v3');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) { }
+      }
+    }
+    return {
+      Dashboard: true,
+      Grow: true,
+      'Marketing Lab': true,
+      Creator: true,
+      Build: true,
+      Manage: true,
+      Settings: true
+    };
+  });
+
+  const toggleSection = (title) => {
+    setOpenSections(prev => {
+      const next = { ...prev, [title]: !prev[title] };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('sb_open_sections_v3', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  React.useEffect(() => {
+    const parentSection = sections.find(sec => sec.items.some(item => item.page === currentPage));
+    if (parentSection && openSections[parentSection.title] === false) {
+      setOpenSections(prev => {
+        const next = { ...prev, [parentSection.title]: true };
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('sb_open_sections_v3', JSON.stringify(next));
+        }
+        return next;
+      });
+    }
+  }, [currentPage]);
+
   // Compute badges
-  const allLeads = GC.crm?.workspaces 
+  const allLeads = GC.crm?.workspaces
     ? GC.crm.workspaces.flatMap(w => w.leads || [])
     : (GC.crm?.leads || []);
   const hotLeads = allLeads.filter(l => l.stage === 'qualified' || l.stage === 'proposal').length;
@@ -72,8 +115,7 @@ export default function Sidebar() {
         { page: 'digital', label: 'Digital Products', icon: '📦' },
         { page: 'niche', label: 'Niche & Brand Studio', icon: '🎯' },
         { page: 'community', label: 'Community Hub', icon: '🏘️' },
-        { page: 'design', label: 'Design Studio', icon: '🎨' },
-        { page: 'upclick', label: 'UpClick Builder', icon: '⬆' }
+        { page: 'design', label: 'Design Studio', icon: '🎨' }
       ]
     },
     {
@@ -83,8 +125,7 @@ export default function Sidebar() {
         { page: 'calendar', label: 'Calendar', icon: '📅' },
         { page: 'finance', label: 'Finance', icon: '💳' },
         { page: 'ops', label: 'Ops Hub', icon: '⚙' },
-        { page: 'team', label: 'Team', icon: '👥' },
-        { page: 'teamchat', label: 'Team Chat', icon: '💬' }
+        { page: 'team', label: 'Team Hub', icon: '👥' }
       ]
     },
     {
@@ -93,6 +134,7 @@ export default function Sidebar() {
         { page: 'integrations', label: 'Integrations', icon: '⛓' },
         { page: 'analytics', label: 'Analytics', icon: '◈' },
         { page: 'billing', label: 'Billing & Subscription', icon: '💳' },
+        { page: 'support', label: 'Technical Support', icon: '🛠' },
         { page: 'model-test', label: 'اختبار الموديل', icon: '⏱️' }
       ]
     }
@@ -143,9 +185,9 @@ export default function Sidebar() {
 
         return (
           <div className="sb-logo" style={logoContainerStyle}>
-            <img 
-              src={tenantConfig?.logoUrl || "/new-logo.png"} 
-              alt={tenantConfig?.appName || "UpKlick Logo"} 
+            <img
+              src={tenantConfig?.logoUrl || "/new-logo.png"}
+              alt={tenantConfig?.appName || "UpKlick Logo"}
               style={logoImgStyle}
               className={collapsed ? 'logo-collapsed' : 'logo-expanded'}
             />
@@ -175,32 +217,66 @@ export default function Sidebar() {
 
         {sections.map(sec => {
           const visibleItems = sec.items.filter(item => {
-            if (['home', 'profile', 'model-test', 'billing'].includes(item.page)) return true;
+            if (['home', 'profile', 'model-test', 'billing', 'support'].includes(item.page)) return true;
             if (userData?.allowedTools) {
               return userData.allowedTools.includes(item.page);
             }
             return true;
           });
           return { ...sec, items: visibleItems };
-        }).filter(sec => sec.items.length > 0).map((sec, idx) => (
-          <div className="sb-sec" key={idx} style={idx === 0 ? { marginTop: '4px' } : {}}>
-            {sec.title !== 'Dashboard' && <div className="sb-sec-title">{t(sec.title)}</div>}
-            {sec.items.map((item) => (
-              <button
-                key={item.page}
-                id={item.id}
-                className={`sb-btn ${currentPage === item.page ? 'on' : ''}`}
-                onClick={() => setCurrentPage(item.page)}
-              >
-                <span className="sb-icon">{item.icon}</span>
-                <span className="sb-lbl">{t(item.label)}</span>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="sb-badge">{item.badge}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        ))}
+        }).filter(sec => sec.items.length > 0).map((sec, idx) => {
+          const isDashboard = sec.title === 'Dashboard';
+          const isOpen = openSections[sec.title] !== false;
+
+          return (
+            <div className="sb-sec" key={idx} style={idx === 0 ? { marginTop: '4px' } : {}}>
+              {!isDashboard && !collapsed && (
+                <div
+                  className="sb-sec-header"
+                  onClick={() => toggleSection(sec.title)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '6px 8px 3px',
+                    borderRadius: '6px',
+                    marginInlineEnd: '4px'
+                  }}
+                >
+                  <span className="sb-sec-title" style={{ padding: 0, margin: 0 }}>{t(sec.title)}</span>
+                  <span style={{ fontSize: '7.5px', color: 'var(--t3)', transition: 'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : (isRtl ? 'rotate(90deg)' : 'rotate(-90deg)') }}>
+                    ▼
+                  </span>
+                </div>
+              )}
+              {!isDashboard && collapsed && (
+                <div style={{ height: '1px', background: 'var(--edge)', margin: '8px 4px' }} />
+              )}
+              <div style={{
+                maxHeight: isDashboard || collapsed || isOpen ? '500px' : '0px',
+                overflow: 'hidden',
+                transition: 'max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}>
+                {sec.items.map((item) => (
+                  <button
+                    key={item.page}
+                    id={item.id}
+                    className={`sb-btn ${currentPage === item.page ? 'on' : ''}`}
+                    onClick={() => setCurrentPage(item.page)}
+                  >
+                    <span className="sb-icon">{item.icon}</span>
+                    <span className="sb-lbl">{t(item.label)}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="sb-badge">{item.badge}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="sb-foot">

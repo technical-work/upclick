@@ -25,9 +25,6 @@ export default function LandingPagePreviewModal() {
   return (
     <div className="modal-overlay" onClick={() => setLpPreviewOpen(false)}>
       <div className="modal-box" style={{ maxWidth: '980px', maxHeight: '92vh', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-close" onClick={() => setLpPreviewOpen(false)}>
-          ✕
-        </div>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
           <span style={{ fontFamily: 'var(--ff)', fontSize: '13px', fontWeight: 700, color: 'var(--t1)' }} id="lp-modal-title">
             {L('Landing Page Preview', 'معاينة صفحة الهبوط')}

@@ -43,6 +43,62 @@ export default function HomeView() {
   const activeDeals = allLeads.filter(l => l.stage !== 'won' && l.stage !== 'lost' && l.stage !== 'closed').length;
   const openTasks = GC.tasks.items.filter(t => !t.done).length;
 
+  // Revenue Diversity Score Aggregations (Sponsorships, Digital Products, Courses)
+  const crmClosedRevenue = allLeads
+    .filter(l => l.stage === 'close' || l.stage === 'won' || l.stage === 'complete' || l.stage === 'done')
+    .reduce((sum, l) => sum + (parseFloat(l.value) || 0), 0);
+
+  const productsList = GC.digitalProducts?.products || [];
+  const productsRevenue = productsList.reduce((sum, p) => sum + (parseFloat(p.revenue) || 0), 0);
+
+  const coursesList = GC.revenue?.courses || [];
+  const coursesRevenue = coursesList.reduce((sum, c) => sum + (parseFloat(c.revenue) || 0), 0);
+
+  const totalRevenueVal = crmClosedRevenue + productsRevenue + coursesRevenue;
+
+  const streams = [
+    { name: L('Sponsorships', 'الرعايات'), val: crmClosedRevenue, c: 'var(--a)' },
+    { name: L('Digital Products', 'المنتجات الرقمية'), val: productsRevenue, c: 'var(--a2)' },
+    { name: L('Courses', 'الكورسات'), val: coursesRevenue, c: 'var(--a3)' }
+  ];
+
+  const sortedStreams = [...streams].sort((a, b) => b.val - a.val);
+  const bestStream = totalRevenueVal > 0 ? sortedStreams[0].name : L('None', 'لا يوجد');
+  const bestStreamPct = totalRevenueVal > 0 ? Math.round((sortedStreams[0].val / totalRevenueVal) * 100) : 0;
+
+  const calculateDiversityScore = () => {
+    if (totalRevenueVal <= 0) return 0;
+    const activeCount = streams.filter(s => s.val > 0).length;
+    let hhi = 0;
+    streams.forEach(s => {
+      if (s.val > 0) {
+        const pct = s.val / totalRevenueVal;
+        hhi += pct * pct;
+      }
+    });
+    const score = Math.round((1 - hhi) * 100 + (activeCount * 5));
+    return Math.min(Math.max(score, 10), 100);
+  };
+
+  const diversityScore = calculateDiversityScore();
+
+  const getSvgCircles = () => {
+    let accumulatedPercent = 0;
+    return streams.map(s => {
+      const pct = totalRevenueVal > 0 ? Math.round((s.val / totalRevenueVal) * 100) : 0;
+      if (pct <= 0) return null;
+      const strokeDasharray = `${pct} ${100 - pct}`;
+      const strokeDashoffset = -accumulatedPercent;
+      accumulatedPercent += pct;
+      return {
+        strokeDasharray,
+        strokeDashoffset,
+        color: s.c
+      };
+    }).filter(Boolean);
+  };
+  const svgCircles = getSvgCircles();
+
   // Calculate dynamic follower counts based on connected profiles
   const connectedSocials = GC.socialAccounts?.connected || { instagram: true, tiktok: true };
   const dynamicFollowers = connectedSocials.instagram && connectedSocials.tiktok ? '373K' 
@@ -525,6 +581,61 @@ Address the user directly by their personal name (${pName}) and refer to their b
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Revenue Diversity Score */}
+          <div className="card mb">
+            <div className="sec-hd">
+              <div className="sec-title">📈 {L('Revenue Diversity', 'تقييم تنوع الإيرادات')}</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
+              <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
+                <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--surface3)" strokeWidth="3.5"/>
+                  {svgCircles.map((circle, idx) => (
+                    <path
+                      key={idx}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke={circle.color}
+                      strokeWidth="3.5"
+                      strokeDasharray={circle.strokeDasharray}
+                      strokeDashoffset={circle.strokeDashoffset}
+                      strokeLinecap="round"
+                    />
+                  ))}
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 800, fontFamily: 'var(--ff)', color: 'var(--t1)' }}>{diversityScore}</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--t1)' }}>
+                  {diversityScore >= 85 ? L('Excellent Diversity', 'تنوع ممتاز') : diversityScore >= 50 ? L('Moderate Diversity', 'تنوع متوسط') : L('Low Diversity', 'تنوع منخفض')}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>
+                  {totalRevenueVal <= 0
+                    ? L('No revenue logged yet', 'لا توجد أرباح مسجلة بعد')
+                    : (bestStreamPct > 60
+                      ? L(`Relies heavily on ${bestStream} (${bestStreamPct}%)`, `تعتمد بشكل كبير على ${bestStream} (${bestStreamPct}٪)`)
+                      : L('Your sources are well diversified!', 'مصادر دخلك متنوعة بشكل ممتاز!'))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {streams.map((s, idx) => {
+                const pct = totalRevenueVal > 0 ? Math.round((s.val / totalRevenueVal) * 100) : 0;
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: s.c, flexShrink: 0 }}></div>
+                    <div style={{ flex: 1, fontSize: '12px', color: 'var(--t1)' }}>{s.name}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--t3)' }}>
+                      {formatMoney(s.val)} ({pct}%)
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

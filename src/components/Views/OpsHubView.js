@@ -4,7 +4,80 @@ import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 
+const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
+  if (!itemDate) return rangeType === 'all';
+  const date = new Date(itemDate);
+  if (isNaN(date.getTime())) return rangeType === 'all';
+
+  const now = new Date();
+
+  switch (rangeType) {
+    case 'today': {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return date >= today;
+    }
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'year': {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return date >= startOfYear;
+    }
+    case 'last30': {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      return date >= thirtyDaysAgo;
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+      }
+      return true;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
+
 export default function OpsHubView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
+  const getPeriodMultiplier = (period, start, end) => {
+    switch (period) {
+      case 'today': return 0.03;
+      case 'week': return 0.22;
+      case 'month': return 0.85;
+      case 'last30': return 1.0;
+      case 'year': return 8.5;
+      case 'custom': {
+        if (start && end) {
+          const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / (86400000)));
+          return days / 30;
+        }
+        return 1.0;
+      }
+      case 'all':
+      default:
+        return 1.0;
+    }
+  };
+
   const { lang, L, t, GC, saveGC, confirmAction } = useBusiness();
 
   // Tab state inside Ops Hub
@@ -132,8 +205,14 @@ export default function OpsHubView() {
     });
   };
 
+  const dateFilteredSops = sopsList.filter(s => {
+    const sopDate = s.id || '';
+    return filterByDateRange(sopDate, filterPeriod, customStartDate, customEndDate);
+  });
+
   const activeAutomationsCount = Object.values(automations).filter(Boolean).length;
-  const hoursSavedCount = activeAutomationsCount * 4; // Mock calculation: 4 hours per automation
+  const mult = getPeriodMultiplier(filterPeriod, customStartDate, customEndDate);
+  const hoursSavedCount = Math.round(activeAutomationsCount * 4 * mult);
 
   return (
     <div className="pg on" id="pg-ops">
@@ -143,6 +222,45 @@ export default function OpsHubView() {
           {L('Ops Hub', 'مركز العمليات')}
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <button className="btn-ai" onClick={() => alert('Ops Analysis triggered...')}>
             ✦ {L('Ops Analysis', 'تحليل العمليات')}
           </button>
@@ -162,7 +280,7 @@ export default function OpsHubView() {
         </div>
         <div className="stat-card">
           <div className="stat-lbl">📋 {L('SOPs Created', 'أدلة العمل SOPs')}</div>
-          <div className="stat-val">{sopsList.length}</div>
+          <div className="stat-val">{dateFilteredSops.length}</div>
           <div className="stat-ch ch-nu">{L('documents', 'ملفات موثقة')}</div>
         </div>
         <div className="stat-card">
@@ -242,7 +360,7 @@ export default function OpsHubView() {
                 {generatingSOP ? L('Generating...', 'جاري الإنشاء...') : `+ ${L('Create SOP', 'إنشاء دليل')}`}
               </button>
             </div>
-            {sopsList.length === 0 ? (
+            {dateFilteredSops.length === 0 ? (
               <div className="empty-state" style={{ padding: '30px' }}>
                 <div className="es-icon">📋</div>
                 <div className="es-title">{L('No SOPs yet', 'لا توجد أدلة عمل بعد')}</div>
@@ -255,7 +373,7 @@ export default function OpsHubView() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {sopsList.map(sop => (
+                {dateFilteredSops.map(sop => (
                   <div key={sop.id} style={{ background: 'var(--surface2)', padding: '15px', borderRadius: '10px', border: '1px solid var(--edge)', position: 'relative' }}>
                     <button 
                       className="btn btn-ghost" 

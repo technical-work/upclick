@@ -266,7 +266,6 @@ export default function PublicBioPage() {
   const languages = cvSections.languages || [];
   const certifications = cvSections.certifications || [];
   const projects = cvSections.projects || [];
-
   return (
     <div style={{
       background: styleTheme.bg,

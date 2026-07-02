@@ -37,7 +37,7 @@ export default function FinanceModal() {
       selectedCat = financeModalType === 'income' ? 'Coaching / Services' : 'Tools & Software';
     }
 
-    addFinanceEntry(financeModalType, amount, desc, selectedCat);
+    addFinanceEntry(financeModalType, amount, desc, selectedCat, date);
 
     // Reset and close
     setDesc('');

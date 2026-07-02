@@ -44,11 +44,11 @@ import ProfileView from '@/components/Views/ProfileView';
 import UpClickBuilderView from '@/components/Views/UpClickBuilderView';
 import AutomationHubView from '@/components/Views/AutomationHubView';
 import TeamManagementView from '@/components/Views/TeamManagementView';
-import TeamChatView from '@/components/Views/TeamChatView';
 import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
 import ModelTestView from '@/components/Views/ModelTestView';
 import BillingView from '@/components/Views/BillingView';
+import SupportView from '@/components/Views/SupportView';
 function DashboardShell() {
   const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
@@ -289,7 +289,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing', 'support'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -343,8 +343,6 @@ function DashboardShell() {
         return <AutomationHubView />;
       case 'team':
         return <TeamManagementView />;
-      case 'teamchat':
-        return <TeamChatView />;
       case 'niche':
         return <NicheStudioView />;
       case 'design':
@@ -353,6 +351,8 @@ function DashboardShell() {
         return <ModelTestView />;
       case 'billing':
         return <BillingView />;
+      case 'support':
+        return <SupportView />;
       default:
         return <HomeView />;
     }

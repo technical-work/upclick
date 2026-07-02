@@ -2,15 +2,65 @@
 
 export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price = 27, aiData = {}) {
   const R = isAR ? 'rtl' : 'ltr';
-  const font = isAR ? "'Cairo',sans-serif" : "'Syne','DM Sans',sans-serif";
-  const priceStr = '$' + price;
   const offerName = offer.split('—')[0]?.trim() || offer;
+  const priceStr = '$' + price;
+
+  // ── CUSTOM TEMPLATE STYLES SYSTEM ──
+  let bg, fg, card, border, sub, font;
+
+  switch (variant) {
+    case 'clean':
+      bg = '#fcfbfa';
+      fg = '#111111';
+      card = '#ffffff';
+      border = 'rgba(0,0,0,.06)';
+      sub = '#666666';
+      font = isAR ? "'Tajawal', sans-serif" : "'DM Sans', sans-serif";
+      break;
+    case 'story':
+      bg = '#faf8f5';
+      fg = '#2c221e';
+      card = '#ffffff';
+      border = 'rgba(44,34,30,.06)';
+      sub = '#706050';
+      font = isAR ? "'Tajawal', sans-serif" : "'DM Sans', sans-serif";
+      break;
+    case 'dark':
+      bg = '#08070d';
+      fg = '#f0eeff';
+      card = '#11101e';
+      border = 'rgba(255,255,255,.07)';
+      sub = '#9a96bf';
+      font = isAR ? "'Cairo', sans-serif" : "'Syne', sans-serif";
+      break;
+    case 'gradient':
+      bg = '#f3f0ff';
+      fg = '#0d0a26';
+      card = '#ffffff';
+      border = 'rgba(108,53,255,.08)';
+      sub = '#595582';
+      font = isAR ? "'Cairo', sans-serif" : "'DM Sans', sans-serif";
+      break;
+    case 'arabic':
+      bg = '#f3f6f3';
+      fg = '#122619';
+      card = '#ffffff';
+      border = 'rgba(18,38,25,.07)';
+      sub = '#45574b';
+      font = "'Cairo', sans-serif";
+      break;
+    case 'bold':
+    default:
+      bg = '#ffffff';
+      fg = '#0d0d1a';
+      card = '#f7f6ff';
+      border = 'rgba(0,0,0,.06)';
+      sub = '#5a5880';
+      font = isAR ? "'Noto Kufi Arabic', sans-serif" : "'Syne', sans-serif";
+      break;
+  }
+
   const isDark = variant === 'dark' || variant === 'arabic';
-  const bg = isDark ? '#07070e' : '#fff';
-  const fg = isDark ? '#f0eeff' : '#0d0d1a';
-  const card = isDark ? '#10101a' : '#f7f6ff';
-  const border = isDark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
-  const sub = isDark ? '#8480a8' : '#5a5880';
   const isCoach =
     niche.toLowerCase().includes('coach') ||
     niche.toLowerCase().includes('كوتش') ||
@@ -34,12 +84,14 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   // ── SECTION 1: HERO ──
   const heroGrad =
     variant === 'gradient'
-      ? `linear-gradient(135deg,${c}44,${c}11 60%,${bg} 100%)`
-      : variant === 'dark' || variant === 'arabic'
-      ? `linear-gradient(160deg,#0a0a15 0%,${c}22 50%,#0a0a15 100%)`
+      ? `linear-gradient(135deg,${c}33,${c}11 60%,${bg} 100%)`
+      : variant === 'dark'
+      ? `linear-gradient(160deg,#07060c 0%,${c}22 50%,#07060c 100%)`
+      : variant === 'arabic'
+      ? `linear-gradient(180deg,#ecf2ec 0%,${bg} 100%)`
       : variant === 'clean'
       ? bg
-      : `linear-gradient(160deg,${bg} 0%,${c}11 100%)`;
+      : `linear-gradient(160deg,${bg} 0%,${c}09 100%)`;
 
   const sec1 = S(
     'hero',
@@ -206,81 +258,94 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
 
   const sec5 = S(
     'testimonials',
-    maxW(`${H(isAR ? 'ماذا يقول عملائي' : 'What My Clients Say', isAR ? 'نتائج حقيقية من أشخاص حقيقيين' : 'Real results from real people')}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">\${tesItems
-      .map(
-        (t) =>
-          \`<div style="background:\${card};border:1px solid \${border};border-radius:16px;padding:24px"><div style="font-size:20px;color:\${c};margin-bottom:10px">\${'⭐'.repeat(
-            t.stars || 5
-          )}</div><p style="font-size:14px;color:\${sub};line-height:1.7;margin-bottom:14px;font-style:italic">"\${
-            t.text || t.tx
-          }"</p><div style="display:flex;align-items:center;gap:9px"><div style="width:36px;height:36px;border-radius:50%;background:\${c};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px">\${
-            t.initial || t.i || t.n[0]
-          }</div><div><div style="font-size:13px;font-weight:600;color:\${fg}">\${t.name || t.n}</div><div style="font-size:11px;color:\${sub}">\${
-            t.loc
-          }</div></div></div></div>\`
-      )
-      .join('')}</div>`),
+    maxW(
+      H(isAR ? 'ماذا يقول عملائي' : 'What My Clients Say', isAR ? 'نتائج حقيقية من أشخاص حقيقيين' : 'Real results from real people') +
+      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">` +
+      tesItems.map((t) => {
+        const tInitial = t.initial || t.i || (t.name ? t.name[0] : 'U');
+        const tName = t.name || t.n || '';
+        const tText = t.text || t.tx || '';
+        const tLoc = t.loc || '';
+        const tStars = t.stars || 5;
+        return `<div style="background:${card};border:1px solid ${border};border-radius:16px;padding:24px">
+          <div style="font-size:20px;color:${c};margin-bottom:10px">${'⭐'.repeat(tStars)}</div>
+          <p style="font-size:14px;color:${sub};line-height:1.7;margin-bottom:14px;font-style:italic">"${tText}"</p>
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="width:36px;height:36px;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px">${tInitial}</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:${fg}">${tName}</div>
+              <div style="font-size:11px;color:${sub}">${tLoc}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('') +
+      `</div>`
+    ),
     isDark ? bg + ' ' : c + '08'
   );
 
-  // ── SECTION 6: PRICING / OFFER ──
-  const plans = isCoach
-    ? isAR
+  // ── SECTION 6: PRICING / PLANS (FULLY CUSTOM CMS OPTIMIZED) ──
+  const plans = (aiData?.plans && Array.isArray(aiData.plans) && aiData.plans.length === 3)
+    ? aiData.plans
+    : (isCoach
+      ? isAR
+        ? [
+            { name: 'ستارتر', price: Math.round(parseInt(price) * 0.5), features: ['٣ جلسات فردية', 'خطة عمل شخصية', 'موارد حصرية'], popular: false },
+            { name: 'المتميز', price: price, features: ['كل ما في ستارتر', '٦ جلسات فردية', 'دعم تليجرام ٣٠ يوم', 'ضمان استرداد'], popular: true },
+            { name: 'VIP', price: Math.round(parseInt(price) * 2), features: ['كل شيء', 'دعم غير محدود ٣ شهور', 'ضمان النتائج'], popular: false }
+          ]
+        : [
+            { name: 'Starter', price: Math.round(parseInt(price) * 0.5), features: ['3 private sessions', 'Personal action plan', 'Exclusive resources'], popular: false },
+            { name: 'Premium', price: price, features: ['Everything in Starter', '6 private sessions', 'Telegram support 30 days', 'Money-back guarantee'], popular: true },
+            { name: 'VIP', price: Math.round(parseInt(price) * 2), features: ['Everything', 'Unlimited support 3 months', 'Results guarantee'], popular: false }
+          ]
+      : isAR
       ? [
-          { n: 'ستارتر', p: '$' + Math.round(parseInt(price) * 0.5), b: ['٣ جلسات فردية', 'خطة عمل شخصية', 'موارد حصرية'], popular: false },
-          { n: 'المتميز', p: priceStr, b: ['كل ما في ستارتر', '٦ جلسات فردية', 'دعم تليجرام ٣٠ يوم', 'ضمان استرداد'], popular: true },
-          { n: 'VIP', p: '$' + Math.round(parseInt(price) * 2), b: ['كل شيء', 'دعم غير محدود ٣ شهور', 'ضمان النتائج'], popular: false }
+          { name: 'أساسي', price: Math.round(parseInt(price) * 0.6), features: ['وصول للمحتوى', 'مجتمع المنشئين', 'تحديثات لمدة سنة'], popular: false },
+          { name: 'المتميز', price: price, features: ['كل ما في الأساسي', 'جلسة إرشاد فردية', 'دعم مستمر ٣٠ يوم'], popular: true },
+          { name: 'VIP', price: Math.round(parseInt(price) * 1.8), features: ['كل شيء', 'مراجعة حساباتك الشخصية', 'مكالمة شهرية لمدة ٣ شهور'], popular: false }
         ]
       : [
-          { n: 'Starter', p: '$' + Math.round(parseInt(price) * 0.5), b: ['3 private sessions', 'Personal action plan', 'Exclusive resources'], popular: false },
-          { n: 'Premium', p: priceStr, b: ['Everything in Starter', '6 private sessions', 'Telegram support 30 days', 'Money-back guarantee'], popular: true },
-          { n: 'VIP', p: '$' + Math.round(parseInt(price) * 2), b: ['Everything', 'Unlimited support 3 months', 'Results guarantee'], popular: false }
-        ]
-    : isAR
-    ? [
-        { n: 'أساسي', p: '$' + Math.round(parseInt(price) * 0.6), b: ['وصول للمحتوى', 'مجتمع المنشئين', 'تحديثات لمدة سنة'], popular: false },
-        { n: 'المتميز', p: priceStr, b: ['كل ما في الأساسي', 'جلسة إرشاد فردية', 'دعم مستمر ٣٠ يوم'], popular: true },
-        { n: 'VIP', p: '$' + Math.round(parseInt(price) * 1.8), b: ['كل شيء', 'مراجعة حساباتك الشخصية', 'مكالمة شهرية لمدة ٣ شهور'], popular: false }
-      ]
-    : [
-        { n: 'Basic', p: '$' + Math.round(parseInt(price) * 0.6), b: ['Content access', 'Creator community', '1-year updates'], popular: false },
-        { n: 'Premium', p: priceStr, b: ['Everything in Basic', '1-on-1 coaching session', '30-day ongoing support'], popular: true },
-        { n: 'VIP', p: '$' + Math.round(parseInt(price) * 1.8), b: ['Everything', 'Personal account review', 'Monthly call for 3 months'], popular: false }
-      ];
+          { name: 'Basic', price: Math.round(parseInt(price) * 0.6), features: ['Content access', 'Creator community', '1-year updates'], popular: false },
+          { name: 'Premium', price: price, features: ['Everything in Basic', '1-on-1 coaching session', '30-day ongoing support'], popular: true },
+          { name: 'VIP', price: Math.round(parseInt(price) * 1.8), features: ['Everything', 'Personal account review', 'Monthly call for 3 months'], popular: false }
+        ]);
 
   const sec6 = S(
     'offer',
-    maxW(`${H(isAR ? 'اختر خطتك' : 'Choose Your Plan', isAR ? 'استثمار في نفسك يدوم مدى الحياة' : 'An investment in yourself that lasts a lifetime')}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">\${plans
-      .map(
-        (p) =>
-          \`<div style="background:\${p.popular ? c : card};border:2px solid \${p.popular ? c : border};border-radius:16px;padding:28px;text-align:center;position:relative;\${
-            p.popular ? 'transform:scale(1.04)' : ''
-          }">\${
-            p.popular
-              ? \`<div style="position:absolute;top:-13px;\${
-                  R === 'rtl' ? 'right' : 'left'
-                }:50%;transform:translateX(\${R === 'rtl' ? '50%' : '-50%'});background:\${c};color:#fff;padding:4px 16px;border-radius:12px;font-size:12px;font-weight:700">\${
-                  isAR ? '🌟 الأشهر' : '🌟 Most Popular'
-                }</div>\`
-              : ''
-          }<div style="font-size:17px;font-weight:700;color:\${p.popular ? '#fff' : fg};margin-bottom:10px">\${p.n}</div><div style="font-size:38px;font-weight:800;color:\${
-            p.popular ? '#fff' : c
-          };margin-bottom:16px">\${p.p}</div>\${p.b
-            .map(
-              (b) =>
-                \`<div style="font-size:13px;color:\${p.popular ? 'rgba(255,255,255,.85)' : sub};padding:5px 0;border-bottom:1px solid \${
-                  p.popular ? 'rgba(255,255,255,.15)' : border
-                }">✓ \${b}</div>\`
-            )
-            .join('')}<button onclick="alert('\${
-            isAR ? 'شكراً! سيتم التواصل معك قريباً.' : 'Thank you! We will contact you soon.'
-          }')" style="margin-top:16px;background:\${p.popular ? '#fff' : c};color:\${p.popular ? c : '#fff'};border:none;padding:12px 28px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">\${
-            isAR ? 'ابدأ الآن' : 'Start Now'
-          }</button></div>\`
-      )
-      .join('')}</div>`),
+    maxW(
+      H(isAR ? 'اختر خطتك' : 'Choose Your Plan', isAR ? 'استثمار في نفسك يدوم مدى الحياة' : 'An investment in yourself that lasts a lifetime') +
+      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch">` +
+      plans.map((p) => {
+        const planBg = p.popular ? c : card;
+        const planBorder = p.popular ? c : border;
+        const planColor = p.popular ? '#fff' : fg;
+        const planPriceColor = p.popular ? '#fff' : c;
+        const planSubColor = p.popular ? 'rgba(255,255,255,.85)' : sub;
+        const planBorderColor = p.popular ? 'rgba(255,255,255,.15)' : border;
+        const buttonBg = p.popular ? '#fff' : c;
+        const buttonColor = p.popular ? c : '#fff';
+        const popularBadge = p.popular 
+          ? `<div style="position:absolute;top:-13px;${R === 'rtl' ? 'right' : 'left'}:50%;transform:translateX(${R === 'rtl' ? '50%' : '-50%'});background:${c};color:#fff;padding:4px 16px;border-radius:12px;font-size:12px;font-weight:700">${isAR ? '🌟 الأكثر طلباً' : '🌟 Most Popular'}</div>`
+          : '';
+
+        // Features list compilation
+        const featsList = Array.isArray(p.features) ? p.features : (typeof p.features === 'string' ? p.features.split('\n').filter(Boolean) : []);
+
+        return `<div style="background:${planBg};border:2px solid ${planBorder};border-radius:16px;padding:28px;text-align:center;position:relative;display:flex;flex-direction:column;justify-content:space-between;${p.popular ? 'transform:scale(1.04)' : ''}">
+          <div>
+            ${popularBadge}
+            <div style="font-size:17px;font-weight:700;color:${planColor};margin-bottom:10px">${p.name || p.n}</div>
+            <div style="font-size:38px;font-weight:800;color:${planPriceColor};margin-bottom:16px">$${p.price || p.p || 0}</div>
+            <div style="margin-bottom:20px">
+              ${featsList.map((feature) => `<div style="font-size:13px;color:${planSubColor};padding:6px 0;border-bottom:1px solid ${planBorderColor}">✓ ${feature}</div>`).join('')}
+            </div>
+          </div>
+          <button onclick="alert('${isAR ? 'شكراً! سيتم التواصل معك قريباً لإتمام الاشتراك.' : 'Thank you! We will contact you soon to finalize your setup.'}')" style="margin-top:16px;background:${buttonBg};color:${buttonColor};border:none;padding:12px 28px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;width:100%;font-family:inherit">${isAR ? 'ابدأ الآن' : 'Start Now'}</button>
+        </div>`;
+      }).join('') +
+      `</div>`
+    ),
     c + '08'
   );
 
@@ -311,7 +376,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
       ? [
           { q: 'هل هذا البرنامج مناسب للمبتدئين تماماً؟', a: 'نعم! صُمم من الصفر للمبتدئين وحتى المتقدمين. لا تحتاج أي خبرة مسبقة.' },
           { q: 'كم من الوقت أحتاج يومياً؟', a: `${isCoach ? 'ساعة إلى ساعتين أسبوعياً للجلسات + وقت للتطبيق.' : '٣٠ دقيقة إلى ساعة يومياً كافية للتطبيق والنتائج.'}` },
-          { q: 'هل يوجد ضمان استرداد؟', a: `نعم! ضمان استرداد كامل خلال ٣٠ يوم إذا لم تكن راضياً ١٠٠٪.` },
+          { q: 'هل يوجد ضمان استرداد؟', a: `نعم! ضمان استرداد كامل خلال ٣٠ يوم إذا لم تكن راضياً ١٠٪.` },
           { q: 'هل المحتوى مناسب للسوق العربي؟', a: `نعم تماماً! كل المحتوى مصمم خصيصاً للجمهور العربي في الخليج ومصر والشام.` }
         ]
       : [
@@ -356,7 +421,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   const navIds = ['hero', 'about', 'features', 'testimonials', 'offer', 'faq-cta'];
 
   return `<!DOCTYPE html><html lang="${isAR ? 'ar' : 'en'}" dir="${R}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name} — ${offerName}</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=Noto+Kufi+Arabic:wght@400;600;700&family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:${font};background:${bg};color:${fg};direction:${R}}nav{position:sticky;top:0;z-index:999;background:${bg}ee;backdrop-filter:blur(12px);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${border}}nav .logo{font-size:18px;font-weight:800;color:${c}}nav ul{display:flex;gap:20px;list-style:none}nav ul li a{font-size:13px;color:${sub};text-decoration:none;font-weight:500;transition:color .2s}nav ul li a:hover{color:${c}}@media(max-width:768px){nav ul{display:none}section[style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr!important}section[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}section[style*="grid-template-columns:1fr 1.5fr"]{grid-template-columns:1fr!important}section[style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important}}</style>
 </head><body>
 <nav><div class="logo">${name}</div><ul>${navLinks.map((l, i) => `<li><a href="#${navIds[i]}">${l}</a></li>`).join('')}</ul><button onclick="document.getElementById('offer').scrollIntoView({behavior:'smooth'})" style="background:${c};color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">${

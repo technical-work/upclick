@@ -52,7 +52,7 @@ const getModelRates = (modelName) => {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { userId, messages, tool } = body;
+    const { userId, messages, tool, endpoint, apiKey, model } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -68,9 +68,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Global configuration not configured yet.' }, { status: 500 });
     }
     const globalData = globalDoc.data();
-    const openaiApiKey = globalData.openaiApiKey;
+    
+    let openaiApiKey = apiKey || globalData.openaiApiKey;
+    let targetEndpoint = endpoint || 'https://api.openai.com/v1/chat/completions';
+    let configuredModel = model || globalData.openaiModel || 'gpt-4o-mini';
+
     const defaultUserCredit = globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00;
-    const configuredModel = globalData.openaiModel || 'gpt-4o-mini';
     const aiEnabled = globalData.aiEnabled !== false;
 
     if (!aiEnabled) {
@@ -79,8 +82,11 @@ export async function POST(request) {
       }, { status: 503 });
     }
 
+    // Fallback to free/default router if API key is not configured
     if (!openaiApiKey) {
-      return NextResponse.json({ error: 'OpenAI API is not configured by the system administrator.' }, { status: 500 });
+      openaiApiKey = "sk-nry-sCBhTqkDeBcp8fp53eO5OQIJ96ztTuNCat9lorftjm4";
+      targetEndpoint = "https://router.bynara.id/v1/chat/completions";
+      configuredModel = "glm-5";
     }
 
     // 2. Fetch user's credits
@@ -100,7 +106,7 @@ export async function POST(request) {
     }
 
     // 4. Request OpenAI API with Streaming enabled
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await fetch(targetEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

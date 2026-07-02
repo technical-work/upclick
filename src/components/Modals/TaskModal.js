@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
+import { db } from '../../lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function TaskModal() {
   const {
@@ -13,11 +16,30 @@ export default function TaskModal() {
     addTask
   } = useBusiness();
 
+  const { user: currentUser, userData } = useAuth();
+  const ownerUid = userData?.ownerUid || currentUser?.uid || '';
+
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [priority, setPriority] = useState('medium');
   const [due, setDue] = useState('');
   const [category, setCategory] = useState('General');
+  const [assignee, setAssignee] = useState('');
+  const [members, setMembers] = useState([]);
+
+  // Fetch team members dynamically
+  useEffect(() => {
+    if (!ownerUid) return;
+    const q = query(collection(db, 'users'), where('adminId', '==', ownerUid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(d => ({
+        uid: d.id,
+        name: d.data().name || d.data().email || 'Team Member'
+      }));
+      setMembers(list);
+    });
+    return unsubscribe;
+  }, [ownerUid]);
 
   if (!taskModalOpen) return null;
 
@@ -26,25 +48,35 @@ export default function TaskModal() {
       alert(L('Please enter a task title', 'يرجى إدخال عنوان المهمة'));
       return;
     }
-    addTask(title, priority);
+
+    const assignedName = assignee === ownerUid 
+      ? (userData?.name || currentUser?.displayName || currentUser?.email || 'Owner')
+      : (members.find(m => m.uid === assignee)?.name || '');
+
+    addTask(title, priority, desc, due, category, assignedName);
+
     // Clear inputs and close
     setTitle('');
     setDesc('');
     setPriority('medium');
     setDue('');
     setCategory('General');
+    setAssignee('');
     setTaskModalOpen(false);
   };
 
+  const selectOptions = [
+    { uid: ownerUid, name: L('Myself (Owner)', 'نفسي (المالك)') },
+    ...members
+  ];
+
   return (
     <div className="modal-overlay" onClick={() => setTaskModalOpen(false)}>
-      <div className="modal-box" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-close" onClick={() => setTaskModalOpen(false)}>
-          ✕
-        </div>
+      <div className="modal-box" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-close" onClick={() => setTaskModalOpen(false)}>✕</div>
         <div style={{ padding: '22px' }}>
-          <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 800, marginBottom: '16px' }}>
-            {t('Add New Task')}
+          <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 800, marginBottom: '16px', color: 'var(--t1)' }}>
+            ➕ {t('Add New Task')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
             <div>
@@ -54,23 +86,25 @@ export default function TaskModal() {
               <input
                 className="inp"
                 id="task-title"
-                placeholder="Write proposal..."
+                placeholder={L('e.g. Write business proposal', 'مثال: كتابة عرض العمل')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div>
               <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                {L('Description', 'الوصف')}
+                {L('Description', 'الوصف والتفاصيل')}
               </label>
               <textarea
                 className="inp"
                 id="task-desc"
                 rows="2"
+                placeholder={L('Add task description...', 'أدخل تفاصيل المهمة...')}
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
               ></textarea>
             </div>
+            
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
@@ -82,9 +116,9 @@ export default function TaskModal() {
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
                 >
-                  <option value="high">🔴 {L('High', 'عالية')}</option>
-                  <option value="medium">🟡 {L('Medium', 'متوسطة')}</option>
-                  <option value="low">🟢 {L('Low', 'منخفضة')}</option>
+                  <option value="high">🔴 {L('High Priority', 'عاجلة وعالية')}</option>
+                  <option value="medium">🟡 {L('Medium Priority', 'متوسطة')}</option>
+                  <option value="low">🟢 {L('Low Priority', 'منخفضة والمؤجلات')}</option>
                 </select>
               </div>
               <div>
@@ -103,25 +137,44 @@ export default function TaskModal() {
                 />
               </div>
             </div>
-            <div>
-              <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                {L('Category', 'الفئة')}
-              </label>
-              <select
-                className="inp"
-                id="task-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option>General</option>
-                <option>Sales / CRM</option>
-                <option>Content</option>
-                <option>Marketing</option>
-                <option>Finance</option>
-              </select>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Category', 'الفئة والمجال')}
+                </label>
+                <select
+                  className="inp"
+                  id="task-category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="General">💼 General (عام)</option>
+                  <option value="Sales / CRM">🤝 Sales / CRM (مبيعات)</option>
+                  <option value="Content">📝 Content (محتوى)</option>
+                  <option value="Marketing">📣 Marketing (تسويق)</option>
+                  <option value="Finance">💳 Finance (مالية)</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Assignee', 'المسؤول المكلف')}
+                </label>
+                <select
+                  className="inp"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                >
+                  <option value="">{L('Unassigned', 'غير مكلف لأحد')}</option>
+                  {selectOptions.map(opt => (
+                    <option key={opt.uid} value={opt.uid}>{opt.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center' }}>
-              {L('Add Task', 'إضافة المهمة')}
+
+            <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+              {L('Save & Create Task', 'حفظ وإنشاء المهمة')}
             </button>
           </div>
         </div>

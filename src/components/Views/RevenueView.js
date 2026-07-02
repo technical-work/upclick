@@ -3,15 +3,65 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { DB } from '../../data/mockData';
+import { callClaudeAPI } from '../../utils/ai';
+
+const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
+  if (!itemDate) return true;
+  const date = new Date(itemDate);
+  if (isNaN(date.getTime())) return true;
+
+  const now = new Date();
+
+  switch (rangeType) {
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'year': {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return date >= startOfYear;
+    }
+    case 'last30': {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      return date >= thirtyDaysAgo;
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+      }
+      return true;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
 
 export default function RevenueView() {
-  const { lang, L, t, formatMoney, GC, saveGC } = useBusiness();
+  const { lang, L, t, formatMoney, GC, saveGC, updateLeadStage, deleteLead, confirmAction, promptAction, currency, rates } = useBusiness();
 
   // Tab state inside Revenue Hub
   const [activeSubTab, setActiveSubTab] = useState('rv-streams'); // 'rv-streams', 'rv-deals', 'rv-neg', etc.
 
+  // Global Filters
+  const [filterWorkspace, setFilterWorkspace] = useState('all');
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   // 1. Streams State
-  const activeStreamsCount = DB.streamsLauncher[lang]?.filter(s => s.a).length || 4;
 
   const revenueData = GC.revenue || {};
 
@@ -57,27 +107,598 @@ export default function RevenueView() {
     saveGC(updatedGC);
   };
 
+  // Dynamic aggregations based on filters
+  const workspaces = GC.crm?.workspaces || [];
+  const selectedWorkspaces = filterWorkspace === 'all'
+    ? workspaces
+    : workspaces.filter(w => w.id === filterWorkspace);
+
+  const parseArabicAndEnglishFloat = (str) => {
+    if (!str) return 0;
+    const arabicDigits = /[٠١٢٣٤٥٦٧٨٩]/g;
+    const englishDigits = (c) => '0123456789'[c.charCodeAt(0) - 1632];
+    let normalized = str.replace(arabicDigits, englishDigits);
+    normalized = normalized.replace(/[^0-9.]/g, '');
+    return parseFloat(normalized) || 0;
+  };
+
+  const allLeads = [];
+  selectedWorkspaces.forEach(ws => {
+    const dealsList = ws.deals || [
+      { id: `101_${ws.id}`, name: 'Pepsi Co', value: 800, stage: ws.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
+      { id: `102_${ws.id}`, name: 'Salla App', value: 1500, stage: ws.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
+      { id: `103_${ws.id}`, name: 'Huawei Arabia', value: 2400, stage: ws.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
+    ];
+    dealsList.forEach(d => {
+      allLeads.push({
+        ...d,
+        workspaceId: ws.id,
+        workspaceName: ws.name,
+        stages: ws.stages
+      });
+    });
+  });
+
+  const filteredLeads = allLeads.filter(lead =>
+    filterByDateRange(lead.created, filterPeriod, customStartDate, customEndDate)
+  );
+
+  const activeWsIdObj = filterWorkspace !== 'all' ? filterWorkspace : (GC.crm?.activeWorkspaceId || 'default');
+  const activeWsObj = workspaces.find(w => w.id === activeWsIdObj) || workspaces[0];
+  const activeStages = activeWsObj?.stages || [
+    { key: 'new', label: L('New Lead', 'صفقة جديدة'), color: 'var(--blue)' },
+    { key: 'contacted', label: L('Contacted', 'تم التواصل'), color: 'var(--purple)' },
+    { key: 'qualified', label: L('Qualified', 'مؤهل'), color: 'var(--amber)' },
+    { key: 'proposal', label: L('Proposal Sent', 'تم تقديم العرض'), color: 'var(--a)' },
+    { key: 'closed', label: L('Closed Won', 'مكتملة ناجحة'), color: 'var(--green)' },
+    { key: 'lost', label: L('Lost', 'خاسرة'), color: 'var(--red)' }
+  ];
+
+  const dealsByStage = {};
+  activeStages.forEach(s => {
+    dealsByStage[s.key] = [];
+  });
+
+  filteredLeads.forEach(lead => {
+    const stageKey = lead.stage;
+    if (dealsByStage[stageKey] !== undefined) {
+      dealsByStage[stageKey].push(lead);
+    } else {
+      const firstKey = activeStages[0]?.key || 'new';
+      if (dealsByStage[firstKey] === undefined) {
+        dealsByStage[firstKey] = [];
+      }
+      dealsByStage[firstKey].push(lead);
+    }
+  });
+
+  // Calculate real incomes
+  const crmClosedRevenue = filteredLeads
+    .filter(l => {
+      const key = (l.stage || '').toLowerCase();
+      return key.includes('close') || key.includes('won') || key.includes('complete') || key.includes('done');
+    })
+    .reduce((sum, l) => sum + (parseFloat(l.value) || 0), 0);
+
+  const getRealBestBrands = () => {
+    const brandsMap = {};
+    const closedStageKeys = activeStages.filter(s => {
+      const key = s.key.toLowerCase();
+      return key.includes('close') || key.includes('won') || key.includes('complete') || key.includes('done');
+    }).map(s => s.key);
+
+    filteredLeads.forEach(deal => {
+      if (closedStageKeys.includes(deal.stage) || deal.stage === 'closed' || deal.stage === 'won' || deal.stage === 'complete') {
+        const name = deal.name || 'Brand';
+        const val = parseFloat(deal.value) || 0;
+        if (!brandsMap[name]) {
+          brandsMap[name] = { name, deals: 0, rev: 0 };
+        }
+        brandsMap[name].deals += 1;
+        brandsMap[name].rev += val;
+      }
+    });
+    return Object.values(brandsMap).sort((a, b) => b.rev - a.rev);
+  };
+  const realBestBrands = getRealBestBrands();
+
+  // Dynamic active and pending deal counts
+  const dynamicClosedAndLostKeys = activeStages.filter(s => {
+    const key = s.key.toLowerCase();
+    return key.includes('close') || key.includes('won') || key.includes('complete') || key.includes('done') || key.includes('lost');
+  }).map(s => s.key);
+
+  const activeDealsCount = filteredLeads.filter(l => !dynamicClosedAndLostKeys.includes(l.stage)).length;
+  const pendingDealsCount = filteredLeads.filter(l => {
+    const key = (l.stage || '').toLowerCase();
+    return key.includes('negotiat') || key.includes('qualif') || key.includes('proposal') || key.includes('contract') || key.includes('sent');
+  }).length;
+
+  const allProducts = GC.digitalProducts?.products || [];
+  const filteredProducts = allProducts.filter(p =>
+    filterByDateRange(p.created, filterPeriod, customStartDate, customEndDate)
+  );
+  const productsRevenue = filteredProducts.reduce((sum, p) => sum + (parseFloat(p.revenue) || 0), 0);
+
+  const coursesList = GC.revenue?.courses || [];
+  const filteredCourses = coursesList.filter(c =>
+    filterByDateRange(c.created, filterPeriod, customStartDate, customEndDate)
+  );
+  const coursesRevenue = filteredCourses.reduce((sum, c) => sum + (parseFloat(c.revenue) || 0), 0);
+
+  const coachingSessionsList = coachingSessions || [];
+  const filteredCoaching = coachingSessionsList.filter(s =>
+    filterByDateRange(s.created, filterPeriod, customStartDate, customEndDate)
+  );
+  const coachingRevenue = filteredCoaching
+    .filter(s => s.s === 'done' || s.sl === L('Completed', 'مكتمل') || s.sl === 'Completed')
+    .reduce((sum, s) => sum + (parseFloat(s.price) || 150), 0);
+
+  const affiliatesListRaw = affiliatesList || [];
+  const affiliateRevenue = affiliatesListRaw.reduce((sum, a) => {
+    const val = parseFloat((a.earn || '').replace(/[^0-9.]/g, '')) || 0;
+    return sum + val;
+  }, 0);
+
+  const merchListRaw = merchCatalog || [];
+  const merchRevenue = merchListRaw.reduce((sum, m) => {
+    const price = parseFloat((m.p || '').replace(/[^0-9.]/g, '')) || 0;
+    return sum + (price * (m.s || 0));
+  }, 0);
+
+  const totalRevenue = crmClosedRevenue + productsRevenue + coursesRevenue;
+
+  const streams = [
+    { name: L('Sponsorships', 'الرعايات'), val: crmClosedRevenue, c: 'var(--a)' },
+    { name: L('Digital Products', 'المنتجات الرقمية'), val: productsRevenue, c: 'var(--a2)' },
+    { name: L('Courses', 'الكورسات'), val: coursesRevenue, c: 'var(--a3)' }
+  ];
+
+  const sortedStreams = [...streams].sort((a, b) => b.val - a.val);
+  const bestStream = totalRevenue > 0 ? sortedStreams[0].name : L('None', 'لا يوجد');
+  const bestStreamPct = totalRevenue > 0 ? Math.round((sortedStreams[0].val / totalRevenue) * 100) : 0;
+
+  const calculateDiversityScore = () => {
+    if (totalRevenue <= 0) return 0;
+    const activeCount = streams.filter(s => s.val > 0).length;
+    let hhi = 0;
+    streams.forEach(s => {
+      if (s.val > 0) {
+        const pct = s.val / totalRevenue;
+        hhi += pct * pct;
+      }
+    });
+    const score = Math.round((1 - hhi) * 100 + (activeCount * 5));
+    return Math.min(Math.max(score, 10), 100);
+  };
+  const diversityScore = calculateDiversityScore();
+  const activeStreamsCount = streams.filter(s => s.val > 0).length;
+
+  const streamsLauncherItems = ((DB.streamsLauncher && DB.streamsLauncher[lang]) || [])
+    .filter(item => item.e !== '🔗' && item.e !== '🏆' && item.e !== '🎯' && item.e !== '👕')
+    .map(item => {
+      let isActive = false;
+      if (item.e === '📦') isActive = filteredProducts.length > 0;
+      else if (item.e === '🎓') isActive = filteredCourses.length > 0;
+      else if (item.e === '📧') isActive = true;
+      return { ...item, a: isActive };
+    });
+
+  const getSvgCircles = () => {
+    let accumulatedPercent = 0;
+    return streams.map(s => {
+      const pct = totalRevenue > 0 ? Math.round((s.val / totalRevenue) * 100) : 0;
+      if (pct <= 0) return null;
+      const strokeDasharray = `${pct} ${100 - pct}`;
+      const strokeDashoffset = -accumulatedPercent;
+      accumulatedPercent += pct;
+      return {
+        strokeDasharray,
+        strokeDashoffset,
+        color: s.c
+      };
+    }).filter(Boolean);
+  };
+  const svgCircles = getSvgCircles();
+
   const handleAddDeal = () => {
-    const brand = prompt(L('Enter Brand Name:', 'أدخل اسم البراند:'));
-    if (!brand) return;
-    const value = prompt(L('Enter Deal Value (e.g. $500):', 'أدخل قيمة الصفقة (مثال: $500):'), '$500');
-    if (!value) return;
-    const type = prompt(L('Enter Content Type:', 'أدخل نوع المحتوى:'), '1x Reel');
+    promptAction(L('Enter Brand/Client Name:', 'أدخل اسم البراند/العميل:'), '', (brand) => {
+      if (!brand) return;
+      promptAction(L('Enter Deal Value (e.g. 500):', 'أدخل قيمة الصفقة (مثال: 500):'), '500', (valueStr) => {
+        if (!valueStr) return;
+        const enteredVal = parseArabicAndEnglishFloat(valueStr);
+        const rate = rates[currency.code] || 1;
+        const value = enteredVal / rate;
+        promptAction(L('Enter Content Type:', 'أدخل نوع المحتوى:'), '1x Reel', (type) => {
+          if (!type) return;
 
-    const newDeal = {
-      n: brand,
-      a: value,
-      ty: { en: type, ar: type }
+          const activeWsId = filterWorkspace !== 'all' ? filterWorkspace : (GC.crm?.activeWorkspaceId || 'default');
+          const wsList = GC.crm?.workspaces || [];
+          const activeWs = wsList.find(w => w.id === activeWsId) || wsList[0];
+          if (!activeWs) {
+            alert(L('No workspace found to add deal!', 'لم يتم العثور على مساحة عمل لإضافة الصفقة!'));
+            return;
+          }
+
+          const startingStage = activeWs.stages && activeWs.stages.length > 0 ? activeWs.stages[0].key : 'new';
+
+          const newLead = {
+            id: Date.now(),
+            name: brand,
+            value: value,
+            stage: startingStage,
+            created: new Date().toISOString(),
+            source: 'Revenue Hub',
+            phone: '',
+            email: '',
+            followupDate: '',
+            notes: type
+          };
+
+          const currentDeals = activeWs.deals || [
+            { id: 101, name: 'Pepsi Co', value: 800, stage: activeWs.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
+            { id: 102, name: 'Salla App', value: 1500, stage: activeWs.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
+            { id: 103, name: 'Huawei Arabia', value: 2400, stage: activeWs.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
+          ];
+
+          const updatedWs = { ...activeWs, deals: [...currentDeals, newLead] };
+          saveGC({
+            ...GC,
+            crm: {
+              ...(GC.crm || {}),
+              workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+            }
+          });
+          alert(L('Deal added successfully!', 'تمت إضافة الصفقة بنجاح!'));
+        });
+      });
+    });
+  };
+
+  const handleMoveDeal = (lead) => {
+    const wsList = GC.crm?.workspaces || [];
+    const ws = wsList.find(w => w.id === lead.workspaceId) || wsList[0];
+    if (!ws) return;
+
+    const activeStages = ws.stages || [];
+    const options = activeStages.map((s, idx) => ({
+      key: s.key,
+      label: s.label,
+      choiceStr: `${idx + 1}. ${s.label}`
+    }));
+
+    const promptMessageAr = `نقل "${lead.name}" إلى:\n` + 
+      options.map(opt => opt.choiceStr).join('\n') + 
+      `\n${options.length + 1}. ❌ حذف الصفقة`;
+
+    const promptMessageEn = `Move "${lead.name}" to:\n` + 
+      options.map(opt => opt.choiceStr).join('\n') + 
+      `\n${options.length + 1}. ❌ Delete Deal`;
+
+    promptAction(
+      L(promptMessageEn, promptMessageAr),
+      '1',
+      (choice) => {
+        if (!choice) return;
+
+        const currentDeals = ws.deals || [
+          { id: `101_${ws.id}`, name: 'Pepsi Co', value: 800, stage: ws.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
+          { id: `102_${ws.id}`, name: 'Salla App', value: 1500, stage: ws.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
+          { id: `103_${ws.id}`, name: 'Huawei Arabia', value: 2400, stage: ws.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
+        ];
+
+        const deleteChoiceKey = String(options.length + 1);
+        if (choice === deleteChoiceKey) {
+          confirmAction(L('Are you sure you want to delete this deal?', 'هل أنت متأكد من حذف هذه الصفقة؟'), () => {
+            const updatedWs = { ...ws, deals: currentDeals.filter(l => String(l.id) !== String(lead.id)) };
+            saveGC({
+              ...GC,
+              crm: {
+                ...GC.crm,
+                workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+              }
+            });
+            alert(L('Deal deleted!', 'تم حذف الصفقة!'));
+          });
+          return;
+        }
+
+        const targetStageIndex = parseInt(choice) - 1;
+        if (targetStageIndex >= 0 && targetStageIndex < options.length) {
+          const targetCrmStageKey = options[targetStageIndex].key;
+          const updatedWs = {
+            ...ws,
+            deals: currentDeals.map(l => String(l.id) === String(lead.id) ? { ...l, stage: targetCrmStageKey } : l)
+          };
+
+          saveGC({
+            ...GC,
+            crm: {
+              ...GC.crm,
+              workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+            }
+          });
+          alert(L(`Deal moved to ${options[targetStageIndex].label}!`, `تم نقل الصفقة إلى ${options[targetStageIndex].label}!`));
+        }
+      }
+    );
+  };
+
+  const handleDropDeal = (leadId, targetStageKey) => {
+    if (!leadId) return;
+    const wsList = GC.crm?.workspaces || [];
+    let foundWs = null;
+    let foundLead = null;
+    for (let ws of wsList) {
+      const currentDeals = ws.deals || [
+        { id: `101_${ws.id}`, name: 'Pepsi Co', value: 800, stage: ws.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
+        { id: `102_${ws.id}`, name: 'Salla App', value: 1500, stage: ws.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
+        { id: `103_${ws.id}`, name: 'Huawei Arabia', value: 2400, stage: ws.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
+      ];
+      const lead = currentDeals.find(l => String(l.id) === String(leadId));
+      if (lead) {
+        foundWs = ws;
+        foundLead = lead;
+        break;
+      }
+    }
+    if (!foundWs || !foundLead) return;
+
+    const currentDeals = foundWs.deals || [
+      { id: `101_${foundWs.id}`, name: 'Pepsi Co', value: 800, stage: foundWs.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
+      { id: `102_${foundWs.id}`, name: 'Salla App', value: 1500, stage: foundWs.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
+      { id: `103_${foundWs.id}`, name: 'Huawei Arabia', value: 2400, stage: foundWs.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
+    ];
+
+    const updatedWs = {
+      ...foundWs,
+      deals: currentDeals.map(l => String(l.id) === String(leadId) ? { ...l, stage: targetStageKey } : l)
+    };
+    saveGC({
+      ...GC,
+      crm: {
+        ...GC.crm,
+        workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+      }
+    });
+  };
+
+  const handleAddStage = () => {
+    promptAction(
+      L('Enter New Stage Name:', 'أدخل اسم المرحلة الجديدة:'),
+      '',
+      (stageName) => {
+        if (!stageName || !stageName.trim()) return;
+
+        const activeWsId = filterWorkspace !== 'all' ? filterWorkspace : (GC.crm?.activeWorkspaceId || 'default');
+        const wsList = GC.crm?.workspaces || [];
+        const activeWs = wsList.find(w => w.id === activeWsId) || wsList[0];
+        if (!activeWs) {
+          alert(L('No active workspace found!', 'لم يتم العثور على مساحة عمل نشطة!'));
+          return;
+        }
+
+        const colors = ['var(--blue)', 'var(--purple)', 'var(--amber)', 'var(--a)', 'var(--green)', 'var(--red)', 'var(--orange)', 'var(--pink)'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const stageKey = stageName.toLowerCase().replace(/[^a-z0-9]/g, '_') || `stage_${Date.now()}`;
+
+        const newStage = {
+          key: stageKey,
+          label: stageName,
+          color: randomColor
+        };
+
+        const updatedWs = {
+          ...activeWs,
+          stages: [...(activeWs.stages || []), newStage]
+        };
+
+        saveGC({
+          ...GC,
+          crm: {
+            ...GC.crm,
+            workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+          }
+        });
+        alert(L('Stage added successfully!', 'تمت إضافة المرحلة بنجاح!'));
+      }
+    );
+  };
+
+  const handleEditStage = (stage) => {
+    promptAction(
+      L(`Enter new name for stage "${stage.label}":`, `أدخل اسماً جديداً للمرحلة "${stage.label}":`),
+      stage.label,
+      (newName) => {
+        if (!newName || !newName.trim()) return;
+
+        const activeWsId = filterWorkspace !== 'all' ? filterWorkspace : (GC.crm?.activeWorkspaceId || 'default');
+        const wsList = GC.crm?.workspaces || [];
+        const activeWs = wsList.find(w => w.id === activeWsId) || wsList[0];
+        if (!activeWs) return;
+
+        const updatedWs = {
+          ...activeWs,
+          stages: (activeWs.stages || []).map(s => s.key === stage.key ? { ...s, label: newName } : s)
+        };
+
+        saveGC({
+          ...GC,
+          crm: {
+            ...GC.crm,
+            workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+          }
+        });
+        alert(L('Stage renamed successfully!', 'تم تعديل اسم المرحلة بنجاح!'));
+      }
+    );
+  };
+
+  const handleDeleteStage = (stage) => {
+    confirmAction(
+      L(
+        `Are you sure you want to delete stage "${stage.label}"? All its deals will be moved to the first stage.`,
+        `هل أنت متأكد من حذف المرحلة "${stage.label}"؟ سيتم نقل كافة صفقاتها إلى المرحلة الأولى.`
+      ),
+      () => {
+        const activeWsId = filterWorkspace !== 'all' ? filterWorkspace : (GC.crm?.activeWorkspaceId || 'default');
+        const wsList = GC.crm?.workspaces || [];
+        const activeWs = wsList.find(w => w.id === activeWsId) || wsList[0];
+        if (!activeWs) return;
+
+        const firstStageKey = activeWs.stages?.find(s => s.key !== stage.key)?.key || 'new';
+
+        // Filter out the deleted stage
+        const updatedStages = (activeWs.stages || []).filter(s => s.key !== stage.key);
+
+        // Move deals belonging to the deleted stage
+        const currentDeals = activeWs.deals || [
+          { id: `101_${activeWs.id}`, name: 'Pepsi Co', value: 800, stage: activeWs.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
+          { id: `102_${activeWs.id}`, name: 'Salla App', value: 1500, stage: activeWs.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
+          { id: `103_${activeWs.id}`, name: 'Huawei Arabia', value: 2400, stage: activeWs.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
+        ];
+
+        const updatedDeals = currentDeals.map(d => 
+          d.stage === stage.key ? { ...d, stage: firstStageKey } : d
+        );
+
+        const updatedWs = {
+          ...activeWs,
+          stages: updatedStages,
+          deals: updatedDeals
+        };
+
+        saveGC({
+          ...GC,
+          crm: {
+            ...GC.crm,
+            workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+          }
+        });
+        alert(L('Stage deleted successfully!', 'تم حذف المرحلة بنجاح!'));
+      }
+    );
+  };
+
+  const handleCreateWorkspace = () => {
+    promptAction(
+      L('Enter New Business/Workspace Name:', 'أدخل اسم مساحة العمل/البزنس الجديد:'),
+      '',
+      (wsName) => {
+        if (!wsName || !wsName.trim()) return;
+
+        const newWs = {
+          id: `ws_${Date.now()}`,
+          name: wsName.trim(),
+          stages: [
+            { key: 'new', label: L('New Lead', 'صفقة جديدة'), color: 'var(--blue)' },
+            { key: 'contacted', label: L('Contacted', 'تم التواصل'), color: 'var(--purple)' },
+            { key: 'qualified', label: L('Qualified', 'مؤهل'), color: 'var(--amber)' },
+            { key: 'proposal', label: L('Proposal Sent', 'تم تقديم العرض'), color: 'var(--a)' },
+            { key: 'closed', label: L('Closed Won', 'مكتملة ناجحة'), color: 'var(--green)' },
+            { key: 'lost', label: L('Lost', 'خاسرة'), color: 'var(--red)' }
+          ],
+          deals: [],
+          leads: []
+        };
+
+        const updatedWorkspaces = [...(GC.crm?.workspaces || []), newWs];
+        saveGC({
+          ...GC,
+          crm: {
+            ...(GC.crm || {}),
+            workspaces: updatedWorkspaces,
+            activeWorkspaceId: newWs.id
+          }
+        });
+
+        setFilterWorkspace(newWs.id);
+        alert(L('New business pipeline created successfully!', 'تم إنشاء مساحة عمل جديدة بنجاح!'));
+      }
+    );
+  };
+
+  const handleRenameWorkspace = () => {
+    const wsList = GC.crm?.workspaces || [];
+    const ws = wsList.find(w => w.id === filterWorkspace);
+    if (!ws) return;
+
+    promptAction(
+      L(`Enter new name for workspace "${ws.name}":`, `أدخل اسماً جديداً لمساحة العمل "${ws.name}":`),
+      ws.name,
+      (newName) => {
+        if (!newName || !newName.trim()) return;
+
+        const updated = wsList.map(w => w.id === ws.id ? { ...w, name: newName.trim() } : w);
+        saveGC({
+          ...GC,
+          crm: {
+            ...GC.crm,
+            workspaces: updated
+          }
+        });
+        alert(L('Workspace renamed successfully!', 'تم تعديل اسم مساحة العمل بنجاح!'));
+      }
+    );
+  };
+
+  const handleDeleteWorkspace = () => {
+    const wsList = GC.crm?.workspaces || [];
+    const ws = wsList.find(w => w.id === filterWorkspace);
+    if (!ws) return;
+
+    confirmAction(
+      L(
+        `Are you sure you want to delete workspace "${ws.name}"? All its stages and deals will be lost forever.`,
+        `هل أنت متأكد من حذف مساحة العمل "${ws.name}"؟ سيتم مسح كافة المراحل والصفقات التابعة لها نهائياً.`
+      ),
+      () => {
+        const updated = wsList.filter(w => w.id !== ws.id);
+        const nextActiveId = updated[0]?.id || 'default';
+
+        saveGC({
+          ...GC,
+          crm: {
+            ...GC.crm,
+            workspaces: updated,
+            activeWorkspaceId: nextActiveId
+          }
+        });
+
+        setFilterWorkspace('all');
+        alert(L('Workspace deleted successfully!', 'تم حذف مساحة العمل بنجاح!'));
+      }
+    );
+  };
+
+  const handleSaveNegToCRM = () => {
+    if (!negResult) return;
+    const activeWsId = filterWorkspace !== 'all' ? filterWorkspace : (GC.crm?.activeWorkspaceId || 'default');
+    const wsList = GC.crm?.workspaces || [];
+    const activeWs = wsList.find(w => w.id === activeWsId) || wsList[0];
+    if (!activeWs) return;
+
+    const startingStage = activeWs.stages && activeWs.stages.length > 0 ? activeWs.stages[0].key : 'new';
+
+    const newLead = {
+      id: Date.now(),
+      name: negBrand || L('Negotiator Deal', 'صفقة المفاوض'),
+      value: negResult.amount,
+      stage: startingStage,
+      created: new Date().toISOString(),
+      source: 'Smart Negotiator',
+      notes: `${negType} - Exclusivity: ${negExcl}`
     };
 
-    const newDeals = {
-      ...pipelineDeals,
-      Prospect: [...(pipelineDeals.Prospect || []), newDeal]
-    };
-
-    setPipelineDeals(newDeals);
-    saveRevenueData({ deals: newDeals });
-    alert(L('Deal added to Prospect stage!', 'تمت إضافة الصفقة لمرحلة قيد البحث!'));
+    const updatedWs = { ...activeWs, leads: [...(activeWs.leads || []), newLead] };
+    saveGC({
+      ...GC,
+      crm: {
+        ...(GC.crm || {}),
+        workspaces: wsList.map(w => w.id === updatedWs.id ? updatedWs : w)
+      }
+    });
+    alert(L('Deal saved successfully to CRM!', 'تم حفظ الصفقة بنجاح في CRM!'));
   };
 
   // 3. Negotiator State
@@ -129,30 +750,254 @@ export default function RevenueView() {
   // 4. Course Builder State
   const [courseTopic, setCourseTopic] = useState('');
   const [courseAudience, setCourseAudience] = useState('Beginner creators');
-  const [coursePrice, setCoursePrice] = useState('$97');
+  const [coursePrice, setCoursePrice] = useState('97');
+  const [courseDuration, setCourseDuration] = useState('4 Weeks');
+  const [courseLevel, setCourseLevel] = useState('Beginner');
+  const [courseLanguage, setCourseLanguage] = useState('Arabic');
+  const [courseSkill, setCourseSkill] = useState('General');
+  const [courseIsGenerating, setCourseIsGenerating] = useState(false);
   const [courseOutlineData, setCourseOutlineData] = useState(null);
 
-  const handleBuildCourse = () => {
+  const handleBuildCourse = async () => {
+    setCourseIsGenerating(true);
+    setCourseOutlineData(null);
+
     const topic = courseTopic || L('Content Creation Mastery', 'إتقان إنشاء المحتوى');
-    const price = coursePrice;
+    const priceVal = parseFloat(coursePrice.replace(/[^0-9.]/g, '')) || 97;
+    const price = `$${priceVal}`;
     const aud = courseAudience;
 
-    const students = price.includes('29') ? '50–100' : price.includes('97') ? '30–60' : price.includes('197') ? '15–30' : '5–15';
-    const rev = price.includes('29') ? '$1,450–2,900' : price.includes('97') ? '$2,910–5,820' : price.includes('197') ? '$2,955–5,910' : '$2,485–7,455';
+    const defaultStudents = priceVal <= 35 ? '50–100' : priceVal <= 100 ? '30–60' : priceVal <= 250 ? '15–30' : '5–15';
+    const defaultRev = `$${(priceVal * (priceVal <= 35 ? 75 : priceVal <= 100 ? 45 : priceVal <= 250 ? 22 : 10)).toLocaleString()}–$${(priceVal * (priceVal <= 35 ? 150 : priceVal <= 100 ? 90 : priceVal <= 250 ? 45 : 20)).toLocaleString()}`;
+    const defaultOutline = DB.courseOutline[lang] || [];
 
-    setCourseOutlineData({
-      topic,
-      price,
-      aud,
-      rev,
-      students,
-      outline: DB.courseOutline[lang] || []
+    const prompt = `Create a detailed course syllabus structure for:
+- Topic: ${topic}
+- Target Audience: ${aud}
+- Suggested Price: ${price}
+- Duration: ${courseDuration}
+- Difficulty Level: ${courseLevel}
+- Language: ${courseLanguage}
+- Skill Focus: ${courseSkill}
+
+Please estimate the number of potential students and expected revenue range based on this pricing.
+You MUST output your response as a valid JSON object ONLY. Do not include markdown wraps (like \`\`\`json) or any conversational text. Use exactly this JSON template:
+{
+  "topic": "${topic}",
+  "aud": "${aud}",
+  "price": "${price}",
+  "rev": "expected revenue range (e.g. $2,000–$4,000)",
+  "students": "expected number of students (e.g. 20–40)",
+  "outline": [
+    { "m": "Module 1: Title", "ls": ["Lesson 1: Intro", "Lesson 2: ..."] },
+    { "m": "Module 2: Title", "ls": ["Lesson 1: ...", "Lesson 2: ..."] }
+  ]
+}`;
+
+    try {
+      const response = await callClaudeAPI(prompt, 'You are an educational designer and course creator. Output only valid JSON.', lang);
+      const cleanJsonStr = response.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJsonStr);
+      if (parsed && parsed.outline) {
+        setCourseOutlineData(parsed);
+      } else {
+        throw new Error('Invalid format');
+      }
+    } catch (e) {
+      console.warn("AI generation failed, using fallback:", e);
+      setCourseOutlineData({
+        topic,
+        price,
+        aud,
+        rev: defaultRev,
+        students: defaultStudents,
+        outline: defaultOutline
+      });
+    } finally {
+      setCourseIsGenerating(false);
+    }
+  };
+
+  const handleLaunchCourse = () => {
+    if (!courseOutlineData) return;
+
+    promptAction(L('Enter starting number of students:', 'أدخل عدد الطلاب البدائي:'), '10', (startingStr) => {
+      const startingStudents = parseInt(startingStr) || 10;
+      const priceVal = parseFloat(courseOutlineData.price.replace(/[^0-9.]/g, '')) || 97;
+
+      const newCourse = {
+        id: Date.now(),
+        title: courseOutlineData.topic,
+        audience: courseOutlineData.aud,
+        price: priceVal,
+        students: startingStudents,
+        revenue: startingStudents * priceVal,
+        rating: 4.8,
+        outline: courseOutlineData.outline,
+        created: new Date().toISOString(),
+        status: 'active'
+      };
+
+      const updatedCourses = [newCourse, ...(GC.revenue?.courses || [])];
+      saveRevenueData({ courses: updatedCourses });
+      alert(L('Course launched and saved successfully!', 'تم إطلاق وحفظ الكورس بنجاح!'));
     });
   };
 
   // 5. Digital Shop List
   const handleAddProduct = () => {
-    alert(L('Product added! Check Shop layout.', 'تمت إضافة المنتج! تحقق من المتجر.'));
+    promptAction(L('Enter Product Name:', 'أدخل اسم المنتج:'), '', (name) => {
+      if (!name) return;
+      promptAction(L('Enter Product Type (e.g. Notion Template, PDF):', 'أدخل نوع المنتج (مثال: Notion Template ، PDF):'), 'Notion Template', (type) => {
+        if (!type) return;
+        promptAction(L('Enter Product Price (e.g. 29):', 'أدخل سعر المنتج (مثال: 29):'), '29', (priceStr) => {
+          const priceVal = parseFloat(priceStr) || 29;
+
+          const newProduct = {
+            id: Date.now(),
+            name: name,
+            type: type,
+            price: priceVal,
+            sales: 0,
+            revenue: 0,
+            status: 'launched',
+            created: new Date().toISOString()
+          };
+
+          const updated = [...(GC.digitalProducts?.products || []), newProduct];
+          saveGC({
+            ...GC,
+            digitalProducts: {
+              ...(GC.digitalProducts || {}),
+              products: updated
+            }
+          });
+          alert(L('Product added successfully to shop!', 'تمت إضافة المنتج بنجاح إلى المتجر!'));
+        });
+      });
+    });
+  };
+
+  const trendingCatalog = [
+    {
+      title: L('30-Day Social Media Content Calendar', 'تقويم محتوى وسائل التواصل الاجتماعي لمدة ٣٠ يومًا'),
+      type: L('Notion Template', 'قالب Notion'),
+      platform: 'Gumroad',
+      price: 27,
+      monthly_sales: 340,
+      rating: 4.8,
+      opp_score: 9,
+      emoji: '📅',
+      why_trending: L('Creators need structured content planning', 'منشئو المحتوى بحاجة لتخطيط محتوى منظم وسريع'),
+      ai_tools: ['Notion AI', 'Claude', 'ChatGPT'],
+      creation_days: 3,
+      desc: L('A complete Notion workspace to plan, draft, and schedule Instagram and TikTok posts.', 'مساحة عمل كاملة على Notion لتخطيط وصياغة وجدولة منشورات Instagram و TikTok.')
+    },
+    {
+      title: L('ChatGPT Prompt Pack for Coaches', 'حزمة أوامر ChatGPT للكوتشز والمدربين'),
+      type: L('AI Prompt Pack', 'حزمة أوامر ذكاء اصطناعي'),
+      platform: 'Gumroad',
+      price: 19,
+      monthly_sales: 520,
+      rating: 4.7,
+      opp_score: 10,
+      emoji: '🤖',
+      why_trending: L('AI tools adoption exploding in Arab market', 'اعتماد أدوات الذكاء الاصطناعي يتفجر في السوق العربي'),
+      ai_tools: ['Claude', 'ChatGPT', 'Notion'],
+      creation_days: 2,
+      desc: L('150+ custom prompts to write client proposals, create content, and generate workbook ideas.', 'أكثر من ١٥٠ أمراً مخصصاً لكتابة مقترحات العملاء، وإنشاء المحتوى، وتوليد أفكار كتب العمل.')
+    },
+    {
+      title: L('Business Finance Tracker — Arabic', 'متبع المالية للأعمال والشركات — باللغة العربية'),
+      type: L('Excel Template', 'قالب Excel / Sheets'),
+      platform: 'Etsy',
+      price: 15,
+      monthly_sales: 280,
+      rating: 4.9,
+      opp_score: 8,
+      emoji: '💰',
+      why_trending: L('Arabic-language finance tools are scarce', 'شح الأدوات المالية المصممة باللغة العربية للشركات'),
+      ai_tools: ['Google Sheets', 'Claude', 'ChatGPT'],
+      creation_days: 4,
+      desc: L('Simple bookkeeping spreadsheet with RTL support, tax calculations, and dashboard graphs.', 'جدول بيانات مبسط لمسك الدفاتر مع دعم الكتابة من اليمين لليسار، وحساب الضرائب ورسوم بيانية.')
+    },
+    {
+      title: L('Instagram Reels Script Bundle (50 Scripts)', 'حزمة سكريبتات ريلز انستجرام (٥٠ سكريبت)'),
+      type: L('Swipe File', 'ملف سكريبتات جاهزة'),
+      platform: 'Gumroad',
+      price: 37,
+      monthly_sales: 190,
+      rating: 4.6,
+      opp_score: 9,
+      emoji: '🎬',
+      why_trending: L('Video content demand growing 3x in Gulf region', 'الطلب على محتوى الفيديو ينمو بمعدل ٣ أضعاف في منطقة الخليج'),
+      ai_tools: ['Claude', 'ChatGPT', 'CapCut'],
+      creation_days: 5,
+      desc: L('Proven viral hook structures and high-retention body scripts for business consultants.', 'هياكل خطافية فيروسية مثبتة وسيناريوهات عالية الاحتفاظ بالجمهور لمستشاري الأعمال.')
+    },
+    {
+      title: L('Freelancer Client Proposal Template', 'قالب مقترح عميل للمستقلين (Freelancers)'),
+      type: L('Canva Template', 'قالب Canva'),
+      platform: 'Creative Market',
+      price: 22,
+      monthly_sales: 410,
+      rating: 4.8,
+      opp_score: 8,
+      emoji: '📋',
+      why_trending: L('Freelancing booming in MENA region', 'طفرة العمل الحر والعمل عن بعد في منطقة الشرق الأوسط وشمال إفريقيا'),
+      ai_tools: ['Canva', 'Claude', 'ChatGPT'],
+      creation_days: 2,
+      desc: L('A high-end, 12-page proposal slide deck editable in Canva free or pro accounts.', 'مجموعة شرائح مقترحات راقية مكونة من ١٢ صفحة قابلة للتعديل على حسابات Canva المجانية أو المدفوعة.')
+    },
+    {
+      title: L('Online Course Launch Checklist', 'قائمة مراجعة إطلاق الكورسات أونلاين'),
+      type: L('PDF Guide', 'دليل PDF'),
+      platform: 'Gumroad',
+      price: 9,
+      monthly_sales: 680,
+      rating: 4.5,
+      opp_score: 9,
+      emoji: '🚀',
+      why_trending: L('Low barrier to entry, high search volume', 'حجم بحث مرتفع جداً وسهولة الإطلاق والدخول للمجال'),
+      ai_tools: ['Notion', 'Claude', 'Canva'],
+      creation_days: 1,
+      desc: L('A step-by-step PDF roadmap summarizing everything from pre-launch validation to sales page setups.', 'خارطة طريق خطوة بخطوة تلخص كل شيء بدءًا من التحقق من صحة ما قبل الإطلاق وحتى إعدادات صفحة المبيعات.')
+    }
+  ];
+
+  const handleStealProduct = (prod) => {
+    confirmAction(
+      L(
+        `Are you sure you want to replicate and launch "${prod.title}" in your digital products shop?`,
+        `هل أنت متأكد من رغبتك في استنساخ وإطلاق "${prod.title}" في متجرك للمنتجات الرقمية؟`
+      ),
+      () => {
+        const newProd = {
+          id: Date.now(),
+          name: prod.title,
+          type: prod.type,
+          price: prod.price,
+          sales: 0,
+          revenue: 0,
+          status: 'launched',
+          created: new Date().toISOString()
+        };
+        const updated = [...(GC.digitalProducts?.products || []), newProd];
+        saveGC({
+          ...GC,
+          digitalProducts: {
+            ...(GC.digitalProducts || {}),
+            products: updated
+          }
+        });
+        alert(
+          L(
+            `Replicated successfully! "${prod.title}" is now active in your shop.`,
+            `تم الاستنساخ بنجاح! "${prod.title}" أصبح نشطاً الآن في متجرك.`
+          )
+        );
+      }
+    );
   };
 
   const handleAddAffLink = () => {
@@ -222,33 +1067,103 @@ export default function RevenueView() {
 
   return (
     <div className="pg on" id="pg-revenue">
-      <div className="pg-header">
-        <div className="pg-title">
+      <div className="pg-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--edge2)' }}>
+        <div className="pg-title" style={{ margin: 0 }}>
           <span className="pg-icon">💰</span>
           {L('Revenue Hub', 'مركز الإيرادات')}
         </div>
+
+        {/* Global Filter Bar */}
+        <div className="rev-filters" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Workspace Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>💼</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '130px', height: '32px', borderRadius: '8px' }}
+              value={filterWorkspace}
+              onChange={(e) => setFilterWorkspace(e.target.value)}
+            >
+              <option value="all">{L('All Businesses', 'جميع الأعمال')}</option>
+              {workspaces.map(ws => (
+                <option key={ws.id} value={ws.id}>{ws.name}</option>
+              ))}
+            </select>
+            {filterWorkspace !== 'all' && filterWorkspace !== 'default' && (
+              <>
+                <button 
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: '4px' }}
+                  onClick={handleRenameWorkspace}
+                  title={L('Rename Selected Workspace', 'تعديل اسم مساحة العمل')}
+                >
+                  ✏️
+                </button>
+                <button 
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: '4px' }}
+                  onClick={handleDeleteWorkspace}
+                  title={L('Delete Selected Workspace', 'حذف مساحة العمل')}
+                >
+                  🗑️
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+          </div>
+
+          {/* Custom Date Range Inputs */}
+          {filterPeriod === 'custom' && (
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <input
+                type="date"
+                className="inp"
+                style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+              <input
+                type="date"
+                className="inp"
+                style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="tool-tabs" id="rev-tabs" style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
+      <div className="tool-tabs" id="rev-tabs" style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px', marginTop: '16px' }}>
         {[
           { key: 'rv-streams', label: L('Streams', 'مصادر الدخل'), emoji: '💰' },
-          { key: 'rv-deals', label: L('Deals', 'الصفقات'), emoji: '🤝', badge: 3 },
+          { key: 'rv-deals', label: L('Deals', 'الصفقات'), emoji: '🤝', badge: filteredLeads.length },
           { key: 'rv-neg', label: L('Negotiator', 'المفاوض الذكي'), emoji: '🤖' },
-          { key: 'rv-course', label: L('Courses', 'الكورسات'), emoji: '🎓' },
-          { key: 'rv-shop', label: L('Shop', 'المتجر'), emoji: '🛍️' },
-          { key: 'rv-aff', label: L('Affiliate', 'الأفيليت'), emoji: '🔗' },
-          { key: 'rv-pat', label: L('Membership', 'العضويات'), emoji: '🏆' },
-          { key: 'rv-email', label: L('Email List', 'قائمة الإيميل'), emoji: '📧' },
-          { key: 'rv-coach', label: L('Coaching', 'الكوتشينج'), emoji: '🎯' },
-          { key: 'rv-merch', label: L('Merch', 'الميرش'), emoji: '👕' },
-          { key: 'rv-score', label: L('Score', 'تقييم التنويع'), emoji: '📈' }
+          { key: 'rv-digital', label: L('Digital Products', 'المنتجات الرقمية'), emoji: '📦', badge: filteredProducts.length },
+          { key: 'rv-course', label: L('Courses', 'الكورسات'), emoji: '🎓', badge: filteredCourses.length }
         ].map(tab => (
-          <button 
+          <button
             key={tab.key}
             className={`tbb ${activeSubTab === tab.key ? 'on' : ''}`}
             onClick={() => setActiveSubTab(tab.key)}
           >
-            {tab.emoji} {tab.label} {tab.badge && <span className="nb-badge" style={{ position: 'static', marginLeft: '5px' }}>{tab.badge}</span>}
+            {tab.emoji} {tab.label} {tab.badge > 0 && <span className="nb-badge" style={{ position: 'static', marginLeft: '5px' }}>{tab.badge}</span>}
           </button>
         ))}
       </div>
@@ -258,23 +1173,26 @@ export default function RevenueView() {
         <div className="tool-panel on" id="rv-streams">
           <div className="g4 stagger mb">
             <div className="stat-card">
-              <div className="stat-lbl">💵 {L('Total Monthly', 'إجمالي الدخل الشهري')}</div>
-              <div className="stat-val">$4,320</div>
-              <div className="stat-ch ch-up">▲ +12%</div>
+              <div className="stat-lbl">💵 {L('Total Revenue', 'إجمالي الدخل')}</div>
+              <div className="stat-val">{formatMoney(totalRevenue)}</div>
+              <div className="stat-ch ch-up">▲ {L('Real-time', 'حقيقي')}</div>
             </div>
             <div className="stat-card">
               <div className="stat-lbl">🔢 {L('Active Streams', 'المصادر النشطة')}</div>
               <div className="stat-val" style={{ color: 'var(--green)' }}>{activeStreamsCount}</div>
-              <div className="stat-ch ch-nu">{L('of 7', 'من 7')}</div>
+              <div className="stat-ch ch-nu">{L('of 3', 'من 3')}</div>
             </div>
             <div className="stat-card">
               <div className="stat-lbl">📈 {L('Best Stream', 'أفضل مصدر')}</div>
-              <div className="stat-val" style={{ fontSize: '20px' }}>{L('Sponsorships', 'الرعايات')}</div>
-              <div className="stat-ch ch-nu">65% {L('of income', 'من الدخل')}</div>
+              <div className="stat-val" style={{ fontSize: '18px' }}>{bestStream}</div>
+              <div className="stat-ch ch-nu">{bestStreamPct}% {L('of income', 'من الدخل')}</div>
             </div>
             <div className="stat-card">
               <div className="stat-lbl">🎯 {L('Diversity Score', 'معدل التنوع')}</div>
-              <div className="stat-val" style={{ color: 'var(--amber)' }}>58<span style={{ fontSize: '14px', color: 'var(--t3)' }}>/100</span></div>
+              <div className="stat-val" style={{ color: diversityScore > 75 ? 'var(--green)' : diversityScore > 45 ? 'var(--amber)' : 'var(--red)' }}>
+                {diversityScore}
+                <span style={{ fontSize: '14px', color: 'var(--t3)' }}>/100</span>
+              </div>
             </div>
           </div>
           <div className="g2">
@@ -282,28 +1200,46 @@ export default function RevenueView() {
               <div className="sh"><div className="st">{L('Income Breakdown', 'تقسيم الدخل')}</div></div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                 <svg width="100" height="100" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" strokeWidth="4.5"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--a)" strokeWidth="4.5" strokeDasharray="65 35" strokeDashoffset="-25" transform="rotate(-90 18 18)"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--green)" strokeWidth="4.5" strokeDasharray="19 81" strokeDashoffset="-90" transform="rotate(-90 18 18)"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--red)" strokeWidth="4.5" strokeDasharray="10 90" strokeDashoffset="-109" transform="rotate(-90 18 18)"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--amber)" strokeWidth="4.5" strokeDasharray="6 94" strokeDashoffset="-119" transform="rotate(-90 18 18)"/>
-                  <text x="18" y="20" textAnchor="middle" fontSize="4.5" fill="var(--t1)" fontWeight="bold">$4.3K</text>
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" strokeWidth="4.5" />
+                  {svgCircles.map((circle, idx) => (
+                    <circle
+                      key={idx}
+                      cx="18"
+                      cy="18"
+                      r="15.9"
+                      fill="none"
+                      stroke={circle.color}
+                      strokeWidth="4.5"
+                      strokeDasharray={circle.strokeDasharray}
+                      strokeDashoffset={circle.strokeDashoffset}
+                      transform="rotate(-90 18 18)"
+                    />
+                  ))}
+                  <text x="18" y="20" textAnchor="middle" fontSize="4.5" fill="var(--t1)" fontWeight="bold">
+                    {totalRevenue > 1000 ? `$${(totalRevenue / 1000).toFixed(1)}K` : `$${totalRevenue}`}
+                  </text>
                 </svg>
                 <div className="dleg" style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
-                  {(DB.streamsLegend[lang] || []).map((l, idx) => (
-                    <div className="dlr" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div className="dd" style={{ background: l.c, width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--t2)', flex: 1 }}>{l.l}</div>
-                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)' }}>{l.v}</div>
-                    </div>
-                  ))}
+                  {streams.map((s, idx) => {
+                    const pct = totalRevenue > 0 ? Math.round((s.val / totalRevenue) * 100) : 0;
+                    const colors = ['var(--a)', 'var(--a2)', 'var(--a3)', 'var(--go)', 'var(--purple)', 'var(--orange)'];
+                    return (
+                      <div className="dlr" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="dd" style={{ background: colors[idx], width: '10px', height: '10px', borderRadius: '50%' }}></div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--t2)', flex: 1 }}>{s.name}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)' }}>
+                          {formatMoney(s.val)} ({pct}%)
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
             <div className="card mb">
               <div className="sh"><div className="st">{L('Launch New Stream', 'إطلاق مصدر دخل جديد')}</div></div>
               <div id="stream-launcher" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {(DB.streamsLauncher[lang] || []).map((s, idx) => (
+                {streamsLauncherItems.map((s, idx) => (
                   <div className="row" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0', borderBottom: '1px solid var(--edge)' }}>
                     <div style={{ fontSize: '16px' }}>{s.e}</div>
                     <div style={{ flex: 1 }}>
@@ -325,55 +1261,152 @@ export default function RevenueView() {
       {activeSubTab === 'rv-deals' && (
         <div className="tool-panel on" id="rv-deals">
           <div className="g4 stagger mb">
-            <div className="stat">
-              <div className="slbl">🟢 {L('Active', 'نشط')}</div>
-              <div className="sval" style={{ color: 'var(--green)' }}>3</div>
+            <div className="stat-card">
+              <div className="stat-lbl">🟢 {L('Active Deals', 'الصفقات النشطة')}</div>
+              <div className="stat-val" style={{ color: 'var(--green)' }}>
+                {activeDealsCount}
+              </div>
             </div>
-            <div className="stat">
-              <div className="slbl">🟡 {L('Pending', 'معلق')}</div>
-              <div className="sval" style={{ color: 'var(--amber)' }}>4</div>
+            <div className="stat-card">
+              <div className="stat-lbl">🟡 {L('Pending Deals', 'الصفقات المعلقة')}</div>
+              <div className="stat-val" style={{ color: 'var(--amber)' }}>
+                {pendingDealsCount}
+              </div>
             </div>
-            <div className="stat">
-              <div className="slbl">💰 {L('Revenue', 'الأرباح')}</div>
-              <div className="sval">$2,800</div>
+            <div className="stat-card">
+              <div className="stat-lbl">💰 {L('Completed Value', 'الصفقات المكتملة')}</div>
+              <div className="stat-val">{formatMoney(crmClosedRevenue)}</div>
             </div>
-            <div className="stat">
-              <div className="slbl">📊 {L('Avg Deal', 'متوسط الصفقة')}</div>
-              <div className="sval">$700</div>
+            <div className="stat-card">
+              <div className="stat-lbl">📊 {L('Avg Deal', 'متوسط الصفقة')}</div>
+              <div className="stat-val">
+                {formatMoney(
+                  filteredLeads.length > 0
+                    ? (filteredLeads.reduce((sum, d) => sum + (parseFloat(d.value) || 0), 0) / filteredLeads.length)
+                    : 0
+                )}
+              </div>
             </div>
           </div>
           <div className="card mb">
-            <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div className="st">{L('Deals Pipeline', 'مراحل الصفقات')}</div>
-              <button className="btn btn-prime" style={{ padding: '5px 10px', fontSize: '11.5px' }} onClick={handleAddDeal}>
-                + {L('New Deal', 'صفقة جديدة')}
-              </button>
+            <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div className="st">{L('Deals Pipeline (Drag & Drop or Click card to Manage)', 'مراحل صفقات المبيعات (اسحب وأسقط أو اضغط لإدارة الصفقة)')}</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={handleCreateWorkspace}>
+                  💼 {L('+ Add Business/Workspace', '+ إضافة مساحة عمل')}
+                </button>
+                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={handleAddStage}>
+                  ⚙️ {L('+ Add Stage', '+ إضافة مرحلة')}
+                </button>
+                <button className="btn btn-prime" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={handleAddDeal}>
+                  + {L('New Deal', 'صفقة جديدة')}
+                </button>
+              </div>
             </div>
-            <div className="pipe" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-              {['Prospect', 'Negotiating', 'Contracted', 'Completed'].map(stage => {
-                const colors = { Prospect: 'var(--t2)', Negotiating: 'var(--amber)', Contracted: 'var(--purple)', Completed: 'var(--green)' };
-                const stagesAR = { Prospect: 'قيد البحث', Negotiating: 'في التفاوض', Contracted: 'متعاقد', Completed: 'مكتمل' };
-                const stageList = pipelineDeals[stage] || [];
+            <div 
+              className="pipe" 
+              style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                overflowX: 'auto', 
+                paddingBottom: '12px', 
+                minHeight: '380px', 
+                alignItems: 'stretch' 
+              }}
+            >
+              {activeStages.map(stage => {
+                const stageList = dealsByStage[stage.key] || [];
                 return (
-                  <div className="pcol" key={stage} style={{ background: 'var(--surface2)', padding: '10px', borderRadius: '10px' }}>
-                    <div className="pch" style={{ fontWeight: 700, fontSize: '12.5px', marginBottom: '8px', borderBottom: '1px solid var(--edge)', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-                      {lang === 'ar' ? stagesAR[stage] : stage}
-                      <span style={{ background: 'var(--surface3)', borderRadius: '5px', padding: '1px 6px', fontSize: '10px', color: colors[stage] }}>
+                  <div 
+                    className="pcol" 
+                    key={stage.key} 
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      const leadId = e.dataTransfer.getData("text/plain");
+                      handleDropDeal(leadId, stage.key);
+                    }}
+                    style={{ 
+                      background: 'var(--surface2)', 
+                      padding: '12px', 
+                      borderRadius: '12px', 
+                      minWidth: '220px', 
+                      flex: 1, 
+                      display: 'flex', 
+                      flexDirection: 'column' 
+                    }}
+                  >
+                    <div 
+                      className="pch" 
+                      style={{ 
+                        fontWeight: 700, 
+                        fontSize: '13px', 
+                        marginBottom: '10px', 
+                        borderBottom: '2px solid var(--edge)', 
+                        paddingBottom: '6px', 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        color: 'var(--t1)' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: stage.color }}></span>
+                        <span>{stage.label}</span>
+                        <button 
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', padding: '2px', opacity: 0.6 }}
+                          onClick={(e) => { e.stopPropagation(); handleEditStage(stage); }}
+                          title={L('Edit Stage', 'تعديل المرحلة')}
+                        >
+                          ✏️
+                        </button>
+                        {activeStages.length > 1 && (
+                          <button 
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', padding: '2px', opacity: 0.6 }}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteStage(stage); }}
+                            title={L('Delete Stage', 'حذف المرحلة')}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                      <span style={{ background: 'var(--surface3)', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', color: stage.color, fontWeight: 'bold' }}>
                         {stageList.length}
                       </span>
                     </div>
-                    {stageList.map((d, idx) => (
-                      <div 
-                        className="pc" 
-                        key={idx} 
-                        style={{ background: 'var(--surface3)', padding: '8px', borderRadius: '6px', marginBottom: '6px', cursor: 'pointer' }}
-                        onClick={() => alert(`${d.n} — ${d.a}`)}
-                      >
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)' }}>{d.n}</div>
-                        <div style={{ fontSize: '11.5px', color: 'var(--orange)', fontWeight: 600 }}>{d.a}</div>
-                        <div style={{ fontSize: '10.5px', color: 'var(--t2)' }}>{d.ty[lang] || d.ty.en}</div>
-                      </div>
-                    ))}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: '260px' }}>
+                      {stageList.length > 0 ? (
+                        stageList.map((d, idx) => (
+                          <div
+                            className="pc card"
+                            key={d.id || idx}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", d.id);
+                            }}
+                            style={{ 
+                              background: 'var(--surface3)', 
+                              padding: '10px', 
+                              borderRadius: '8px', 
+                              cursor: 'grab', 
+                              borderLeft: `4px solid ${stage.color}`, 
+                              position: 'relative',
+                              transition: 'transform 0.1s ease, box-shadow 0.1s ease'
+                            }}
+                            onClick={() => handleMoveDeal(d)}
+                          >
+                            <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)', marginBottom: '3px' }}>{d.name}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--orange)', fontWeight: 700 }}>{formatMoney(d.value)}</div>
+                            {d.notes && <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '4px', lineHeight: '1.4' }}>{d.notes}</div>}
+                            {d.workspaceName && <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '6px' }}>💼 {d.workspaceName}</div>}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--edge)', borderRadius: '8px', padding: '16px', color: 'var(--t3)', fontSize: '11.5px', textAlign: 'center' }}>
+                          {L('Drag deal here', 'اسحب الصفقة هنا')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -382,23 +1415,28 @@ export default function RevenueView() {
           <div className="card mb">
             <div className="sh"><div className="st">{L('Best Brands to Repeat', 'أفضل الماركات للمتابعة')}</div></div>
             <div id="best-brands" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(DB.bestBrands[lang] || []).map((b, idx) => (
-                <div className="row" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--edge)' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--orange-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '13px', color: 'var(--orange)' }}>
-                    {b.n[0]}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{b.n}</div>
-                    <div className="rs" style={{ fontSize: '11px', color: 'var(--t2)' }}>
-                      {b.deals} {L('deals', 'صفقات')} · {b.eng}
+              {realBestBrands.length === 0 ? (
+                <div style={{ padding: '20px', color: 'var(--t3)', textAlign: 'center', fontSize: '12px' }}>
+                  {L('No completed brand deals yet. Close deals in CRM to see insights.', 'لا توجد صفقات براندات مكتملة بعد. أكمل الصفقات في إدارة العملاء لتظهر هنا.')}
+                </div>
+              ) : (
+                realBestBrands.map((b, idx) => (
+                  <div className="row" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--edge)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--orange-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '13px', color: 'var(--orange)' }}>
+                      {b.name[0]}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{b.name}</div>
+                      <div className="rs" style={{ fontSize: '11px', color: 'var(--t2)' }}>
+                        {b.deals} {L('deals', 'صفقات')}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--orange)' }}>{formatMoney(b.rev)}</div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--orange)' }}>{b.rev}</div>
-                    {b.rec && <span className="badge b-green" style={{ fontSize: '10px', padding: '2px 6px' }}>{L('Renew', 'جدد')}</span>}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -414,10 +1452,10 @@ export default function RevenueView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Brand Name', 'اسم البراند')}
                   </label>
-                  <input 
-                    className="inp" 
-                    value={negBrand} 
-                    onChange={(e) => setNegBrand(e.target.value)} 
+                  <input
+                    className="inp"
+                    value={negBrand}
+                    onChange={(e) => setNegBrand(e.target.value)}
                     placeholder="e.g. Nike, Samsung..."
                   />
                 </div>
@@ -425,10 +1463,10 @@ export default function RevenueView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Their Offer', 'عرضهم المالي')}
                   </label>
-                  <input 
-                    className="inp" 
-                    value={negAmount} 
-                    onChange={(e) => setNegAmount(e.target.value)} 
+                  <input
+                    className="inp"
+                    value={negAmount}
+                    onChange={(e) => setNegAmount(e.target.value)}
                     placeholder="$500"
                   />
                 </div>
@@ -436,9 +1474,9 @@ export default function RevenueView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Content Type', 'نوع المحتوى')}
                   </label>
-                  <select 
-                    className="inp" 
-                    value={negType} 
+                  <select
+                    className="inp"
+                    value={negType}
                     onChange={(e) => setNegType(e.target.value)}
                   >
                     <option>1x Reel</option>
@@ -452,9 +1490,9 @@ export default function RevenueView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Exclusivity', 'حقوق الحصرية')}
                   </label>
-                  <select 
-                    className="inp" 
-                    value={negExcl} 
+                  <select
+                    className="inp"
+                    value={negExcl}
                     onChange={(e) => setNegExcl(e.target.value)}
                   >
                     <option>No exclusivity</option>
@@ -497,6 +1535,13 @@ export default function RevenueView() {
                       <strong>{L('AI Recommendation', 'توصية الذكاء الاصطناعي')}:</strong>
                       <br /><br />
                       {negResult.rec}
+                      <button
+                        className="btn btn-prime"
+                        style={{ marginTop: '12px', width: '100%', justifyContent: 'center', padding: '6px' }}
+                        onClick={handleSaveNegToCRM}
+                      >
+                        ➕ {L('Save to CRM Pipeline', 'حفظ في مراحل CRM')}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -530,10 +1575,22 @@ export default function RevenueView() {
       {activeSubTab === 'rv-course' && (
         <div className="tool-panel on" id="rv-course">
           <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">📚 {L('Active Courses', 'الكورسات النشطة')}</div><div className="sval">1</div></div>
-            <div className="stat"><div className="slbl">👥 {L('Students', 'الطلاب')}</div><div className="sval">58</div><div className="sch up">▲ +8 this week</div></div>
-            <div className="stat"><div className="slbl">💰 {L('Revenue', 'الأرباح')}</div><div className="sval">$5,742</div></div>
-            <div className="stat"><div className="slbl">⭐ {L('Rating', 'التقييم')}</div><div className="sval">4.9</div></div>
+            <div className="stat-card">
+              <div className="stat-lbl">📚 {L('Active Courses', 'الكورسات النشطة')}</div>
+              <div className="stat-val">{filteredCourses.length}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-lbl">👥 {L('Students', 'الطلاب')}</div>
+              <div className="stat-val">{filteredCourses.reduce((sum, c) => sum + (c.students || 0), 0)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-lbl">💰 {L('Revenue', 'الأرباح')}</div>
+              <div className="stat-val">{formatMoney(coursesRevenue)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-lbl">⭐ {L('Rating', 'التقييم')}</div>
+              <div className="stat-val">4.8</div>
+            </div>
           </div>
           <div className="g2">
             <div className="card mb">
@@ -542,10 +1599,10 @@ export default function RevenueView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Course Topic', 'موضوع الكورس')}
                   </label>
-                  <input 
-                    className="inp" 
-                    value={courseTopic} 
-                    onChange={(e) => setCourseTopic(e.target.value)} 
+                  <input
+                    className="inp"
+                    value={courseTopic}
+                    onChange={(e) => setCourseTopic(e.target.value)}
                     placeholder="e.g. How to grow on Instagram from 0 to 100K"
                   />
                 </div>
@@ -553,9 +1610,9 @@ export default function RevenueView() {
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Target Audience', 'الجمهور المستهدف')}
                   </label>
-                  <select 
-                    className="inp" 
-                    value={courseAudience} 
+                  <select
+                    className="inp"
+                    value={courseAudience}
                     onChange={(e) => setCourseAudience(e.target.value)}
                   >
                     <option>{L('Beginner creators', 'منشئي محتوى مبتدئين')}</option>
@@ -565,29 +1622,84 @@ export default function RevenueView() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                    {L('Price Point', 'السعر المقترح')}
-                  </label>
-                  <select 
-                    className="inp" 
-                    value={coursePrice} 
-                    onChange={(e) => setCoursePrice(e.target.value)}
-                  >
-                    <option>$29</option>
-                    <option>$97</option>
-                    <option>$197</option>
-                    <option>$497</option>
-                  </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('Price Point ($)', 'السعر ($)')}
+                      </label>
+                      <input
+                        type="text"
+                        className="inp"
+                        value={coursePrice}
+                        onChange={(e) => setCoursePrice(e.target.value)}
+                        placeholder="e.g. 97"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('Course Duration', 'مدة الكورس')}
+                      </label>
+                      <select className="inp" value={courseDuration} onChange={e => setCourseDuration(e.target.value)}>
+                        <option value="4 Weeks">{L('4 Weeks', '٤ أسابيع')}</option>
+                        <option value="6 Weeks">{L('6 Weeks', '٦ أسابيع')}</option>
+                        <option value="8 Weeks">{L('8 Weeks', '٨ أسابيع')}</option>
+                        <option value="12 Weeks">{L('12 Weeks', '١٢ أسبوع')}</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <button className="btn btn-prime" onClick={handleBuildCourse} style={{ width: '100%', justifyContent: 'center' }}>
-                  🤖 {L('Generate Structure', 'إنشاء هيكل الكورس')}
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('Difficulty Level', 'مستوى الصعوبة')}
+                      </label>
+                      <select className="inp" value={courseLevel} onChange={e => setCourseLevel(e.target.value)}>
+                        <option value="Beginner">{L('Beginner', 'مبتدئ')}</option>
+                        <option value="Intermediate">{L('Intermediate', 'متوسط')}</option>
+                        <option value="Advanced">{L('Advanced', 'متقدم')}</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('Course Language', 'لغة الكورس')}
+                      </label>
+                      <select className="inp" value={courseLanguage} onChange={e => setCourseLanguage(e.target.value)}>
+                        <option value="Arabic">{L('Arabic', 'العربية')}</option>
+                        <option value="English">{L('English', 'الإنجليزية')}</option>
+                        <option value="Bilingual">{L('Bilingual', 'العربية والإنجليزية')}</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Skill Focus / Target Niches', 'المهارة المستهدفة / مجالات التخصص')}
+                  </label>
+                  <input
+                    type="text"
+                    className="inp"
+                    value={courseSkill}
+                    onChange={e => setCourseSkill(e.target.value)}
+                    placeholder="e.g. Sales, Instagram Reels, Notion"
+                  />
+                </div>
+                <button className="btn btn-prime" onClick={handleBuildCourse} disabled={courseIsGenerating} style={{ width: '100%', justifyContent: 'center' }}>
+                  {courseIsGenerating ? L('Generating Structure...', 'جاري التوليد بالذكاء الاصطناعي...') : `🤖 ${L('Generate Structure', 'إنشاء هيكل الكورس')}`}
                 </button>
               </div>
             </div>
             <div className="card mb">
-              <div className="sh"><div className="st">{L('Course Outline', 'هيكل الكورس')}</div></div>
+              <div className="sh"><div className="st">{L('Course Outline & Details', 'تفاصيل وهيكل الكورس')}</div></div>
               <div id="courseout" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                {!courseOutlineData ? (
+                {courseIsGenerating ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '12px', animation: 'pulse 1s ease-in-out infinite' }}>🤖</div>
+                    <div style={{ fontFamily: 'var(--ff)', fontSize: '14px', fontWeight: 600, color: 'var(--t1)' }}>
+                      {L('AI is writing curriculum...', 'الذكاء الاصطناعي يقوم بصياغة المنهج والمميزات...')}
+                    </div>
+                  </div>
+                ) : !courseOutlineData ? (
                   <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '36px 0' }}>
                     {L('Fill details and generate', 'املأ البيانات واضغط للإنشاء')}
                   </div>
@@ -600,6 +1712,9 @@ export default function RevenueView() {
                       <br />
                       {L('Expected revenue', 'الإيرادات المتوقعة')} ({courseOutlineData.students} {L('students', 'طالب')}):{' '}
                       <strong style={{ color: 'var(--green)' }}>{courseOutlineData.rev}</strong>
+                      <button className="btn btn-prime" style={{ marginTop: '12px', width: '100%', justifyContent: 'center' }} onClick={handleLaunchCourse}>
+                        🚀 {L('Launch & Save Course', 'إطلاق وحفظ الكورس')}
+                      </button>
                     </div>
                     {courseOutlineData.outline.map((m, mIdx) => (
                       <div style={{ marginBottom: '10px' }} key={mIdx}>
@@ -618,470 +1733,151 @@ export default function RevenueView() {
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ================= TAB 5: SHOP ================= */}
-      {activeSubTab === 'rv-shop' && (
-        <div className="tool-panel on" id="rv-shop">
-          <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">📦 {L('Products', 'المنتجات')}</div><div className="sval">6</div></div>
-            <div className="stat"><div className="slbl">🛒 {L('Total Sales', 'إجمالي المبيعات')}</div><div className="sval">223</div><div className="sch up">▲ +28%</div></div>
-            <div className="stat"><div className="slbl">💵 {L('Revenue', 'الأرباح')}</div><div className="sval">$700</div></div>
-            <div className="stat"><div className="slbl">⭐ {L('Avg Rating', 'متوسط التقييم')}</div><div className="sval">4.8</div></div>
-          </div>
-          <button className="btn btn-prime mb" onClick={handleAddProduct}>
-            + {L('Add Product', 'إضافة منتج')}
-          </button>
-          <div className="g3" id="shopgrid">
-            {(DB.products || []).map((p, idx) => (
-              <div 
-                className="prd" 
-                key={idx} 
-                style={{ background: 'var(--surface2)', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--edge)' }}
-                onClick={() => alert(`${p.n[lang]} — ${p.price}`)}
-              >
-                <div className="prdt" style={{ background: `${p.c}14`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontSize: '32px' }}>
-                  {p.e}
-                </div>
-                <div style={{ padding: '11px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px' }}>
-                    {p.n[lang] || p.n.en}
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--t2)', marginBottom: '7px' }}>
-                    {p.ty[lang] || p.ty.en}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontFamily: 'var(--ff)', fontSize: '14px', fontWeight: 700, color: 'var(--orange)' }}>
-                      {p.price}
-                    </div>
-                    <div style={{ fontSize: '10.5px', color: 'var(--t3)' }}>
-                      {p.sales} {L('sold', 'مباع')}
-                    </div>
-                  </div>
-                </div>
+          {/* Real course catalog list */}
+          <div className="card mb">
+            <div className="sh"><div className="st">{L('Your Courses', 'كورساتك')}</div></div>
+            {(filteredCourses.length === 0) ? (
+              <div style={{ padding: '20px', color: 'var(--t3)', textAlign: 'center', fontSize: '12.5px' }}>
+                {L('No courses launched yet. Use the builder above to launch your first course!', 'لا توجد كورسات مطلقة بعد. استخدم المنشئ أعلاه لإطلاق أول كورس لك!')}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 6: AFFILIATES ================= */}
-      {activeSubTab === 'rv-aff' && (
-        <div className="tool-panel on" id="rv-aff">
-          <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">🔗 {L('Links', 'الروابط')}</div><div className="sval">{affiliatesList.length}</div></div>
-            <div className="stat"><div className="slbl">👆 {L('Clicks', 'الزيارات')}</div><div className="sval">28.4K</div><div className="sch up">▲ +9%</div></div>
-            <div className="stat"><div className="slbl">🛒 {L('Conversions', 'المبيعات')}</div><div className="sval">842</div></div>
-            <div className="stat"><div className="slbl">💰 {L('Earnings', 'الأرباح')}</div><div className="sval">$820</div></div>
-          </div>
-          <div className="g2">
-            <div className="card mb">
-              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div className="st">{L('Link Performance', 'أداء الروابط')}</div>
-                <button className="btn btn-prime" style={{ padding: '4px 9px', fontSize: '11px' }} onClick={handleAddAffLink}>
-                  + {L('Add', 'إضافة')}
-                </button>
-              </div>
-              <div id="afflinks">
-                {affiliatesList.map((a, i) => (
-                  <div 
-                    key={i} 
-                    style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 0', borderBottom: i < affiliatesList.length - 1 ? '1px solid var(--edge)' : 'none' }}
-                  >
-                    <div style={{ fontSize: '14px' }}>🔗</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {filteredCourses.map(course => (
+                  <div key={course.id} className="row" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--edge)' }}>
+                    <div style={{ fontSize: '20px' }}>🎓</div>
                     <div style={{ flex: 1 }}>
-                      <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{a.n}</div>
-                      <div className="rs" style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                        {a.cl} {L('clicks', 'كليكات')} · {a.cv} {L('conversions', 'تحويلات')} ({a.cvr})
+                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{course.title}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
+                        {course.audience} · {course.outline ? `${course.outline.length} modules` : ''}
                       </div>
                     </div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--green)' }}>{a.earn}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('AI Recommendations', 'توصيات الذكاء')}</div></div>
-              <div id="aff-ai">
-                <div className="ai" style={{ marginBottom: '10px', fontSize: '12px', padding: '10px', background: 'var(--orange-dim)', borderRadius: '8px' }}>
-                  {L('Based on your fashion & beauty audience (63% female, 18–34):', 'بناءً على جمهورك في الموضة والجمال (٦٣٪ إناث، ١٨–٣٤):')}
-                </div>
-                {(DB.affRecs[lang] || []).map((r, idx) => (
-                  <div 
-                    className="idea mb" 
-                    key={idx} 
-                    style={{ padding: '10px', background: 'var(--surface2)', borderRadius: '8px', cursor: 'pointer' }}
-                    onClick={() => alert(r.n)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '4px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', flex: 1 }}>{r.n}</div>
-                      <span className="badge b-green">CVR {r.cvr}</span>
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>{r.why}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 7: MEMBERSHIPS ================= */}
-      {activeSubTab === 'rv-pat' && (
-        <div className="tool-panel on" id="rv-pat">
-          <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">👥 {L('Members', 'الأعضاء')}</div><div className="sval" style={{ color: 'var(--green)' }}>127</div><div className="sch up">▲ +14 this month</div></div>
-            <div className="stat"><div className="slbl">💰 {L('Monthly Recurring', 'العائد المتكرر')}</div><div className="sval">$1,290</div></div>
-            <div className="stat"><div className="slbl">💎 {L('Avg Tier', 'متوسط قيمة الاشتراك')}</div><div className="sval">$10.2</div></div>
-            <div className="stat"><div className="slbl">📉 {L('Churn', 'معدل الإلغاء')}</div><div className="sval" style={{ color: 'var(--green)' }}>3.1%</div></div>
-          </div>
-          <div className="g2">
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('Current Tiers', 'الاشتراكات الحالية')}</div></div>
-              <div id="pat-tiers">
-                {patTiersList.map((t, idx) => (
-                  <div key={idx} style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '12px', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)' }}>{t.t}</div>
-                      <div style={{ fontFamily: 'var(--ff)', fontSize: '14px', fontWeight: 800, color: 'var(--orange)' }}>
-                        {t.p}
-                        <span style={{ fontSize: '10px', color: 'var(--t2)' }}>
-                          /{L('mo', 'شهر')} · {t.m} {L('members', 'أعضاء')}
-                        </span>
+                    <div style={{ textAlign: 'right', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--orange)' }}>
+                          {formatMoney(course.price)}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t3)' }}>
+                          {course.students} {L('students', 'طالب')}
+                        </div>
                       </div>
-                    </div>
-                    <div className="gbw" style={{ height: '6px', background: 'var(--surface3)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div className="gbf" style={{ width: `${Math.round((t.m / 65) * 100)}%`, background: 'var(--orange)', height: '100%' }}></div>
+                      <div style={{ minWidth: '80px', textAlign: 'right' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--green)' }}>
+                          {formatMoney(course.revenue)}
+                        </div>
+                      </div>
+                      <button
+                        className="btn"
+                        style={{ padding: '4px 8px', background: 'var(--red-dim)', color: 'var(--red)', border: 'none', cursor: 'pointer' }}
+                        onClick={() => {
+                          confirmAction(L('Delete this course?', 'هل تريد حذف هذا الكورس؟'), () => {
+                            const updated = GC.revenue.courses.filter(c => c.id !== course.id);
+                            saveRevenueData({ courses: updated });
+                          });
+                        }}
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('AI Tier Designer', 'مصمم الاشتراكات بالذكاء')}</div></div>
-              <select 
-                className="inp" 
-                value={patNiche} 
-                onChange={(e) => setPatNiche(e.target.value)} 
-                style={{ marginBottom: '10px', width: '100%' }}
-              >
-                <option value="Fashion & Beauty">{L('Fashion & Beauty', 'الأزياء والجمال')}</option>
-                <option value="Fitness & Health">{L('Fitness & Health', 'الصحة والرشاقة')}</option>
-                <option value="Business & Finance">{L('Business & Finance', 'الأعمال والمالية')}</option>
-                <option value="Tech & Education">{L('Tech & Education', 'التقنية والتعليم')}</option>
-                <option value="Food & Lifestyle">{L('Food & Lifestyle', 'الطبخ ونمط الحياة')}</option>
-              </select>
-              <div id="pat-ai">
-                {patTiersList.map((t, idx) => (
-                  <div className="idea" key={idx} style={{ marginBottom: '8px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--t1)' }}>{t.t}</div>
-                      <div style={{ fontFamily: 'var(--ff)', fontSize: '14px', fontWeight: 800, color: 'var(--orange)' }}>
-                        {t.p}<span style={{ fontSize: '10px', color: 'var(--t2)' }}>/{L('mo', 'شهر')}</span>
-                      </div>
-                    </div>
-                    {t.b?.map((benefit, bIdx) => (
-                      <div style={{ fontSize: '11.5px', color: 'var(--t2)', padding: '2px 0' }} key={bIdx}>
-                        ✓ {benefit}
-                      </div>
-                    ))}
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '5px' }}>
-                      {t.m} {L('current members', 'أعضاء حالياً')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
 
       {/* ================= TAB 8: EMAIL ================= */}
-      {activeSubTab === 'rv-email' && (
-        <div className="tool-panel on" id="rv-email">
-          <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">📧 {L('Subscribers', 'المشتركين')}</div><div className="sval">8,420</div><div className="sch up">▲ +340 this month</div></div>
-            <div className="stat"><div className="slbl">📬 {L('Open Rate', 'معدل الفتح')}</div><div className="sval" style={{ color: 'var(--green)' }}>42%</div><div className="sch up">Industry: 21%</div></div>
-            <div className="stat"><div className="slbl">👆 {L('Click Rate', 'معدل النقر')}</div><div className="sval">8.4%</div></div>
-            <div className="stat"><div className="slbl">💰 {L('Revenue', 'الأرباح')}</div><div className="sval">$180</div></div>
+      {/* ================= TAB: DIGITAL PRODUCTS ================= */}
+      {activeSubTab === 'rv-digital' && (
+        <div className="tool-panel on" id="rv-digital">
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--t1)', marginBottom: '4px' }}>
+              🕵️‍♂️ {L('Digital Products Spy (Trending)', 'جاسوس المنتجات الرقمية (التريندات)')}
+            </h3>
+            <p style={{ fontSize: '12.5px', color: 'var(--t2)', margin: 0 }}>
+              {L('Explore high-demand products selling now on Gumroad, Etsy, and Stan Store. Steal the idea and activate it in your shop with a single click!', 'استكشف المنتجات الرقمية الأكثر طلباً ومبيعاً حالياً على Gumroad و Etsy. اقتبس الفكرة وفعلها بمتجرك بضغطة زر!')}
+            </p>
           </div>
-          <div className="g2">
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('Subscriber Growth', 'نمو المشتركين')}</div></div>
-              <div className="bch" style={{ height: '90px', display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '10px 0' }}>
-                {[30, 45, 60, 50, 75, 90, 85, 110, 130].map((h, idx) => (
-                  <div key={idx} style={{ flex: 1, background: 'var(--orange)', height: `${h}%`, borderRadius: '4px 4px 0 0', position: 'relative' }}></div>
-                ))}
-              </div>
-            </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('Lead Magnets', 'المغناطيسات')}</div></div>
-              <div id="lead-magnets">
-                {leadMagnets.map((m, idx) => (
-                  <div 
-                    key={idx} 
-                    style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 0', borderBottom: idx < leadMagnets.length - 1 ? '1px solid var(--edge)' : 'none' }}
-                  >
-                    <div style={{ fontSize: '18px' }}>{m.e}</div>
-                    <div style={{ flex: 1 }}>
-                      <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{m.n}</div>
-                      <div className="rs" style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                        {m.subs} {L('subscribers', 'مشترك')} · {m.cvr} CVR
-                      </div>
-                    </div>
-                    <span className="badge b-green">{L('Active', 'نشط')}</span>
-                  </div>
-                ))}
-              </div>
-              <button className="btn btn-prime" onClick={handleGenLeadMagnet} style={{ width: '100%', justifyContent: 'center', marginTop: '9px' }}>
-                🤖 {L('Generate Ideas', 'توليد أفكار')}
-              </button>
-            </div>
-          </div>
-          <div className="card mb">
-            <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div className="st">{L('Active Sequences', 'سلاسل رسائل البريد النشطة')}</div>
-              <button className="btn btn-prime" style={{ padding: '4px 9px', fontSize: '11px' }} onClick={() => alert(L('New Sequence Created!', 'تم إنشاء سلسلة جديدة!'))}>
-                + {L('New', 'جديد')}
-              </button>
-            </div>
-            <div id="email-seqs">
-              {(DB.emailSeqs[lang] || []).map((s, idx) => (
+
+          <div className="g3" id="shopgrid">
+            {trendingCatalog.map((prod, idx) => {
+              const estRevenue = prod.price * prod.monthly_sales;
+              return (
                 <div 
-                  key={idx}
-                  style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 0', borderBottom: idx < DB.emailSeqs[lang].length - 1 ? '1px solid var(--edge)' : 'none' }}
+                  className="prd card" 
+                  key={idx} 
+                  style={{ background: 'var(--surface2)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--edge)', display: 'flex', flexDirection: 'column', height: '100%' }}
                 >
-                  <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'var(--orange-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
-                    📨
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{s.n}</div>
-                    <div className="rs" style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                      {s.emails} {L('emails', 'رسائل')} · {s.opens} {L('open rate', 'معدل الفتح')}
-                    </div>
-                  </div>
-                  <span className={`badge ${s.s}`}>
-                    {s.sl}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 9: COACHING ================= */}
-      {activeSubTab === 'rv-coach' && (
-        <div className="tool-panel on" id="rv-coach">
-          <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">📅 {L('Sessions', 'الجلسات')}</div><div className="sval">12</div><div className="sch up">▲ +3</div></div>
-            <div className="stat"><div className="slbl">💰 {L('Revenue', 'الأرباح')}</div><div className="sval">$1,800</div></div>
-            <div className="stat"><div className="slbl">⭐ {L('Rating', 'التقييم')}</div><div className="sval">4.9</div></div>
-            <div className="stat"><div className="slbl">📈 {L('Book Rate', 'معدل الحجز')}</div><div className="sval">76%</div></div>
-          </div>
-          <div className="g2">
-            <div className="card mb">
-              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div className="st">{L('This Week', 'هذا الأسبوع')}</div>
-                <button className="btn btn-prime" style={{ padding: '4px 9px', fontSize: '11px' }} onClick={handleAddCoachingSession}>
-                  + {L('Add', 'إضافة')}
-                </button>
-              </div>
-              <div id="coach-sessions">
-                {coachingSessions.map((s, idx) => (
-                  <div 
-                    key={idx}
-                    style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 0', borderBottom: idx < coachingSessions.length - 1 ? '1px solid var(--edge)' : 'none' }}
-                  >
-                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--orange-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', color: 'var(--orange)' }}>
-                      {s.n[0]}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{s.n}</div>
-                      <div className="rs" style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                        {s.ty} · {s.t}
-                      </div>
-                    </div>
-                    <span className={`badge ${s.s}`}>{s.sl}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('Session Types', 'أنواع الجلسات')}</div></div>
-              <div id="coach-types">
-                {(DB.coachTypes[lang] || []).map((t, idx) => (
-                  <div 
-                    key={idx}
-                    style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '9px 0', borderBottom: idx < DB.coachTypes[lang].length - 1 ? '1px solid var(--edge)' : 'none' }}
-                  >
-                    <div style={{ fontSize: '18px' }}>{t.e}</div>
-                    <div style={{ flex: 1 }}>
-                      <div className="rn" style={{ fontWeight: 600, fontSize: '12.5px' }}>{t.n}</div>
-                      <div className="rs" style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                        {t.b} {L('sessions booked', 'جلسات محجوزة')}
-                      </div>
-                    </div>
-                    <div style={{ fontFamily: 'var(--ff)', fontSize: '14px', fontWeight: 700, color: 'var(--orange)' }}>{t.p}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="card mb">
-            <div className="sh"><div className="st">{L('Testimonials', 'آراء العملاء')}</div></div>
-            <div id="testimonials" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(DB.testimonials || []).map((t, idx) => (
-                <div className="idea" key={idx} style={{ padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', color: '#fff' }}>
-                      {t.i}
-                    </div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)', flex: 1 }}>{t.n}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--amber)' }}>{'★'.repeat(t.r)}</div>
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--t2)', fontStyle: 'italic' }}>
-                    "{t.tx[lang] || t.tx.en}"
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 10: MERCH ================= */}
-      {activeSubTab === 'rv-merch' && (
-        <div className="tool-panel on" id="rv-merch">
-          <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">👕 {L('Products Live', 'المنتجات المنشورة')}</div><div className="sval">5</div></div>
-            <div className="stat"><div className="slbl">🛒 {L('Units Sold', 'الوحدات المباعة')}</div><div className="sval">89</div><div className="sch up">▲ +23</div></div>
-            <div className="stat"><div className="slbl">💰 {L('Revenue', 'الأرباح')}</div><div className="sval">$2,136</div></div>
-            <div className="stat"><div className="slbl">📦 {L('Pending Orders', 'الطلبات المعلقة')}</div><div className="sval" style={{ color: 'var(--amber)' }}>7</div></div>
-          </div>
-          <div className="g2">
-            <div className="card mb">
-              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <div className="st">{L('Merch Catalog', 'كتالوج المنتجات')}</div>
-                <button className="btn btn-prime" style={{ padding: '4px 9px', fontSize: '11px' }} onClick={handleAddMerch}>
-                  + {L('Design', 'تصميم جديد')}
-                </button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }} id="merch-grid">
-                {merchCatalog.map((m, idx) => (
-                  <div 
-                    className="prd" 
-                    key={idx} 
-                    style={{ background: 'var(--surface2)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--edge)', cursor: 'pointer' }}
-                    onClick={() => alert(m.n[lang] || m.n.en)}
-                  >
-                    <div className="prdt" style={{ background: `${m.c}14`, height: '60px', fontSize: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {m.e}
-                    </div>
-                    <div style={{ padding: '9px' }}>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>
-                        {m.n[lang] || m.n.en}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                        <span style={{ fontFamily: 'var(--ff)', fontSize: '13px', fontWeight: 700, color: 'var(--orange)' }}>
-                          {m.p}
-                        </span>
-                        <span style={{ fontSize: '10px', color: 'var(--t3)' }}>
-                          {m.s} {L('sold', 'مباع')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('AI Suggestions', 'مقترحات الذكاء')}</div></div>
-              <div id="merch-ai">
-                {((lang === 'ar' ? [
-                  { idea: 'كيس هاتف "اختر الفوضى"', why: 'عبارتك الفيروسية. تكلفة منخفضة وهامش ربح مرتفع.', p: '$١٨–٢٥' },
-                  { idea: 'دبابيس "حياة المنشئ"', why: 'قابل للتجميع، سعر منخفض، معدل مشاركة عالي.', p: '$١٢–١٥' },
-                  { idea: 'حزمة خلفيات رقمية', why: 'بدون مخزون. دخل سلبي من التنزيلات.', p: '$٥–٩' }
-                ] : [
-                  { idea: 'Phone Case "Choose Chaos"', why: 'Your viral phrase. Low cost, high margin.', p: '$18–25' },
-                  { idea: 'Enamel Pin Set "Creator Life"', why: 'Collectible, low price, high share rate.', p: '$12–15' },
-                  { idea: 'Digital Wallpaper Pack', why: 'Zero inventory. Passive income from downloads.', p: '$5–9' }
-                ])).map((m, idx) => (
-                  <div className="idea" key={idx} style={{ marginBottom: '7px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)', marginBottom: '3px' }}>{m.idea}</div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '4px' }}>{m.why}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--orange)', fontWeight: 600 }}>{L('Price:', 'السعر:')} {m.p}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 11: SCORE ================= */}
-      {activeSubTab === 'rv-score' && (
-        <div className="tool-panel on" id="rv-score">
-          <div className="g2">
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('Your Score', 'تقييمك الحالي')}</div></div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0' }}>
-                <svg width="150" height="150" viewBox="0 0 150 150">
-                  <circle cx="75" cy="75" r="56" fill="none" stroke="var(--surface3)" strokeWidth="14"/>
-                  <circle cx="75" cy="75" r="56" fill="none" stroke="var(--orange)" strokeWidth="14" strokeDasharray="207 148" strokeDashoffset="88" transform="rotate(-90 75 75)" strokeLinecap="round"/>
-                  <text x="75" y="71" textAnchor="middle" fontSize="26" fill="var(--t1)" fontFamily="var(--ff)" fontWeight="800">58</text>
-                  <text x="75" y="89" textAnchor="middle" fontSize="12" fill="var(--t2)">/ 100</text>
-                </svg>
-                <div style={{ fontSize: '17px', fontFamily: 'var(--ff)', fontWeight: 800, color: 'var(--orange)', marginTop: '6px' }}>
-                  {L('Moderate', 'متوسط التنوع')}
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginTop: '3px', textAlign: 'center' }}>
-                  {L('You rely heavily on sponsorships (65%)', 'تعتمد بشكل كبير على الإعلانات (65٪)')}
-                </div>
-              </div>
-              <div id="div-breakdown" style={{ marginTop: '12px' }}>
-                {(DB.divBreakdown[lang] || []).map((x, idx) => (
-                  <div style={{ marginBottom: '8px' }} key={idx}>
-                    <div style={{ display: 'flex', justifyAlignment: 'space-between', justifyContent: 'space-between', marginBottom: '3px' }}>
-                      <span style={{ fontSize: '11.5px', color: 'var(--t1)' }}>{x.l}</span>
-                      <span style={{ fontSize: '11.5px', fontStyle: 'normal', fontWeight: 600 }}>{x.pct}%</span>
-                    </div>
-                    <div className="gbw" style={{ height: '6px', background: 'var(--surface3)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div className="gbf" style={{ width: `${x.pct}%`, background: x.c, height: '100%' }}></div>
-                    </div>
-                    <div style={{ fontSize: '10.5px', color: 'var(--t3)', marginTop: '2px' }}>{x.note}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('AI Recommendations', 'توصيات الذكاء')}</div></div>
-              <div id="div-recs">
-                {(DB.divRecs[lang] || []).map((r, idx) => (
-                  <div className="idea" key={idx} style={{ marginBottom: '8px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '5px' }}>
-                      <span style={{ fontSize: '18px' }}>{r.icon}</span>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', flex: 1 }}>{r.t}</div>
-                      <span className={`badge ${r.u === L('High', 'عالي') ? 'b-red' : r.u === L('Medium', 'متوسط') ? 'b-orange' : 'b-ai'}`}>
-                        {r.u}
+                  {/* Top Bar with Emoji & Platform */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: 'var(--surface3)', borderBottom: '1px solid var(--edge)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '20px' }}>{prod.emoji}</span>
+                      <span className="badge b-purple" style={{ fontSize: '10px', padding: '3px 8px' }}>
+                        {prod.type}
                       </span>
                     </div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>{r.d}</div>
+                    <span style={{ fontSize: '11px', color: 'var(--t3)', fontWeight: 600 }}>
+                      🔥 {prod.platform}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="card mb">
-            <div className="sh"><div className="st">{L('Score History', 'تاريخ التقييم')}</div></div>
-            <div className="bch" style={{ height: '90px', display: 'flex', alignItems: 'flex-end', gap: '16px', padding: '10px 0' }}>
-              {[40, 42, 45, 48, 52, 58].map((h, idx) => (
-                <div key={idx} style={{ flex: 1, background: 'var(--orange)', height: `${h}%`, borderRadius: '4px 4px 0 0', position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: '-20px', left: 0, right: 0, textAlign: 'center', fontSize: '10px' }}>{h}</div>
+
+                  {/* Body Content */}
+                  <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <h4 style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--t1)', marginBottom: '6px', lineHeight: '1.4' }}>
+                        {prod.title}
+                      </h4>
+                      <p style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '12px', lineHeight: '1.5' }}>
+                        {prod.desc}
+                      </p>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', marginBottom: '14px', padding: '8px 10px', background: 'var(--surface3)', borderRadius: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '10px', color: 'var(--t3)', display: 'block' }}>{L('Est. Revenue / mo', 'الإيراد الشهري المتوقع')}</span>
+                        <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--green)' }}>
+                          ${estRevenue.toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: 'var(--t3)', display: 'block' }}>{L('Price Point', 'السعر المقترح')}</span>
+                        <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--orange)' }}>
+                          ${prod.price}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Meta info (why trending & tools) */}
+                    <div style={{ fontSize: '11px', color: 'var(--t2)', borderTop: '1px solid var(--edge)', paddingTop: '10px' }}>
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong>{L('Why Trending:', 'لماذا هو رائج:')} </strong>
+                        {prod.why_trending}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                        {prod.ai_tools.map((tool, tIdx) => (
+                          <span key={tIdx} style={{ background: 'var(--surface3)', color: 'var(--t1)', padding: '2px 6px', borderRadius: '4px', fontSize: '9.5px' }}>
+                            🛠️ {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ padding: '10px 14px', background: 'var(--surface3)', borderTop: '1px solid var(--edge)', display: 'flex', gap: '8px' }}>
+                    <button 
+                      className="btn btn-prime"
+                      style={{ width: '100%', justifyContent: 'center', padding: '6px 12px', fontSize: '12px', background: 'linear-gradient(135deg, var(--orange), var(--purple))' }}
+                      onClick={() => handleStealProduct(prod)}
+                    >
+                      ⚡ {L('Steal & Launch Idea', 'سرقة الفكرة وإطلاق المنتج')}
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       )}

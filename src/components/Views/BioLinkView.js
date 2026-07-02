@@ -42,6 +42,7 @@ export default function BioLinkView() {
   const [layout, setLayout] = useState(bioData.layout || 'classic');
   const [font, setFont] = useState(bioData.font || 'Tajawal');
   const [avatarUrl, setAvatarUrl] = useState(bioData.avatarUrl || '');
+  const [showLandingPage, setShowLandingPage] = useState(bioData.showLandingPage || false);
 
   const [links, setLinks] = useState(bioData.links || []);
   const [socials, setSocials] = useState(bioData.socials || {});
@@ -76,6 +77,7 @@ export default function BioLinkView() {
       setLayout(GC.bioLink.layout || 'classic');
       setFont(GC.bioLink.font || 'Tajawal');
       setAvatarUrl(GC.bioLink.avatarUrl || '');
+      setShowLandingPage(GC.bioLink.showLandingPage || false);
       setLinks(GC.bioLink.links || []);
       setSocials(GC.bioLink.socials || {});
       setCvEnabled(GC.bioLink.cvEnabled || false);
@@ -271,6 +273,8 @@ export default function BioLinkView() {
         links,
         socials,
         cvEnabled,
+        showLandingPage,
+        landingPageHtml: bioData.landingPageHtml || '',
         lang,
         cvSections: {
           summary: cvSummary,
@@ -551,6 +555,20 @@ export default function BioLinkView() {
                     {L('Short Bio Tagline', 'الوصف القصير / النبذة')}
                   </label>
                   <textarea className="inp" value={bioTagline} onChange={(e) => setBioTagline(e.target.value)} rows="2" placeholder="Coach | Entrepreneur | Content Creator 🚀"></textarea>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Public Page Mode', 'نمط الصفحة العامة')}
+                  </label>
+                  <select 
+                    className="inp" 
+                    value={showLandingPage ? 'landing' : 'bio'} 
+                    onChange={(e) => setShowLandingPage(e.target.value === 'landing')}
+                  >
+                    <option value="bio">{L('Classic Bio Link & CV', 'رابط البايو الكلاسيكي والسيرة الذاتية')}</option>
+                    <option value="landing">{L('Custom AI Landing Page', 'صفحة الهبوط المخصصة بالذكاء الاصطناعي')}</option>
+                  </select>
                 </div>
                 
                 <div>

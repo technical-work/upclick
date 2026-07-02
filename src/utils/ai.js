@@ -206,6 +206,65 @@ function generateSmartFallback(prompt, lang, context) {
 
   const normalized = pStr.toLowerCase();
 
+  // 0. Landing Page copy generator
+  if (normalized.includes('landing') || normalized.includes('landing page') || normalized.includes('صفحة الهبوط') || normalized.includes('copywriter') || normalized.includes('tagline')) {
+    const taglineAR = `ضاعف مبيعاتك في مجال ${localizedNiche} مع عرض ${offer} من ${name}`;
+    const taglineEN = `Scale your business in ${localizedNiche} with ${name}'s ${offer}`;
+    const aboutAR = `أنا ${name}، خبير في ${localizedNiche}. أساعد عملائي وطلابي على تحقيق نتائج استثنائية وبناء حضور رقمي قوي من خلال أدوات مبتكرة وخبرة عملية ممتدة لسنوات.`;
+    const aboutEN = `I am ${name}, an expert in ${localizedNiche}. I help my clients and students achieve outstanding results and build a strong digital presence through innovative tools and years of experience.`;
+
+    const featuresAR = [
+      { icon: '🎯', title: 'خطة عمل مخصصة', desc: 'خطة عمل مصممة خصيصاً لأهدافك وظروفك لمجال ' + localizedNiche },
+      { icon: '📞', title: 'جلسات فردية أسبوعية', desc: 'لقاءات منتظمة لمتابعة تقدمك وحل التحديات' },
+      { icon: '📚', title: 'موارد حصرية', desc: 'مكتبة شاملة من القوالب والأدوات والمواد لعرض ' + offer },
+      { icon: '👥', title: 'مجتمع داعم', desc: 'انضم لمجموعة من المتحمسين يشجعونك للأمام' },
+      { icon: '📊', title: 'قياس النتائج', desc: 'متابعة دقيقة للتقدم مع تعديلات مستمرة' },
+      { icon: '🏆', title: 'شهادة معتمدة', desc: 'احصل على شهادة إتمام معترف بها' }
+    ];
+    const featuresEN = [
+      { icon: '🎯', title: 'Personalized Action Plan', desc: `A roadmap designed specifically for your goals in ${localizedNiche}` },
+      { icon: '📞', title: 'Weekly 1-on-1 Sessions', desc: 'Regular meetings to track progress and solve challenges' },
+      { icon: '📚', title: 'Exclusive Resources', desc: `Full library of templates, tools, and materials for ${offer}` },
+      { icon: '👥', title: 'Supportive Community', desc: 'Join a group of motivated peers cheering you on' },
+      { icon: '📊', title: 'Results Tracking', desc: 'Precise progress monitoring with ongoing adjustments' },
+      { icon: '🏆', title: 'Certified Achievement', desc: 'Get a recognized completion certificate' }
+    ];
+
+    const testimonialsAR = [
+      { initial: 'ن', name: 'نورة الراشدي', loc: 'السعودية', stars: 5, text: `العمل مع ${name} غيّر مسار حياتي المهنية كلياً. ساعدني أحقق أهدافاً كنت أظنها مستحيلة.` },
+      { initial: 'أ', name: 'أحمد خليل', loc: 'مصر', stars: 5, text: `بدأت أكسب من محتواي في أول ٦٠ يوم. أفضل استثمار في حياتي.` },
+      { initial: 'م', name: 'منى صابر', loc: 'الإمارات', stars: 5, text: `أخيراً خدمة تفهم السوق العربي وتحدياته الفعلية في ${localizedNiche}. أنصح بها بشدة.` }
+    ];
+    const testimonialsEN = [
+      { initial: 'N', name: 'Nora Al-Rashidi', loc: 'Saudi Arabia', stars: 5, text: `Working with ${name} completely changed my professional path. Helped me achieve goals I thought were impossible.` },
+      { initial: 'A', name: 'Ahmed K.', loc: 'Egypt', stars: 5, text: `Started earning from my offer in the first 60 days. Best investment of my life.` },
+      { initial: 'M', name: 'Mona Al-Saber', loc: 'UAE', stars: 5, text: `Finally a service that truly understands the market in ${localizedNiche}. Highly recommend.` }
+    ];
+
+    const faqsAR = [
+      { q: `هل كورس ${offer} مناسب للمبتدئين؟`, a: 'نعم، نبدأ خطوة بخطوة من الصفر حتى الاحتراف.' },
+      { q: 'ما هي مدة صلاحية الوصول للمواد؟', a: 'صلاحية وصول مدى الحياة لجميع الدروس والتحديثات المستمرة.' },
+      { q: 'هل توجد ضمانات للمنتج؟', a: 'نعم، نقدم ضمان استرداد الأموال بنسبة 100% خلال 30 يوماً.' },
+      { q: 'هل توجد متابعة شخصية؟', a: 'نعم، يشمل العرض جلسات أسئلة وأجوبة ومراجعات مباشرة.' }
+    ];
+    const faqsEN = [
+      { q: `Is ${offer} suitable for beginners?`, a: 'Yes, we start step-by-step from scratch to advanced.' },
+      { q: 'How long do I have access?', a: 'Lifetime access to all lessons and future updates.' },
+      { q: 'Is there a money-back guarantee?', a: 'Yes, 30-day 100% money back guarantee.' },
+      { q: 'Is there support included?', a: 'Yes, includes Q&A calls and community feedback.' }
+    ];
+
+    const obj = {
+      tagline: isAR ? taglineAR : taglineEN,
+      aboutText: isAR ? aboutAR : aboutEN,
+      features: isAR ? featuresAR : featuresEN,
+      testimonials: isAR ? testimonialsAR : testimonialsEN,
+      faqs: isAR ? faqsAR : faqsEN
+    };
+
+    return JSON.stringify(obj, null, 2);
+  }
+
   // 1. Daily Brief / Analyze My Business Today / حلل بزنسي اليوم
   if (normalized.includes('daily business brief') || normalized.includes('daily brief') || normalized.includes('analyze my business today') || normalized.includes('حلل بزنسي اليوم')) {
     return generateDailyBrief(isAR, context, name, localizedNiche, localizedChannel, goals, localizedPain);
@@ -288,6 +347,30 @@ function generateSmartFallback(prompt, lang, context) {
   // 16. Social Accounts / Trends feedback
   if (normalized.includes('social trend') || normalized.includes('social account') || normalized.includes('instagram analysis')) {
     return generateSocialFeedback(isAR, name, localizedChannel, localizedNiche);
+  }
+
+  // 17. Course outline / product syllabus check
+  if (normalized.includes('outline') || normalized.includes('syllabus') || normalized.includes('structure')) {
+    return `### 📋 الهيكل المقترح للمنتج: **${name}**
+**الموديول ١: الأساسيات والتهيئة**
+• تحديد الأهداف والجمهور المستهدف لـ **${name}**
+• الأدوات والبرمجيات اللازمة للتنفيذ
+• هيكلة الموارد وتجهيز الملفات
+
+**الموديول ٢: بناء القيمة الجوهرية**
+• صياغة الفصول والدروس الأساسية بالتفصيل
+• دمج دراسات الحالة والأمثلة الواقعية للنيش
+• تجهيز النماذج والأوراق المساعدة للجمهور المستهدف
+
+**الموديول ٣: المظهر واللمسات البصرية**
+• تصميم الأغلفة والواجهات باستخدام Canva أو Notion
+• إعداد الروابط الرقمية والتصدير بالصيغة النهائية
+• تحسين تجربة المستخدم وسهولة القراءة
+
+**الموديول ٤: الإعداد للإطلاق والتسويق**
+• ربط بوابات الدفع وإعداد صفحة المنتج
+• صياغة العروض الترويجية وزوايا النصوص التسويقية
+• النشر وبدء حملة الترويج عبر منصاتك المفضلة`;
   }
 
   // Generic Catch-all / custom chat assistant panel questions

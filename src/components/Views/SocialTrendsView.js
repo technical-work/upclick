@@ -5,7 +5,60 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { DB } from '../../data/mockData';
 
+const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
+  if (!itemDate) return rangeType === 'all';
+  const date = new Date(itemDate);
+  if (isNaN(date.getTime())) return rangeType === 'all';
+
+  const now = new Date();
+
+  switch (rangeType) {
+    case 'today': {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return date >= today;
+    }
+    case 'week': {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+    case 'month': {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return date >= startOfMonth;
+    }
+    case 'year': {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      return date >= startOfYear;
+    }
+    case 'last30': {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+      return date >= thirtyDaysAgo;
+    }
+    case 'custom': {
+      if (customStart && customEnd) {
+        const start = new Date(customStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+      }
+      return true;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
+
 export default function SocialTrendsView() {
+  const [filterPeriod, setFilterPeriod] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   const { lang, L, t, GC, saveGC } = useBusiness();
 
   const trendsData = GC.socialTrends || {
@@ -93,9 +146,14 @@ export default function SocialTrendsView() {
   };
 
   // Stats computed from trends
-  const totalViewsStr = trends.length > 0 ? trends.reduce((sum, v) => sum + (parseInt(String(v.views).replace(/[^0-9]/g, '')) || 0), 0).toLocaleString() : '—';
-  const avgEngagement = trends.length > 0 ? '7.4%' : '—';
-  const hotHashtagsCount = trends.length > 0 ? new Set(trends.flatMap(v => v.hashtags || [])).size : '—';
+  const dateFilteredTrends = trends.filter(v => {
+    const trendDate = v.date || v.createdAt || v.publishedDate || '';
+    return filterByDateRange(trendDate, filterPeriod, customStartDate, customEndDate);
+  });
+
+  const totalViewsStr = dateFilteredTrends.length > 0 ? dateFilteredTrends.reduce((sum, v) => sum + (parseInt(String(v.views).replace(/[^0-9]/g, '')) || 0), 0).toLocaleString() : '—';
+  const avgEngagement = dateFilteredTrends.length > 0 ? '7.4%' : '—';
+  const hotHashtagsCount = dateFilteredTrends.length > 0 ? new Set(dateFilteredTrends.flatMap(v => v.hashtags || [])).size : '—';
 
   const handleLoadTrends = async () => {
     setLoading(true);
@@ -394,6 +452,45 @@ export default function SocialTrendsView() {
           {L('Social Trends', 'الترندات الاجتماعية')}
         </div>
         <div className="pg-actions">
+          {/* Period Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginInlineEnd: '10px' }}>
+            <span style={{ fontSize: '13px' }}>📅</span>
+            <select
+              className="inp"
+              style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '110px', height: '32px', borderRadius: '8px' }}
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+            >
+              <option value="all">{L('All Time', 'كل الأوقات')}</option>
+              <option value="today">{L('Today', 'اليوم')}</option>
+              <option value="week">{L('This Week', 'هذا الأسبوع')}</option>
+              <option value="month">{L('This Month', 'هذا الشهر')}</option>
+              <option value="last30">{L('Last 30 Days', 'آخر ٣٠ يوم')}</option>
+              <option value="year">{L('This Year', 'هذا العام')}</option>
+              <option value="custom">{L('Custom Range', 'نطاق مخصص')}</option>
+            </select>
+
+            {filterPeriod === 'custom' && (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('to', 'إلى')}</span>
+                <input
+                  type="date"
+                  className="inp"
+                  style={{ padding: '4px 8px', fontSize: '11px', width: '120px', height: '32px', borderRadius: '8px' }}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <button className="btn btn-ghost" onClick={handleLoadTrends} style={{ fontSize: '12px' }}>
             🔄 {L('Refresh', 'تحديث')}
           </button>
@@ -456,7 +553,7 @@ export default function SocialTrendsView() {
       <div className="g4 stagger mb">
         <div className="stat-card">
           <div className="stat-lbl">🔥 {L('Trending Now', 'الرائج الآن')}</div>
-          <div className="stat-val" id="tt-stat-total">{trends.length || '—'}</div>
+          <div className="stat-val" id="tt-stat-total">{dateFilteredTrends.length || '—'}</div>
         </div>
         <div className="stat-card">
           <div className="stat-lbl">👁️ {L('Total Views', 'إجمالي المشاهدات')}</div>
@@ -595,7 +692,7 @@ export default function SocialTrendsView() {
       )}
 
       <div id="tiktok-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
-        {!loading && trends.length === 0 && (
+        {!loading && dateFilteredTrends.length === 0 && (
           <div style={{ gridColumn: '1/-1' }}>
             <div className="empty-state">
               <div className="es-icon">📡</div>
@@ -610,7 +707,7 @@ export default function SocialTrendsView() {
           </div>
         )}
 
-        {!loading && trends.map((v, i) => (
+        {!loading && dateFilteredTrends.map((v, i) => (
           <div 
             className="card" 
             key={i} 
