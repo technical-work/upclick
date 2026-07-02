@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Space+Mono:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
 
 /* Animations (Global Keyframes) */
 @keyframes fadeSlide {
@@ -45,7 +45,7 @@
   --gold: #D97706;
   --radius: 14px;
   --radius-sm: 8px;
-  --font: 'Cairo', sans-serif;
+  --font: 'IBM Plex Sans Arabic', sans-serif;
   --mono: 'Space Mono', monospace;
 
   font-family: var(--font);

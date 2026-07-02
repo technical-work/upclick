@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800;900&family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
 
 /* ═══════════════════════════════════════════════════
    UPKLICK DASHBOARD — 2030 DESIGN SYSTEM
@@ -6,8 +6,8 @@
    ═══════════════════════════════════════════════════ */
 
 :root {
-  --font-tajawal: 'Tajawal', sans-serif;
-  --font-geist-sans: 'Outfit', sans-serif;
+  --font-tajawal: 'IBM Plex Sans Arabic', sans-serif;
+  --font-geist-sans: 'IBM Plex Sans Arabic', sans-serif;
   --font-geist-mono: 'JetBrains Mono', monospace;
   /* UpKlick Brand (Derived from Image) */
   --orange: #EC5C31; /* Bright orange from the image */
@@ -55,9 +55,9 @@
   --blue: #3b82f6;    --blue-d: rgba(59,130,246,.12);
 
   /* Typography */
-  --ff: var(--font-tajawal), 'Syne', 'DM Sans', sans-serif;
-  --fb: var(--font-tajawal), 'DM Sans', sans-serif;
-  --fa: var(--font-tajawal), 'IBM Plex Sans Arabic', 'DM Sans', sans-serif;
+  --ff: 'IBM Plex Sans Arabic', sans-serif;
+  --fb: 'IBM Plex Sans Arabic', sans-serif;
+  --fa: 'IBM Plex Sans Arabic', sans-serif;
 
   
   /* Layout */
