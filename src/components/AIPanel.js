@@ -97,23 +97,28 @@ export default function AIPanel() {
     }
   }, [aiQuery]);
 
-  // Quick Action Buttons
-  const quickActions = L(
-    [
-      'Analyze my business today',
-      'Who should I follow up with?',
-      'Summarize this week',
-      "What are today's priorities?",
-      'Where are my revenue leaks?'
-    ],
-    [
-      'حلل بزنسي اليوم',
-      'مين لازم أتابع؟',
-      'كم إيراداتي هذا الشهر؟',
-      'أعطني ملخص الأسبوع',
-      'أولوياتي اليوم؟'
-    ]
-  );
+  // FAQ Buttons
+  const faqs = lang === 'ar' ? [
+    { q: 'كيف أضيف عميل جديد؟ (إدارة العملاء)', a: 'لإضافة عميل جديد، انتقل إلى قسم "إدارة العملاء" واضغط على زر "عميل جديد".' },
+    { q: 'كيف أدير مشاريعي؟ (المهام)', a: 'في قسم "إدارة المهام"، يمكنك إضافة مهام جديدة وتغيير حالتها بسهولة عبر السحب والإفلات.' },
+    { q: 'كيف أسجل مبيعاتي؟ (المالية)', a: 'من قسم "المالية"، اضغط على "معاملة جديدة" لتسجيل الإيرادات والمصروفات بدقة.' },
+    { q: 'كيف أكتب محتوى ذكي؟ (المحتوى)', a: 'توجه إلى قسم "المحتوى"، اختر نوع المنشور والمنصة، وسيقوم الذكاء الاصطناعي بكتابته لك.' },
+    { q: 'كيف أعدل ألوان النظام؟ (الإعدادات)', a: 'من خلال قسم "الإعدادات" ثم "الهوية البصرية"، يمكنك تغيير ألوان النظام وتحديث اللوجو.' }
+  ] : [
+    { q: 'How to add a new lead? (CRM)', a: 'Go to the "Smart CRM" section and click on the "New Lead" button to add a new client.' },
+    { q: 'How to manage my tasks? (Tasks)', a: 'In the "Tasks" section, you can add new tasks and update their status using drag and drop.' },
+    { q: 'How to record sales? (Finance)', a: 'From the "Finance" section, click "New Transaction" to accurately record your income and expenses.' },
+    { q: 'How to generate AI content? (Content)', a: 'Go to the "Content" section, select the post type, and the AI will write it for you.' },
+    { q: 'How to change colors? (Settings)', a: 'Through the "Settings" section under "Branding", you can change the system theme and update the logo.' }
+  ];
+
+  const handleFaqClick = (faq) => {
+    setMessages(prev => [
+      ...prev,
+      { sender: 'user', text: faq.q },
+      { sender: 'ai', text: faq.a }
+    ]);
+  };
 
   const getContextSummary = () => {
     try {
@@ -513,13 +518,13 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
         {/* Quick actions buttons grid */}
         {!loading && (
           <div className="ai-quick-actions" style={{ marginTop: '14px' }}>
-            {quickActions.map((action, index) => (
+            {faqs.map((faq, index) => (
               <button
                 className="ai-qa-btn"
                 key={index}
-                onClick={() => askAI(action)}
+                onClick={() => handleFaqClick(faq)}
               >
-                {action}
+                {faq.q}
               </button>
             ))}
           </div>

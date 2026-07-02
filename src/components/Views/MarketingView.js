@@ -254,27 +254,29 @@ export default function MarketingView() {
       );
       
       const finalResponse = response || accumulated || L('Error generating report.', 'حدث خطأ أثناء التوليد.');
-      setOutputs(prev => ({ ...prev, [outputId]: finalResponse }));
+      
+      setOutputs(prev => {
+        const next = { ...prev, [outputId]: finalResponse };
+        const updatedGC = {
+          ...GC,
+          marketing: {
+            ...(GC?.marketing || {}),
+            inputs: inputs,
+            outputs: next,
+            counts: {
+              competitors: competitorsCount,
+              audience: audienceCount,
+              trends: trendsCount,
+              personas: personasCount,
+              ...extraCounts
+            }
+          }
+        };
+        saveGC(updatedGC);
+        return next;
+      });
 
-      const nextOutputs = { ...outputs, [outputId]: finalResponse };
-      const currentCounts = {
-        competitors: competitorsCount,
-        audience: audienceCount,
-        trends: trendsCount,
-        personas: personasCount,
-        ...extraCounts
-      };
-
-      const updatedGC = {
-        ...GC,
-        marketing: {
-          ...(GC?.marketing || {}),
-          inputs: inputs,
-          outputs: nextOutputs,
-          counts: currentCounts
-        }
-      };
-      saveGC(updatedGC);
+      return finalResponse;
     } catch (err) {
       setOutputs(prev => ({ ...prev, [outputId]: L('Error generating report. Please try again.', 'حدث خطأ أثناء التوليد. يرجى المحاولة مرة أخرى.') }));
     } finally {
@@ -283,86 +285,78 @@ export default function MarketingView() {
   };
 
   // ── 1. RESEARCH SUB-ACTIONS ──
-  const runCompetitorFinder = () => {
-    const prompt = `Find and analyze competitors for: Niche: "${inputs.compNiche}", Country: "${inputs.compCountry}", Product Type: "${inputs.compType}". Identify 3-4 competitor brands or types of businesses, pricing, positioning and gaps we can exploit.`;
-    const system = `You are an expert market analyst. Provide direct actionable findings.`;
-    const nextCount = competitorsCount + 1;
-    setCompetitorsCount(nextCount);
-    triggerAI('competitor-finder', 'comp-out', prompt, system, { competitors: nextCount });
-  };
+  const runCompleteResearch = async () => {
+    const icpData = GC.strategy?.icp || '';
+    const roadmapData = GC.strategy?.roadmap || '';
 
-  const runCompetitorAds = () => {
-    const prompt = `Research competitor ads for "${inputs.compAdsName}" on platform "${inputs.compAdsPlatform}". Outline winning hooks, ad copy angles, creative formats, and conversion strategies.`;
-    const system = `You are a PPC & Ad Intelligence specialist.`;
-    triggerAI('competitor-ads', 'comp-ads-out', prompt, system);
-  };
+    const compPrompt = `My business website/page: "${inputs.resWebsite}"
+My Niche: "${inputs.resNiche}"
+Context (ICP / Target Client): "${icpData}"
+Growth Roadmap Context: "${roadmapData}"
 
-  const runAudienceResearch = () => {
-    const prompt = `Research target audience: Customer description: "${inputs.audDesc}", Core problem solved: "${inputs.audProblem}". Outline demographic details, psychological traits, 5 biggest pain points, desires, buying triggers, and objections.`;
-    const system = `You are a customer psychologist.`;
-    const nextCount = audienceCount + 1;
-    setAudienceCount(nextCount);
-    triggerAI('audience-research', 'aud-out', prompt, system, { audience: nextCount });
-  };
+Identify 3-4 competitor brands or similar businesses in this space. Provide their pricing, positioning, and highlight the market gaps we can exploit.`;
+    const compSystem = `You are an expert market analyst. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    
+    setOutputs(prev => ({ ...prev, 'comp-out': '', 'comp-ads-out': '', 'direction-out': '' }));
+    setLoading(prev => ({ ...prev, 'comp-out': true, 'comp-ads-out': true, 'direction-out': true }));
 
-  const runBuyerPersona = () => {
-    const prompt = `Build detailed Buyer Personas for: Product "${inputs.personaProduct}", Target market: "${inputs.personaMarket}", Age range: "${inputs.personaAge}", Gender: "${inputs.personaGender}". Provide profile name, background, goals, struggles, and buying triggers.`;
-    const system = `You are a master brand strategist.`;
-    const nextCount = personasCount + 1;
-    setPersonasCount(nextCount);
-    triggerAI('buyer-persona', 'persona-out', prompt, system, { personas: nextCount });
-  };
+    await triggerAI('competitor-finder', 'comp-out', compPrompt, compSystem);
 
-  const runTrendDiscovery = () => {
-    const prompt = `Discover current trends in niche: "${inputs.trendNiche}", Region: "${inputs.trendRegion}", Trend Type: "${inputs.trendType}". Highlight 3 rising trends, viral content formats, and immediate marketing opportunities.`;
-    const system = `You are a viral trend analyst.`;
-    const nextCount = trendsCount + 1;
-    setTrendsCount(nextCount);
-    triggerAI('trends', 'trends-out', prompt, system, { trends: nextCount });
+    const adsPrompt = `Based on our competitors in Niche "${inputs.resNiche}" (Website/Page: "${inputs.resWebsite}"), outline winning hooks, ad copy angles, creative formats (image/video style), and conversion strategies we should use.`;
+    const adsSystem = `You are a PPC & Ad Intelligence specialist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    await triggerAI('competitor-ads', 'comp-ads-out', adsPrompt, adsSystem);
+
+    const dirPrompt = `Generate a Comprehensive Marketing Directions report:
+Website/Page: "${inputs.resWebsite}"
+Niche: "${inputs.resNiche}"
+Target Client (ICP): "${icpData}"
+Current Offer: "${GC.profile?.offer?.name || ''}" (${GC.profile?.offer?.price || ''})
+
+Perform a combined analysis merging our service details, ideal client profile, and competitor ad strategies. Provide 3 highly targeted marketing directions/angles, highlighting specific client pain points to hook them, and explain how we can position our service as the ultimate solution compared to competitors.`;
+    const dirSystem = `You are a master brand and marketing strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    await triggerAI('marketing-directions', 'direction-out', dirPrompt, dirSystem);
   };
 
   // ── 2. STRATEGY SUB-ACTIONS ──
-  const runStrategyBuilder = () => {
-    const prompt = `Build a complete marketing strategy: Business type "${inputs.stratBizType}", Budget "${inputs.stratBudget}", Goal "${inputs.stratGoal}", Timeline "${inputs.stratTimeline}". Suggest the best marketing channels, budget allocation, and month-by-month roadmap.`;
-    const system = `You are a Chief Marketing Officer.`;
+  const runAutoMarketingPlan = () => {
+    const bizIdea = GC.strategy?.idea_analysis || '';
+    const offer = GC.profile?.offer?.name || '';
+    const price = GC.profile?.offer?.price || '';
+    const icp = GC.strategy?.icp || '';
+
+    const prompt = `Create a complete marketing strategy plan based on my Strategy Lab data:
+Business Idea & Niche: "${bizIdea}"
+Core Offer: "${offer}" at "${price}"
+Ideal Client Profile: "${icp}"
+
+Suggest the best organic and paid marketing channels, monthly budget allocation, specific launch tactics, and a month-by-month roadmap. No manual inputs are required, this is fully customized to my profile.`;
+    const system = `You are a Chief Marketing Officer. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     triggerAI('strategy', 'strat-plan-out', prompt, system);
   };
 
-  const runLaunchPlanner = () => {
-    const prompt = `Build a launch plan for: "${inputs.launchWhat}", Date: "${inputs.launchDate}", Audience Size: "${inputs.launchAud}", Target: "${inputs.launchTarget}". Give a 4-week pre-launch, launch week, and post-launch roadmap with daily actions.`;
-    const system = `You are a launch launch specialist.`;
-    triggerAI('launch-planner', 'launch-out', prompt, system);
-  };
+  const runCampaignPlanner = () => {
+    const mktPlan = outputs['strat-plan-out'] || '';
+    const offer = GC.profile?.offer?.name || '';
+    const icp = GC.strategy?.icp || '';
 
-  const runGrowthRoadmap = () => {
-    const prompt = `Create a growth roadmap: Current Rev "${inputs.rmCurrent}", Goal "${inputs.rmGoal}", Timeline "${inputs.rmPeriod}", Primary Channel "${inputs.rmChannel}". Provide a week-by-week implementation plan.`;
-    const system = `You are a business scaling consultant.`;
-    triggerAI('growth-roadmap', 'rm-out', prompt, system);
-  };
+    const selectedPlatforms = inputs.campaignPlatforms || [];
+    const platformsStr = selectedPlatforms.join(', ') || 'Meta (Facebook/Instagram)';
 
-  const runSWOT = () => {
-    const prompt = `Analyze this SWOT matrix: Strengths: "${inputs.swotS}", Weaknesses: "${inputs.swotW}", Opportunities: "${inputs.swotO}", Threats: "${inputs.swotT}". Provide strategic takeaways on how to maximize strengths, fix weaknesses, capture opportunities, and mitigate threats.`;
-    const system = `You are a strategic SWOT consultant.`;
-    triggerAI('swot', 'swot-out', prompt, system);
-  };
+    const prompt = `Based on my Marketing Plan: "${mktPlan}" (Offer: "${offer}", ICP: "${icp}").
+Build a highly structured Campaign Planner. 
+Target Platforms: "${platformsStr}"
+Campaign Start Date: "${inputs.campaignStartDate || 'As soon as possible'}"
+Campaign Budget: "${inputs.campaignBudget || 'Organic / Minimal'}"
+Campaign Goal: "${inputs.campaignGoal || 'Sales / Conversions'}"
 
-  const runCampaignLauncher = () => {
-    const prompt = `Create a complete marketing campaign launcher bundle for the campaign: "${inputs.launchName}".
-Product/Service to promote: "${inputs.launchProduct}"
-Target Audience: "${inputs.launchAudience}"
-Campaign Goal: "${inputs.launchGoal}"
+Generate the campaign structure containing:
+1. Timeline & Key Milestones (starting from "${inputs.campaignStartDate || 'now'}")
+2. Budget Allocation across the selected platforms: "${platformsStr}"
+3. Campaign Goals & Main KPI Targets
+4. Platform-Specific Copy Blueprint & Visual Hooks (tailored ONLY to the selected platforms: "${platformsStr}").`;
 
-Provide a comprehensive and highly cohesive launch bundle structured exactly as follows:
-1. TARGET AUDIENCE & ICP PROFILE: A detailed breakdown of our ideal customer profile, their psychographics, and top 3 purchase triggers.
-2. AD HOOKS CATALOG: 3 viral hook options customized for this product.
-3. AD COPY BUNDLE:
-   - Meta Ads (Facebook/Instagram) Primary Text & Headlines
-   - TikTok Video script concept (with visual guidelines)
-   - Google Search Ads Headlines (3 variations)
-4. FOLLOW-UP SEQUENCE: A 3-step sequence of Telegram or Email outreach templates designed to convert leads into sales.`;
-
-    const system = `You are a growth marketing architect. Provide highly detailed, directly copy-pasteable marketing materials and copy.`;
-    triggerAI('campaign-launcher', 'launcher-out', prompt, system);
+    const system = `You are a senior growth marketing architect. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    triggerAI('campaign-planner', 'launcher-out', prompt, system);
   };
 
   // ── 3. OFFERS SUB-ACTIONS ──
@@ -546,15 +540,12 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
           <span>{t('Marketing OS')}</span>
         </div>
         <div className="pg-actions">
-          <button className="btn-ai" onClick={() => setActiveTab('ai')}>
-            ✦ {L('AI Consultant', 'مستشار التسويق الذكي')}
-          </button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <div className="tabs-bar" id="mkt-tabs" style={{ marginBottom: '20px' }}>
-        {['research', 'strategy', 'offers', 'ads', 'content', 'funnels', 'analytics', 'saved', 'ai'].map(tab => (
+        {['research', 'strategy', 'offers', 'funnels', 'analytics', 'saved'].map(tab => (
           <button
             key={tab}
             className={`tab-btn ${activeTab === tab ? 'on' : ''}`}
@@ -563,12 +554,9 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
             {tab === 'research' && `🔍 ${L('Research', 'الأبحاث')}`}
             {tab === 'strategy' && `🧭 ${L('Strategy', 'الاستراتيجية')}`}
             {tab === 'offers' && `🎁 ${L('Offers', 'العروض')}`}
-            {tab === 'ads' && `📢 ${L('Ads', 'الإعلانات')}`}
-            {tab === 'content' && `✍️ ${L('Content', 'المحتوى')}`}
             {tab === 'funnels' && `🔄 ${L('Funnels', 'المسارات')}`}
             {tab === 'analytics' && `📊 ${L('Analytics', 'التحليلات')}`}
             {tab === 'saved' && `💾 ${L('Saved Reports', 'التقارير المحفوظة')}`}
-            {tab === 'ai' && `✦ ${L('AI Consultant', 'مستشار AI')}`}
           </button>
         ))}
       </div>
@@ -576,182 +564,84 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
       {/* ── TAB 1: RESEARCH ── */}
       {activeTab === 'research' && (
         <div className="mkt-section on">
-          {/* Stats row */}
-          <div className="g4 stagger mb">
-            <div className="stat-card">
-              <div className="stat-lbl">🕵️ {L('Competitors Found', 'المنافسين المكتشفين')}</div>
-              <div className="stat-val">{competitorsCount}</div>
-              <div className="stat-ch ch-nu">{L('tracked', 'تم تتبعهم')}</div>
+          <div className="g2">
+            <div className="card">
+              <div className="sec-hd">
+                <div className="sec-title">🔍 {L('Marketing Research Setup', 'إعداد أبحاث التسويق')}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Your Website / Landing Page Link', 'رابط موقعك الإلكتروني أو صفحة الهبوط')}
+                  </label>
+                  <input 
+                    className="inp" 
+                    placeholder="https://example.com" 
+                    value={inputs.resWebsite || ''} 
+                    onChange={e => handleInputChange('resWebsite', e.target.value)} 
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Brief Niche Description', 'نبذة مختصرة عن المجال')}
+                  </label>
+                  <textarea 
+                    className="inp" 
+                    rows="3" 
+                    placeholder="e.g. Business coaching program for female founders..." 
+                    value={inputs.resNiche || ''} 
+                    onChange={e => handleInputChange('resNiche', e.target.value)} 
+                  />
+                </div>
+                <button 
+                  className="btn btn-prime" 
+                  onClick={runCompleteResearch} 
+                  style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }}
+                  disabled={loading['comp-out'] || loading['comp-ads-out'] || loading['direction-out']}
+                >
+                  {loading['comp-out'] ? L('Generating...', 'جاري التوليد...') : `🕵️ ${L('Generate Complete Research', 'بدء الأبحاث والتحليل')}`}
+                </button>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🎯 {L('Audience Insights', 'رؤى الجمهور')}</div>
-              <div className="stat-val">{audienceCount}</div>
-              <div className="stat-ch ch-nu">{L('analyzed', 'تم تحليلها')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🔥 {L('Trends Tracked', 'الاتجاهات المتابعة')}</div>
-              <div className="stat-val">{trendsCount}</div>
-              <div className="stat-ch ch-nu">{L('scanned', 'تم مسحها')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🧑 {L('Personas Built', 'شخصيات المشترين')}</div>
-              <div className="stat-val">{personasCount}</div>
-              <div className="stat-ch ch-nu">{L('created', 'تم إنشاؤها')}</div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="tabs-bar" style={{ marginBottom: '4px' }}>
+                {['comp', 'ads', 'direction'].map(sub => (
+                  <button
+                    key={sub}
+                    className={`tab-btn ${resTab === sub ? 'on' : ''}`}
+                    onClick={() => setResTab(sub)}
+                    style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                  >
+                    {sub === 'comp' && `🕵️ ${L('Competitors', 'المنافسين')}`}
+                    {sub === 'ads' && `📣 ${L('Competitor Ads', 'إعلانات المنافسين')}`}
+                    {sub === 'direction' && `🧭 ${L('Marketing Directions', 'الاتجاهات التسويقية')}`}
+                  </button>
+                ))}
+              </div>
+
+              {resTab === 'comp' && renderResultCard(
+                'المنافسين المقترحين', 'Suggested Competitors', 'comp-out',
+                'جاري البحث عن المنافسين...', 'Scanning competitors...',
+                'سيظهر تحليل المنافسين ومكامن الفجوات هنا.', 'Competitor list and market gaps will appear here.',
+                'Competitors'
+              )}
+
+              {resTab === 'ads' && renderResultCard(
+                'تحليل إعلانات المنافسين', 'Competitor Ads Analysis', 'comp-ads-out',
+                'جاري تحليل إعلانات المنافسين بالـ AI...', 'Analyzing competitor ads...',
+                'سيظهر تحليل زوايا الإعلانات والخطافات الإبداعية للمنافسين هنا.', 'Competitor ad angles and hooks will appear here.',
+                'Competitor Ads'
+              )}
+
+              {resTab === 'direction' && renderResultCard(
+                'الاتجاهات التسويقية المقترحة', 'Proposed Marketing Directions', 'direction-out',
+                'جاري صياغة الاتجاهات التسويقية...', 'Formulating marketing directions...',
+                'سيظهر هنا تحليل الاتجاهات المبتكرة التي تستهدف أوجاع العميل بالمقارنة مع المنافسين.', 'Innovative marketing angles targeting client pain points will appear here.',
+                'Marketing Directions'
+              )}
             </div>
           </div>
-
-          <div className="tabs-bar" style={{ marginBottom: '14px' }}>
-            {['comp', 'ads', 'aud', 'persona', 'trends'].map(sub => (
-              <button
-                key={sub}
-                className={`tab-btn ${resTab === sub ? 'on' : ''}`}
-                onClick={() => setResTab(sub)}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-              >
-                {sub === 'comp' && `🕵️ ${L('Competitors', 'المنافسين')}`}
-                {sub === 'ads' && `📣 ${L('Competitor Ads', 'إعلانات المنافسين')}`}
-                {sub === 'aud' && `👥 ${L('Audience', 'الجمهور')}`}
-                {sub === 'persona' && `🧑 ${L('Persona', 'شخصية المشتري')}`}
-                {sub === 'trends' && `🔥 ${L('Trends', 'الاتجاهات')}`}
-              </button>
-            ))}
-          </div>
-
-          {resTab === 'comp' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd">
-                  <div className="sec-title">🕵️ {L('Competitor Finder', 'مستكشف المنافسين')}</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your Business / Niche', 'مجال عملك / نيشك')}</label>
-                    <input className="inp" placeholder="e.g. Online coaching for Arab women" value={inputs.compNiche} onChange={e => handleInputChange('compNiche', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Country', 'البلد المستهدف')}</label>
-                    <select className="inp" value={inputs.compCountry} onChange={e => handleInputChange('compCountry', e.target.value)}>
-                      <option>Saudi Arabia</option><option>UAE</option><option>Egypt</option><option>Kuwait</option><option>Global</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product Type', 'نوع المنتج')}</label>
-                    <select className="inp" value={inputs.compType} onChange={e => handleInputChange('compType', e.target.value)}>
-                      <option>Online Course</option><option>Coaching Program</option><option>SaaS / App</option><option>E-commerce</option><option>Service / Agency</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runCompetitorFinder} style={{ width: '100%', justifyContent: 'center' }}>
-                    🕵️ {L('Find Competitors + Analyze', 'ابحث عن المنافسين وحلل')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('النتائج', 'Results', 'comp-out', 'جاري البحث عن المنافسين...', 'Scanning competitors...', 'ابحث عن المنافسين واستراتيجيات التسعير والتموضع.', 'Find competitor lists, pricing strategies, and marketing positioning.', 'Competitor Finder')}
-            </div>
-          )}
-
-          {resTab === 'ads' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">📣 {L('Competitor Ads Research', 'أبحاث إعلانات المنافسين')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Competitor Name / URL', 'اسم المنافس / الرابط')}</label>
-                    <input className="inp" placeholder="Competitor brand or website..." value={inputs.compAdsName} onChange={e => handleInputChange('compAdsName', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Ad Platform', 'منصة الإعلانات')}</label>
-                    <select className="inp" value={inputs.compAdsPlatform} onChange={e => handleInputChange('compAdsPlatform', e.target.value)}>
-                      <option>Meta (Facebook/Instagram)</option><option>TikTok</option><option>Google</option><option>YouTube</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runCompetitorAds} style={{ width: '100%', justifyContent: 'center' }}>
-                    🔍 {L('Analyze Their Ads', 'حلل إعلاناتهم')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('ذكاء الإعلانات', 'Ad Intelligence', 'comp-ads-out', 'جاري تحليل الإعلانات...', 'Analyzing ads...', 'اكتشف الخطافات والإعلانات والاستراتيجيات.', 'Discover hooks, creatives, and strategies.', 'Competitor Ads Research')}
-            </div>
-          )}
-
-          {resTab === 'aud' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">👥 {L('Audience Research', 'أبحاث الجمهور')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Describe your ideal customer', 'صف عميلك المثالي')}</label>
-                    <textarea className="inp" rows="3" placeholder="Arab women 25-40, interested in business and personal growth..." value={inputs.audDesc} onChange={e => handleInputChange('audDesc', e.target.value)}></textarea>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What problem do you solve?', 'ما المشكلة التي تحلها؟')}</label>
-                    <input className="inp" placeholder="Help them build a sustainable online income..." value={inputs.audProblem} onChange={e => handleInputChange('audProblem', e.target.value)} />
-                  </div>
-                  <button className="btn btn-prime" onClick={runAudienceResearch} style={{ width: '100%', justifyContent: 'center' }}>
-                    🔍 {L('Deep Audience Analysis', 'تحليل متعمق للجمهور')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('رؤى الجمهور', 'Audience Intelligence', 'aud-out', 'جاري تحليل الجمهور...', 'Analyzing audience...', 'الديموغرافيا المستهدفة والاعتراضات ومحفزات الشراء.', 'Target demographics, objections, and buying triggers.', 'Audience Research')}
-            </div>
-          )}
-
-          {resTab === 'persona' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🧑 {L('Buyer Persona Builder', 'بناء شخصية المشتري')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product / Offer', 'المنتج / العرض')}</label>
-                    <input className="inp" placeholder="12-Week Business Coaching Program" value={inputs.personaProduct} onChange={e => handleInputChange('personaProduct', e.target.value)} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Age Range', 'الفئة العمرية')}</label>
-                      <input className="inp" placeholder="25-40" value={inputs.personaAge} onChange={e => handleInputChange('personaAge', e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Gender Focus', 'التركيز على الجنس')}</label>
-                      <select className="inp" value={inputs.personaGender} onChange={e => handleInputChange('personaGender', e.target.value)}>
-                        <option>Both</option><option>Female</option><option>Male</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Market', 'السوق المستهدف')}</label>
-                    <input className="inp" placeholder="Arab Gulf region, middle-class..." value={inputs.personaMarket} onChange={e => handleInputChange('personaMarket', e.target.value)} />
-                  </div>
-                  <button className="btn btn-prime" onClick={runBuyerPersona} style={{ width: '100%', justifyContent: 'center' }}>
-                    🧑 {L('Build Detailed Persona', 'ابني شخصية تفصيلية')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('شخصية المشتري', 'Buyer Persona', 'persona-out', 'جاري بناء شخصية المشتري...', 'Building buyer personas...', 'الملف الكامل لشخصية المشتري الخاصة بك.', 'Complete profile of your buyer persona.', 'Buyer Persona Builder')}
-            </div>
-          )}
-
-          {resTab === 'trends' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🔥 {L('Trend Discovery', 'اكتشاف الترندات')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your Industry / Niche', 'مجالك / النيش')}</label>
-                    <input className="inp" placeholder="Online education, coaching, e-commerce..." value={inputs.trendNiche} onChange={e => handleInputChange('trendNiche', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Region', 'المنطقة')}</label>
-                    <select className="inp" value={inputs.trendRegion} onChange={e => handleInputChange('trendRegion', e.target.value)}>
-                      <option>Arab Market</option><option>Gulf (GCC)</option><option>Egypt & Levant</option><option>Global</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runTrendDiscovery} style={{ width: '100%', justifyContent: 'center' }}>
-                    🔥 {L('Discover Trends', 'اكتشف الاتجاهات')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('تقرير الاتجاهات', 'Trend Report', 'trends-out', 'جاري مسح الترندات...', 'Scanning trends...', 'اكتشف الموضوعات والصيغ الرائجة.', 'Discover what topics and formats are trending.', 'Trend Discovery')}
-            </div>
-          )}
         </div>
       )}
 
@@ -759,7 +649,7 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
       {activeTab === 'strategy' && (
         <div className="mkt-section on">
           <div className="tabs-bar" style={{ marginBottom: '14px' }}>
-            {['plan', 'launch', 'roadmap', 'swot', 'launcher'].map(sub => (
+            {['plan', 'launcher'].map(sub => (
               <button
                 key={sub}
                 className={`tab-btn ${stratTab === sub ? 'on' : ''}`}
@@ -767,178 +657,99 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
                 style={{ padding: '6px 12px', fontSize: '12px' }}
               >
                 {sub === 'plan' && `📋 ${L('Marketing Plan', 'خطة التسويق')}`}
-                {sub === 'launch' && `🚀 ${L('Launch Planner', 'مخطط الإطلاق')}`}
-                {sub === 'roadmap' && `🗺️ ${L('Growth Roadmap', 'خارطة الطريق')}`}
-                {sub === 'swot' && `⚔️ SWOT`}
-                {sub === 'launcher' && `⚡ ${L('Campaign Launcher', 'مطلق الحملات السريع')}`}
+                {sub === 'launcher' && `⚡ ${L('Campaign Planner', 'مخطط الحملات')}`}
               </button>
             ))}
           </div>
 
           {stratTab === 'plan' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">📋 {L('Marketing Strategy Builder', 'منشئ خطة التسويق')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Type', 'نوع البزنس')}</label>
-                    <select className="inp" value={inputs.stratBizType} onChange={e => handleInputChange('stratBizType', e.target.value)}>
-                      <option>Coaching / Training</option><option>Agency</option><option>E-commerce</option><option>SaaS / Software</option><option>Freelancing</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Marketing Budget', 'الميزانية التسويقية الشهرية')}</label>
-                    <select className="inp" value={inputs.stratBudget} onChange={e => handleInputChange('stratBudget', e.target.value)}>
-                      <option>$0 – Organic only</option><option>Under $500</option><option>$500 – $2,000</option><option>$2,000 – $10,000</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Goal', 'الهدف الأساسي')}</label>
-                    <select className="inp" value={inputs.stratGoal} onChange={e => handleInputChange('stratGoal', e.target.value)}>
-                      <option>Get more leads</option><option>Increase sales</option><option>Build brand awareness</option><option>Launch new product</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runStrategyBuilder} style={{ width: '100%', justifyContent: 'center' }}>
-                    📋 {L('Build Full Strategy', 'أعد استراتيجية كاملة')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('استراتيجيتك التسويقية', 'Your Marketing Strategy', 'strat-plan-out', 'جاري بناء الاستراتيجية...', 'Building strategy...', 'استراتيجية كاملة للقنوات الإعلانية، الميزانية، والجدول الزمني.', 'Complete marketing channels, timelines, and budgets blueprint.', 'Marketing Strategy')}
-            </div>
-          )}
-
-          {stratTab === 'launch' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🚀 {L('Launch Planner', 'مخطط الإطلاق')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What are you launching?', 'ما الذي تطلقه؟')}</label>
-                    <input className="inp" placeholder="e.g. Online course, coaching program..." value={inputs.launchWhat} onChange={e => handleInputChange('launchWhat', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Launch Date', 'تاريخ الإطلاق')}</label>
-                    <input 
-                      className="inp" 
-                      type={inputs.launchDate ? "date" : "text"} 
-                      placeholder="dd/mm/yyyy" 
-                      onFocus={(e) => e.target.type = 'date'} 
-                      onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                      value={inputs.launchDate} 
-                      onChange={e => handleInputChange('launchDate', e.target.value)} 
-                    />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Audience Size', 'حجم الجمهور')}</label>
-                      <input className="inp" placeholder="5,000 followers" value={inputs.launchAud} onChange={e => handleInputChange('launchAud', e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Revenue Target', 'الدخل المستهدف')}</label>
-                      <input className="inp" placeholder="$10,000" value={inputs.launchTarget} onChange={e => handleInputChange('launchTarget', e.target.value)} />
-                    </div>
-                  </div>
-                  <button className="btn btn-prime" onClick={runLaunchPlanner} style={{ width: '100%', justifyContent: 'center' }}>
-                    🚀 {L('Build Launch Plan', 'أعد خطة الإطلاق')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('خطة الإطلاق', 'Your Launch Plan', 'launch-out', 'جاري التخطيط للإطلاق...', 'Planning launch...', 'المهام الأسبوعية واستراتيجية الترويج للإطلاق.', 'Week-by-week checklist and promotional strategy.', 'Launch Planner')}
-            </div>
-          )}
-
-          {stratTab === 'roadmap' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🗺️ {L('Growth Roadmap', 'خارطة طريق النمو')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Revenue', 'الإيرادات الحالية')}</label>
-                    <input className="inp" placeholder="$1,500/month" value={inputs.rmCurrent} onChange={e => handleInputChange('rmCurrent', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Revenue Goal', 'هدف الإيرادات')}</label>
-                    <input className="inp" placeholder="$5,000/month" value={inputs.rmGoal} onChange={e => handleInputChange('rmGoal', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Channel', 'القناة الأساسية')}</label>
-                    <select className="inp" value={inputs.rmChannel} onChange={e => handleInputChange('rmChannel', e.target.value)}>
-                      <option>Instagram</option>
-                      <option>TikTok</option>
-                      <option>Facebook</option>
-                      <option>LinkedIn</option>
-                      <option>YouTube</option>
-                      <option>Paid Ads</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runGrowthRoadmap} style={{ width: '100%', justifyContent: 'center' }}>
-                    🗺️ {L('Build Growth Roadmap', 'أعد خارطة طريق النمو')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('خارطة طريق النمو', 'Your Growth Roadmap', 'rm-out', 'جاري بناء خارطة الطريق...', 'Building roadmap...', 'المعالم الأسبوعية لخارطة طريق النمو لمدة ٩٠ يوماً.', '90-day execution milestones and weekly tasks.', 'Growth Roadmap')}
-            </div>
-          )}
-
-          {stratTab === 'swot' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">⚔️ {L('SWOT Analyzer', 'تحليل SWOT')}</div></div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-                  <div style={{ background: 'var(--green-d)', border: '1px solid rgba(34,211,160,.2)', borderRadius: '10px', padding: '11px' }}>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--green)', marginBottom: '5px' }}>💪 STRENGTHS</div>
-                    <textarea className="inp" rows="3" placeholder="Advantages..." style={{ background: 'transparent', border: 'none', padding: 0 }} value={inputs.swotS} onChange={e => handleInputChange('swotS', e.target.value)} />
-                  </div>
-                  <div style={{ background: 'var(--red-d)', border: '1px solid rgba(255,61,110,.2)', borderRadius: '10px', padding: '11px' }}>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--red)', marginBottom: '5px' }}>⚠️ WEAKNESSES</div>
-                    <textarea className="inp" rows="3" placeholder="Gaps..." style={{ background: 'transparent', border: 'none', padding: 0 }} value={inputs.swotW} onChange={e => handleInputChange('swotW', e.target.value)} />
-                  </div>
-                  <div style={{ background: 'var(--blue-d)', border: '1px solid rgba(56,189,248,.2)', borderRadius: '10px', padding: '11px' }}>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--blue)', marginBottom: '5px' }}>🚀 OPPORTUNITIES</div>
-                    <textarea className="inp" rows="3" placeholder="Openings..." style={{ background: 'transparent', border: 'none', padding: 0 }} value={inputs.swotO} onChange={e => handleInputChange('swotO', e.target.value)} />
-                  </div>
-                  <div style={{ background: 'var(--amber-d)', border: '1px solid rgba(251,191,36,.2)', borderRadius: '10px', padding: '11px' }}>
-                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--amber)', marginBottom: '5px' }}>🛡️ THREATS</div>
-                    <textarea className="inp" rows="3" placeholder="Risks..." style={{ background: 'transparent', border: 'none', padding: 0 }} value={inputs.swotT} onChange={e => handleInputChange('swotT', e.target.value)} />
-                  </div>
-                </div>
-                <button className="btn btn-prime" onClick={runSWOT} style={{ width: '100%', justifyContent: 'center' }}>
-                  ⚔️ {L('Analyze SWOT Strategy', 'حلل استراتيجية SWOT')}
+            <div className="card">
+              <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="sec-title">📋 {L('AI Marketing Strategy Plan', 'خطة الاستراتيجية التسويقية بالـ AI')}</div>
+                <button 
+                  className="btn btn-prime" 
+                  onClick={runAutoMarketingPlan}
+                  disabled={loading['strat-plan-out']}
+                >
+                  {loading['strat-plan-out'] ? L('Generating...', 'جاري التوليد...') : `✦ ${L('Generate Marketing Plan', 'إنشاء خطة التسويق')}`}
                 </button>
               </div>
-              {renderResultCard('رؤى SWOT', 'SWOT Insights', 'swot-out', 'جاري تحليل SWOT...', 'Analyzing SWOT...', 'توصيات استراتيجية بناءً على مصفوفة SWOT.', 'AI generated SWOT takeaways.', 'SWOT Analysis')}
+              <div 
+                className="ai-box"
+                style={{ marginTop: '15px' }}
+                dangerouslySetInnerHTML={{ 
+                  __html: loading['strat-plan-out'] 
+                    ? L('Formulating plan from your Strategy Lab setup...', 'جاري كتابة خطة التسويق بناءً على فكرة وعرض البزنس...') 
+                    : parseMarkdown(outputs['strat-plan-out'] || L('No plan generated yet. Click the button above to generate.', 'لم يتم إنشاء خطة حتى الآن. اضغط على الزر بالأعلى للتوليد.'))
+                }}
+              />
             </div>
           )}
 
           {stratTab === 'launcher' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">⚡ {L('One-Click Campaign Launcher', 'مُطلق الحملات التسويقية السريع')}</div></div>
+                <div className="sec-hd"><div className="sec-title">⚡ {L('Campaign Planner', 'مخطط الحملات التسويقية')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Name', 'اسم الحملة')}</label>
-                    <input className="inp" placeholder="e.g. Summer Special 2026" value={inputs.launchName} onChange={e => handleInputChange('launchName', e.target.value)} />
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Start Date', 'تاريخ بدء الحملة')}</label>
+                    <input 
+                      className="inp" 
+                      type="date" 
+                      value={inputs.campaignStartDate || ''} 
+                      onChange={e => handleInputChange('campaignStartDate', e.target.value)} 
+                    />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product / Service Name', 'اسم المنتج أو الخدمة')}</label>
-                    <input className="inp" placeholder="e.g. 1-on-1 Fitness Transformation" value={inputs.launchProduct} onChange={e => handleInputChange('launchProduct', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Audience', 'الجمهور المستهدف بالتفصيل')}</label>
-                    <textarea className="inp" rows="2" placeholder="e.g. Busy professionals aged 30-45 wanting to lose weight..." value={inputs.launchAudience} onChange={e => handleInputChange('launchAudience', e.target.value)}></textarea>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Budget', 'ميزانية الحملة')}</label>
+                    <input 
+                      className="inp" 
+                      placeholder="e.g. $500, or Organic" 
+                      value={inputs.campaignBudget || ''} 
+                      onChange={e => handleInputChange('campaignBudget', e.target.value)} 
+                    />
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Primary Goal', 'الهدف الأساسي للحملة')}</label>
-                    <select className="inp" value={inputs.launchGoal} onChange={e => handleInputChange('launchGoal', e.target.value)}>
-                      <option>Sales / Conversions</option><option>Lead Generation</option><option>Brand Awareness</option><option>Webinar Attendees</option>
-                    </select>
+                    <input 
+                      className="inp" 
+                      placeholder="e.g. Sales, Lead Gen, Brand Awareness" 
+                      value={inputs.campaignGoal || ''} 
+                      onChange={e => handleInputChange('campaignGoal', e.target.value)} 
+                    />
                   </div>
-                  <button className="btn btn-prime" onClick={runCampaignLauncher} style={{ width: '100%', justifyContent: 'center' }}>
-                    ⚡ {L('Generate Complete Campaign Bundle', 'ولّد حزمة الحملة المتكاملة')}
+                  
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Select Platforms', 'اختر المنصات الإعلانية')}</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {['Meta (Facebook/Instagram)', 'Google Ads', 'TikTok Ads', 'Snapchat Ads', 'YouTube Ads', 'LinkedIn Ads'].map(plat => {
+                        const platforms = inputs.campaignPlatforms || [];
+                        const isChecked = platforms.includes(plat);
+                        return (
+                          <label key={plat} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', background: 'var(--surface2)', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--edge)' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked} 
+                              onChange={(e) => {
+                                const next = e.target.checked 
+                                  ? [...platforms, plat]
+                                  : platforms.filter(p => p !== plat);
+                                handleInputChange('campaignPlatforms', next);
+                              }} 
+                            />
+                            {plat}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button className="btn btn-prime" onClick={runCampaignPlanner} style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }} disabled={loading['launcher-out']}>
+                    {loading['launcher-out'] ? L('Generating...', 'جاري التوليد...') : `⚡ ${L('Generate Campaign Structure', 'ولّد هيكل الحملات')}`}
                   </button>
                 </div>
               </div>
-              {renderResultCard('مخرجات حزمة الحملة', 'Campaign Bundle Output', 'launcher-out', 'جاري توليد حزمة الحملة...', 'Generating campaign bundle...', 'قم بتوليد تفاصيل العميل، نصوص الإعلانات، والرسائل التتبعية بضغطة زر واحدة.', 'Generate your ICP details, ad hooks, copy, and follow-up templates in one go.', 'Campaign Launcher')}
+              {renderResultCard('مخطط الحملات والمخرجات', 'Campaign Planner Output', 'launcher-out', 'جاري تخطيط وتوليد الحملات...', 'Generating campaign plan...', 'اختر المنصات وحدد الميزانية لتوليد هيكل الحملات بكل تفاصيلها هنا.', 'Select platforms and budget to generate detailed campaigns structure here.', 'Campaign Planner')}
             </div>
           )}
         </div>
@@ -997,7 +808,7 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
           {offTab === 'pricing' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div class="sec-title">💰 {L('Pricing Optimizer', 'مُحسن التسعير')}</div></div>
+                <div className="sec-hd"><div className="sec-title">💰 {L('Pricing Optimizer', 'مُحسن التسعير')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Price', 'السعر الحالي')}</label>
@@ -1012,13 +823,13 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Experience Level', 'مستوى الخبرة')}</label>
-                      <select className="inp" value={inputs.priceExp} onChange={e => handleInputChange('priceExp', e.target.value)}>
+                      <select className="inp" value={inputs.priceExp || ''} onChange={e => handleInputChange('priceExp', e.target.value)}>
                         <option>Beginner (0-1 year)</option><option>Intermediate (1-3 years)</option><option>Expert (5+ years)</option>
                       </select>
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Monthly Income', 'الدخل الشهري المستهدف')}</label>
-                      <input className="inp" placeholder="$5,000" value={inputs.priceIncome} onChange={e => handleInputChange('priceIncome', e.target.value)} />
+                      <input className="inp" placeholder="$5,000" value={inputs.priceIncome || ''} onChange={e => handleInputChange('priceIncome', e.target.value)} />
                     </div>
                   </div>
                   <button className="btn btn-prime" onClick={runPricingOptimizer} style={{ width: '100%', justifyContent: 'center' }}>
@@ -1037,15 +848,15 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Product', 'المنتج الأساسي')}</label>
-                    <input className="inp" placeholder="Your main offer..." value={inputs.upsellCore} onChange={e => handleInputChange('upsellCore', e.target.value)} />
+                    <input className="inp" placeholder="Your main offer..." value={inputs.upsellCore || ''} onChange={e => handleInputChange('upsellCore', e.target.value)} />
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Product Price', 'سعر المنتج الأساسي')}</label>
-                    <input className="inp" placeholder="$997" value={inputs.upsellPrice} onChange={e => handleInputChange('upsellPrice', e.target.value)} />
+                    <input className="inp" placeholder="$997" value={inputs.upsellPrice || ''} onChange={e => handleInputChange('upsellPrice', e.target.value)} />
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Customer Needs AFTER Buying', 'احتياجات العميل بعد الشراء مباشرة')}</label>
-                    <textarea className="inp" rows="2" placeholder="After buying the course they still need implementation help..." value={inputs.upsellAfter} onChange={e => handleInputChange('upsellAfter', e.target.value)}></textarea>
+                    <textarea className="inp" rows="2" placeholder="After buying the course they still need implementation help..." value={inputs.upsellAfter || ''} onChange={e => handleInputChange('upsellAfter', e.target.value)}></textarea>
                   </div>
                   <button className="btn btn-prime" onClick={runUpsellBuilder} style={{ width: '100%', justifyContent: 'center' }}>
                     ⬆️ {L('Build Upsell Sequence', 'أعد تسلسل البيع الإضافي')}
@@ -1053,384 +864,6 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
                 </div>
               </div>
               {renderResultCard('استراتيجية البيع الإضافي', 'Upsell Strategy', 'upsell-out', 'جاري بناء سلم البيع الإضافي...', 'Building upsell ladder...', 'العروض المضافة وخيارات ترقية الشراء.', 'Order bump, one-click upsell, and high-ticket options.', 'Upsell Builder')}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB 4: ADS ── */}
-      {activeTab === 'ads' && (
-        <div className="mkt-section on">
-          <div className="tabs-bar" style={{ marginBottom: '14px', overflowX: 'auto', display: 'flex', whiteSpace: 'nowrap' }}>
-            {['meta', 'google', 'tiktok', 'copy', 'creative', 'budget'].map(sub => (
-              <button
-                key={sub}
-                className={`tab-btn ${adsTab === sub ? 'on' : ''}`}
-                onClick={() => setAdsTab(sub)}
-                style={{ padding: '6px 12px', fontSize: '11px' }}
-              >
-                {sub === 'meta' && `📘 Meta Ads`}
-                {sub === 'google' && `🔍 Google Ads`}
-                {sub === 'tiktok' && `🎵 TikTok Ads`}
-                {sub === 'copy' && `✍️ ${L('Ad Copy', 'نصوص الإعلانات')}`}
-                {sub === 'creative' && `🎬 ${L('Creative Brief', 'مخطط الإبداع')}`}
-                {sub === 'budget' && `💰 ${L('Budget', 'الميزانية')}`}
-              </button>
-            ))}
-          </div>
-
-          {adsTab === 'meta' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">📘 Meta Ads Planner</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Objective', 'هدف الحملة')}</label>
-                    <select className="inp" value={inputs.metaObj} onChange={e => handleInputChange('metaObj', e.target.value)}>
-                      <option>Lead Generation</option><option>Conversions (Sales)</option><option>Traffic</option><option>Messenger Leads</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Daily Budget', 'الميزانية اليومية')}</label>
-                      <input className="inp" placeholder="$20/day" value={inputs.metaBudget} onChange={e => handleInputChange('metaBudget', e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Promoted Offer', 'العرض المروّج')}</label>
-                      <input className="inp" placeholder="Free webinar" value={inputs.metaOffer} onChange={e => handleInputChange('metaOffer', e.target.value)} />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Audience Description', 'وصف الجمهور المستهدف')}</label>
-                    <textarea className="inp" rows="2" placeholder="Arab entrepreneurs, age 25-45, interested in business..." value={inputs.metaAud} onChange={e => handleInputChange('metaAud', e.target.value)}></textarea>
-                  </div>
-                  <button className="btn btn-prime" onClick={runMetaAds} style={{ width: '100%', justifyContent: 'center' }}>
-                    📘 {L('Build Meta Campaign', 'أعد حملة Meta')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('هيكل الحملة', 'Campaign Structure', 'meta-out', 'جاري بناء الحملة...', 'Building Meta campaign...', 'الجمهور المستهدف والمجموعات الإعلانية المقترحة.', 'Campaign structure, ad sets, and optimization settings.', 'Meta Ads Planner')}
-            </div>
-          )}
-
-          {adsTab === 'google' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🔍 Google Ads Planner</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Type', 'نوع الحملة')}</label>
-                    <select className="inp" value={inputs.googleType} onChange={e => handleInputChange('googleType', e.target.value)}>
-                      <option>Search Ads</option><option>Display Ads</option><option>YouTube Ads</option><option>Performance Max</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Keywords Focus', 'الكلمات المفتاحية المستهدفة')}</label>
-                    <textarea className="inp" rows="2" placeholder="business coaching, online courses..." value={inputs.googleKw} onChange={e => handleInputChange('googleKw', e.target.value)}></textarea>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Location / Language', 'الدولة واللغة المستهدفة')}</label>
-                    <input className="inp" placeholder="Saudi Arabia, Arabic" value={inputs.googleGeo} onChange={e => handleInputChange('googleGeo', e.target.value)} />
-                  </div>
-                  <button className="btn btn-prime" onClick={runGoogleAds} style={{ width: '100%', justifyContent: 'center' }}>
-                    🔍 {L('Build Google Campaign', 'أعد حملة Google')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('خطة حملة Google', 'Google Campaign Plan', 'google-out', 'جاري بناء حملة Google...', 'Building Google campaign...', 'الكلمات المفتاحية المستهدفة، استراتيجية المزايدة ونصوص الإعلانات.', 'Keywords, bid strategy, and responsive search ads drafts.', 'Google Ads Planner')}
-            </div>
-          )}
-
-          {adsTab === 'tiktok' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🎵 TikTok Ads Planner</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Goal', 'هدف الحملة')}</label>
-                    <select className="inp" value={inputs.tiktokObj} onChange={e => handleInputChange('tiktokObj', e.target.value)}>
-                      <option>Conversions</option><option>Traffic</option><option>Video Views</option><option>Lead Generation</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Daily Budget', 'الميزانية اليومية')}</label>
-                      <input className="inp" placeholder="$30/day" value={inputs.tiktokBudget} onChange={e => handleInputChange('tiktokBudget', e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Age', 'الفئة العمرية')}</label>
-                      <select className="inp" value={inputs.tiktokAge} onChange={e => handleInputChange('tiktokAge', e.target.value)}>
-                        <option>18–24</option><option>25–34</option><option>35–44</option><option>18–44 (broad)</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button className="btn btn-prime" onClick={runTikTokAds} style={{ width: '100%', justifyContent: 'center' }}>
-                    🎵 {L('Build TikTok Campaign', 'أعد حملة TikTok')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('خطة حملة TikTok', 'TikTok Campaign Plan', 'tiktok-out', 'جاري بناء حملة TikTok...', 'Building TikTok campaign...', 'أفكار الفيديوهات الإبداعية، استهداف الجمهور وإعداد الحملة.', 'TikTok video hooks, UGC brief, and ad setups.', 'TikTok Ads Planner')}
-            </div>
-          )}
-
-          {adsTab === 'copy' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">✍️ {L('Ad Copy Generator', 'مولد نصوص الإعلانات')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Ad Platform', 'منصة الإعلانات')}</label>
-                    <select className="inp" value={inputs.copyPlatform} onChange={e => handleInputChange('copyPlatform', e.target.value)}>
-                      <option>Facebook/Instagram</option><option>TikTok</option><option>Google</option><option>LinkedIn</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Offer / Product', 'العرض / المنتج')}</label>
-                    <input className="inp" placeholder="Free webinar on business growth..." value={inputs.copyOffer} onChange={e => handleInputChange('copyOffer', e.target.value)} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Copy Style', 'أسلوب النص')}</label>
-                      <select className="inp" value={inputs.copyStyle} onChange={e => handleInputChange('copyStyle', e.target.value)}>
-                        <option>Problem-Agitate-Solve</option><option>Story-Based</option><option>Direct Response</option><option>Social Proof Led</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Language', 'اللغة')}</label>
-                      <select className="inp" value={inputs.copyLang} onChange={e => handleInputChange('copyLang', e.target.value)}>
-                        <option>Arabic</option><option>English</option><option>Both</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Customer Pain Point', 'ألم العميل المستهدف')}</label>
-                    <input className="inp" placeholder="Stuck at $2K/month..." value={inputs.copyPain} onChange={e => handleInputChange('copyPain', e.target.value)} />
-                  </div>
-                  <button className="btn btn-prime" onClick={runAdCopyGen} style={{ width: '100%', justifyContent: 'center' }}>
-                    ✍️ {L('Generate Ad Copy', 'ولّد نصوص الإعلانات')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('النصوص المولّدة', 'Generated Ad Copy', 'copy-out', 'جاري توليد النصوص...', 'Generating copy...', '٥ نماذج تسويقية من نصوص الإعلانات والخطافات.', '5 variations of hooks, primary text, and CTAs.', 'Ad Copy Generator')}
-            </div>
-          )}
-
-          {adsTab === 'creative' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🎬 {L('Creative Brief Generator', 'منشئ مخطط الإبداع')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Creative Type', 'نوع التصميم')}</label>
-                    <select className="inp" value={inputs.creativeType} onChange={e => handleInputChange('creativeType', e.target.value)}>
-                      <option>Video Script (30s)</option><option>Video Script (60s)</option><option>Static Image Brief</option><option>Carousel Brief</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Hook Style', 'نمط الخطاف')}</label>
-                    <select className="inp" value={inputs.creativeHook} onChange={e => handleInputChange('creativeHook', e.target.value)}>
-                      <option>Problem-based ("If you\'re struggling with...")</option><option>Curiosity ("What nobody tells you about...")</option><option>Results ("How I made $X in Y days")</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Key Message', 'الرسالة الأساسية')}</label>
-                    <input className="inp" placeholder="Our coaching gets you to $10K/month in 90 days" value={inputs.creativeMsg} onChange={e => handleInputChange('creativeMsg', e.target.value)} />
-                  </div>
-                  <button className="btn btn-prime" onClick={runCreativeBrief} style={{ width: '100%', justifyContent: 'center' }}>
-                    🎬 {L('Generate Creative Brief', 'ولّد المخطط الإبداعي')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('مخطط الإبداع', 'Creative Brief', 'creative-out', 'جاري التوليد...', 'Generating brief...', 'دليل المشاهد البصرية، الحوار، وإرشادات التصوير.', 'Complete visual guide, script and UGC briefing.', 'Creative Brief')}
-            </div>
-          )}
-
-          {adsTab === 'budget' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">💰 {L('Budget Planner', 'مخطط الميزانية الإعلانية')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Total Monthly Budget', 'إجمالي الميزانية الشهرية')}</label>
-                    <input className="inp" placeholder="$1,000" value={inputs.budgetTotal} onChange={e => handleInputChange('budgetTotal', e.target.value)} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Objective', 'الهدف الأساسي')}</label>
-                      <select className="inp" value={inputs.budgetObj} onChange={e => handleInputChange('budgetObj', e.target.value)}>
-                        <option>Generate leads</option><option>Drive direct sales</option><option>Build awareness first</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Average Order Value', 'متوسط قيمة الطلب')}</label>
-                      <input className="inp" placeholder="$500 per client" value={inputs.budgetAov} onChange={e => handleInputChange('budgetAov', e.target.value)} />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Platforms to use', 'المنصات المستخدمة')}</label>
-                    <select className="inp" value={inputs.budgetPlatforms} onChange={e => handleInputChange('budgetPlatforms', e.target.value)}>
-                      <option>Meta only</option><option>Meta + Google</option><option>Meta + TikTok</option><option>All platforms</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runBudgetPlanner} style={{ width: '100%', justifyContent: 'center' }}>
-                    💰 {L('Plan My Budget', 'خطط ميزانيتي')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('خطة توزيع الميزانية', 'Budget Allocation Plan', 'budget-out', 'جاري التخطيط...', 'Planning budget...', 'توزيع الميزانية وتكلفة الاستحواذ المقدرة.', 'Budget allocation and expected acquisition costs.', 'Budget Planner')}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── TAB 5: CONTENT ── */}
-      {activeTab === 'content' && (
-        <div className="mkt-section on">
-          <div className="tabs-bar" style={{ marginBottom: '14px' }}>
-            {['plan', 'hooks', 'ideas', 'comp'].map(sub => (
-              <button
-                key={sub}
-                className={`tab-btn ${contTab === sub ? 'on' : ''}`}
-                onClick={() => setContTab(sub)}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-              >
-                {sub === 'plan' && `📅 ${L('Content Plan', 'خطة المحتوى')}`}
-                {sub === 'hooks' && `🪝 ${L('Viral Hooks', 'خطافات رائجة')}`}
-                {sub === 'ideas' && `💡 ${L('Content Ideas', 'أفكار المحتوى')}`}
-                {sub === 'comp' && `🔍 ${L('Competitor Content', 'محتوى المنافسين')}`}
-              </button>
-            ))}
-          </div>
-
-          {contTab === 'plan' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">📅 {L('Content Planner', 'مخطط المحتوى الشهري')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Primary Platform', 'المنصة الأساسية')}</label>
-                    <select className="inp" value={inputs.planPlatform} onChange={e => handleInputChange('planPlatform', e.target.value)}>
-                      <option>Instagram</option><option>TikTok</option><option>YouTube</option><option>LinkedIn</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Content Goal', 'هدف المحتوى')}</label>
-                    <select className="inp" value={inputs.planGoal} onChange={e => handleInputChange('planGoal', e.target.value)}>
-                      <option>Build authority</option><option>Generate leads</option><option>Grow audience</option><option>Promote product</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Posts Per Week', 'عدد المنشورات أسبوعياً')}</label>
-                      <select className="inp" value={inputs.planFreq} onChange={e => handleInputChange('planFreq', e.target.value)}>
-                        <option>3 posts/week</option><option>5 posts/week</option><option>Daily</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Content Mix', 'مزيج المحتوى')}</label>
-                      <select className="inp" value={inputs.planMix} onChange={e => handleInputChange('planMix', e.target.value)}>
-                        <option>80% value, 20% promo</option><option>70% value, 30% promo</option><option>60% value, 40% promo</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button className="btn btn-prime" onClick={runContentPlanner} style={{ width: '100%', justifyContent: 'center' }}>
-                    📅 {L('Generate Content Plan', 'ولّد خطة المحتوى')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('خطة المحتوى الخاصة بك', 'Your Content Plan', 'plan-out', 'جاري توليد خطة المحتوى...', 'Generating content plan...', 'جدول نشر لـ ٣٠ يوماً مع الخطافات والدعوات لإجراء.', '30-day content calendar with topics, formats, and CTAs.', 'Content Planner')}
-            </div>
-          )}
-
-          {contTab === 'hooks' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">🪝 {L('Viral Hook Generator', 'مولد الخطافات الفيروسية')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Topic / Content Idea', 'الموضوع / فكرة المحتوى')}</label>
-                    <textarea className="inp" rows="2" placeholder="How to grow on Instagram without paid ads..." value={inputs.hookTopic} onChange={e => handleInputChange('hookTopic', e.target.value)}></textarea>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Platform', 'المنصة')}</label>
-                    <select className="inp" value={inputs.hookPlatform} onChange={e => handleInputChange('hookPlatform', e.target.value)}>
-                      <option>Instagram Reels</option><option>TikTok</option><option>YouTube Shorts</option><option>LinkedIn</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Number of Hooks', 'عدد الخطافات')}</label>
-                      <select className="inp" value={inputs.hookCount} onChange={e => handleInputChange('hookCount', e.target.value)}>
-                        <option>5 hooks</option><option>10 hooks</option><option>20 hooks</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Language', 'اللغة')}</label>
-                      <select className="inp" value={inputs.hookLang} onChange={e => handleInputChange('hookLang', e.target.value)}>
-                        <option>Arabic</option><option>English</option><option>Both</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button className="btn btn-prime" onClick={runHookGen} style={{ width: '100%', justifyContent: 'center' }}>
-                    🪝 {L('Generate Viral Hooks', 'ولّد الخطافات')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('الخطافات المولّدة', 'Generated Hooks', 'hooks-out', 'جاري التوليد...', 'Generating hooks...', 'جمل افتتاحية تخطف انتباه المشاهد فوراً.', 'Stop-the-scroll opening lines that grab attention.', 'Viral Hooks')}
-            </div>
-          )}
-
-          {contTab === 'ideas' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">💡 {L('Content Ideas Generator', 'مولد أفكار المحتوى')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your Niche', 'نيشك')}</label>
-                    <input className="inp" placeholder="Business coaching, fitness, real estate..." value={inputs.ideasNiche} onChange={e => handleInputChange('ideasNiche', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Content Mix', 'مزيج الأفكار')}</label>
-                    <select className="inp" multiple style={{ height: '80px' }} value={inputs.ideasMix} onChange={e => {
-                      const options = Array.from(e.target.selectedOptions, option => option.value);
-                      handleInputChange('ideasMix', options);
-                    }}>
-                      <option value="Educational">Educational</option>
-                      <option value="Behind the scenes">Behind the scenes</option>
-                      <option value="Social proof">Social proof</option>
-                      <option value="Entertainment">Entertainment</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runIdeasGen} style={{ width: '100%', justifyContent: 'center' }}>
-                    💡 {L('Generate 30 Content Ideas', 'ولّد ٣٠ فكرة محتوى')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('أفكار المحتوى', 'Content Ideas', 'ideas-out', 'جاري التوليد...', 'Generating ideas...', 'أفكار تسويقية مميزة للفيديو والمنشورات.', '30 creative video and carousel ideas.', 'Content Ideas')}
-            </div>
-          )}
-
-          {contTab === 'comp' && (
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div class="sec-title">🔍 {L('Competitor Content Analyzer', 'محلل محتوى المنافسين')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Competitor Account / Brand', 'حساب المنافس / العلامة التجارية')}</label>
-                    <input className="inp" placeholder="@competitor or brand name" value={inputs.compContName} onChange={e => handleInputChange('compContName', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Platform', 'المنصة')}</label>
-                    <select className="inp" value={inputs.compContPlatform} onChange={e => handleInputChange('compContPlatform', e.target.value)}>
-                      <option>Instagram</option><option>TikTok</option><option>YouTube</option><option>LinkedIn</option>
-                    </select>
-                  </div>
-                  <button className="btn btn-prime" onClick={runCompetitorContent} style={{ width: '100%', justifyContent: 'center' }}>
-                    🔍 {L('Analyze Their Content', 'حلل المحتوى الخاص بهم')}
-                  </button>
-                </div>
-              </div>
-              {renderResultCard('ذكاء محتوى المنافسين', 'Competitor Content Intelligence', 'comp-content-out', 'جاري تحليل المحتوى...', 'Analyzing content...', 'اكتشف أفضل صيغ المنشورات والموضوعات والفرص المتاحة لديهم.', 'Discover what topics and formats are winning for them.', 'Competitor Content')}
             </div>
           )}
         </div>
@@ -1736,70 +1169,7 @@ Provide a comprehensive and highly cohesive launch bundle structured exactly as 
         </div>
       )}
 
-      {/* ── TAB 8: AI CONSULTANT ── */}
-      {activeTab === 'ai' && (
-        <div className="mkt-section on">
-          <div className="g4 stagger" style={{ marginBottom: '14px' }}>
-            <div className="stat-card">
-              <div className="stat-lbl">📣 {L('Active Campaigns', 'الحملات النشطة')}</div>
-              <div className="stat-val" style={{ color: 'var(--a)' }}>1</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">👥 {L('Leads in CRM', 'العملاء بالـ CRM')}</div>
-              <div className="stat-val">{GC.crm.leads.length}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">💰 {L('Monthly Revenue', 'الإيراد الشهري')}</div>
-              <div className="stat-val" style={{ color: 'var(--green)' }}>
-                {formatMoney(GC.finance.entries.filter(e => e.type === 'income').reduce((a, b) => a + b.amount, 0))}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">✦ {L('AI Assistant', 'مستشار AI')}</div>
-              <div className="stat-val" style={{ color: 'var(--green)' }}>{L('Online', 'متصل')}</div>
-            </div>
-          </div>
-          <div className="g2">
-            <div className="card">
-              <div className="sec-hd"><div class="sec-title">✦ {L('Ask Marketing AI', 'اسأل مستشار التسويق AI')}</div></div>
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '8px' }}>{L('Quick Questions:', 'أسئلة سريعة:')}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {quickQuestions.map((q, idx) => (
-                    <button
-                      key={idx}
-                      className="ai-qa-btn"
-                      style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid var(--edge)', borderRadius: '8px', cursor: 'pointer', background: 'var(--glass)' }}
-                      onClick={() => runMktAI(q)}
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '7px' }}>
-                <input
-                  className="inp"
-                  placeholder={L('Ask anything about your marketing...', 'اسأل أي شيء حول تسويق بزنسك...')}
-                  style={{ flex: 1 }}
-                  value={inputs.aiInp}
-                  onChange={e => handleInputChange('aiInp', e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') runMktAI();
-                  }}
-                />
-                <button className="btn btn-prime" onClick={() => runMktAI()}>➤</button>
-              </div>
-            </div>
-            <div className="card">
-              <div className="sec-hd"><div class="sec-title">{L('AI Response', 'إجابة مستشار الذكاء الاصطناعي')}</div></div>
-              <div className="ai-box" style={{ whiteSpace: 'pre-line' }}>
-                {loading['ai-out'] ? L('Thinking...', 'جاري التفكير...') : (outputs['ai-out'] || L('Your AI response will show here.', 'ستظهر إجابة الذكاء الاصطناعي هنا.'))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* ── TAB 9: SAVED REPORTS ── */}
       {activeTab === 'saved' && (

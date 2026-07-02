@@ -60,8 +60,6 @@ export default function AIGrowthIntelView() {
     'agi-funnel': savedOutputs['agi-funnel'] ?? '',
     'agi-competitor': savedOutputs['agi-competitor'] ?? '',
     'agi-offer': savedOutputs['agi-offer'] ?? '',
-    'agi-headlines': savedOutputs['agi-headlines'] ?? '',
-    'agi-lp': savedOutputs['agi-lp'] ?? '',
     'agi-tech': savedOutputs['agi-tech'] ?? '',
     'agi-market': savedOutputs['agi-market'] ?? '',
     'agi-reverse': savedOutputs['agi-reverse'] ?? '',
@@ -108,8 +106,6 @@ export default function AIGrowthIntelView() {
         'agi-funnel': outs['agi-funnel'] ?? '',
         'agi-competitor': outs['agi-competitor'] ?? '',
         'agi-offer': outs['agi-offer'] ?? '',
-        'agi-headlines': outs['agi-headlines'] ?? '',
-        'agi-lp': outs['agi-lp'] ?? '',
         'agi-tech': outs['agi-tech'] ?? '',
         'agi-market': outs['agi-market'] ?? '',
         'agi-reverse': outs['agi-reverse'] ?? '',
@@ -145,10 +141,6 @@ export default function AIGrowthIntelView() {
       prompt = `Analyze competitor: ${compDomain || 'general'}. My context: ${compContext || 'not specified'}. Scope: ${compDepth}. Provide: Overview, offers, funnel setup, strengths, weaknesses, and opportunities.`;
     } else if (toolKey === 'agi-offer') {
       prompt = `Provide 5 winning offers for industry: ${offerIndustry || 'general'}, category: ${offerCat}, targeting: ${offerMarket}. Detail why each converts and when to use.`;
-    } else if (toolKey === 'agi-headlines') {
-      prompt = `Provide 15 high-converting headlines for category: ${hlCat}, goal: ${hlGoal}, language: ${hlLang}, offer: ${hlOffer || 'general'}. Group them by psychological framework (e.g. curiosity, fear of missing out, benefit-driven).`;
-    } else if (toolKey === 'agi-lp') {
-      prompt = `Analyze landing page type: ${lpType}, URL: ${lpUrl || 'general'}, focus area: ${lpFocus}. Provide breakdown on hero section copy, CTA strategy, trust signals, and key improvements.`;
     } else if (toolKey === 'agi-tech') {
       prompt = `For domain: ${techDomain || 'competitor.com'}, focus on: ${techFocus}. Predict and explain their tech stack including CRM, analytics, email platform, and payment gateways.`;
     } else if (toolKey === 'agi-market') {
@@ -229,9 +221,6 @@ export default function AIGrowthIntelView() {
           {L('AI Growth Intelligence', 'ذكاء النمو الاصطناعي')}
         </div>
         <div className="pg-actions">
-          <button className="btn-ai" onClick={() => handleRunAnalysis('weekly-insights')}>
-            ✦ {L('Weekly Intelligence', 'الذكاء الأسبوعي')}
-          </button>
           <button className="btn btn-prime" onClick={() => alert('Exporting report...')}>
             📥 {L('Export Report', 'تصدير التقرير')}
           </button>
@@ -244,12 +233,9 @@ export default function AIGrowthIntelView() {
           { id: 'agi-funnel', label: L('Funnel Explorer', 'مستكشف الفانل'), emoji: '🔄' },
           { id: 'agi-competitor', label: L('Competitor Intel', 'تحليل المنافسين'), emoji: '🕵️' },
           { id: 'agi-offer', label: L('Offer Explorer', 'مستكشف العروض'), emoji: '🎁' },
-          { id: 'agi-headlines', label: L('Headline Library', 'مكتبة العناوين'), emoji: '✍️' },
-          { id: 'agi-lp', label: L('Landing Page Explorer', 'مستكشف صفحات الهبوط'), emoji: '🚀' },
           { id: 'agi-tech', label: L('Tech Stack Analyzer', 'محلل الأدوات والتقنيات'), emoji: '⚙️' },
           { id: 'agi-market', label: L('Market Opportunities', 'فرص السوق'), emoji: '🌍' },
-          { id: 'agi-reverse', label: L('Reverse Engineer', 'الهندسة العكسية'), emoji: '🔁' },
-          { id: 'agi-insights', label: L('AI Growth Insights', 'رؤى النمو بالذكاء'), emoji: '✦' }
+          { id: 'agi-reverse', label: L('Reverse Engineer', 'الهندسة العكسية'), emoji: '🔁' }
         ].map(tab => (
           <button 
             key={tab.id}
@@ -486,120 +472,6 @@ export default function AIGrowthIntelView() {
         </div>
       )}
 
-      {/* HEADLINE LIBRARY */}
-      {activeTab === 'agi-headlines' && (
-        <div className="tab-panel on" id="agi-headlines">
-          <div className="g2">
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">✍️ {L('Headline Library', 'مكتبة العناوين القوية')}</div></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Category', 'تصنيف العمل')}</label>
-                  <select className="inp" value={hlCat} onChange={(e) => { setHlCat(e.target.value); updateGCInput('hlCat', e.target.value); }}>
-                    <option>SaaS / Software</option>
-                    <option>Agencies</option>
-                    <option>E-commerce</option>
-                    <option>Coaches / Consultants</option>
-                    <option>Local Businesses</option>
-                    <option>Personal Brand</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Headline Goal', 'الهدف من العنوان')}</label>
-                  <select className="inp" value={hlGoal} onChange={(e) => { setHlGoal(e.target.value); updateGCInput('hlGoal', e.target.value); }}>
-                    <option>Landing Page Hero</option>
-                    <option>Ad Headline</option>
-                    <option>Email Subject</option>
-                    <option>Webinar Title</option>
-                    <option>Course Title</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Language', 'اللغة')}</label>
-                  <select className="inp" value={hlLang} onChange={(e) => { setHlLang(e.target.value); updateGCInput('hlLang', e.target.value); }}>
-                    <option>Arabic (Gulf)</option>
-                    <option>Arabic (Egyptian)</option>
-                    <option>English</option>
-                    <option>Both</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your main offer/product', 'عرضك الرئيسي / اسم منتجك')}</label>
-                  <input className="inp" value={hlOffer} onChange={(e) => setHlOffer(e.target.value)} onBlur={(e) => updateGCInput('hlOffer', e.target.value)} placeholder="Business coaching program, SaaS tool..." />
-                </div>
-                <button className="btn btn-prime" onClick={() => handleRunAnalysis('agi-headlines')} style={{ width: '100%', justifyContent: 'center' }}>
-                  ✍️ {L('Generate Headline Library', 'توليد مكتبة العناوين')}
-                </button>
-              </div>
-            </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Your Headline Library', 'مكتبة عناوينك')}</div></div>
-              <div id="agi-hl-out">
-                {outputs['agi-headlines'] ? renderFormattedOutput(outputs['agi-headlines']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">✍️</div>
-                    <div className="es-title">{L('Headline library', 'مكتبة العناوين')}</div>
-                    <div className="es-sub">{L('Generate powerful headlines with psychological frameworks and conversion triggers', 'صمم عناوين تجذب انتباه الجمهور باستخدام النظريات النفسية الجاذبة')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* LANDING PAGE EXPLORER */}
-      {activeTab === 'agi-lp' && (
-        <div className="tab-panel on" id="agi-lp">
-          <div className="g2">
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">🚀 {L('Landing Page Explorer', 'مستكشف صفحة الهبوط')}</div></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Page URL (to analyze)', 'رابط الصفحة للتحليل')}</label>
-                  <input className="inp" value={lpUrl} onChange={(e) => setLpUrl(e.target.value)} onBlur={(e) => updateGCInput('lpUrl', e.target.value)} placeholder="https://competitor.com/landing" />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Or describe the page type', 'أو اختر نوع الصفحة')}</label>
-                  <select className="inp" value={lpType} onChange={(e) => { setLpType(e.target.value); updateGCInput('lpType', e.target.value); }}>
-                    <option>High-ticket coaching</option>
-                    <option>SaaS free trial</option>
-                    <option>Webinar registration</option>
-                    <option>E-commerce product</option>
-                    <option>Lead magnet</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What to analyze', 'تركيز التحليل')}</label>
-                  <select className="inp" value={lpFocus} onChange={(e) => { setLpFocus(e.target.value); updateGCInput('lpFocus', e.target.value); }}>
-                    <option>Full analysis</option>
-                    <option>Hero section only</option>
-                    <option>CTA strategy</option>
-                    <option>Social proof elements</option>
-                    <option>Pricing section</option>
-                  </select>
-                </div>
-                <button className="btn btn-prime" onClick={() => handleRunAnalysis('agi-lp')} style={{ width: '100%', justifyContent: 'center' }}>
-                  🚀 {L('Analyze Landing Page', 'حلل صفحة الهبوط')}
-                </button>
-              </div>
-            </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Page Analysis', 'تحليل الصفحة')}</div></div>
-              <div id="agi-lp-out">
-                {outputs['agi-lp'] ? renderFormattedOutput(outputs['agi-lp']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">🚀</div>
-                    <div className="es-title">{L('Landing page analysis', 'تحليل صفحات الهبوط')}</div>
-                    <div className="es-sub">{L('Analyze any landing page for conversion factors, copy effectiveness, and improvement opportunities', 'حلل هيكل ونسخ صفحات الهبوط لمعرفة نقاط التحسين ومعدل التحويل')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TECH STACK */}
       {activeTab === 'agi-tech' && (
         <div className="tab-panel on" id="agi-tech">
@@ -744,100 +616,6 @@ export default function AIGrowthIntelView() {
                     <div className="es-sub">{L('Understand exactly why any page, ad, or funnel converts — and how to replicate it', 'افهم الأسلوب النفسي والاقناعي المستعمل في صفحات مبيعات المنافسين وانسخ أسلوبهم')}</div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AI GROWTH INSIGHTS */}
-      {activeTab === 'agi-insights' && (
-        <div className="tab-panel on" id="agi-insights">
-          <div className="g4 stagger mb">
-            <div className="stat-card">
-              <div className="stat-lbl">🏆 {L('Winning Ads', 'الإعلانات الرابحة')}</div>
-              <div className="stat-val">2,847</div>
-              <div className="stat-ch ch-up">↑ 12% {L('this week', 'هذا الأسبوع')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🔄 {L('Top Funnels', 'أهم مسارات التحويل')}</div>
-              <div className="stat-val">543</div>
-              <div className="stat-ch ch-up">↑ 8% {L('this week', 'هذا الأسبوع')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🌍 {L('Markets', 'الأسواق')}</div>
-              <div className="stat-val">127</div>
-              <div className="stat-ch ch-nu">{L('Trending now', 'الرائجة حالياً')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">✦ {L('AI Insights', 'رؤى الذكاء')}</div>
-              <div className="stat-val">48</div>
-              <div className="stat-ch ch-up">{L('New today', 'الجديدة اليوم')}</div>
-            </div>
-          </div>
-          <div className="g2">
-            <div className="card">
-              <div className="sec-hd">
-                <div className="sec-title">✦ {L('AI Weekly Digest', 'ملخص الذكاء الأسبوعي')}</div>
-                <button className="btn-ai" onClick={() => handleRunAnalysis('weekly-insights')}>
-                  {L('Generate', 'توليد')}
-                </button>
-              </div>
-              <div id="agi-weekly-out" style={{ whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                {outputs['agi-insights'] || (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', borderLeft: lang === 'ar' ? 'none' : '3px solid var(--orange)', borderRight: lang === 'ar' ? '3px solid var(--orange)' : 'none' }}>
-                      <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--t1)', marginBottom: '4px' }}>
-                        🔥 {L('Trending: Short-form video ads outperforming static 4x in Arab market', 'رائج: إعلانات الفيديو القصيرة تتفوق على الصور الثابتة 4 مرات')}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
-                        {L('Reels & TikTok ads showing 380% higher engagement vs image ads this week', 'تظهر إعلانات الريلز وتيك توك تفاعلاً أعلى بنسبة 380٪ مقارنة بإعلانات الصور')}
-                      </div>
-                    </div>
-                    <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', borderLeft: lang === 'ar' ? 'none' : '3px solid var(--purple)', borderRight: lang === 'ar' ? '3px solid var(--purple)' : 'none' }}>
-                      <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--t1)', marginBottom: '4px' }}>
-                        💡 {L('Opportunity: Coaching in Saudi Arabia seeing 62% market growth', 'فرصة: الكوتشينج والاستشارات في السعودية ينمو بنسبة 62٪')}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
-                        {L('Financial coaching and business mentorship are the fastest-growing niches', 'استشارات التمويل الشخصي والبيزنس هي النيشات الأسرع نمواً حالياً')}
-                      </div>
-                    </div>
-                    <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', borderLeft: lang === 'ar' ? 'none' : '3px solid var(--green)', borderRight: lang === 'ar' ? '3px solid var(--green)' : 'none' }}>
-                      <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--t1)', marginBottom: '4px' }}>
-                        📈 {L('Top Funnel: Free audit → paid strategy session converting at 34%', 'أقوى فانل: تقديم فحص مجاني ← جلسة استراتيجية مدفوعة بمعدل تحويل 34٪')}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
-                        {L('Service businesses using free audit offers seeing highest close rates', 'تسجل الأعمال الخدمية التي تعتمد الفحص المجاني أعلى معدلات إغلاق صفقات')}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">🎯 {L('Recommended Actions', 'خطوات العمل المقترحة')}</div></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', transition: 'all .14s' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
-                  <div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 500, color: 'var(--t1)' }}>{L('Run competitor ad analysis', 'تشغيل تحليل إعلانات المنافسين')}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Find what\'s working in your niche now', 'معرفة ما ينجح في مجالك الآن')}</div>
-                  </div>
-                </div>
-                <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', transition: 'all .14s' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--purple-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</div>
-                  <div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 500, color: 'var(--t1)' }}>{L('Test free audit offer in funnel', 'اختبار عرض الفحص المجاني في مسارك')}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Highest converting offer type this week', 'العرض الأكثر تحويلاً هذا الأسبوع')}</div>
-                  </div>
-                </div>
-                <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '9px', padding: '10px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', transition: 'all .14s' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--green-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>3</div>
-                  <div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 500, color: 'var(--t1)' }}>{L('Explore Market Opportunities tool', 'استكشف أداة فرص السوق بالذكاء')}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('3 new high-potential niches identified', 'تم تحديد ٣ نيشات جديدة ذات جدوى عالية')}</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

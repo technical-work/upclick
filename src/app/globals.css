@@ -288,6 +288,7 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
 /* Light theme overrides */
 [data-theme="light"] #sb { background: rgba(250,248,255,.96) !important }
 [data-theme="light"] #tb { background: rgba(255,255,255,.9) !important }
+[data-theme="light"] #ai-panel { background: rgba(250,248,255,.96) !important }
 [data-theme="light"] #ct { background: var(--ink) }
 
 /* ── SIDEBAR COMPONENTS ── */

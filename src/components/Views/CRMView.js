@@ -26,8 +26,6 @@ export default function CRMView() {
   } = useBusiness();
 
   const [activeTab, setActiveTab] = useState('pipeline');
-  const [aiOutput, setAiOutput] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
   const [draggedLeadId, setDraggedLeadId] = useState(null);
   
   const [showWsDropdown, setShowWsDropdown] = useState(false);
@@ -74,24 +72,6 @@ export default function CRMView() {
   const closedLeads = leads.filter(l => l.stage === closedStageKey);
   const pipelineValue = activeLeads.reduce((sum, l) => sum + (parseFloat(l.value) || 0), 0);
 
-  const handleGenerateInsights = async () => {
-    setAiLoading(true);
-    setAiOutput('');
-    const stagesSummary = stages.map(s => `- ${s.label}: ${leads.filter(l => l.stage === s.key).length}`).join('\n');
-    const prompt = `I have ${leads.length} leads in my CRM workspace "${activeWs.name}". Active stages summary:\n${stagesSummary}\n
-Please analyze this CRM pipeline, identify major sales bottlenecks, point out high-priority deal opportunities, and give me 3 specific next steps to close more deals.`;
-
-    const systemPrompt = `You are a CRM and Sales Optimization expert. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Be structured, concise, and highly actionable.`;
-
-    try {
-      const res = await callClaudeAPI(prompt, systemPrompt, lang, GC);
-      setAiOutput(res);
-    } catch (e) {
-      setAiOutput(L('Error generating analysis. Please try again.', 'حدث خطأ أثناء تحليل البيانات. الرجاء المحاولة مرة أخرى.'));
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   return (
     <div className="pg on" id="pg-crm">
@@ -298,12 +278,6 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
           onClick={() => setActiveTab('followups')}
         >
           {L('Follow-ups', 'المتابعات')}
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'insights' ? 'on' : ''}`}
-          onClick={() => setActiveTab('insights')}
-        >
-          {L('AI Insights', 'تحليلات الذكاء الاصطناعي')}
         </button>
       </div>
 
@@ -605,50 +579,6 @@ Please analyze this CRM pipeline, identify major sales bottlenecks, point out hi
         </div>
       )}
 
-      {/* 4. AI INSIGHTS TAB */}
-      {activeTab === 'insights' && (
-        <div className="card">
-          <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="sec-title">✦ {L('AI CRM Analysis', 'تحليل نظام العملاء بالذكاء الاصطناعي')}</div>
-            {leads.length > 0 && (
-              <button
-                className="btn-ai"
-                onClick={handleGenerateInsights}
-                disabled={aiLoading}
-              >
-                {aiLoading ? L('Analyzing...', 'جاري التحليل...') : L('✦ Generate AI Analysis', '✦ توليد تحليل ذكي')}
-              </button>
-            )}
-          </div>
-          <div id="crm-ai-insights" style={{ marginTop: '12px' }}>
-            {leads.length === 0 ? (
-              <div className="empty-state">
-                <div className="es-icon">🎯</div>
-                <div className="es-title">{L('Add leads to get AI insights', 'أضف عملاء للحصول على تحليلات ذكية')}</div>
-                <div className="es-sub">
-                  {L('The AI will analyze your pipeline, identify hot opportunities, and suggest next steps', 'سيقوم الذكاء الاصطناعي بتحليل خطوات مبيعاتك وتحديد الفرص الذهبية واقتراح الخطوات التالية')}
-                </div>
-              </div>
-            ) : aiOutput ? (
-               <div
-                className="ai-box"
-                style={{ padding: '16px', background: 'var(--surface2)', borderRadius: '10px', lineHeight: '1.6' }}
-                dangerouslySetInnerHTML={{
-                  __html: parseMarkdown(aiOutput)
-                }}
-              />
-            ) : (
-              <div className="empty-state" style={{ padding: '40px 0' }}>
-                <div className="es-icon">🤖</div>
-                <div className="es-title">{L('Generate pipeline analysis', 'توليد تحليل مسار المبيعات')}</div>
-                <div className="es-sub">
-                  {L('Click the button above to analyze your CRM pipeline and get custom recommendations.', 'انقر على الزر أعلاه لتحليل مسار المبيعات والحصول على توصيات مخصصة.')}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       {/* New Workspace Modal */}
       {showWsModal && (
         <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out' }}>

@@ -21,6 +21,7 @@ export default function TelegramHubView() {
 
   const [activeTab, setActiveTab] = useState('inbox');
   const [selectedChat, setSelectedChat] = useState(null);
+  const [inboxView, setInboxView] = useState('chats'); // 'chats' or 'contacts'
   
   // Real-time Firebase data
   const [liveChats, setLiveChats] = useState([]);
@@ -70,6 +71,7 @@ export default function TelegramHubView() {
     { id: '1', name: 'Welcome Message', content: 'السلام عليكم {{name}}! 👋 أهلاً بك في ...', status: 'Active' },
     { id: '2', name: 'Follow Up #1', content: 'مرحباً {{name}}، لاحظت إنك مهتم بـ...', status: 'Draft' }
   ]);
+  const [templateHistory, setTemplateHistory] = useState(tg.templateHistory || []);
   const [showCreateTmplModal, setShowCreateTmplModal] = useState(false);
   const [newTmplName, setNewTmplName] = useState('');
   const [newTmplContent, setNewTmplContent] = useState('');
@@ -78,6 +80,8 @@ export default function TelegramHubView() {
   const [selectedTmplToSend, setSelectedTmplToSend] = useState(null);
   const [sendTmplToAll, setSendTmplToAll] = useState(true);
   const [selectedContactsForTmpl, setSelectedContactsForTmpl] = useState([]);
+  const [isTmplScheduled, setIsTmplScheduled] = useState(false);
+  const [tmplScheduleDate, setTmplScheduleDate] = useState('');
   const [sendingTmpl, setSendingTmpl] = useState(false);
 
   const [chatMessages, setChatMessages] = useState([]);
@@ -125,6 +129,9 @@ export default function TelegramHubView() {
       setBroadcasts(tgData.broadcasts || []);
       if (tgData.templates) {
         setTemplates(tgData.templates);
+      }
+      if (tgData.templateHistory) {
+        setTemplateHistory(tgData.templateHistory);
       }
     }
   }, [GC.telegramHub]);
@@ -600,30 +607,67 @@ export default function TelegramHubView() {
 
   const handleSendTemplateSubmit = async () => {
     if (!GC?.integrations?.telegramBotToken) { alert(L('Connect Telegram Bot first', 'قم بربط البوت أولاً')); return; }
+    
+    if (isTmplScheduled && !tmplScheduleDate) {
+      alert(L('Please select a date and time for scheduling', 'يرجى تحديد التاريخ والوقت للجدولة'));
+      return;
+    }
+
     setSendingTmpl(true);
     let targets = sendTmplToAll ? liveContacts : liveContacts.filter(c => selectedContactsForTmpl.includes(c.id));
     if (targets.length === 0) { alert(L('No contacts selected', 'لم يتم تحديد جهات اتصال')); setSendingTmpl(false); return; }
     
     let successCount = 0;
-    for (let contact of targets) {
-      let msgText = selectedTmplToSend.content.replace(/\{\{name\}\}/g, contact.firstName || 'مرحباً');
-      try {
-        const res = await fetch('/api/telegram/send-test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: GC.integrations.telegramBotToken, chatId: contact.id, message: msgText })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          successCount++;
-          const msgRef = doc(collection(db, `telegram_chats/${contact.id}/messages`));
-          await setDoc(msgRef, { text: msgText, date: Math.floor(Date.now() / 1000), direction: 'outbound', from: 'agent' });
-          const chatRef = doc(db, 'telegram_chats', contact.id);
-          await setDoc(chatRef, { lastMessage: msgText, lastMessageAt: new Date().toISOString(), unreadCount: 0 }, { merge: true });
-        }
-      } catch (err) {}
+    
+    if (isTmplScheduled) {
+      alert(L(`Scheduled successfully to ${targets.length} contacts for ${new Date(tmplScheduleDate).toLocaleString()}`, `تمت الجدولة بنجاح لـ ${targets.length} جهة اتصال في ${new Date(tmplScheduleDate).toLocaleString()}`));
+      
+      const historyEntry = {
+        id: Date.now().toString(),
+        templateName: selectedTmplToSend.name,
+        sentAt: tmplScheduleDate,
+        successCount: 0,
+        totalTargets: targets.length,
+        status: 'Scheduled'
+      };
+      
+      const updatedHistory = [historyEntry, ...templateHistory];
+      setTemplateHistory(updatedHistory);
+      saveTGHub({ templateHistory: updatedHistory });
+    } else {
+      for (let contact of targets) {
+        let msgText = selectedTmplToSend.content.replace(/\{\{name\}\}/g, contact.firstName || 'مرحباً');
+        try {
+          const res = await fetch('/api/telegram/send-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: GC.integrations.telegramBotToken, chatId: contact.id, message: msgText })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            successCount++;
+            const msgRef = doc(collection(db, `telegram_chats/${contact.id}/messages`));
+            await setDoc(msgRef, { text: msgText, date: Math.floor(Date.now() / 1000), direction: 'outbound', from: 'agent' });
+            const chatRef = doc(db, 'telegram_chats', contact.id);
+            await setDoc(chatRef, { lastMessage: msgText, lastMessageAt: new Date().toISOString(), unreadCount: 0 }, { merge: true });
+          }
+        } catch (err) {}
+      }
+      alert(L(`Sent successfully to ${successCount} contacts`, `تم الإرسال بنجاح إلى ${successCount} جهة اتصال`));
+      
+      const historyEntry = {
+        id: Date.now().toString(),
+        templateName: selectedTmplToSend.name,
+        sentAt: new Date().toISOString(),
+        successCount: successCount,
+        totalTargets: targets.length,
+        status: 'Sent'
+      };
+      const updatedHistory = [historyEntry, ...templateHistory];
+      setTemplateHistory(updatedHistory);
+      saveTGHub({ templateHistory: updatedHistory });
     }
-    alert(L(`Sent successfully to ${successCount} contacts`, `تم الإرسال بنجاح إلى ${successCount} جهة اتصال`));
+    
     setSendingTmpl(false);
     setShowSendTmplModal(false);
   };
@@ -659,12 +703,7 @@ export default function TelegramHubView() {
 
   const tabs = [
     { key: 'inbox', label: L('Inbox', 'الوارده'), icon: '📥' },
-    { key: 'agent', label: L('AI Agent', 'الوكيل الذكي'), icon: '🤖' },
-    { key: 'broadcasts', label: L('Broadcasts', 'حملات البث'), icon: '📢' },
     { key: 'automations', label: L('Automations', 'الأتمتة'), icon: '⚡' },
-    { key: 'orders', label: L('Orders', 'الطلبات'), icon: '📦' },
-    { key: 'followups', label: L('Follow Ups', 'المتابعات'), icon: '🔔' },
-    { key: 'team', label: L('Team Inbox', 'صندوق الفريق'), icon: '👥' },
     { key: 'analytics', label: L('Analytics', 'التحليلات'), icon: '📊' },
     { key: 'templates', label: L('Templates', 'القوالب'), icon: '📋' },
     { key: 'contacts', label: L('Contacts', 'جهات الاتصال'), icon: '👤' }
@@ -699,9 +738,6 @@ export default function TelegramHubView() {
           </button>
           <button className="btn btn-ghost" style={{ padding: '6px 12px' }} onClick={() => setShowDiagnostics(true)}>
             ⚙️ {L('Connection Settings', 'اعدادات الربط')}
-          </button>
-          <button className="btn btn-prime" onClick={() => { setActiveTab('broadcasts'); alert(L('Scroll down to create a new broadcast campaign.', 'انتقل للأسفل لإنشاء حملة بث جديدة.')); }}>
-            + {L('New Broadcast', 'بث جديد')}
           </button>
         </div>
       </div>
@@ -748,40 +784,82 @@ export default function TelegramHubView() {
       
       {/* 1. INBOX TAB */}
       {activeTab === 'inbox' && (
-        <div className="tg-inbox-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '15px', height: '600px' }}>
+        <div className="tg-inbox-grid" style={{ display: 'grid', gridTemplateColumns: '600px 1fr', gap: '15px', height: '600px' }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--edge)' }}>
+              <div 
+                style={{ flex: 1, padding: '12px 10px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: inboxView === 'chats' ? 'bold' : 'normal', borderBottom: inboxView === 'chats' ? '2px solid var(--prime)' : 'none', color: inboxView === 'chats' ? 'var(--prime)' : 'var(--t2)', transition: 'all 0.2s' }}
+                onClick={() => setInboxView('chats')}
+              >
+                💬 {L('Chats', 'المحادثات')}
+              </div>
+              <div 
+                style={{ flex: 1, padding: '12px 10px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: inboxView === 'contacts' ? 'bold' : 'normal', borderBottom: inboxView === 'contacts' ? '2px solid var(--prime)' : 'none', color: inboxView === 'contacts' ? 'var(--prime)' : 'var(--t2)', transition: 'all 0.2s' }}
+                onClick={() => setInboxView('contacts')}
+              >
+                👤 {L('Contacts', 'جهات الاتصال')}
+              </div>
+            </div>
             <div style={{ padding: '12px', borderBottom: '1px solid var(--edge)' }}>
-              <input className="inp" placeholder={L('🔍 Search conversations...', '🔍 البحث في المحادثات...')} style={{ fontSize: '12px', padding: '7px 11px' }} />
+              <input className="inp" placeholder={inboxView === 'chats' ? L('🔍 Search conversations...', '🔍 البحث في المحادثات...') : L('🔍 Search contacts...', '🔍 البحث في جهات الاتصال...')} style={{ fontSize: '12px', padding: '7px 11px' }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
               {GC?.integrations?.telegramConnected ? (
-                liveChats.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {liveChats.map(chat => (
-                      <div 
-                        key={chat.id} 
-                        onClick={() => setSelectedChat(chat)}
-                        style={{ padding: '10px', background: selectedChat?.id === chat.id ? 'var(--surface2)' : 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid', borderColor: selectedChat?.id === chat.id ? 'var(--prime)' : 'var(--edge)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
-                          <div style={{ fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {chat.contactId || 'Unknown'}
-                            {chat.unreadCount > 0 && (
-                              <div style={{ width: '8px', height: '8px', background: 'var(--red)', borderRadius: '50%' }} title={L('Unreplied message', 'رسالة غير مجاب عليها')} />
-                            )}
+                inboxView === 'chats' ? (
+                  // CHATS LIST
+                  liveChats.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {liveChats.map(chat => (
+                        <div 
+                          key={chat.id} 
+                          onClick={() => setSelectedChat(chat)}
+                          style={{ padding: '10px', background: selectedChat?.id === chat.id ? 'var(--surface2)' : 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid', borderColor: selectedChat?.id === chat.id ? 'var(--prime)' : 'var(--edge)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', alignItems: 'center' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {chat.contactId || chat.firstName || 'Unknown'}
+                              {chat.unreadCount > 0 && (
+                                <div style={{ width: '8px', height: '8px', background: 'var(--red)', borderRadius: '50%' }} title={L('Unreplied message', 'رسالة غير مجاب عليها')} />
+                              )}
+                            </div>
+                            <span style={{ fontSize: '10px', color: 'var(--t3)' }}>{new Date(chat.lastMessageAt).toLocaleTimeString()}</span>
                           </div>
-                          <span style={{ fontSize: '10px', color: 'var(--t3)' }}>{new Date(chat.lastMessageAt).toLocaleTimeString()}</span>
+                          <div style={{ fontSize: '12px', color: 'var(--t2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {chat.lastMessage}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--t2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {chat.lastMessage}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '30px 0' }}>
+                      <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                      {L('No active conversations yet', 'لا توجد محادثات نشطة بعد')}
+                    </div>
+                  )
                 ) : (
-                  <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '30px 0' }}>
-                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
-                    {L('No active conversations yet', 'لا توجد محادثات نشطة بعد')}
-                  </div>
+                  // CONTACTS LIST
+                  liveContacts.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {liveContacts.map(contact => (
+                        <div 
+                          key={contact.id} 
+                          onClick={() => setSelectedChat({ id: contact.id, contactId: contact.firstName, firstName: contact.firstName, lastName: contact.lastName, isNew: true })}
+                          style={{ padding: '10px', background: selectedChat?.id === contact.id ? 'var(--surface2)' : 'var(--surface)', borderRadius: '8px', cursor: 'pointer', border: '1px solid', borderColor: selectedChat?.id === contact.id ? 'var(--prime)' : 'var(--edge)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                            👤
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--t1)' }}>{contact.firstName} {contact.lastName || ''}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{contact.username ? `@${contact.username}` : contact.id}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '30px 0' }}>
+                      <div style={{ fontSize: '28px', marginBottom: '8px' }}>👤</div>
+                      {L('No contacts available', 'لا توجد جهات اتصال')}
+                    </div>
+                  )
                 )
               ) : (
                 <div style={{ color: 'var(--t3)', fontSize: '12px', textAlign: 'center', padding: '30px 0' }}>
@@ -942,199 +1020,9 @@ export default function TelegramHubView() {
         </div>
       )}
 
-      {/* 2. AI AGENT TAB */}
-      {activeTab === 'agent' && (
-        <div className="g2">
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">🤖 {L('Telegram AI Agent Setup', 'إعداد وكيل تليجرام الذكي')}</div>
-              <button className="btn-ai" onClick={() => setAiPanelOpen(true)}>
-                {L('Generate Script', 'توليد السيناريو')}
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Agent Name', 'اسم الوكيل')}
-                </label>
-                <input className="inp" placeholder={L('Sara, Alex, or your brand name...', 'سارة، أليكس، أو اسم علامتك التجارية...')} value={agentName} onChange={(e) => setAgentName(e.target.value)} onBlur={() => saveTGHub({ agentName })} />
-              </div>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Agent Personality', 'شخصية الوكيل')}
-                </label>
-                <select className="inp" value={agentStyle} onChange={(e) => { setAgentStyle(e.target.value); saveTGHub({ agentStyle: e.target.value }); }}>
-                  <option value="Professional & Friendly">{L('Professional & Friendly', 'مهني ولطيف')}</option>
-                  <option value="Casual & Warm">{L('Casual & Warm', 'عفوي وودود')}</option>
-                  <option value="Formal & Direct">{L('Formal & Direct', 'رسمي ومباشر')}</option>
-                  <option value="Energetic & Enthusiastic">{L('Energetic & Enthusiastic', 'نشيط ومتحمس')}</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Primary Goal', 'الهدف الرئيسي')}
-                </label>
-                <select className="inp" value={agentGoal} onChange={(e) => { setAgentGoal(e.target.value); saveTGHub({ agentGoal: e.target.value }); }}>
-                  <option value="Qualify Leads">{L('Qualify Leads', 'تأهيل العملاء المحتملين')}</option>
-                  <option value="Book Appointments">{L('Book Appointments', 'حجز المواعيد')}</option>
-                  <option value="Answer Questions">{L('Answer Questions', 'الإجابة على الأسئلة')}</option>
-                  <option value="Process Orders">{L('Process Orders', 'معالجة الطلبات')}</option>
-                  <option value="All of the above">{L('All of the above', 'كل ما سبق')}</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Business Description', 'وصف العمل')}
-                </label>
-                <textarea className="inp" rows="2" placeholder={L('We offer business coaching programs for Arab entrepreneurs...', 'نحن نقدم برامج تدريب لرواد الأعمال العرب...')} value={agentBiz} onChange={(e) => setAgentBiz(e.target.value)} onBlur={() => saveTGHub({ agentBiz })} />
-              </div>
-              <button className="btn btn-prime" onClick={handleGenerateAgent} disabled={agentLoading} style={{ width: '100%', justifyContent: 'center' }}>
-                {agentLoading ? L('Generating...', 'جاري التوليد...') : L('🤖 Generate AI Agent Script', '🤖 توليد سيناريو الوكيل')}
-              </button>
-            </div>
-          </div>
 
-          <div className="card">
-            <div className="sec-hd"><div className="sec-title">{L('Agent Preview', 'معاينة الوكيل')}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ background: 'var(--surface2)', borderRadius: '12px', padding: '14px' }}>
-                <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '10px' }}>
-                  📱 {L('Agent Status:', 'حالة الوكيل:')} <span style={{ color: agentOutput ? 'var(--green)' : 'var(--red)' }}>{agentOutput ? L('Configured', 'تم التكوين') : L('Not configured', 'غير مكون')}</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ background: 'var(--surface)', borderRadius: '8px', padding: '9px', fontSize: '12.5px' }}>
-                    <span style={{ color: 'var(--t3)' }}>{L('Auto-reply:', 'الرد التلقائي:')}</span> <span style={{ color: 'var(--t1)' }}>{agentOutput ? L('Active', 'نشط') : L('Not set', 'غير محدد')}</span>
-                  </div>
-                  <div style={{ background: 'var(--surface)', borderRadius: '8px', padding: '9px', fontSize: '12.5px' }}>
-                    <span style={{ color: 'var(--t3)' }}>{L('Lead qualification:', 'تأهيل الليدات:')}</span> <span style={{ color: 'var(--t1)' }}>{agentOutput ? L('Active', 'نشط') : L('Not set', 'غير محدد')}</span>
-                  </div>
-                  <div style={{ background: 'var(--surface)', borderRadius: '8px', padding: '9px', fontSize: '12.5px' }}>
-                    <span style={{ color: 'var(--t3)' }}>{L('Appointment booking:', 'حجز المواعيد:')}</span> <span style={{ color: 'var(--t1)' }}>{agentOutput ? L('Active', 'نشط') : L('Not set', 'غير محدد')}</span>
-                  </div>
-                </div>
-              </div>
-              <div style={{ minHeight: '150px', background: 'var(--surface3)', padding: '12px', borderRadius: '8px', overflowY: 'auto' }}>
-                {agentOutput ? (
-                  <div className="ai-box" dangerouslySetInnerHTML={{ __html: parseMarkdown(agentOutput) }} />
-                ) : (
-                  <div className="empty-state" style={{ padding: '20px' }}>
-                    <div className="es-icon">🤖</div>
-                    <div className="es-title">{L('Configure your AI agent', 'قم بتهيئة وكيلك الذكي')}</div>
-                    <div className="es-sub">{L('Fill in the details and generate a personalized AI agent script', 'املأ التفاصيل وقم بتوليد سيناريو مخصص لوكيل الذكاء الاصطناعي')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* 3. BROADCASTS TAB */}
-      {activeTab === 'broadcasts' && (
-        <div className="g2">
-          <div className="card">
-            <div className="sec-hd"><div className="sec-title">📢 {L('Create Broadcast', 'إنشاء حملة بث')}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Broadcast Name', 'اسم حملة البث')}
-                </label>
-                <input className="inp" placeholder="Summer Campaign #1" value={newBcTitle} onChange={(e) => setNewBcTitle(e.target.value)} />
-              </div>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Recipient Segment', 'شريحة المستلمين')}
-                </label>
-                <select className="inp">
-                  <option>{L('All Contacts', 'جميع جهات الاتصال')}</option>
-                  <option>{L('Leads (Not Customers)', 'العملاء المحتملون (وليسوا مشترين)')}</option>
-                  <option>{L('Active Customers', 'المشترين النشطين')}</option>
-                  <option>{L('Inactive Customers (60+ days)', 'مشترين غير نشطين (60+ يوم)')}</option>
-                  <option>{L('Hot Leads', 'عملاء محتملون ساخنون')}</option>
-                  <option>{L('Custom Segment', 'شريحة مخصصة')}</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Message Template', 'قالب الرسالة')}
-                </label>
-                <textarea className="inp" rows="4" placeholder="السلام عليكم {{name}} 👋&#10;&#10;عندنا عرض خاص ليك..." />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <input 
-                  type="checkbox" 
-                  id="schedule-toggle"
-                  checked={isScheduled} 
-                  onChange={(e) => setIsScheduled(e.target.checked)} 
-                />
-                <label htmlFor="schedule-toggle" style={{ fontSize: '12px', color: 'var(--t1)', cursor: 'pointer', userSelect: 'none' }}>
-                  {L('Schedule for later', 'جدولة الإرسال لوقت لاحق')}
-                </label>
-              </div>
-              
-              {isScheduled && (
-                <div style={{ marginTop: '4px' }}>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                    {L('Date & Time', 'تاريخ ووقت الإرسال')}
-                  </label>
-                  <input 
-                    className="inp" 
-                    type="datetime-local" 
-                    value={scheduleDate}
-                    min={new Date().toISOString().slice(0, 16)}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                  />
-                </div>
-              )}
-              
-              <div style={{ display: 'flex', gap: '7px', marginTop: '6px' }}>
-                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setAiPanelOpen(true)}>
-                  ✦ {L('AI Write Message', 'كتابة بالذكاء الاصطناعي')}
-                </button>
-                <button className="btn btn-prime" style={{ flex: 1, justifyContent: 'center' }} onClick={handleAddBc}>
-                  {isScheduled ? `📤 ${L('Schedule Broadcast', 'جدولة حملة البث')}` : `🚀 ${L('Send Now', 'إرسال الآن')}`}
-                </button>
-              </div>
-            </div>
-          </div>
 
-          <div className="card">
-            <div className="sec-hd"><div className="sec-title">📊 {L('Broadcast History', 'سجل حملات البث')}</div></div>
-            {broadcasts.length === 0 ? (
-              <div className="empty-state" style={{ padding: '30px' }}>
-                <div className="es-icon">📢</div>
-                <div className="es-title">{L('No broadcasts yet', 'لا توجد حملات بث بعد')}</div>
-                <div className="es-sub">{L('Create your first broadcast to start reaching customers via Telegram', 'أنشئ أول حملة بث لبدء الوصول إلى عملائك عبر تليجرام')}</div>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>{L('Name', 'الاسم')}</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>{L('Sent', 'المرسل')}</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>{L('Read', 'الفتح')}</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>{L('Status', 'الحالة')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {broadcasts.map(b => (
-                      <tr key={b.id} style={{ borderBottom: '1px solid var(--edge)' }}>
-                        <td style={{ padding: '8px', fontWeight: 600 }}>{b.title}</td>
-                        <td style={{ padding: '8px' }}>{b.sent}</td>
-                        <td style={{ padding: '8px', color: 'var(--green)' }}>{b.read}</td>
-                        <td style={{ padding: '8px' }}>
-                          <span className="badge b-green">{b.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* 4. AUTOMATIONS TAB */}
       {activeTab === 'automations' && (
@@ -1224,173 +1112,175 @@ export default function TelegramHubView() {
         </div>
       )}
 
-      {/* 5. ORDERS TAB */}
-      {activeTab === 'orders' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="g4 stagger">
-            <div className="stat-card">
-              <div className="stat-lbl">⏳ {L('Pending', 'قيد الانتظار')}</div>
-              <div className="stat-val">0</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">✅ {L('Confirmed', 'تم تأكيده')}</div>
-              <div className="stat-val ch-up">0</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🚚 {L('Shipped', 'تم الشحن')}</div>
-              <div className="stat-val ch-nu">0</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">❌ {L('Cancelled', 'تم الإلغاء')}</div>
-              <div className="stat-val ch-dn">0</div>
-            </div>
-          </div>
-          
-          <div className="card">
-            <div className="empty-state">
-              <div className="es-icon">📦</div>
-              <div className="es-title">{L('No orders yet', 'لا توجد طلبات بعد')}</div>
-              <div className="es-sub">
-                {L('Connect your Telegram Business API and e-commerce store to track orders automatically', 'اربط حساب تليجرام للأعمال ومتجرك الإلكتروني لتتبع الطلبات تلقائياً')}
-              </div>
-              <button className="btn btn-prime" onClick={() => alert(L('Connecting e-commerce store...', 'جاري الاتصال بالمتجر الإلكتروني...'))}>
-                {L('Connect Store', 'ربط المتجر')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* 6. FOLLOW UPS TAB */}
-      {activeTab === 'followups' && (
-        <div className="g3 stagger">
-          <div className="card" style={{ borderColor: 'rgba(255,61,110,.2)' }}>
-            <div className="sec-hd">
-              <div className="sec-title" style={{ color: 'var(--red)' }}>
-                🔴 {L('No Response (3+ days)', 'عدم الرد (3+ أيام)')}
-              </div>
-            </div>
-            <div className="empty-state" style={{ padding: '20px' }}>
-              <div className="es-icon">⏰</div>
-              <div className="es-sub">{L('Leads who haven\'t replied in 3+ days', 'العملاء المحتملون الذين لم يردوا منذ 3+ أيام')}</div>
-              <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => alert(L('Sending follow up blast...', 'جاري إرسال رسائل المتابعة...'))}>
-                {L('Send Follow Up', 'إرسال متابعة')}
-              </button>
-            </div>
-          </div>
 
-          <div className="card" style={{ borderColor: 'rgba(255,184,0,.2)' }}>
-            <div className="sec-hd">
-              <div className="sec-title" style={{ color: 'var(--amber)' }}>
-                🟡 {L('Warm Leads', 'عملاء محتملون مهتمون')}
-              </div>
-            </div>
-            <div className="empty-state" style={{ padding: '20px' }}>
-              <div className="es-icon">🔥</div>
-              <div className="es-sub">{L('Leads showing interest but not converted', 'عملاء يبدون اهتماماً ولكن لم يشتروا بعد')}</div>
-              <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => alert(L('Sending special offer...', 'جاري إرسال العرض الخاص...'))}>
-                {L('Send Offer', 'إرسال عرض')}
-              </button>
-            </div>
-          </div>
 
-          <div className="card" style={{ borderColor: 'rgba(0,217,139,.2)' }}>
-            <div className="sec-hd">
-              <div className="sec-title" style={{ color: 'var(--green)' }}>
-                🟢 {L('Hot Leads', 'عملاء محتملون ساخنون')}
-              </div>
-            </div>
-            <div className="empty-state" style={{ padding: '20px' }}>
-              <div className="es-icon">⚡</div>
-              <div className="es-sub">{L('High-intent leads ready to close', 'عملاء محتملون ذوو نية شراء عالية وجاهزون للإغلاق')}</div>
-              <button className="btn btn-prime" style={{ fontSize: '12px' }} onClick={() => alert(L('Closing hot leads via CRM...', 'جاري إتمام الصفقات مع العملاء...'))}>
-                {L('Close Now', 'إتمام الصفقة')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* 7. TEAM INBOX TAB */}
-      {activeTab === 'team' && (
-        <div className="card">
-          <div className="sec-hd"><div className="sec-title">👥 {L('Team Performance', 'أداء الفريق')}</div></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '14px' }}>
-            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', fontFamily: 'var(--ff)' }}>—</div>
-              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Avg Response Time', 'متوسط وقت الرد')}</div>
-            </div>
-            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', fontFamily: 'var(--ff)', color: 'var(--green)' }}>—</div>
-              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Close Rate', 'نسبة الإغلاق')}</div>
-            </div>
-            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', fontFamily: 'var(--ff)' }}>0</div>
-              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Active Agents', 'الوكلاء النشطين')}</div>
-            </div>
-            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '12px', textAlign: 'center' }}>
-              <div style={{ fontSize: '22px', fontWeight: '800', fontFamily: 'var(--ff)' }}>0</div>
-              <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{L('Open Chats', 'المحادثات المفتوحة')}</div>
-            </div>
-          </div>
-          <div className="empty-state">
-            <div className="es-icon">👥</div>
-            <div className="es-title">{L('No team members yet', 'لا يوجد أعضاء فريق بعد')}</div>
-            <div className="es-sub">
-              {L('Add team members to manage Telegram conversations collaboratively', 'أضف أعضاء الفريق لإدارة محادثات تليجرام بشكل تعاوني')}
-            </div>
-            <button className="btn btn-prime" onClick={() => alert(L('Opening Add Agent screen...', 'جاري فتح نافذة إضافة وكيل جديد...'))}>
-              + {L('Add Agent', 'إضافة وكيل')}
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* 8. ANALYTICS TAB */}
-      {activeTab === 'analytics' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="g4 stagger">
-            <div className="stat-card">
-              <div className="stat-lbl">📨 {L('Messages Sent', 'الرسائل المرسلة')}</div>
-              <div className="stat-val">0</div>
-              <div className="stat-ch ch-nu">{L('this month', 'هذا الشهر')}</div>
+      {activeTab === 'analytics' && (() => {
+        // Analytics Calculations
+        const totalTemplatesSent = templateHistory.filter(h => h.status !== 'Scheduled').reduce((acc, curr) => acc + (curr.successCount || 0), 0);
+        
+        const uniqueContactsSet = new Set();
+        liveChats.forEach(c => uniqueContactsSet.add(c.contactId || c.id));
+        const totalContactsReached = uniqueContactsSet.size || liveContacts.length;
+        
+        const scheduledTemplatesCount = templateHistory.filter(h => h.status === 'Scheduled').reduce((acc, curr) => acc + (curr.totalTargets || 0), 0);
+        
+        // Most used templates
+        const tmplUsage = {};
+        templateHistory.filter(h => h.status !== 'Scheduled').forEach(h => {
+          if (!tmplUsage[h.templateName]) {
+            tmplUsage[h.templateName] = { name: h.templateName, count: 0, success: 0 };
+          }
+          tmplUsage[h.templateName].count += 1;
+          tmplUsage[h.templateName].success += (h.successCount || 0);
+        });
+        const topTmpls = Object.values(tmplUsage).sort((a, b) => b.success - a.success).slice(0, 5);
+        const maxSuccess = topTmpls.length > 0 ? Math.max(1, ...topTmpls.map(t => t.success)) : 1;
+
+        // Top Contacts
+        const topContacts = [...liveChats].sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)).slice(0, 8);
+
+        // 7-Day Activity Trend
+        const last7Days = Array.from({length: 7}, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return d.toISOString().split('T')[0];
+        });
+        const activityData = last7Days.map(date => {
+          const count = templateHistory
+            .filter(h => (h.status === 'Sent' || !h.status) && h.sentAt.startsWith(date))
+            .reduce((acc, curr) => acc + (curr.successCount || 0), 0);
+          return { 
+            date: new Date(date).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'short' }), 
+            count 
+          };
+        });
+        const maxActivity = Math.max(...activityData.map(d => d.count), 5); // minimum height 5
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="g3 stagger">
+              <div className="stat-card">
+                <div className="stat-lbl">📨 {L('Total Templates Sent', 'إجمالي القوالب المرسلة')}</div>
+                <div className="stat-val">{totalTemplatesSent}</div>
+                <div className="stat-ch ch-up">{L('Successful deliveries', 'توصيل ناجح')}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-lbl">👤 {L('People Contacted', 'الأشخاص الذين تم التواصل معهم')}</div>
+                <div className="stat-val">{totalContactsReached}</div>
+                <div className="stat-ch ch-nu">{L('Unique contacts', 'جهات اتصال فريدة')}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-lbl">🕒 {L('Scheduled to Send', 'مجدول للإرسال')}</div>
+                <div className="stat-val" style={{ color: 'var(--prime)' }}>{scheduledTemplatesCount}</div>
+                <div className="stat-ch ch-nu">{L('Pending deliveries', 'عمليات إرسال معلقة')}</div>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-lbl">↩️ {L('Reply Rate', 'نسبة الرد')}</div>
-              <div className="stat-val ch-up">—%</div>
-              <div className="stat-ch ch-nu">{L('average', 'متوسط')}</div>
+
+            <div className="card">
+              <div className="sec-hd"><div className="sec-title">📈 {L('Telegram Performance (Last 7 Days)', 'أداء تليجرام (آخر 7 أيام)')}</div></div>
+              <div style={{ position: 'relative', height: '180px', marginTop: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--edge)' }}>
+                <div style={{ position: 'absolute', top: 0, left: lang === 'ar' ? 'auto' : 0, right: lang === 'ar' ? 0 : 'auto', color: 'var(--t3)', fontSize: '11px' }}>{maxActivity}</div>
+                <div style={{ position: 'absolute', bottom: '25px', left: lang === 'ar' ? 'auto' : 0, right: lang === 'ar' ? 0 : 'auto', color: 'var(--t3)', fontSize: '11px' }}>0</div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', height: '100%', paddingLeft: lang==='ar'?'0':'30px', paddingRight: lang==='ar'?'30px':'0' }}>
+                  {activityData.map((d, i) => {
+                    const heightPct = (d.count / maxActivity) * 100;
+                    return (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <div style={{ flex: 1, position: 'relative', width: '30%', minWidth: '12px', margin: '0 auto' }}>
+                          <div style={{ 
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: `${Math.max(heightPct, 4)}%`, 
+                            background: '#EC5C31', 
+                            borderRadius: '4px 4px 0 0',
+                            transition: 'height 0.3s'
+                          }}>
+                            {d.count > 0 && (
+                              <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--t2)', fontWeight: 'bold' }}>
+                                {d.count}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: 'center', marginTop: '8px', whiteSpace: 'nowrap' }}>{d.date}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-lbl">🔄 {L('Conversion', 'معدل التحويل')}</div>
-              <div className="stat-val ch-up">—%</div>
-              <div className="stat-ch ch-nu">{L('lead to sale', 'من ليد إلى بيع')}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-lbl">👤 {L('New Contacts', 'جهات اتصال جديدة')}</div>
-              <div className="stat-val">0</div>
-              <div className="stat-ch ch-nu">{L('this month', 'هذا الشهر')}</div>
-            </div>
-          </div>
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">📊 {L('Telegram Performance', 'أداء تليجرام')}</div>
-              <button className="btn-ai" onClick={() => setAiPanelOpen(true)}>
-                ✦ {L('AI Analyze', 'تحليل الذكاء الاصطناعي')}
-              </button>
-            </div>
-            <div className="empty-state">
-              <div className="es-icon">📊</div>
-              <div className="es-title">{L('Connect Telegram to see analytics', 'اربط حساب تليجرام لعرض التحليلات')}</div>
-              <div className="es-sub">
-                {L('Once connected, you\'ll see message volume, response rates, conversion rates, and revenue attribution', 'بمجرد الربط، ستظهر لك إحصائيات الرسائل، معدلات الاستجابة، نسب التحويل، ومصادر الأرباح')}
+
+            <div className="g2">
+              <div className="card">
+                <div className="sec-hd"><div className="sec-title">📈 {L('Most Used Templates', 'أكثر القوالب استخداماً')}</div></div>
+                {topTmpls.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '30px' }}>
+                    <div className="es-icon">📊</div>
+                    <div className="es-sub">{L('No template data yet', 'لا توجد بيانات للقوالب بعد')}</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {topTmpls.map((tmpl, idx) => (
+                      <div key={idx}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px', fontWeight: '500' }}>
+                          <span>{tmpl.name}</span>
+                          <span>{tmpl.success} {L('sent', 'مُرسلة')}</span>
+                        </div>
+                        <div style={{ width: '100%', height: '12px', background: 'var(--surface2)', borderRadius: '6px', overflow: 'hidden' }}>
+                          <div style={{ width: `${(tmpl.success / maxSuccess) * 100}%`, height: '100%', background: '#EC5C31', borderRadius: '6px' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="card">
+                <div className="sec-hd"><div className="sec-title">🔥 {L('Top Recent Contacts', 'أحدث وأكثر العملاء تفاعلاً')}</div></div>
+                {topContacts.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '30px' }}>
+                    <div className="es-icon">💬</div>
+                    <div className="es-sub">{L('No active contacts yet', 'لا توجد جهات اتصال نشطة')}</div>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
+                          <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Contact', 'جهة الاتصال')}</th>
+                          <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Message', 'آخر رسالة')}</th>
+                          <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Active', 'آخر نشاط')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topContacts.map(c => (
+                          <tr key={c.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                            <td style={{ padding: '8px', fontWeight: 600 }}>{c.contactId || c.id}</td>
+                            <td style={{ padding: '8px', color: 'var(--t2)', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMessage}</td>
+                            <td style={{ padding: '8px', color: 'var(--t3)' }}>{new Date(c.lastMessageAt).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 9. TEMPLATES TAB */}
       {activeTab === 'templates' && (
+        <>
         <div className="g2">
           <div className="card">
             <div className="sec-hd">
@@ -1458,6 +1348,51 @@ export default function TelegramHubView() {
             </div>
           </div>
         </div>
+
+        <div className="card" style={{ marginTop: '16px' }}>
+          <div className="sec-hd">
+            <div className="sec-title">🕒 {L('Send History', 'سجل الإرسال')}</div>
+          </div>
+          {templateHistory.length === 0 ? (
+            <div className="empty-state">
+              <div className="es-icon">🕒</div>
+              <div className="es-title">{L('No send history yet', 'لا يوجد سجل إرسال بعد')}</div>
+              <div className="es-sub">{L('Templates you send will appear here with their details', 'القوالب التي تقوم بإرسالها ستظهر هنا مع تفاصيلها')}</div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
+                    <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Date', 'التاريخ')}</th>
+                    <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Template Name', 'اسم القالب')}</th>
+                    <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Success Rate', 'معدل النجاح')}</th>
+                    <th style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>{L('Total Targets', 'المستهدفين')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {templateHistory.map(hist => (
+                    <tr key={hist.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                      <td style={{ padding: '10px', color: 'var(--t2)', textAlign: lang==='ar'?'right':'left' }}>{new Date(hist.sentAt).toLocaleString()}</td>
+                      <td style={{ padding: '10px', fontWeight: 600, color: 'var(--t1)', textAlign: lang==='ar'?'right':'left' }}>{hist.templateName}</td>
+                      <td style={{ padding: '10px', textAlign: lang==='ar'?'right':'left' }}>
+                        {hist.status === 'Scheduled' ? (
+                          <span className="badge b-purple">{L('Scheduled', 'مجدول')}</span>
+                        ) : (
+                          <span className={`badge ${hist.successCount === hist.totalTargets && hist.totalTargets > 0 ? 'b-green' : (hist.successCount > 0 ? 'b-amber' : 'b-red')}`}>
+                            {hist.successCount} / {hist.totalTargets}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '10px', color: 'var(--t2)', textAlign: lang==='ar'?'right':'left' }}>{hist.totalTargets} {L('Contacts', 'جهات اتصال')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        </>
       )}
 
       {/* 10. CONTACTS TAB */}
@@ -1744,37 +1679,125 @@ export default function TelegramHubView() {
                 <span style={{ color: 'var(--t2)' }}>{selectedTmplToSend.content}</span>
               </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" checked={sendTmplToAll} onChange={() => setSendTmplToAll(true)} />
-                  <span style={{ fontSize: '13px', color: 'var(--t1)' }}>{L('Send to All Contacts', 'إرسال لجميع جهات الاتصال')} ({liveContacts.length})</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                  <input type="radio" checked={!sendTmplToAll} onChange={() => setSendTmplToAll(false)} />
-                  <span style={{ fontSize: '13px', color: 'var(--t1)' }}>{L('Select Specific Contacts', 'اختيار جهات اتصال محددة')}</span>
-                </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div 
+                  onClick={() => setSendTmplToAll(true)}
+                  style={{ 
+                    padding: '12px 10px', 
+                    border: '1px solid', 
+                    borderColor: sendTmplToAll ? 'var(--prime, #EC5C31)' : 'var(--edge)', 
+                    background: sendTmplToAll ? 'rgba(236, 92, 49, 0.08)' : 'var(--surface2)', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer', 
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: sendTmplToAll ? '700' : '500', color: sendTmplToAll ? 'var(--prime, #EC5C31)' : 'var(--t1)' }}>
+                    {L('Send to All Contacts', 'إرسال لجميع جهات الاتصال')} ({liveContacts.length})
+                  </div>
+                </div>
+                <div 
+                  onClick={() => setSendTmplToAll(false)}
+                  style={{ 
+                    padding: '12px 10px', 
+                    border: '1px solid', 
+                    borderColor: !sendTmplToAll ? 'var(--prime, #EC5C31)' : 'var(--edge)', 
+                    background: !sendTmplToAll ? 'rgba(236, 92, 49, 0.08)' : 'var(--surface2)', 
+                    borderRadius: '8px', 
+                    cursor: 'pointer', 
+                    textAlign: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: !sendTmplToAll ? '700' : '500', color: !sendTmplToAll ? 'var(--prime, #EC5C31)' : 'var(--t1)' }}>
+                    {L('Select Specific Contacts', 'اختيار جهات اتصال محددة')}
+                  </div>
+                </div>
               </div>
 
               {!sendTmplToAll && (
-                <div style={{ border: '1px solid var(--edge)', borderRadius: '8px', padding: '8px', maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ border: '1px solid var(--edge)', borderRadius: '8px', padding: '10px', maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--surface)' }}>
                   {liveContacts.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--t3)', fontSize: '12px' }}>{L('No contacts available', 'لا توجد جهات اتصال')}</div>
                   ) : (
-                    liveContacts.map(c => (
-                      <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={selectedContactsForTmpl.includes(c.id)} onChange={(e) => {
-                          if (e.target.checked) setSelectedContactsForTmpl(prev => [...prev, c.id]);
-                          else setSelectedContactsForTmpl(prev => prev.filter(id => id !== c.id));
-                        }} />
-                        <span style={{ fontSize: '12.5px', color: 'var(--t1)' }}>{c.firstName} {c.lastName || ''}</span>
-                      </label>
-                    ))
+                    <>
+                      <div 
+                        onClick={() => {
+                          const isChecked = selectedContactsForTmpl.length === liveContacts.length && liveContacts.length > 0;
+                          if (!isChecked) setSelectedContactsForTmpl(liveContacts.map(c => c.id));
+                          else setSelectedContactsForTmpl([]);
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderBottom: '1px solid var(--edge)', paddingBottom: '8px', marginBottom: '4px' }}
+                      >
+                        <div style={{ 
+                          width: '18px', height: '18px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: `2px solid ${(selectedContactsForTmpl.length === liveContacts.length && liveContacts.length > 0) ? 'var(--prime, #EC5C31)' : 'var(--t3)'}`,
+                          background: (selectedContactsForTmpl.length === liveContacts.length && liveContacts.length > 0) ? 'var(--prime, #EC5C31)' : 'transparent',
+                          transition: 'all 0.2s'
+                        }}>
+                          {(selectedContactsForTmpl.length === liveContacts.length && liveContacts.length > 0) && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--t1)' }}>{L('Select All', 'تحديد الكل')}</span>
+                      </div>
+                      
+                      {liveContacts.map(c => {
+                        const isChecked = selectedContactsForTmpl.includes(c.id);
+                        return (
+                          <div 
+                            key={c.id} 
+                            onClick={() => {
+                              if (!isChecked) setSelectedContactsForTmpl(prev => [...prev, c.id]);
+                              else setSelectedContactsForTmpl(prev => prev.filter(id => id !== c.id));
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '4px 0' }}
+                          >
+                            <div style={{ 
+                              width: '18px', height: '18px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              border: `2px solid ${isChecked ? 'var(--prime, #EC5C31)' : 'var(--edge)'}`,
+                              background: isChecked ? 'var(--prime, #EC5C31)' : 'transparent',
+                              transition: 'all 0.2s'
+                            }}>
+                              {isChecked && <span style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}>✓</span>}
+                            </div>
+                            <span style={{ fontSize: '13px', color: 'var(--t1)' }}>{c.firstName} {c.lastName || ''}</span>
+                          </div>
+                        );
+                      })}
+                    </>
                   )}
                 </div>
               )}
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '8px' }}>
+                <input 
+                  type="checkbox" 
+                  id="schedule-tmpl-toggle"
+                  checked={isTmplScheduled} 
+                  onChange={(e) => setIsTmplScheduled(e.target.checked)} 
+                />
+                <label htmlFor="schedule-tmpl-toggle" style={{ fontSize: '13px', color: 'var(--t1)', cursor: 'pointer', userSelect: 'none' }}>
+                  {L('Schedule for later', 'جدولة الإرسال لوقت لاحق')}
+                </label>
+              </div>
+              
+              {isTmplScheduled && (
+                <div style={{ marginBottom: '8px' }}>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Date & Time', 'تاريخ ووقت الإرسال')}
+                  </label>
+                  <input 
+                    className="inp" 
+                    type="datetime-local" 
+                    value={tmplScheduleDate}
+                    min={new Date().toISOString().slice(0, 16)}
+                    onChange={(e) => setTmplScheduleDate(e.target.value)}
+                  />
+                </div>
+              )}
+
               <button className="btn btn-prime" style={{ justifyContent: 'center' }} onClick={handleSendTemplateSubmit} disabled={sendingTmpl || (!sendTmplToAll && selectedContactsForTmpl.length === 0)}>
-                {sendingTmpl ? L('Sending...', 'جاري الإرسال...') : L('Send Now', 'إرسال الآن')}
+                {sendingTmpl ? L('Processing...', 'جاري التنفيذ...') : (isTmplScheduled ? L('Schedule Template', 'جدولة القالب') : L('Send Now', 'إرسال الآن'))}
               </button>
             </div>
           </div>
