@@ -75,10 +75,10 @@ export default function CRMView() {
     addWorkspace,
     setActiveWorkspace,
     updateWorkspace,
-    deleteWorkspace
+    deleteWorkspace,
+    crmActiveTab: activeTab,
+    setCrmActiveTab: setActiveTab
   } = useBusiness();
-
-  const [activeTab, setActiveTab] = useState('pipeline');
   const [draggedLeadId, setDraggedLeadId] = useState(null);
   
   const [showWsDropdown, setShowWsDropdown] = useState(false);

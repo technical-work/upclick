@@ -211,6 +211,7 @@ export function BusinessProvider({ children }) {
   const [lang, setLang] = useState('en');
   const [theme, setTheme] = useState('dark');
   const [currentPage, setCurrentPage] = useState('home');
+  const [crmActiveTab, setCrmActiveTab] = useState('pipeline');
   const [currency, setCurrencyState] = useState({ code: 'USD', name: 'US Dollar', symbol: '$', flag: '🇺🇸' });
   const [GC, setGC] = useState(initialGC);
   const [savedNotes, setSavedNotes] = useState([]);
@@ -953,6 +954,8 @@ export function BusinessProvider({ children }) {
         setTheme: changeTheme,
         currentPage,
         setCurrentPage,
+        crmActiveTab,
+        setCrmActiveTab,
         currency,
         setCurrency,
         formatMoney,

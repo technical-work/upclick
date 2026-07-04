@@ -21,7 +21,9 @@ export default function HomeView() {
     setAiPanelOpen,
     toggleTask,
     theme,
-    setSocialConnectModalOpen
+    setSocialConnectModalOpen,
+    setActiveWorkspace,
+    setCrmActiveTab
   } = useBusiness();
   const { user, userData } = useAuth();
 
@@ -38,8 +40,8 @@ export default function HomeView() {
     .reduce((a, b) => a + b.amount, 0);
 
   const allLeads = GC.crm?.workspaces 
-    ? GC.crm.workspaces.flatMap(w => w.leads || [])
-    : (GC.crm?.leads || []);
+    ? GC.crm.workspaces.flatMap(w => (w.leads || []).map(l => ({ ...l, workspaceId: w.id })))
+    : (GC.crm?.leads || []).map(l => ({ ...l, workspaceId: 'default' }));
 
   const activeDeals = allLeads.filter(l => l.stage !== 'won' && l.stage !== 'lost' && l.stage !== 'closed').length;
   const openTasks = GC.tasks.items.filter(t => !t.done).length;
@@ -258,7 +260,14 @@ Address the user directly by their personal name (${pName}) and refer to their b
                 marginBottom: '8px',
                 cursor: 'pointer'
               }}
-              onClick={() => setCurrentPage('crm')}
+              onClick={() => {
+                const firstOverdue = overdueLeadsList[0];
+                if (firstOverdue && firstOverdue.workspaceId) {
+                  setActiveWorkspace(firstOverdue.workspaceId);
+                }
+                setCrmActiveTab('followups');
+                setCurrentPage('crm');
+              }}
             >
               <span style={{ fontSize: '15px' }}>⏰</span>
               <span style={{ flex: 1, fontSize: '13px', color: 'var(--t1)' }}>
