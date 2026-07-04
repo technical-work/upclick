@@ -75,10 +75,18 @@ export async function POST(request) {
 
     const defaultUserCredit = globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00;
     const aiEnabled = globalData.aiEnabled !== false;
+    const totalAiSpend = globalData.totalAiSpend !== undefined ? Number(globalData.totalAiSpend) : 0;
+    const aiMaxMonthlyBudget = globalData.aiMaxMonthlyBudget !== undefined ? Number(globalData.aiMaxMonthlyBudget) : 100.00;
 
     if (!aiEnabled) {
       return NextResponse.json({ 
         error: 'خدمات الذكاء الاصطناعي معطلة حالياً من قبل إدارة المنصة.' 
+      }, { status: 503 });
+    }
+
+    if (totalAiSpend >= aiMaxMonthlyBudget) {
+      return NextResponse.json({ 
+        error: 'عذراً، تم الوصول إلى الحد الأقصى لميزانية الذكاء الاصطناعي الشهرية المخصصة للمنصة حالياً.' 
       }, { status: 503 });
     }
 
@@ -105,6 +113,38 @@ export async function POST(request) {
       }, { status: 403 });
     }
 
+    // 3.5 Inject system instructions if configured
+    let requestMessages = [...messages];
+    if (globalData.aiSystemInstruction) {
+      const systemMsgIndex = requestMessages.findIndex(m => m.role === 'system');
+      if (systemMsgIndex !== -1) {
+        requestMessages[systemMsgIndex] = {
+          role: 'system',
+          content: `${globalData.aiSystemInstruction}\n\n${requestMessages[systemMsgIndex].content}`
+        };
+      } else {
+        requestMessages.unshift({
+          role: 'system',
+          content: globalData.aiSystemInstruction
+        });
+      }
+    }
+
+    // Prepare OpenAI request payload
+    const openAiPayload = {
+      model: configuredModel,
+      messages: requestMessages,
+      stream: true,
+      stream_options: { include_usage: true }
+    };
+
+    if (globalData.aiTemperature !== undefined) {
+      openAiPayload.temperature = Number(globalData.aiTemperature);
+    }
+    if (globalData.aiMaxTokens !== undefined) {
+      openAiPayload.max_tokens = Number(globalData.aiMaxTokens);
+    }
+
     // 4. Request OpenAI API with Streaming enabled
     const res = await fetch(targetEndpoint, {
       method: 'POST',
@@ -114,12 +154,7 @@ export async function POST(request) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        model: configuredModel,
-        messages: messages,
-        stream: true,
-        stream_options: { include_usage: true } // Returns usage stats in final stream payload
-      })
+      body: JSON.stringify(openAiPayload)
     });
 
     if (!res.ok) {
