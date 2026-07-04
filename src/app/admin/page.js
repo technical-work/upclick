@@ -633,8 +633,10 @@ const AdminDashboard = () => {
       
       let baseDate = Date.now();
       let currentExpires = null;
+      let currentUserCredits = 0;
       if (userSnap.exists()) {
         currentExpires = userSnap.data().expiresAt;
+        currentUserCredits = userSnap.data().aiCredits !== undefined ? Number(userSnap.data().aiCredits) : 0;
       }
       
       if (currentExpires) {
@@ -651,10 +653,30 @@ const AdminDashboard = () => {
       
       const newExpiresDate = new Date(baseDate);
       newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
+
+      // Fetch global settings to get the credit configuration for this plan
+      const globalDoc = await getDoc(doc(db, 'tenants', 'global'));
+      let creditToAdd = 0;
+      if (globalDoc.exists()) {
+        const globalData = globalDoc.data();
+        if (duration.includes('year') || duration.includes('سنو')) {
+          creditToAdd = globalData.creditAnnualPlan !== undefined ? Number(globalData.creditAnnualPlan) : 120.00;
+        } else if (duration.includes('time') || duration.includes('مرة')) {
+          creditToAdd = globalData.creditLifetimePlan !== undefined ? Number(globalData.creditLifetimePlan) : 500.00;
+        } else {
+          creditToAdd = globalData.creditMonthlyPlan !== undefined ? Number(globalData.creditMonthlyPlan) : 10.00;
+        }
+      } else {
+        // Fallback defaults
+        if (duration.includes('year') || duration.includes('سنو')) creditToAdd = 120.00;
+        else if (duration.includes('time') || duration.includes('مرة')) creditToAdd = 500.00;
+        else creditToAdd = 10.00;
+      }
       
       await setDoc(userRef, {
         expiresAt: newExpiresDate,
-        isTrial: false
+        isTrial: false,
+        aiCredits: currentUserCredits + creditToAdd
       }, { merge: true });
       
       await setDoc(doc(db, 'payments', payment.id), {
@@ -769,7 +791,9 @@ const AdminDashboard = () => {
       ...user,
       phoneNumber: user.phoneNumber?.replace(countryData[user.country || 'EG'].code, '') || '',
       aiCredits: user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits,
-      allowedTools: user.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
+      allowedTools: user.allowedTools || AVAILABLE_TOOLS.map(t => t.key),
+      subscriptionType: user.subscriptionType || 'months',
+      subscriptionDuration: user.subscriptionDuration || '1'
     });
     setShowEditModal(true);
   };
@@ -778,22 +802,25 @@ const AdminDashboard = () => {
     e.preventDefault();
     setIsCreating(true);
     try {
+      const subType = editingUser.subscriptionType || 'months';
+      const subDuration = editingUser.subscriptionDuration || '1';
+
       let expiresAt = null;
-      if (editingUser.subscriptionType === 'days') {
+      if (subType === 'days') {
         expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + parseInt(editingUser.subscriptionDuration));
-      } else if (editingUser.subscriptionType === 'months') {
+        expiresAt.setDate(expiresAt.getDate() + parseInt(subDuration));
+      } else if (subType === 'months') {
         expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + parseInt(editingUser.subscriptionDuration));
+        expiresAt.setMonth(expiresAt.getMonth() + parseInt(subDuration));
       }
 
       await setDoc(doc(db, 'users', editingUser.id), {
-        name: editingUser.name,
-        phoneNumber: `${countryData[editingUser.country || 'EG'].code}${editingUser.phoneNumber}`,
-        licenseKey: editingUser.licenseKey,
+        name: editingUser.name || '',
+        phoneNumber: `${countryData[editingUser.country || 'EG'].code}${editingUser.phoneNumber || ''}`,
+        licenseKey: editingUser.licenseKey || '',
         country: editingUser.country || 'EG',
-        subscriptionType: editingUser.subscriptionType,
-        subscriptionDuration: editingUser.subscriptionType === 'lifetime' ? null : editingUser.subscriptionDuration,
+        subscriptionType: subType,
+        subscriptionDuration: subType === 'lifetime' ? null : subDuration,
         expiresAt: expiresAt,
         aiCredits: Number(editingUser.aiCredits || 0),
         allowedTools: editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
@@ -1529,7 +1556,7 @@ const AdminDashboard = () => {
                   className="form-control"
                   type="text"
                   required
-                  value={editingUser.name}
+                  value={editingUser.name || ''}
                   onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
                   placeholder={t('common.fullName') || 'Full Name'}
                 />
@@ -1540,7 +1567,7 @@ const AdminDashboard = () => {
                   <label className="field-label">{t('common.country') || 'Country'}</label>
                   <select
                     className="form-control"
-                    value={editingUser.country}
+                    value={editingUser.country || 'EG'}
                     onChange={e => setEditingUser({ ...editingUser, country: e.target.value })}
                   >
                     <option value="EG">{isRTL ? 'مصر (EG)' : 'Egypt (EG)'}</option>
@@ -1610,7 +1637,7 @@ const AdminDashboard = () => {
                     type="text"
                     required
                     readOnly
-                    value={editingUser.licenseKey}
+                    value={editingUser.licenseKey || ''}
                     placeholder="GS-XXXX-XXXX-XXXX"
                     style={{ background: 'rgba(255,255,255,0.03)', cursor: 'default' }}
                   />
