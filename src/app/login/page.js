@@ -11,10 +11,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user, userData, loading: authLoading } = useAuth();
+  const { login, resetPassword, user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [tenantConfig, setTenantConfig] = useState(null);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -31,9 +33,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (tenantConfig?.appName) {
-      document.title = `${tenantConfig.appName} - تسجيل الدخول`;
+      document.title = isForgotPassword
+        ? `${tenantConfig.appName} - استعادة كلمة المرور`
+        : `${tenantConfig.appName} - تسجيل الدخول`;
     }
-  }, [tenantConfig]);
+  }, [tenantConfig, isForgotPassword]);
 
   useEffect(() => {
     if (!authLoading && user && userData) {
@@ -55,6 +59,23 @@ export default function LoginPage() {
     } catch (err) {
       console.error(err);
       setError('فشل تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.');
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await resetPassword(email);
+      setResetEmailSent(true);
+      setError('');
+    } catch (err) {
+      console.error(err);
+      setError('فشل إرسال البريد الإلكتروني. يرجى التأكد من كتابة البريد بشكل صحيح.');
+    } finally {
       setLoading(false);
     }
   };
@@ -94,52 +115,135 @@ export default function LoginPage() {
           );
         })()}
         <h1 style={{ ...styles.title, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>
-          {tenantConfig?.appName ? `تسجيل الدخول - ${tenantConfig.appName}` : 'تسجيل الدخول'}
+          {isForgotPassword 
+            ? 'استعادة كلمة المرور'
+            : tenantConfig?.appName ? `تسجيل الدخول - ${tenantConfig.appName}` : 'تسجيل الدخول'
+          }
         </h1>
         <p style={{ ...styles.subtitle, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
-          {tenantConfig?.tagline || 'أدخل بياناتك للوصول إلى لوحة التحكم'}
+          {isForgotPassword
+            ? 'أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.'
+            : tenantConfig?.tagline || 'أدخل بياناتك للوصول إلى لوحة التحكم'
+          }
         </p>
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.inputGroup}>
-            <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={styles.input}
-              placeholder="example@email.com"
-              required 
-              dir="ltr"
-            />
-          </div>
-          <div style={styles.inputGroup}>
-            <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
-              placeholder="••••••••"
-              required 
-              dir="ltr"
-            />
-          </div>
-          <button 
-            type="submit" 
-            disabled={loading} 
-            style={{ 
-              ...styles.button, 
-              ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
-                ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
-                : {}) 
-            }}
-          >
-            {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
-          </button>
-        </form>
+        {isForgotPassword ? (
+          resetEmailSent ? (
+            <div style={{ width: '100%', textAlign: 'center' }}>
+              <div style={{
+                color: '#00F0B4',
+                backgroundColor: 'rgba(0, 240, 180, 0.1)',
+                padding: '16px',
+                borderRadius: '12px',
+                fontSize: '13.5px',
+                marginBottom: '24px',
+                border: '1px solid rgba(0, 240, 180, 0.2)',
+                lineHeight: '1.5'
+              }}>
+                تم إرسال بريد إعادة تعيين كلمة المرور بنجاح! 
+                <br />
+                يرجى التحقق من صندوق البريد الخاص بك (Gmail).
+              </div>
+              <button 
+                onClick={() => { setIsForgotPassword(false); setResetEmailSent(false); }}
+                style={{
+                  ...styles.button,
+                  width: '100%',
+                  background: 'var(--bg3, #101018)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'var(--text2, #9090b0)',
+                  boxShadow: 'none'
+                }}
+              >
+                العودة لتسجيل الدخول
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPasswordSubmit} style={styles.form}>
+              <div style={styles.inputGroup}>
+                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
+                <input 
+                  type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={styles.input}
+                  placeholder="example@email.com"
+                  required 
+                  dir="ltr"
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                style={{ 
+                  ...styles.button, 
+                  ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
+                    ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
+                    : {}) 
+                }}
+              >
+                {loading ? 'جاري الإرسال...' : 'إرسال رابط استعادة كلمة المرور'}
+              </button>
+              <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                <span 
+                  onClick={() => setIsForgotPassword(false)}
+                  style={{ fontSize: '13px', color: '#9090b0', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  العودة لتسجيل الدخول
+                </span>
+              </div>
+            </form>
+          )
+        ) : (
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={styles.input}
+                placeholder="example@email.com"
+                required 
+                dir="ltr"
+              />
+            </div>
+            <div style={styles.inputGroup}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
+                <span 
+                  onClick={() => { setIsForgotPassword(true); setError(''); setResetEmailSent(false); }}
+                  style={{ fontSize: '12px', color: tenantConfig?.primaryColor || '#FF6B35', cursor: 'pointer', fontWeight: '500' }}
+                >
+                  هل نسيت كلمة المرور؟
+                </span>
+              </div>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={styles.input}
+                placeholder="••••••••"
+                required 
+                dir="ltr"
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={loading} 
+              style={{ 
+                ...styles.button, 
+                ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
+                  ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
+                  : {}) 
+              }}
+            >
+              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+            </button>
+          </form>
+        )}
 
         {tenantConfig?.freeTrial?.enabled && (
           <div style={styles.registerContainer}>
