@@ -200,7 +200,8 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
     }
   };
 
-  const getPriorityColor = (p) => {
+  const getPriorityColor = (p, done = false) => {
+    if (done) return 'var(--green)';
     if (p === 'high') return 'var(--red)';
     if (p === 'medium') return 'var(--amber)';
     return 'var(--green)';
@@ -274,8 +275,8 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
               width: '8px', 
               height: '8px', 
               borderRadius: '50%', 
-              background: getPriorityColor(task.priority),
-              boxShadow: `0 0 8px ${getPriorityColor(task.priority)}`
+              background: getPriorityColor(task.priority, task.done),
+              boxShadow: `0 0 8px ${getPriorityColor(task.priority, task.done)}`
             }} 
           />
 
@@ -646,7 +647,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
 
                         {/* Category & Priority Badge Row */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: getPriorityColor(task.priority), display: 'inline-block' }} />
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: getPriorityColor(task.priority, task.done), display: 'inline-block' }} />
                           
                           {task.category && (
                             <span style={{ 
