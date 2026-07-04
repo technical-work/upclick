@@ -245,7 +245,10 @@ export default function SocialConnectModal() {
                     type="number"
                     placeholder="0"
                     value={fbFollowers}
-                    onChange={(e) => setFbFollowers(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFbFollowers(val === '' ? '' : parseInt(val) || 0);
+                    }}
                   />
                 </div>
               </div>
@@ -278,7 +281,10 @@ export default function SocialConnectModal() {
                     type="number"
                     placeholder="0"
                     value={igFollowers}
-                    onChange={(e) => setIgFollowers(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setIgFollowers(val === '' ? '' : parseInt(val) || 0);
+                    }}
                   />
                 </div>
               </div>
@@ -311,7 +317,10 @@ export default function SocialConnectModal() {
                     type="number"
                     placeholder="0"
                     value={ttFollowers}
-                    onChange={(e) => setTtFollowers(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTtFollowers(val === '' ? '' : parseInt(val) || 0);
+                    }}
                   />
                 </div>
               </div>
