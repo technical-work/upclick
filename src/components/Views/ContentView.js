@@ -5,6 +5,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { DB, tvDB, soundsDB } from '../../data/mockData';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomSelect from '../CustomSelect';
 
 export default function ContentView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
@@ -539,22 +540,22 @@ export default function ContentView() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Platform', 'المنصة')}</label>
-                    <select className="inp" value={scrPlatform} onChange={(e) => setScrPlatform(e.target.value)}>
-                      <option>Instagram Reel (30–60s)</option>
-                      <option>TikTok (60–90s)</option>
-                      <option>YouTube Short</option>
-                      <option>YouTube Video (5–10min)</option>
-                    </select>
+                    <CustomSelect className="inp" value={scrPlatform} onChange={(e) => setScrPlatform(e.target.value)}>
+                      <option value="Instagram Reel (30–60s)">Instagram Reel (30–60s)</option>
+                      <option value="TikTok (60–90s)">TikTok (60–90s)</option>
+                      <option value="YouTube Short">YouTube Short</option>
+                      <option value="YouTube Video (5–10min)">YouTube Video (5–10min)</option>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Style', 'الأسلوب')}</label>
-                    <select className="inp" value={scrStyle} onChange={(e) => setScrStyle(e.target.value)}>
-                      <option>Educational + Tips</option>
-                      <option>Story / Personal</option>
-                      <option>POV / Trending</option>
-                      <option>Tutorial</option>
-                      <option>Viral Hook</option>
-                    </select>
+                    <CustomSelect className="inp" value={scrStyle} onChange={(e) => setScrStyle(e.target.value)}>
+                      <option value="Educational + Tips">Educational + Tips</option>
+                      <option value="Story / Personal">Story / Personal</option>
+                      <option value="POV / Trending">POV / Trending</option>
+                      <option value="Tutorial">Tutorial</option>
+                      <option value="Viral Hook">Viral Hook</option>
+                    </CustomSelect>
                   </div>
                 </div>
                 <div>
@@ -722,12 +723,12 @@ export default function ContentView() {
               ></textarea>
               <div style={{ marginTop: '9px' }}>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Original Format', 'الصيغة الأصلية')}</label>
-                <select className="inp" value={repType} onChange={(e) => setRepType(e.target.value)} style={{ width: '100%' }}>
-                  <option>Instagram Reel script</option>
-                  <option>Blog post / Article</option>
-                  <option>YouTube script</option>
-                  <option>Podcast points</option>
-                </select>
+                <CustomSelect className="inp" value={repType} onChange={(e) => setRepType(e.target.value)} style={{ width: '100%' }}>
+                  <option value="Instagram Reel script">Instagram Reel script</option>
+                  <option value="Blog post / Article">Blog post / Article</option>
+                  <option value="YouTube script">YouTube script</option>
+                  <option value="Podcast points">Podcast points</option>
+                </CustomSelect>
               </div>
               <button className="btn btn-prime" onClick={handleRepurposeContent} style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }}>
                 {repurposing ? L('Repurposing...', 'جاري الصياغة...') : L('♻️ Repurpose to 5 Formats', '♻️ إعادة الصياغة لـ ٥ أشكال')}
@@ -836,20 +837,20 @@ export default function ContentView() {
               <div style={{ marginTop: '9px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Style', 'الأسلوب')}</label>
-                  <select className="inp" value={qaStyle} onChange={(e) => setQaStyle(e.target.value)} style={{ width: '100%' }}>
-                    <option>{L('Friendly & Casual', 'ودود وعفوي')}</option>
-                    <option>{L('Educational', 'تعليمي ومفصل')}</option>
-                    <option>{L('Short & Inspiring', 'قصير وملهم')}</option>
-                    <option>{L('Funny & Relatable', 'مضحك ومقرب')}</option>
-                  </select>
+                  <CustomSelect className="inp" value={qaStyle} onChange={(e) => setQaStyle(e.target.value)} style={{ width: '100%' }}>
+                    <option value="Friendly & Casual">{L('Friendly & Casual', 'ودود وعفوي')}</option>
+                    <option value="Educational">{L('Educational', 'تعليمي ومفصل')}</option>
+                    <option value="Short & Inspiring">{L('Short & Inspiring', 'قصير وملهم')}</option>
+                    <option value="Funny & Relatable">{L('Funny & Relatable', 'مضحك ومقرب')}</option>
+                  </CustomSelect>
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Format', 'الصيغة')}</label>
-                  <select className="inp" value={qaFormat} onChange={(e) => setQaFormat(e.target.value)} style={{ width: '100%' }}>
-                    <option>{L('Story reply', 'رد ستوري')}</option>
-                    <option>{L('Comment reply', 'رد تعليق')}</option>
-                    <option>{L('Dedicated Reel', 'ريل مخصص')}</option>
-                  </select>
+                  <CustomSelect className="inp" value={qaFormat} onChange={(e) => setQaFormat(e.target.value)} style={{ width: '100%' }}>
+                    <option value="Story reply">{L('Story reply', 'رد ستوري')}</option>
+                    <option value="Comment reply">{L('Comment reply', 'رد تعليق')}</option>
+                    <option value="Dedicated Reel">{L('Dedicated Reel', 'ريل مخصص')}</option>
+                  </CustomSelect>
                 </div>
               </div>
               <button className="btn btn-prime" onClick={handleGenQA} style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }}>

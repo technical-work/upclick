@@ -1355,6 +1355,20 @@ Pin a comment on every new post asking a polarizing question related to your nic
 function generateCustomChatResponse(isAR, prompt, context, name, niche, stage, price, pain, demo, channels, goals) {
   const q = String(prompt || '').toLowerCase();
   
+  const businessKeywords = [
+    'marketing', 'sales', 'crm', 'lead', 'task', 'finance', 'revenue', 'pricing', 'offer', 'brand', 'niche',
+    'تسويق', 'بيع', 'عملاء', 'صفقة', 'مبيعات', 'سعر', 'عرض', 'مهمة', 'مهام', 'مالية', 'ارباح', 'إيرادات', 'مشروع',
+    'landing', 'page', 'هبوط', 'صفحة', 'موقع', 'business', 'بزنس', 'عمل', 'أرباح', 'مصاريف', 'منتج', 'product',
+    'content', 'محتوى', 'منشور', 'post', 'social', 'سوشيال', 'تليجرام', 'telegram', 'instagram', 'انستجرام'
+  ];
+  const isOffTopic = !businessKeywords.some(keyword => q.includes(keyword));
+
+  if (isOffTopic) {
+    return isAR
+      ? `عذراً، أنا هنا لمساعدتك في منصة UpKlick وإدارة أعمالك داخل التطبيق فقط. لا يمكنني الإجابة على أسئلة خارجة عن هذا النطاق.`
+      : `I'm sorry, I am a dedicated assistant for the UpKlick platform and your business operations inside it. I cannot answer questions outside this scope.`;
+  }
+  
   if (isAR) {
     if (q.includes('تسويق') || q.includes('حملة') || q.includes('ترويج') || q.includes('marketing') || q.includes('ad')) {
       return `### 📣 استشارة تسويقية مخصصة لـ **${name}**

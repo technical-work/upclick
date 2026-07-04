@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomSelect from '../CustomSelect';
 
 export default function MarketingView() {
   const { lang, L, t, GC, saveGC, formatMoney, confirmAction } = useBusiness();
@@ -816,16 +817,21 @@ Generate the campaign structure containing:
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product Type', 'نوع المنتج')}</label>
-                    <select className="inp" value={inputs.priceType} onChange={e => handleInputChange('priceType', e.target.value)}>
-                      <option>1-on-1 Coaching</option><option>Group Program</option><option>Online Course</option><option>DFY Service</option>
-                    </select>
+                    <CustomSelect className="inp" value={inputs.priceType} onChange={e => handleInputChange('priceType', e.target.value)}>
+                      <option value="1-on-1 Coaching">1-on-1 Coaching</option>
+                      <option value="Group Program">Group Program</option>
+                      <option value="Online Course">Online Course</option>
+                      <option value="DFY Service">DFY Service</option>
+                    </CustomSelect>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Experience Level', 'مستوى الخبرة')}</label>
-                      <select className="inp" value={inputs.priceExp || ''} onChange={e => handleInputChange('priceExp', e.target.value)}>
-                        <option>Beginner (0-1 year)</option><option>Intermediate (1-3 years)</option><option>Expert (5+ years)</option>
-                      </select>
+                      <CustomSelect className="inp" value={inputs.priceExp || ''} onChange={e => handleInputChange('priceExp', e.target.value)}>
+                        <option value="Beginner (0-1 year)">Beginner (0-1 year)</option>
+                        <option value="Intermediate (1-3 years)">Intermediate (1-3 years)</option>
+                        <option value="Expert (5+ years)">Expert (5+ years)</option>
+                      </CustomSelect>
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Monthly Income', 'الدخل الشهري المستهدف')}</label>
@@ -899,16 +905,21 @@ Generate the campaign structure containing:
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Traffic Source', 'مصدر الترافيك')}</label>
-                    <select className="inp" value={inputs.funTraffic} onChange={e => handleInputChange('funTraffic', e.target.value)}>
-                      <option>Instagram organic</option><option>Meta Paid Ads</option><option>YouTube</option><option>Email list</option>
-                    </select>
+                    <CustomSelect className="inp" value={inputs.funTraffic} onChange={e => handleInputChange('funTraffic', e.target.value)}>
+                      <option value="Instagram organic">Instagram organic</option>
+                      <option value="Meta Paid Ads">Meta Paid Ads</option>
+                      <option value="YouTube">YouTube</option>
+                      <option value="Email list">Email list</option>
+                    </CustomSelect>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Funnel Model', 'موديل المسار')}</label>
-                      <select className="inp" value={inputs.funModel} onChange={e => handleInputChange('funModel', e.target.value)}>
-                        <option>Lead gen → Call → Close</option><option>Webinar funnel</option><option>Free → Paid</option>
-                      </select>
+                      <CustomSelect className="inp" value={inputs.funModel} onChange={e => handleInputChange('funModel', e.target.value)}>
+                        <option value="Lead gen → Call → Close">Lead gen → Call → Close</option>
+                        <option value="Webinar funnel">Webinar funnel</option>
+                        <option value="Free → Paid">Free → Paid</option>
+                      </CustomSelect>
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product Price', 'سعر المنتج')}</label>
@@ -939,9 +950,12 @@ Generate the campaign structure containing:
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Lead Magnet Format', 'صيغة المغناطيس')}</label>
-                    <select className="inp" value={inputs.magnetFormat} onChange={e => handleInputChange('magnetFormat', e.target.value)}>
-                      <option>Free PDF / Guide</option><option>Free Mini Course</option><option>Free Webinar</option><option>Free Consultation</option>
-                    </select>
+                    <CustomSelect className="inp" value={inputs.magnetFormat} onChange={e => handleInputChange('magnetFormat', e.target.value)}>
+                      <option value="Free PDF / Guide">Free PDF / Guide</option>
+                      <option value="Free Mini Course">Free Mini Course</option>
+                      <option value="Free Webinar">Free Webinar</option>
+                      <option value="Free Consultation">Free Consultation</option>
+                    </CustomSelect>
                   </div>
                   <button className="btn btn-prime" onClick={runLeadMagnet} style={{ width: '100%', justifyContent: 'center' }}>
                     🧲 {L('Build Lead Magnet', 'صمّم مغناطيس العملاء')}
@@ -964,15 +978,19 @@ Generate the campaign structure containing:
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Visitor Awareness', 'مستوى وعي الزائر')}</label>
-                      <select className="inp" value={inputs.lpPlanAware} onChange={e => handleInputChange('lpPlanAware', e.target.value)}>
-                        <option>Cold (never heard of you)</option><option>Warm (knows your content)</option><option>Hot (ready to buy)</option>
-                      </select>
+                      <CustomSelect className="inp" value={inputs.lpPlanAware} onChange={e => handleInputChange('lpPlanAware', e.target.value)}>
+                        <option value="Cold (never heard of you)">Cold (never heard of you)</option>
+                        <option value="Warm (knows your content)">Warm (knows your content)</option>
+                        <option value="Hot (ready to buy)">Hot (ready to buy)</option>
+                      </CustomSelect>
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Page Goal', 'هدف الصفحة')}</label>
-                      <select className="inp" value={inputs.lpPlanGoal} onChange={e => handleInputChange('lpPlanGoal', e.target.value)}>
-                        <option>Collect leads</option><option>Book a call</option><option>Direct purchase</option>
-                      </select>
+                      <CustomSelect className="inp" value={inputs.lpPlanGoal} onChange={e => handleInputChange('lpPlanGoal', e.target.value)}>
+                        <option value="Collect leads">Collect leads</option>
+                        <option value="Book a call">Book a call</option>
+                        <option value="Direct purchase">Direct purchase</option>
+                      </CustomSelect>
                     </div>
                   </div>
                   <button className="btn btn-prime" onClick={runLandingPagePlan} style={{ width: '100%', justifyContent: 'center' }}>
@@ -1040,9 +1058,12 @@ Generate the campaign structure containing:
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Model', 'نموذج العمل')}</label>
-                    <select className="inp" value={inputs.kpiModel} onChange={e => handleInputChange('kpiModel', e.target.value)}>
-                      <option>Coaching / Services</option><option>Online Courses</option><option>E-commerce</option><option>SaaS / App</option>
-                    </select>
+                    <CustomSelect className="inp" value={inputs.kpiModel} onChange={e => handleInputChange('kpiModel', e.target.value)}>
+                      <option value="Coaching / Services">Coaching / Services</option>
+                      <option value="Online Courses">Online Courses</option>
+                      <option value="E-commerce">E-commerce</option>
+                      <option value="SaaS / App">SaaS / App</option>
+                    </CustomSelect>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div>
@@ -1051,9 +1072,12 @@ Generate the campaign structure containing:
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Stage', 'المرحلة الحالية')}</label>
-                      <select className="inp" value={inputs.kpiStage} onChange={e => handleInputChange('kpiStage', e.target.value)}>
-                        <option>Just starting</option><option>0-$3K/month</option><option>$3K-$10K/month</option><option>$10K+/month</option>
-                      </select>
+                      <CustomSelect className="inp" value={inputs.kpiStage} onChange={e => handleInputChange('kpiStage', e.target.value)}>
+                        <option value="Just starting">Just starting</option>
+                        <option value="0-$3K/month">0-$3K/month</option>
+                        <option value="$3K-$10K/month">$3K-$10K/month</option>
+                        <option value="$10K+/month">$10K+/month</option>
+                      </CustomSelect>
                     </div>
                   </div>
                   <button className="btn btn-prime" onClick={runKPIPlanner} style={{ width: '100%', justifyContent: 'center' }}>
@@ -1087,9 +1111,11 @@ Generate the campaign structure containing:
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Growth Plan', 'خطة النمو')}</label>
-                      <select className="inp" value={inputs.revGrowth} onChange={e => handleInputChange('revGrowth', e.target.value)}>
-                        <option>Organic only</option><option>Organic + ads</option><option>Ads focus</option>
-                      </select>
+                      <CustomSelect className="inp" value={inputs.revGrowth} onChange={e => handleInputChange('revGrowth', e.target.value)}>
+                        <option value="Organic only">Organic only</option>
+                        <option value="Organic + ads">Organic + ads</option>
+                        <option value="Ads focus">Ads focus</option>
+                      </CustomSelect>
                     </div>
                   </div>
                   <button className="btn btn-prime" onClick={runRevenueForecast} style={{ width: '100%', justifyContent: 'center' }}>
@@ -1112,9 +1138,11 @@ Generate the campaign structure containing:
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Lead Gen Method', 'طريقة جمع العملاء')}</label>
-                    <select className="inp" value={inputs.leadMethod} onChange={e => handleInputChange('leadMethod', e.target.value)}>
-                      <option>Organic content + DM</option><option>Lead magnet + email</option><option>Paid ads</option>
-                    </select>
+                    <CustomSelect className="inp" value={inputs.leadMethod} onChange={e => handleInputChange('leadMethod', e.target.value)}>
+                      <option value="Organic content + DM">Organic content + DM</option>
+                      <option value="Lead magnet + email">Lead magnet + email</option>
+                      <option value="Paid ads">Paid ads</option>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Lead Goal (monthly)', 'هدف العملاء المحتملين شهرياً')}</label>

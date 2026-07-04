@@ -20,11 +20,28 @@ const initialGC = {
     goal: ''
   },
   strategy: { idea_analysis: '', icp: '', swot: { s: '', w: '', o: '', t: '' }, roadmap: '' },
-  crm: { leads: [] },
+  crm: { 
+    workspaces: [
+      {
+        id: 'default',
+        name: 'Default Workspace',
+        stages: [
+          { key: 'new', label: 'New Lead', color: 'var(--blue)' },
+          { key: 'contacted', label: 'Contacted', color: 'var(--purple)' },
+          { key: 'qualified', label: 'Qualified', color: 'var(--amber)' },
+          { key: 'proposal', label: 'Proposal Sent', color: 'var(--a)' },
+          { key: 'closed', label: 'Closed Won', color: 'var(--green)' },
+          { key: 'lost', label: 'Lost', color: 'var(--red)' }
+        ],
+        leads: []
+      }
+    ],
+    activeWorkspaceId: 'default'
+  },
   tasks: { items: [] },
   finance: { entries: [], subscriptions: [] },
   calendar: { events: [] },
-  creator: { followers: '284K', engagement: '6.8%', revenue_monthly: '$4,320' },
+  creator: { followers: '0', engagement: '6.8%', revenue_monthly: '$4,320' },
   marketing: {
     inputs: {},
     outputs: {},
@@ -79,7 +96,9 @@ const initialGC = {
     merch: []
   },
   socialAccounts: {
-    connected: { instagram: true, tiktok: true, youtube: false, snapchat: false, x: false },
+    connected: { instagram: false, tiktok: false, facebook: false, youtube: false, snapchat: false, x: false },
+    profiles: { instagram: '', tiktok: '', facebook: '' },
+    followers: { instagram: 0, tiktok: 0, facebook: 0, total: 0 },
     aiAnalysis: ''
   },
   socialTrends: {
@@ -278,6 +297,7 @@ export default function RegisterPage() {
         role: 'user',
         lang: 'ar',
         theme: 'dark',
+        onboardingDone: false,
         GC: userGC,
         isTrial: isTrial,
         trialStartedAt: trialStartedAt,

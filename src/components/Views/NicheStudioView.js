@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import CustomSelect from '../CustomSelect';
 
 export default function NicheStudioView() {
   const [filterPeriod, setFilterPeriod] = useState('all');
@@ -236,14 +237,14 @@ export default function NicheStudioView() {
 
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>📦 {L('Business Type / Field', 'مجال العمل')}</label>
-                  <select className="inp" value={field} onChange={(e) => { setField(e.target.value); saveStudioData({ field: e.target.value }); }}>
+                  <CustomSelect className="inp" value={field} onChange={(e) => { setField(e.target.value); saveStudioData({ field: e.target.value }); }}>
                     <option value="coaching">🎓 Coaching & Training</option>
                     <option value="content">📱 Content Creation</option>
                     <option value="ecommerce">🛒 E-commerce / Products</option>
                     <option value="agency">🏢 Agency / Services</option>
                     <option value="tech">💻 Tech / SaaS</option>
                     <option value="finance">💰 Finance / Investment</option>
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>
@@ -280,12 +281,12 @@ export default function NicheStudioView() {
 
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>🎯 {L('Target Audience', 'الجمهور المستهدف')}</label>
-                  <select className="inp" value={audience} onChange={e => { setAudience(e.target.value); saveStudioData({ audience: e.target.value }); }}>
-                    <option>Arab entrepreneurs</option>
-                    <option>Arab women</option>
-                    <option>Arab youth (18-30)</option>
-                    <option>Global Arabic speakers</option>
-                  </select>
+                  <CustomSelect className="inp" value={audience} onChange={e => { setAudience(e.target.value); saveStudioData({ audience: e.target.value }); }}>
+                    <option value="Arab entrepreneurs">Arab entrepreneurs</option>
+                    <option value="Arab women">Arab women</option>
+                    <option value="Arab youth (18-30)">Arab youth (18-30)</option>
+                    <option value="Global Arabic speakers">Global Arabic speakers</option>
+                  </CustomSelect>
                 </div>
 
                 <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>

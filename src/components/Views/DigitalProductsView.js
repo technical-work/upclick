@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomSelect from '../CustomSelect';
 
 const MICRO_NICHES = {
   coaching: ['Business Coaching', 'Life Coaching', 'Career Coaching', 'Relationship Coaching', 'Health Coaching', 'Mindset & Productivity'],
@@ -797,20 +798,20 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Product Type', 'نوع المنتج')}
                     </label>
-                    <select 
+                    <CustomSelect 
                       className="inp" 
                       value={builderType} 
                       onChange={(e) => setBuilderType(e.target.value)}
                     >
-                      <option>Notion Template</option>
-                      <option>Canva Template</option>
-                      <option>AI Prompt Pack</option>
-                      <option>PDF Guide / Ebook</option>
-                      <option>Excel / Sheets Template</option>
-                      <option>Mini Course</option>
-                      <option>Swipe File</option>
-                      <option>Toolkit / Bundle</option>
-                    </select>
+                      <option value="Notion Template">Notion Template</option>
+                      <option value="Canva Template">Canva Template</option>
+                      <option value="AI Prompt Pack">AI Prompt Pack</option>
+                      <option value="PDF Guide / Ebook">PDF Guide / Ebook</option>
+                      <option value="Excel / Sheets Template">Excel / Sheets Template</option>
+                      <option value="Mini Course">Mini Course</option>
+                      <option value="Swipe File">Swipe File</option>
+                      <option value="Toolkit / Bundle">Toolkit / Bundle</option>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
@@ -829,7 +830,7 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Niche', 'المجال')}
                     </label>
-                    <select className="inp" value={builderNiche} onChange={(e) => setBuilderNiche(e.target.value)}>
+                    <CustomSelect className="inp" value={builderNiche} onChange={(e) => setBuilderNiche(e.target.value)}>
                       <option value="coaching">{L('Coaching', 'كوتشينج')}</option>
                       <option value="marketing">{L('Marketing', 'تسويق')}</option>
                       <option value="finance">{L('Finance', 'مالية')}</option>
@@ -838,19 +839,19 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                       <option value="content">{L('Content Creation', 'صناعة محتوى')}</option>
                       <option value="business">{L('Business', 'أعمال بيزنس')}</option>
                       <option value="design">{L('Design & Arts', 'تصميم')}</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Audience Size', 'حجم جمهورك الحالي')}
                     </label>
-                    <select className="inp" value={builderAudienceSize} onChange={(e) => setBuilderAudienceSize(e.target.value)}>
+                    <CustomSelect className="inp" value={builderAudienceSize} onChange={(e) => setBuilderAudienceSize(e.target.value)}>
                       <option value="0 - Just starting">{L('0 - Just starting', '٠ - مبتدئ تماماً')}</option>
                       <option value="Under 5k followers">{L('Under 5k followers', 'أقل من ٥ آلاف متابع')}</option>
                       <option value="5k - 20k followers">{L('5k - 20k followers', 'من ٥ إلى ٢٠ ألف متابع')}</option>
                       <option value="20k - 100k followers">{L('20k - 100k followers', 'من ٢٠ إلى ١٠٠ ألف متابع')}</option>
                       <option value="100k+ followers">{L('100k+ followers', 'أكثر من ١٠٠ ألف متابع')}</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
@@ -858,7 +859,7 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Price Point', 'نقطة السعر')}
                     </label>
-                    <select 
+                    <CustomSelect 
                       className="inp" 
                       value={builderPrice} 
                       onChange={(e) => setBuilderPrice(e.target.value)}
@@ -869,22 +870,22 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                       <option value="47">$47 — Mid-tier</option>
                       <option value="97">$97 — Premium</option>
                       <option value="197">$197 — High-ticket</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Your Time Available', 'الوقت المتاح لديك')}
                     </label>
-                    <select 
+                    <CustomSelect 
                       className="inp" 
                       value={builderTime} 
                       onChange={(e) => setBuilderTime(e.target.value)}
                     >
-                      <option>1-2 days sprint</option>
-                      <option>1 week</option>
-                      <option>2 weeks</option>
-                      <option>1 month</option>
-                    </select>
+                      <option value="1-2 days sprint">1-2 days sprint</option>
+                      <option value="1 week">1 week</option>
+                      <option value="2 weeks">2 weeks</option>
+                      <option value="1 month">1 month</option>
+                    </CustomSelect>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
@@ -892,26 +893,26 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Deliverable Format', 'صيغة تسليم المنتج')}
                     </label>
-                    <select className="inp" value={builderFormat} onChange={(e) => setBuilderFormat(e.target.value)}>
+                    <CustomSelect className="inp" value={builderFormat} onChange={(e) => setBuilderFormat(e.target.value)}>
                       <option value="Notion Workspace">{L('Notion Workspace', 'مساحة عمل Notion')}</option>
                       <option value="Canva templates link">{L('Canva templates link', 'رابط قالب Canva قابل للتعديل')}</option>
                       <option value="PDF / Google Doc">{L('PDF / Google Doc', 'ملف PDF / مستند جوجل')}</option>
                       <option value="Video course files">{L('Video course files', 'ملفات كورس فيديو')}</option>
                       <option value="ZIP file with assets">{L('ZIP file with assets', 'ملف ZIP مضغوط يحتوي على ملفات')}</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Primary Traffic Channel', 'قناة الترويج الأساسية')}
                     </label>
-                    <select className="inp" value={builderChannel} onChange={(e) => setBuilderChannel(e.target.value)}>
+                    <CustomSelect className="inp" value={builderChannel} onChange={(e) => setBuilderChannel(e.target.value)}>
                       <option value="Instagram Reels">{L('Instagram Reels', 'فيديوهات إنستغرام ريلز')}</option>
                       <option value="TikTok">{L('TikTok', 'تيك توك')}</option>
                       <option value="YouTube">{L('YouTube', 'يوتيوب')}</option>
                       <option value="LinkedIn Articles">{L('LinkedIn Articles', 'منشورات لينكد إن')}</option>
                       <option value="Email Newsletter">{L('Email Newsletter', 'قائمة بريدية / نيوزليتر')}</option>
                       <option value="Paid Ads">{L('Paid Ads', 'إعلانات ممولة')}</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                 </div>
                 <div>

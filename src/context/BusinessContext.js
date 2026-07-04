@@ -43,7 +43,7 @@ const initialGC = {
   tasks: { items: [] },
   finance: { entries: [], subscriptions: [] },
   calendar: { events: [] },
-  creator: { followers: '284K', engagement: '6.8%', revenue_monthly: '$4,320' },
+  creator: { followers: '0', engagement: '6.8%', revenue_monthly: '$4,320' },
   marketing: {
     inputs: {},
     outputs: {},
@@ -109,7 +109,9 @@ const initialGC = {
     merch: []
   },
   socialAccounts: {
-    connected: { instagram: true, tiktok: true, youtube: false, snapchat: false, x: false },
+    connected: { instagram: false, tiktok: false, facebook: false, youtube: false, snapchat: false, x: false },
+    profiles: { instagram: '', tiktok: '', facebook: '' },
+    followers: { instagram: 0, tiktok: 0, facebook: 0, total: 0 },
     aiAnalysis: ''
   },
   socialTrends: {
@@ -245,6 +247,7 @@ export function BusinessProvider({ children }) {
   const [globalAlert, setGlobalAlert] = useState(null);
   const [globalConfirm, setGlobalConfirm] = useState(null); // { message, callback }
   const [globalPrompt, setGlobalPrompt] = useState(null); // { message, defaultValue, callback }
+  const [socialConnectModalOpen, setSocialConnectModalOpen] = useState(false);
 
   const [rates, setRates] = useState({ USD: 1, EGP: 48.5, EUR: 0.92, SAR: 3.75, AED: 3.67 });
 
@@ -399,6 +402,9 @@ export function BusinessProvider({ children }) {
           if (data.onboardingDone) {
             setOnboardingDone(true);
             localStorage.setItem('ba_onboard_done', '1');
+          } else {
+            setOnboardingDone(false);
+            localStorage.setItem('ba_onboard_done', '0');
           }
         }
       }, (err) => {
@@ -443,6 +449,9 @@ export function BusinessProvider({ children }) {
       if (userData.onboardingDone) {
         setOnboardingDone(true);
         localStorage.setItem('ba_onboard_done', '1');
+      } else {
+        setOnboardingDone(false);
+        localStorage.setItem('ba_onboard_done', '0');
       }
     }
   }, [userData, isTeamMember, ownerUid]);
@@ -983,7 +992,9 @@ export function BusinessProvider({ children }) {
         setLpPreviewHtml,
         dpDetailOpen,
         setDpDetailOpen,
-         setDpDetailIndex,
+        setDpDetailIndex,
+        socialConnectModalOpen,
+        setSocialConnectModalOpen,
         tenantConfig,
         isTeamMember,
         confirmAction,

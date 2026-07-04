@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import CustomSelect from '../CustomSelect';
 
 export default function LeadModal() {
   const {
@@ -18,19 +19,19 @@ export default function LeadModal() {
     GC
   } = useBusiness();
 
-  const defaultStages = [
+  const defaultStages = React.useMemo(() => [
     { key: 'new', label: L('New Lead', 'ليد جديد') },
     { key: 'contacted', label: L('Contacted', 'تم التواصل') },
     { key: 'qualified', label: L('Qualified', 'مؤهل') },
     { key: 'proposal', label: L('Proposal Sent', 'تم إرسال العرض') },
     { key: 'closed', label: L('Closed Won', 'صفقة ناجحة') },
     { key: 'lost', label: L('Lost', 'صفقة خاسرة') }
-  ];
+  ], [lang]);
 
   const workspaces = GC.crm?.workspaces || [];
   const activeWsId = GC.crm?.activeWorkspaceId || 'default';
   const activeWs = workspaces.find(w => w.id === activeWsId) || workspaces[0];
-  const stages = activeWs?.stages || defaultStages;
+  const stages = React.useMemo(() => activeWs?.stages || defaultStages, [activeWs, defaultStages]);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -185,18 +186,18 @@ export default function LeadModal() {
               <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                 {L('Source', 'المصدر')}
               </label>
-              <select
+              <CustomSelect
                 className="inp"
                 id="lead-source"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
               >
-                <option>Instagram DM</option>
-                <option>Referral</option>
-                <option>Website</option>
-                <option>Telegram</option>
-                <option>Other</option>
-              </select>
+                <option value="Instagram DM">Instagram DM</option>
+                <option value="Referral">Referral</option>
+                <option value="Website">Website</option>
+                <option value="Telegram">Telegram</option>
+                <option value="Other">Other</option>
+              </CustomSelect>
             </div>
             <div>
               <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
@@ -217,12 +218,10 @@ export default function LeadModal() {
               <input
                 className="inp"
                 id="lead-followup"
-                type={followupDate ? "date" : "text"}
-                placeholder="dd/mm/yyyy"
-                onFocus={(e) => e.target.type = 'date'}
-                onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+                type="date"
                 value={followupDate}
                 onChange={(e) => setFollowupDate(e.target.value)}
+                onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
               />
             </div>
             <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center' }}>

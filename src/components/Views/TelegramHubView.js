@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomSelect from '../CustomSelect';
 import { collection, onSnapshot, query, orderBy, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import Papa from 'papaparse';
@@ -116,6 +117,8 @@ export default function TelegramHubView() {
   const [testChatId, setTestChatId] = useState('');
   const [testMessage, setTestMessage] = useState('Test from UpKlick 🚀');
   const [testLoading, setTestLoading] = useState(false);
+  const [diagBotToken, setDiagBotToken] = useState('');
+  const [saveTokenLoading, setSaveTokenLoading] = useState(false);
 
   // New Templates and Media UI States
   const fileInputRef = useRef(null);
@@ -465,9 +468,10 @@ export default function TelegramHubView() {
 
   useEffect(() => {
     if (showDiagnostics) {
+      setDiagBotToken(GC?.integrations?.telegramBotToken || '');
       fetchDiagnostics();
     }
-  }, [showDiagnostics]);
+  }, [showDiagnostics, GC?.integrations?.telegramBotToken]);
 
   const handleSendTest = async () => {
     if (!testChatId) return alert(L('Please enter a Chat ID', 'الرجاء إدخال معرف المحادثة (Chat ID)'));
@@ -563,36 +567,43 @@ export default function TelegramHubView() {
     setActiveTab('inbox');
   };
 
-  const handleConnectAPI = async () => {
-    const newToken = prompt(L('Enter Telegram Bot API token:', 'أدخل توكن بوت التليجرام الخاص بك:'), GC?.integrations?.telegramBotToken || '');
-    if (newToken !== null) {
-      const webhookUrl = 'https://upklick-eight.vercel.app/api/telegram/webhook';
-      
-      if (newToken) {
-        try {
-          const res = await fetch(`https://api.telegram.org/bot${newToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
-          const data = await res.json();
-          if (!data.ok) {
-            alert(L('Failed to set webhook with Telegram: ', 'فشل إعداد الويب هوك مع تليجرام: ') + data.description);
-            return;
-          }
-        } catch (error) {
-          alert(L('Network error setting webhook.', 'خطأ في الشبكة أثناء إعداد الويب هوك.'));
+  const handleSaveDiagToken = async (newTokenValue) => {
+    const newToken = newTokenValue.trim();
+    const webhookUrl = 'https://upklick-eight.vercel.app/api/telegram/webhook';
+    setSaveTokenLoading(true);
+    
+    if (newToken) {
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${newToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+        const data = await res.json();
+        if (!data.ok) {
+          alert(L('Failed to set webhook with Telegram: ', 'فشل إعداد الويب هوك مع تليجرام: ') + data.description);
+          setSaveTokenLoading(false);
           return;
         }
+      } catch (error) {
+        alert(L('Network error setting webhook.', 'خطأ في الشبكة أثناء إعداد الويب هوك.'));
+        setSaveTokenLoading(false);
+        return;
       }
+    }
 
-      const newGC = { 
-        ...GC, 
-        integrations: { 
-          ...(GC.integrations || {}), 
-          telegramBotToken: newToken, 
-          telegramWebhookUrl: webhookUrl,
-          telegramConnected: !!newToken 
-        } 
-      };
-      saveGC(newGC);
-      if (newToken) alert(L('Token updated successfully! You can now receive messages.', 'تم تحديث التوكن بنجاح! يمكنك الآن استلام الرسائل.'));
+    const newGC = { 
+      ...GC, 
+      integrations: { 
+        ...(GC.integrations || {}), 
+        telegramBotToken: newToken, 
+        telegramWebhookUrl: webhookUrl,
+        telegramConnected: !!newToken 
+      } 
+    };
+    await saveGC(newGC);
+    setSaveTokenLoading(false);
+    
+    if (newToken) {
+      alert(L('Token updated successfully! Webhook connected.', 'تم تحديث التوكن بنجاح! تم ربط الويب هوك وبدء استقبال الرسائل.'));
+    } else {
+      alert(L('Token cleared and bot disconnected.', 'تم مسح التوكن وإلغاء ربط البوت بنجاح.'));
     }
   };
 
@@ -1437,22 +1448,22 @@ export default function TelegramHubView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Template Type', 'نوع القالب')}</label>
-                <select className="inp" value={tmplType} onChange={(e) => { setTmplType(e.target.value); saveTGHub({ tmplType: e.target.value }); }}>
+                <CustomSelect className="inp" value={tmplType} onChange={(e) => { setTmplType(e.target.value); saveTGHub({ tmplType: e.target.value }); }}>
                   <option value="Sales Script">Sales Script</option>
                   <option value="Follow Up">Follow Up</option>
                   <option value="Welcome Message">Welcome Message</option>
                   <option value="Appointment Reminder">Appointment Reminder</option>
                   <option value="Payment Reminder">Payment Reminder</option>
                   <option value="Re-engagement">Re-engagement</option>
-                </select>
+                </CustomSelect>
               </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Language', 'اللغة')}</label>
-                <select className="inp" value={tmplLang} onChange={(e) => { setTmplLang(e.target.value); saveTGHub({ tmplLang: e.target.value }); }}>
+                <CustomSelect className="inp" value={tmplLang} onChange={(e) => { setTmplLang(e.target.value); saveTGHub({ tmplLang: e.target.value }); }}>
                   <option value="Arabic (Gulf)">Arabic (Gulf)</option>
                   <option value="Arabic (Egyptian)">Arabic (Egyptian)</option>
                   <option value="English">English</option>
-                </select>
+                </CustomSelect>
               </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your business context', 'سياق العمل الخاص بك')}</label>
@@ -1613,14 +1624,34 @@ export default function TelegramHubView() {
               <div className="sec-title" style={{ fontSize: '20px' }}>⚙️ {L('Connection Settings & Diagnostics', 'إعدادات الربط والتشخيص')}</div>
             </div>
 
-            {/* Quick Actions */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-              <button className="btn btn-prime" onClick={handleConnectAPI}>
-                🔑 {L('Update Bot Token', 'تحديث توكن البوت')}
-              </button>
-              <button className="btn btn-ghost" onClick={fetchDiagnostics}>
-                🔄 {L('Refresh Status', 'تحديث الحالة')}
-              </button>
+            {/* Bot Token Configuration Inline */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--surface2)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--edge)' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🔑 {L('Telegram Bot Token', 'توكن البوت (Telegram Bot Token)')}
+              </label>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <input 
+                  className="inp" 
+                  type="text" 
+                  placeholder={L('e.g. 123456789:ABCdefGhIjkLmNoPqRsT...', 'مثال: 123456789:ABCdefGhIjkLmNoPqRsT...')} 
+                  style={{ flex: 1, minWidth: '200px' }} 
+                  value={diagBotToken} 
+                  onChange={(e) => setDiagBotToken(e.target.value)} 
+                />
+                <button 
+                  className="btn btn-prime" 
+                  onClick={() => handleSaveDiagToken(diagBotToken)} 
+                  disabled={saveTokenLoading}
+                >
+                  {saveTokenLoading ? '...' : L('Connect & Save', 'ربط وحفظ')}
+                </button>
+                <button className="btn btn-ghost" onClick={fetchDiagnostics}>
+                  🔄 {L('Refresh Status', 'تحديث الحالة')}
+                </button>
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--t3)' }}>
+                {L('Get the token from @BotFather on Telegram.', 'احصل على توكن البوت عن طريق التحدث مع @BotFather على تليجرام.')}
+              </div>
             </div>
 
             {diagLoading ? (

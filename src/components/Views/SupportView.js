@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import CustomSelect from '../CustomSelect';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../lib/firebase';
 import { 
@@ -222,7 +223,7 @@ export default function SupportView() {
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Priority Level', 'مستوى الأولوية')}
                   </label>
-                  <select 
+                  <CustomSelect 
                     className="inp"
                     value={ticketPriority}
                     onChange={(e) => setTicketPriority(e.target.value)}
@@ -230,7 +231,7 @@ export default function SupportView() {
                     <option value="Low">{L('Low Priority', 'منخفضة')}</option>
                     <option value="Medium">{L('Medium Priority', 'متوسطة')}</option>
                     <option value="High">{L('High Priority', 'عالية (مستعجل)')}</option>
-                  </select>
+                  </CustomSelect>
                 </div>
 
                 <div>

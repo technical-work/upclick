@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomSelect from '../CustomSelect';
 
 export default function StrategyView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
@@ -181,12 +182,12 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
               </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Stage', 'مرحلة البزنس')}</label>
-                <select className="inp" value={bizStage} onChange={e => setBizStage(e.target.value)}>
-                  <option>Idea — Just starting to explore</option>
-                  <option>Validation — Testing the concept</option>
-                  <option>Launch — Getting first clients</option>
-                  <option>Growth — Scaling up</option>
-                </select>
+                <CustomSelect className="inp" value={bizStage} onChange={e => setBizStage(e.target.value)}>
+                  <option value="Idea">Idea — Just starting to explore</option>
+                  <option value="Validation">Validation — Testing the concept</option>
+                  <option value="Launch">Launch — Getting first clients</option>
+                  <option value="Growth">Growth — Scaling up</option>
+                </CustomSelect>
               </div>
               <hr style={{ border: 'none', borderBottom: '1px dashed var(--edge)', margin: '10px 0' }} />
               <div>

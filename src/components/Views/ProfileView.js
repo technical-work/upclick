@@ -7,6 +7,7 @@ import { db } from '../../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomSelect from '../CustomSelect';
 
 export default function ProfileView() {
   const {
@@ -341,48 +342,48 @@ export default function ProfileView() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Type', 'نوع العمل')}</label>
-                <select className="inp" value={bizType} onChange={(e) => setBizType(e.target.value)}>
-                  <option>Coach / Trainer</option>
-                  <option>Content Creator</option>
-                  <option>Agency</option>
-                  <option>Consultant</option>
-                  <option>Product Business</option>
-                  <option>Service Provider</option>
-                  <option>Personal Brand</option>
-                  <option>Startup</option>
-                </select>
+                <CustomSelect className="inp" value={bizType} onChange={(e) => setBizType(e.target.value)}>
+                  <option value="Coach / Trainer">Coach / Trainer</option>
+                  <option value="Content Creator">Content Creator</option>
+                  <option value="Agency">Agency</option>
+                  <option value="Consultant">Consultant</option>
+                  <option value="Product Business">Product Business</option>
+                  <option value="Service Provider">Service Provider</option>
+                  <option value="Personal Brand">Personal Brand</option>
+                  <option value="Startup">Startup</option>
+                </CustomSelect>
               </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Stage', 'مرحلة العمل')}</label>
-                <select className="inp" value={stage} onChange={(e) => setStage(e.target.value)}>
-                  <option>Idea — Just starting</option>
-                  <option>Validation</option>
-                  <option>Launch — Getting first clients</option>
-                  <option>Growth — Scaling up</option>
-                  <option>Established — Optimizing</option>
-                </select>
+                <CustomSelect className="inp" value={stage} onChange={(e) => setStage(e.target.value)}>
+                  <option value="Idea — Just starting">Idea — Just starting</option>
+                  <option value="Validation">Validation</option>
+                  <option value="Launch — Getting first clients">Launch — Getting first clients</option>
+                  <option value="Growth — Scaling up">Growth — Scaling up</option>
+                  <option value="Established — Optimizing">Established — Optimizing</option>
+                </CustomSelect>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Experience Level', 'مستوى الخبرة')}</label>
-                <select className="inp" value={level} onChange={(e) => setLevel(e.target.value)}>
-                  <option>Beginner</option>
-                  <option>Growing</option>
-                  <option>Established</option>
-                </select>
+                <CustomSelect className="inp" value={level} onChange={(e) => setLevel(e.target.value)}>
+                  <option value="Beginner">Beginner</option>
+                  <option value="Growing">Growing</option>
+                  <option value="Established">Established</option>
+                </CustomSelect>
               </div>
               <div>
                 <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Biggest Challenge Right Now', 'أكبر تحدي حالياً')}</label>
-                <select className="inp" value={challenge} onChange={(e) => setChallenge(e.target.value)}>
-                  <option>Getting clients & revenue</option>
-                  <option>Marketing & visibility</option>
-                  <option>Systems & organization</option>
-                  <option>Clear strategy</option>
-                  <option>Time management</option>
-                  <option>Products & offers</option>
-                </select>
+                <CustomSelect className="inp" value={challenge} onChange={(e) => setChallenge(e.target.value)}>
+                  <option value="Getting clients & revenue">Getting clients & revenue</option>
+                  <option value="Marketing & visibility">Marketing & visibility</option>
+                  <option value="Systems & organization">Systems & organization</option>
+                  <option value="Clear strategy">Clear strategy</option>
+                  <option value="Time management">Time management</option>
+                  <option value="Products & offers">Products & offers</option>
+                </CustomSelect>
               </div>
             </div>
 

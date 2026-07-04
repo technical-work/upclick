@@ -8,6 +8,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut } from 'f
 import { doc, setDoc } from 'firebase/firestore';
 import { db, firebaseConfig } from '../../lib/firebase';
 import { callClaudeAPI } from '../../utils/ai';
+import CustomSelect from '../CustomSelect';
 import { parseMarkdown } from '../../utils/markdown';
 
 export default function TeamManagementView() {
@@ -1413,14 +1414,14 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Job Title / Role', 'الدور / المسمى الوظيفي')}</label>
-                    <select className="inp" value={mRole} onChange={(e) => setMRole(e.target.value)}>
+                    <CustomSelect className="inp" value={mRole} onChange={(e) => setMRole(e.target.value)}>
                       <option value="Sales">Sales Agent</option>
                       <option value="Marketing">Marketing Lead</option>
                       <option value="Content">Content Writer</option>
                       <option value="Support">Support Desk</option>
                       <option value="Finance">Accountant</option>
                       <option value="Developer">Developer</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Salary ($)', 'الراتب الشهري ($)')}</label>
@@ -1428,11 +1429,11 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Contract', 'نوع العقد')}</label>
-                    <select className="inp" value={mContract} onChange={(e) => setMContract(e.target.value)}>
+                    <CustomSelect className="inp" value={mContract} onChange={(e) => setMContract(e.target.value)}>
                       <option value="Full-time">Full-time</option>
                       <option value="Part-time">Part-time</option>
                       <option value="Contractor">Freelance/Contractor</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                 </div>
 
@@ -1492,14 +1493,14 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Job Title / Role', 'الدور / المسمى الوظيفي')}</label>
-                    <select className="inp" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                    <CustomSelect className="inp" value={editRole} onChange={(e) => setEditRole(e.target.value)}>
                       <option value="Sales">Sales Agent</option>
                       <option value="Marketing">Marketing Lead</option>
                       <option value="Content">Content Writer</option>
                       <option value="Support">Support Desk</option>
                       <option value="Finance">Accountant</option>
                       <option value="Developer">Developer</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Salary ($)', 'الراتب الشهري ($)')}</label>
@@ -1507,11 +1508,11 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Contract', 'نوع العقد')}</label>
-                    <select className="inp" value={editContract} onChange={(e) => setEditContract(e.target.value)}>
+                    <CustomSelect className="inp" value={editContract} onChange={(e) => setEditContract(e.target.value)}>
                       <option value="Full-time">Full-time</option>
                       <option value="Part-time">Part-time</option>
                       <option value="Contractor">Freelance/Contractor</option>
-                    </select>
+                    </CustomSelect>
                   </div>
                 </div>
 

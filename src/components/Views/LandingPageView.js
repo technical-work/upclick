@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { buildFullLP } from '../../utils/lpBuilder';
 import { callClaudeAPI } from '../../utils/ai';
+import CustomSelect from '../CustomSelect';
 import { auth, db } from '../../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -80,6 +81,7 @@ export default function LandingPageView() {
   const [price, setPrice] = useState(lpData.price ?? 29);
   const [lpCode, setLpCode] = useState(lpData.lpCode || '');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [previewMode, setPreviewMode] = useState('desktop');
 
   const [aboutText, setAboutText] = useState(lpData.aboutText || '');
   const [features, setFeatures] = useState(lpData.features || []);
@@ -537,7 +539,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                     <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Template Style', 'نمط القالب')}
                     </label>
-                    <select
+                    <CustomSelect
                       className="inp"
                       value={template}
                       onChange={(e) => { setTemplate(e.target.value); saveLPData({ template: e.target.value }); }}
@@ -547,7 +549,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                           {t.name}
                         </option>
                       ))}
-                    </select>
+                    </CustomSelect>
                   </div>
                 </div>
                 <div>
@@ -843,12 +845,50 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'var(--surface2)'
+              background: 'var(--surface2)',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}
           >
-            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>
-              🖥️ {L('Live Desktop Preview', 'معاينة مباشرة')}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>
+                {previewMode === 'desktop' ? L('🖥️ Desktop Preview', '🖥️ معاينة الحاسوب') : L('📱 Mobile Preview', '📱 معاينة الهاتف')}
+              </span>
+              <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', padding: '2px' }}>
+                <button
+                  onClick={() => setPreviewMode('desktop')}
+                  style={{
+                    border: 'none',
+                    background: previewMode === 'desktop' ? 'var(--orange)' : 'transparent',
+                    color: previewMode === 'desktop' ? '#fff' : 'var(--t2)',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {L('Desktop', 'حاسوب')}
+                </button>
+                <button
+                  onClick={() => setPreviewMode('mobile')}
+                  style={{
+                    border: 'none',
+                    background: previewMode === 'mobile' ? 'var(--orange)' : 'transparent',
+                    color: previewMode === 'mobile' ? '#fff' : 'var(--t2)',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {L('Mobile', 'هاتف')}
+                </button>
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '4px' }}>
               <button
                 className="btn btn-ghost"
@@ -869,16 +909,27 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
               </button>
             </div>
           </div>
-          <div style={{ flex: 1, padding: '12px', background: 'var(--surface3)' }}>
+          <div style={{ 
+            flex: 1, 
+            padding: '12px', 
+            background: 'var(--surface3)', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            overflow: 'hidden'
+          }}>
             {lpCode ? (
               <iframe
                 srcDoc={lpCode}
                 style={{
-                  width: '100%',
+                  width: previewMode === 'mobile' ? '375px' : '100%',
                   height: '100%',
+                  maxWidth: '100%',
                   border: '1px solid var(--edge)',
-                  borderRadius: '8px',
-                  background: '#fff'
+                  borderRadius: previewMode === 'mobile' ? '24px' : '8px',
+                  background: '#fff',
+                  boxShadow: previewMode === 'mobile' ? '0 12px 36px rgba(0,0,0,0.35)' : 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
                 title="LP live preview"
               />

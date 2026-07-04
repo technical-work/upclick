@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import CustomSelect from '../CustomSelect';
 import { useAuth } from '../../context/AuthContext';
 import { storage } from '../../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -368,12 +369,12 @@ export default function DesignStudioView() {
               {/* Industry */}
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">🏢 {L('Industry', 'الصناعة')}</div></div>
-                <select className="inp" value={logoIndustry} onChange={(e) => { setLogoIndustry(e.target.value); saveDesignStudioData('logo', { industry: e.target.value }); }}>
+                <CustomSelect className="inp" value={logoIndustry} onChange={(e) => { setLogoIndustry(e.target.value); saveDesignStudioData('logo', { industry: e.target.value }); }}>
                   <option value="coaching">Coaching & Training</option>
                   <option value="tech">Tech / AI / SaaS</option>
                   <option value="ecommerce">E-commerce</option>
                   <option value="food">Food & Restaurant</option>
-                </select>
+                </CustomSelect>
               </div>
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>

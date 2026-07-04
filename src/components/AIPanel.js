@@ -103,13 +103,23 @@ export default function AIPanel() {
     { q: 'كيف أدير مشاريعي؟ (المهام)', a: 'في قسم "إدارة المهام"، يمكنك إضافة مهام جديدة وتغيير حالتها بسهولة عبر السحب والإفلات.' },
     { q: 'كيف أسجل مبيعاتي؟ (المالية)', a: 'من قسم "المالية"، اضغط على "معاملة جديدة" لتسجيل الإيرادات والمصروفات بدقة.' },
     { q: 'كيف أكتب محتوى ذكي؟ (المحتوى)', a: 'توجه إلى قسم "المحتوى"، اختر نوع المنشور والمنصة، وسيقوم الذكاء الاصطناعي بكتابته لك.' },
-    { q: 'كيف أعدل ألوان النظام؟ (الإعدادات)', a: 'من خلال قسم "الإعدادات" ثم "الهوية البصرية"، يمكنك تغيير ألوان النظام وتحديث اللوجو.' }
+    { q: 'كيف أربط حساب التليجرام الخاص بي؟ (المساعد التلقائي)', a: 'انتقل إلى قسم "تليجرام هب"، واتبع التعليمات لربط البوت الخاص بك بـ Token لتلقي الرسائل وتفعيل الرد الآلي.' },
+    { q: 'كيف أنشئ رابط بايولينك مخصص؟ (أستوديو التصميم)', a: 'من خلال "أستوديو التصميم"، يمكنك تصميم صفحة البايولينك الخاصة بك وإضافة روابط ومنتجات وتخصيص الألوان بسهولة.' },
+    { q: 'كيف أربط حساب الفيس والانستا لجلب المتابعين؟', a: 'من الصفحة الرئيسية أو قسم "الحسابات الاجتماعية"، اضغط على زر "ربط" أو "تعديل" وأدخل اسم المستخدم لتقوم أداة Apify بجلب عدد المتابعين تلقائياً.' },
+    { q: 'كيف أعدل ألوان النظام واللوجو؟ (الإعدادات)', a: 'من خلال قسم "الإعدادات" ثم "الهوية البصرية"، يمكنك تغيير ألوان النظام وتحديث اللوجو.' },
+    { q: 'كيف أضيف أعضاء فريق عمل جدد؟ (الفريق)', a: 'انتقل إلى قسم "إدارة الفريق"، واضغط على زر "إضافة عضو" لإرسال دعوة أو تعيين دور وصلاحيات للعضو الجديد.' },
+    { q: 'كيف أغير عملة النظام الافتراضية؟ (المالية)', a: 'انتقل إلى "المالية" أو "الإعدادات العامة"، ومن خيار العملة، يمكنك تغيير العملة الافتراضية التي تظهر في التقارير والصفقات.' }
   ] : [
     { q: 'How to add a new lead? (CRM)', a: 'Go to the "Smart CRM" section and click on the "New Lead" button to add a new client.' },
     { q: 'How to manage my tasks? (Tasks)', a: 'In the "Tasks" section, you can add new tasks and update their status using drag and drop.' },
     { q: 'How to record sales? (Finance)', a: 'From the "Finance" section, click "New Transaction" to accurately record your income and expenses.' },
     { q: 'How to generate AI content? (Content)', a: 'Go to the "Content" section, select the post type, and the AI will write it for you.' },
-    { q: 'How to change colors? (Settings)', a: 'Through the "Settings" section under "Branding", you can change the system theme and update the logo.' }
+    { q: 'How to connect my Telegram Bot? (Telegram Hub)', a: 'Go to the "Telegram Hub" section and follow the instructions to connect your bot token for automated responses.' },
+    { q: 'How to build my Bio Link page? (Design Studio)', a: 'From the "Design Studio", you can visually build your custom bio link page, add links, products, and style it.' },
+    { q: 'How to connect Facebook/Instagram for followers?', a: 'Click the "Connect" or "Edit" button on the dashboard or social profiles view, input your username, and the Apify API will sync your followers.' },
+    { q: 'How to change colors and branding? (Settings)', a: 'Through the "Settings" section under "Branding", you can change the system theme and update the logo.' },
+    { q: 'How to invite team members? (Team)', a: 'Navigate to "Team Management", and click "Add Member" to send an invite or assign roles and permissions.' },
+    { q: 'How to change default currency? (Finance)', a: 'Go to the "Finance" or "General Settings" section, and choose your preferred currency for deals and analytics.' }
   ];
 
   const handleFaqClick = (faq) => {
@@ -147,15 +157,25 @@ export default function AIPanel() {
       const context = getContextSummary();
       const leadsCount = (GC?.crm?.leads || []).length;
       const tasksCount = (GC?.tasks?.items || []).length;
-      const systemPrompt = `You are Business Architect AI, a premium business operating system assistant.
+      const systemPrompt = `You are Business Architect AI, a premium business operating system assistant for the UpKlick software.
 Context about this user: ${context}
-You have access to their CRM (${leadsCount} leads), tasks (${tasksCount} tasks), and finance data.
-Be concise, specific, and actionable. No generic advice. Reference their actual data when available.
+You have access to their CRM (${leadsCount} leads), tasks (${tasksCount} tasks), and finance data inside the platform.
+
+CRITICAL RULE: You must ONLY answer questions that are directly related to the UpKlick software, its tools/features (such as CRM, Tasks, Finances, Landing Pages, Marketing, Content creation, Bio Link, etc.), and the user's business context within this app.
+If the user asks a question that is off-topic or outside the scope of the UpKlick software and their business context here (for example: general knowledge, history, unrelated coding, recipes, entertainment, etc.), you must politely decline to answer, explaining in the chosen language that you are a dedicated assistant for the UpKlick software and can only answer questions related to it and their business operations inside the platform.
+
+Be concise, specific, and actionable. Reference their actual data when available.
 Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
+      const constraintInstruction = lang === 'ar'
+        ? `[تعليمات هامة جداً: يجب عليك الإجابة فقط إذا كان هذا السؤال متعلقاً بمنصة برمجيات UpKlick أو أدواتها وميزاتها (مثل إدارة العملاء CRM، المهام، المالية، صفحات الهبوط، التسويق، المحتوى، إلخ) أو سياق عمل المستخدم داخل التطبيق. إذا كان السؤال خارجاً عن هذا النطاق أو غير متعلق بالبرنامج وبزنس المستخدم فيه (مثل معلومات عامة، طبخ، تاريخ، كود برمجيات عامة خارج المنصة، إلخ)، يجب عليك الرفض بلطف والاعتذار عن الإجابة موضحاً أنك مساعد مخصص لمنصة UpKlick فقط ومصمم لمساعدته في أعماله داخل المنصة.]`
+        : `[CRITICAL INSTRUCTION: You must ONLY answer if this question is related to the UpKlick software platform, its features (CRM, Tasks, Finances, Landing Pages, Marketing, Content, Bio Link, etc.), or the user's business context inside UpKlick. If it is off-topic or unrelated (e.g. general knowledge, recipes, general coding, history, etc.), you MUST politely decline to answer, explaining that you are a dedicated assistant for UpKlick and only support operations inside it.]`;
+
+      const formattedQuestion = `${constraintInstruction}\n\nQuestion: ${question}`;
+
       let hasReceivedFirstChunk = false;
-      await callClaudeAPI(
-        question, 
+      const resText = await callClaudeAPI(
+        formattedQuestion, 
         systemPrompt, 
         lang, 
         GC, 
@@ -175,6 +195,20 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
           });
         }
       );
+
+      if (!hasReceivedFirstChunk || !resText) {
+        setMessages(prev => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last && last.sender === 'ai' && !last.text) {
+            last.text = L(
+              "I'm sorry, I am a dedicated assistant for the UpKlick platform and your business operations inside it. I cannot answer questions outside this scope.",
+              "عذراً، أنا هنا لمساعدتك في منصة UpKlick وإدارة أعمالك داخل التطبيق فقط. لا يمكنني الإجابة على أسئلة خارجة عن هذا النطاق."
+            );
+          }
+          return next;
+        });
+      }
     } catch (e) {
       console.error('AI Panel askAI error:', e);
       setMessages(prev => {

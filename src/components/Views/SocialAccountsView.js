@@ -30,12 +30,19 @@ export default function SocialAccountsView() {
     }
   };
 
+  const formatFollowersCount = (val) => {
+    if (!val || isNaN(val)) return '0';
+    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+    return String(val);
+  };
+
   const scaleFollowers = (baseVal) => {
     const mult = getPeriodMultiplier(filterPeriod, customStartDate, customEndDate);
     if (filterPeriod === 'all' || filterPeriod === 'year') {
-      return Math.round(baseVal * (filterPeriod === 'year' ? 0.95 : 1)) + 'K';
+      return formatFollowersCount(Math.round(baseVal * (filterPeriod === 'year' ? 0.95 : 1)));
     }
-    return Math.max(1, Math.round(baseVal * 0.05 * mult)) + 'K';
+    return formatFollowersCount(Math.max(1, Math.round(baseVal * 0.05 * mult)));
   };
 
   const scaleReach = (baseVal) => {
@@ -58,7 +65,7 @@ export default function SocialAccountsView() {
     return baseVal;
   };
 
-  const { lang, L, t, GC, saveGC } = useBusiness();
+  const { lang, L, t, GC, saveGC, setSocialConnectModalOpen } = useBusiness();
 
   const socialData = GC.socialAccounts || {
     connected: { instagram: true, tiktok: true, youtube: false, snapchat: false, x: false },
@@ -184,7 +191,7 @@ export default function SocialAccountsView() {
           <button className="btn btn-ghost" onClick={handleAnalyzeAll}>
             {analyzing ? L('Analyzing...', 'جاري التحليل...') : L('🤖 Analyze All', '🤖 تحليل الكل')}
           </button>
-          <button className="btn btn-prime" onClick={() => alert(L('Account connection modal opened', 'تم فتح نافذة ربط الحسابات'))}>
+          <button className="btn btn-prime" onClick={() => setSocialConnectModalOpen(true)}>
             + {L('Connect Account', 'ربط حساب')}
           </button>
         </div>
@@ -194,7 +201,7 @@ export default function SocialAccountsView() {
         <div className="stat-card">
           <div className="stat-lbl">👥 {L('Total Followers', 'إجمالي المتابعين')}</div>
           <div className="stat-val" id="soc-total-followers">
-            {connected.instagram && connected.tiktok ? scaleFollowers(373) : connected.instagram ? scaleFollowers(284) : connected.tiktok ? scaleFollowers(89) : '0'}
+            {scaleFollowers(GC.socialAccounts?.followers?.total || 0)}
           </div>
           <div className="stat-ch ch-nu">{L('across all platforms', 'عبر كافة المنصات')}</div>
         </div>
@@ -229,6 +236,7 @@ export default function SocialAccountsView() {
           <div id="social-connect-list">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
+                { key: 'facebook', label: 'Facebook', emoji: '🔵' },
                 { key: 'instagram', label: 'Instagram', emoji: '📸' },
                 { key: 'tiktok', label: 'TikTok', emoji: '🎵' },
                 { key: 'youtube', label: 'YouTube', emoji: '▶️' },
@@ -236,11 +244,20 @@ export default function SocialAccountsView() {
                 { key: 'x', label: 'X (Twitter)', emoji: '🐦' }
               ].map(plat => {
                 const isConn = connected[plat.key];
+                const isConnectModalPlatform = ['facebook', 'instagram', 'tiktok'].includes(plat.key);
+                const handleAction = (e) => {
+                  if (e) e.stopPropagation();
+                  if (isConnectModalPlatform) {
+                    setSocialConnectModalOpen(true);
+                  } else {
+                    toggleConnection(plat.key);
+                  }
+                };
                 return (
                   <div 
                     key={plat.key}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface2)', borderRadius: '10px', cursor: 'pointer' }}
-                    onClick={() => toggleConnection(plat.key)}
+                    onClick={handleAction}
                   >
                     <span style={{ fontSize: '24px' }}>{plat.emoji}</span>
                     <div style={{ flex: 1 }}>
@@ -252,7 +269,7 @@ export default function SocialAccountsView() {
                     <button 
                       className={`btn ${isConn ? 'btn-prime' : 'btn-ghost'}`} 
                       style={{ fontSize: '12px', padding: '5px 12px' }}
-                      onClick={(e) => { e.stopPropagation(); toggleConnection(plat.key); }}
+                      onClick={handleAction}
                     >
                       {isConn ? L('Disconnect', 'قطع الاتصال') : L('Connect', 'ربط')}
                     </button>

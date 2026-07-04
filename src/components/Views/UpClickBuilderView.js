@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import CustomSelect from '../CustomSelect';
 
 export default function UpClickBuilderView() {
   const {
@@ -301,12 +302,12 @@ export default function UpClickBuilderView() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Funnel Type', 'نوع الفانل')}</label>
-                  <select className="inp" value={newFunnelType} onChange={(e) => setNewFunnelType(e.target.value)}>
-                    <option>Lead Magnet</option>
-                    <option>Webinar</option>
-                    <option>Product Launch</option>
-                    <option>Consultation</option>
-                  </select>
+                  <CustomSelect className="inp" value={newFunnelType} onChange={(e) => setNewFunnelType(e.target.value)}>
+                    <option value="Lead Magnet">Lead Magnet</option>
+                    <option value="Webinar">Webinar</option>
+                    <option value="Product Launch">Product Launch</option>
+                    <option value="Consultation">Consultation</option>
+                  </CustomSelect>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>

@@ -65,6 +65,11 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await signOut(auth);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ba_onboard_done');
+      localStorage.removeItem('ba_context');
+      localStorage.removeItem('ba_notes');
+    }
     router.push('/login');
   };
 

@@ -20,7 +20,8 @@ export default function HomeView() {
     setFinanceModalType,
     setAiPanelOpen,
     toggleTask,
-    theme
+    theme,
+    setSocialConnectModalOpen
   } = useBusiness();
   const { user, userData } = useAuth();
 
@@ -100,16 +101,15 @@ export default function HomeView() {
   const svgCircles = getSvgCircles();
 
   // Calculate dynamic follower counts based on connected profiles
-  const connectedSocials = GC.socialAccounts?.connected || { instagram: true, tiktok: true };
-  const dynamicFollowers = connectedSocials.instagram && connectedSocials.tiktok ? '373K' 
-                          : connectedSocials.instagram ? '284K' 
-                          : connectedSocials.tiktok ? '89K' 
-                          : '0';
-  
-  const dynamicFollowerGrowth = connectedSocials.instagram && connectedSocials.tiktok ? '+2.4%'
-                               : connectedSocials.instagram ? '+1.8%'
-                               : connectedSocials.tiktok ? '+4.2%'
-                               : '0%';
+  const formatFollowersCount = (val) => {
+    if (!val || isNaN(val)) return '0';
+    if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
+    return String(val);
+  };
+  const dynamicFollowers = formatFollowersCount(GC.socialAccounts?.followers?.total || 0);
+  const hasFollowers = (GC.socialAccounts?.followers?.total || 0) > 0;
+  const dynamicFollowerGrowth = hasFollowers ? '+1.8%' : '0%';
 
   // Dynamically group chart bars using user transactions
   const getChartData = () => {
@@ -389,8 +389,17 @@ Address the user directly by their personal name (${pName}) and refer to their b
           borderRadius: '12px'
         }}>
           <div className="stat-lbl">👥 {t('t-s1')}</div>
-          <div className="stat-val" style={{ color: 'var(--t1)' }}>{dynamicFollowers}</div>
-          <div className="stat-ch ch-up" style={{ color: 'var(--amber)' }}>↑ {dynamicFollowerGrowth} {t('t-sw')}</div>
+          <div className="stat-val" style={{ color: 'var(--t1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+            <span>{dynamicFollowers}</span>
+            <button 
+              className="btn btn-ghost" 
+              style={{ fontSize: '11px', padding: '2px 8px', minHeight: 'auto', height: '22px', borderColor: 'rgba(255,255,255,0.08)', borderRadius: '6px', background: 'rgba(255,255,255,0.02)' }}
+              onClick={() => setSocialConnectModalOpen(true)}
+            >
+              {dynamicFollowers === '0' ? L('Connect', 'اتصال') : L('Edit', 'تعديل')}
+            </button>
+          </div>
+          <div className="stat-ch ch-up" style={{ color: 'var(--amber)' }}>↑ {hasFollowers ? '+1.8%' : '0%'} {t('t-sw')}</div>
         </div>
       </div>
 

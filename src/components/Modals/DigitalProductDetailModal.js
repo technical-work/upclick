@@ -60,7 +60,7 @@ export default function DigitalProductDetailModal() {
 
     const niche = GC.profile?.niche || 'Fashion & Beauty';
     const audience = GC.profile?.offer?.market || L('General', 'العام');
-    const followers = GC.creator?.followers || '284K';
+    const followers = GC.creator?.followers || '0';
     const stage = GC.profile?.stage || 'Getting started';
 
     const promptText = `We want to customize this trending digital product:

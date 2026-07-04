@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { DB } from '../../data/mockData';
 import { callClaudeAPI } from '../../utils/ai';
+import CustomSelect from '../CustomSelect';
 
 const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
   if (!itemDate) return true;
@@ -1474,32 +1475,32 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Content Type', 'نوع المحتوى')}
                   </label>
-                  <select
+                  <CustomSelect
                     className="inp"
                     value={negType}
                     onChange={(e) => setNegType(e.target.value)}
                   >
-                    <option>1x Reel</option>
-                    <option>1x Carousel</option>
-                    <option>Stories Package</option>
-                    <option>Full Campaign</option>
-                    <option>Product Review</option>
-                  </select>
+                    <option value="1x Reel">1x Reel</option>
+                    <option value="1x Carousel">1x Carousel</option>
+                    <option value="Stories Package">Stories Package</option>
+                    <option value="Full Campaign">Full Campaign</option>
+                    <option value="Product Review">Product Review</option>
+                  </CustomSelect>
                 </div>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Exclusivity', 'حقوق الحصرية')}
                   </label>
-                  <select
+                  <CustomSelect
                     className="inp"
                     value={negExcl}
                     onChange={(e) => setNegExcl(e.target.value)}
                   >
-                    <option>No exclusivity</option>
-                    <option>30 days</option>
-                    <option>60 days</option>
-                    <option>90 days</option>
-                  </select>
+                    <option value="No exclusivity">No exclusivity</option>
+                    <option value="30 days">30 days</option>
+                    <option value="60 days">60 days</option>
+                    <option value="90 days">90 days</option>
+                  </CustomSelect>
                 </div>
                 <button className="btn btn-prime" onClick={handleRunNeg} style={{ width: '100%', justifyContent: 'center' }}>
                   🤖 {L('Analyze Deal', 'تحليل الصفقة')}
@@ -1610,16 +1611,16 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Target Audience', 'الجمهور المستهدف')}
                   </label>
-                  <select
+                  <CustomSelect
                     className="inp"
                     value={courseAudience}
                     onChange={(e) => setCourseAudience(e.target.value)}
                   >
-                    <option>{L('Beginner creators', 'منشئي محتوى مبتدئين')}</option>
-                    <option>{L('Intermediate influencers', 'مؤثرين متوسطين')}</option>
-                    <option>{L('Brands & businesses', 'علامات تجارية وشركات')}</option>
-                    <option>{L('Arab market creators', 'صناع المحتوى في العالم العربي')}</option>
-                  </select>
+                    <option value="Beginner creators">{L('Beginner creators', 'منشئي محتوى مبتدئين')}</option>
+                    <option value="Intermediate influencers">{L('Intermediate influencers', 'مؤثرين متوسطين')}</option>
+                    <option value="Brands & businesses">{L('Brands & businesses', 'علامات تجارية وشركات')}</option>
+                    <option value="Arab market creators">{L('Arab market creators', 'صناع المحتوى في العالم العربي')}</option>
+                  </CustomSelect>
                 </div>
                 <div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1639,12 +1640,12 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                         {L('Course Duration', 'مدة الكورس')}
                       </label>
-                      <select className="inp" value={courseDuration} onChange={e => setCourseDuration(e.target.value)}>
+                      <CustomSelect className="inp" value={courseDuration} onChange={e => setCourseDuration(e.target.value)}>
                         <option value="4 Weeks">{L('4 Weeks', '٤ أسابيع')}</option>
                         <option value="6 Weeks">{L('6 Weeks', '٦ أسابيع')}</option>
                         <option value="8 Weeks">{L('8 Weeks', '٨ أسابيع')}</option>
                         <option value="12 Weeks">{L('12 Weeks', '١٢ أسبوع')}</option>
-                      </select>
+                      </CustomSelect>
                     </div>
                   </div>
                 </div>
@@ -1654,21 +1655,21 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                         {L('Difficulty Level', 'مستوى الصعوبة')}
                       </label>
-                      <select className="inp" value={courseLevel} onChange={e => setCourseLevel(e.target.value)}>
+                      <CustomSelect className="inp" value={courseLevel} onChange={e => setCourseLevel(e.target.value)}>
                         <option value="Beginner">{L('Beginner', 'مبتدئ')}</option>
                         <option value="Intermediate">{L('Intermediate', 'متوسط')}</option>
                         <option value="Advanced">{L('Advanced', 'متقدم')}</option>
-                      </select>
+                      </CustomSelect>
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                         {L('Course Language', 'لغة الكورس')}
                       </label>
-                      <select className="inp" value={courseLanguage} onChange={e => setCourseLanguage(e.target.value)}>
+                      <CustomSelect className="inp" value={courseLanguage} onChange={e => setCourseLanguage(e.target.value)}>
                         <option value="Arabic">{L('Arabic', 'العربية')}</option>
                         <option value="English">{L('English', 'الإنجليزية')}</option>
                         <option value="Bilingual">{L('Bilingual', 'العربية والإنجليزية')}</option>
-                      </select>
+                      </CustomSelect>
                     </div>
                   </div>
                 </div>

@@ -17,6 +17,7 @@ import TaskModal from '@/components/Modals/TaskModal';
 import FinanceModal from '@/components/Modals/FinanceModal';
 import LandingPagePreviewModal from '@/components/Modals/LandingPagePreviewModal';
 import DigitalProductDetailModal from '@/components/Modals/DigitalProductDetailModal';
+import SocialConnectModal from '@/components/Modals/SocialConnectModal';
 
 // Sub-views
 import HomeView from '@/components/Views/HomeView';
@@ -390,6 +391,7 @@ function DashboardShell() {
       <FinanceModal />
       <LandingPagePreviewModal />
       <DigitalProductDetailModal />
+      <SocialConnectModal />
 
       {/* Toast popup message holder */}
       <div id="toast" className="toast"></div>
