@@ -151,7 +151,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   const sec2 = S(
     'proof',
     maxW(
-      `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center">${proofItems
+      `<div class="proof-grid">${proofItems
         .map(
           (p) =>
             `<div style="padding:24px 10px;background:${c}11;border-radius:16px;border:1px solid ${c}22"><div style="font-size:clamp(28px,3vw,40px);font-weight:800;color:${c};margin-bottom:6px">${p.n}</div><div style="font-size:13px;color:${sub}">${p.l}</div></div>`
@@ -168,7 +168,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
 
   const sec3 = S(
     'about',
-    maxW(`<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:40px;align-items:center">
+    maxW(`<div class="about-grid">
     <div style="text-align:center">
       <div style="width:200px;height:200px;border-radius:50%;background:linear-gradient(135deg,${c},${c}88);display:flex;align-items:center;justify-content:center;font-size:70px;font-weight:800;color:#fff;margin:0 auto;box-shadow:0 20px 60px ${c}44">${name[0]}</div>
       <div style="margin-top:14px;font-size:18px;font-weight:700;color:${fg}">${name}</div>
@@ -232,7 +232,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
   const sec4 = S(
     'features',
     maxW(H(isAR ? 'ماذا ستحصل عليه؟' : 'What You Get', isAR ? 'كل ما تحتاجه لتحقيق النجاح في ' + niche : 'Everything you need to succeed in ' + niche) +
-    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">' + featItems
+    '<div class="features-grid">' + featItems
       .map(
         (f) =>
           '<div style="background:' + card + ';border:1px solid ' + border + ';border-radius:16px;padding:24px;transition:transform .2s,border-color .2s" onmouseover="this.style.transform=\'translateY(-4px)\';this.style.borderColor=\'' + c + '\'" onmouseout="this.style.transform=\'none\';this.style.borderColor=\'' + border + '\'"><div style="font-size:36px;margin-bottom:12px">' + (f.icon || '✨') + '</div><div style="font-size:16px;font-weight:700;color:' + fg + ';margin-bottom:8px">' + (f.title || f.t) + '</div><div style="font-size:13px;color:' + sub + ';line-height:1.6">' + (f.desc || f.d) + '</div></div>'
@@ -260,7 +260,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
     'testimonials',
     maxW(
       H(isAR ? 'ماذا يقول عملائي' : 'What My Clients Say', isAR ? 'نتائج حقيقية من أشخاص حقيقيين' : 'Real results from real people') +
-      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">` +
+      `<div class="testimonials-grid">` +
       tesItems.map((t) => {
         const tInitial = t.initial || t.i || (t.name ? t.name[0] : 'U');
         const tName = t.name || t.n || '';
@@ -315,7 +315,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
     'offer',
     maxW(
       H(isAR ? 'اختر خطتك' : 'Choose Your Plan', isAR ? 'استثمار في نفسك يدوم مدى الحياة' : 'An investment in yourself that lasts a lifetime') +
-      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch">` +
+      `<div class="plans-grid">` +
       plans.map((p) => {
         const planBg = p.popular ? c : card;
         const planBorder = p.popular ? c : border;
@@ -389,7 +389,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
 
   const sec8 = S(
     'faq-cta',
-    maxW(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">
+    maxW(`<div class="faq-grid">
     <div>
       ${H(isAR ? 'أسئلة شائعة' : 'FAQ', '', R === 'rtl' ? 'right' : 'left')}
       ${faqItems
@@ -422,7 +422,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
 
   return `<!DOCTYPE html><html lang="${isAR ? 'ar' : 'en'}" dir="${R}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name} — ${offerName}</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=Noto+Kufi+Arabic:wght@400;600;700&family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:${font};background:${bg};color:${fg};direction:${R}}nav{position:sticky;top:0;z-index:999;background:${bg}ee;backdrop-filter:blur(12px);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${border}}nav .logo{font-size:18px;font-weight:800;color:${c}}nav ul{display:flex;gap:20px;list-style:none}nav ul li a{font-size:13px;color:${sub};text-decoration:none;font-weight:500;transition:color .2s}nav ul li a:hover{color:${c}}@media(max-width:768px){nav ul{display:none}section{padding:40px 16px!important}div[style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr!important}div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important}div[style*="grid-template-columns:1fr 1.5fr"]{grid-template-columns:1fr!important}div[style*="grid-template-columns:repeat(4"]{grid-template-columns:repeat(2,1fr)!important}}</style>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:${font};background:${bg};color:${fg};direction:${R};overflow-x:hidden}nav{position:sticky;top:0;z-index:999;background:${bg}ee;backdrop-filter:blur(12px);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid ${border}}nav .logo{font-size:18px;font-weight:800;color:${c};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}nav ul{display:flex;gap:20px;list-style:none}nav ul li a{font-size:13px;color:${sub};text-decoration:none;font-weight:500;transition:color .2s}nav ul li a:hover{color:${c}}.proof-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.about-grid{display:grid;grid-template-columns:1fr 1.5fr;gap:40px;align-items:center}.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}.plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px}@media(max-width:768px){nav{padding:10px 14px!important}nav .logo{font-size:15px!important}nav button{padding:7px 14px!important;font-size:12px!important}nav ul{display:none}section{padding:45px 16px!important}.proof-grid{grid-template-columns:repeat(2,1fr)!important;gap:12px!important}.about-grid{grid-template-columns:1fr!important;gap:24px!important;text-align:center!important}.features-grid{grid-template-columns:1fr!important;gap:16px!important}.testimonials-grid{grid-template-columns:1fr!important;gap:16px!important}.plans-grid{grid-template-columns:1fr!important;gap:24px!important}.faq-grid{grid-template-columns:1fr!important;gap:30px!important}div[style*="font-size:clamp(32px"]{font-size:28px!important}}@media(max-width:480px){.proof-grid{grid-template-columns:1fr!important}}</style>
 </head><body>
 <nav><div class="logo">${name}</div><ul>${navLinks.map((l, i) => `<li><a href="#${navIds[i]}">${l}</a></li>`).join('')}</ul><button onclick="document.getElementById('offer').scrollIntoView({behavior:'smooth'})" style="background:${c};color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">${
     isAR ? 'ابدأ الآن' : 'Start Now'
