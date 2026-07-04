@@ -604,13 +604,13 @@ export default function CRMView() {
               <div className="sec-title">⏰ {L('Overdue Follow-ups', 'متابعات متأخرة')}</div>
             </div>
             <div id="crm-overdue">
-              {dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost').length === 0 ? (
+              {leads.filter(l => l.followupDate && new Date(l.followupDate) < new Date(new Date().setHours(0,0,0,0)) && l.stage !== 'closed' && l.stage !== 'lost').length === 0 ? (
                 <div className="empty-state" style={{ padding: '20px' }}>
                   <div className="es-icon">✅</div>
                   <div className="es-title">{L('All caught up!', 'كل شيء مكتمل!')}</div>
                 </div>
               ) : (
-                dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate) < new Date() && l.stage !== 'closed' && l.stage !== 'lost').map(l => (
+                leads.filter(l => l.followupDate && new Date(l.followupDate) < new Date(new Date().setHours(0,0,0,0)) && l.stage !== 'closed' && l.stage !== 'lost').map(l => (
                   <div className="row" key={l.id}>
                     <div style={{ flex: 1 }}>
                       <div className="rn">{l.name}</div>
@@ -639,12 +639,12 @@ export default function CRMView() {
               <div className="sec-title">📅 {L("Today's Follow-ups", "متابعات اليوم")}</div>
             </div>
             <div id="crm-today-fu">
-              {dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).length === 0 ? (
+              {leads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).length === 0 ? (
                 <div style={{ fontSize: '12px', color: 'var(--t3)', padding: '16px 0', textAlign: 'center' }}>
                   {L('No follow-ups scheduled for today', 'لا توجد متابعات مجدولة اليوم')}
                 </div>
               ) : (
-                dateFilteredLeads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).map(l => {
+                leads.filter(l => l.followupDate && new Date(l.followupDate).toDateString() === new Date().toDateString()).map(l => {
                   const leadStage = stages.find(s => s.key === l.stage) || stages[0];
                   return (
                     <div className="row" key={l.id}>
