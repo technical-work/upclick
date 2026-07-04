@@ -196,10 +196,17 @@ const validateEmail = (email) => {
   if (tld === 'gamil') return false; // Catches hotmail.gamil
   if (tld === 'gmaill') return false;
 
-  // 4. Handle long TLDs to filter out typos like gmail.gmail
-  if (tld.length > 6) {
-    const validLongTLDs = ['online', 'agency', 'arabic', 'museum', 'travel', 'coop', 'jobs', 'mobi', 'name', 'tech', 'store', 'space', 'website', 'media', 'company', 'email'];
-    if (validLongTLDs.indexOf(tld) === -1) {
+  // 4. If TLD is not a 2-letter country code (like .eg, .sa, .ae, .us), it must be a valid common generic TLD
+  if (tld.length !== 2) {
+    const validCommonTLDs = [
+      'com', 'net', 'org', 'edu', 'gov', 'mil', 'biz', 'info', 'co', 'me', 'io', 'app', 'tv', 'xyz', 'club', 'site', 'shop', 
+      'online', 'agency', 'arabic', 'museum', 'travel', 'coop', 'jobs', 'mobi', 'name', 'tech', 'store', 'space', 'website', 
+      'media', 'company', 'email', 'pro', 'link', 'work', 'vip', 'live', 'today', 'solutions', 'systems', 'run', 'rocks', 
+      'ninja', 'guru', 'icu', 'global', 'ltd', 'services', 'care', 'digital', 'network', 'download', 'support', 'expert', 
+      'tools', 'education', 'social', 'team', 'group', 'marketing', 'design', 'studio', 'software', 'technology', 'world', 
+      'chat', 'click', 'page', 'pub', 'dev', 'cloud', 'lawyer', 'clinic', 'dentist', 'events', 'business', 'fit', 'one'
+    ];
+    if (validCommonTLDs.indexOf(tld) === -1) {
       return false;
     }
   }
