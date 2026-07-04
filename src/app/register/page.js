@@ -176,6 +176,37 @@ const initialGC = {
   }
 };
 
+const validateEmail = (email) => {
+  // 1. Basic RFC 5322 regex validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) return false;
+
+  // 2. Extract domain and TLD parts
+  const parts = email.split('@');
+  if (parts.length !== 2) return false;
+  const domainParts = parts[1].split('.');
+  if (domainParts.length < 2) return false;
+  
+  const domainName = domainParts[0].toLowerCase();
+  const tld = domainParts[domainParts.length - 1].toLowerCase();
+
+  // 3. Reject obvious domain/TLD typos and duplications
+  if (domainName === tld) return false; // Catches gmail.gmail, yahoo.yahoo, etc.
+  if (tld === 'con') return false; // Catches gmail.con
+  if (tld === 'gamil') return false; // Catches hotmail.gamil
+  if (tld === 'gmaill') return false;
+
+  // 4. Handle long TLDs to filter out typos like gmail.gmail
+  if (tld.length > 6) {
+    const validLongTLDs = ['online', 'agency', 'arabic', 'museum', 'travel', 'coop', 'jobs', 'mobi', 'name', 'tech', 'store', 'space', 'website', 'media', 'company', 'email'];
+    if (validLongTLDs.indexOf(tld) === -1) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -221,6 +252,11 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!validateEmail(email)) {
+      setError('البريد الإلكتروني المدخل غير صالح. يرجى التأكد من كتابة البريد والنطاق بشكل صحيح (مثال: .com).');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('كلمتا المرور غير متطابقتين.');
