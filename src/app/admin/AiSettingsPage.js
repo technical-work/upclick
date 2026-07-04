@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { Key, DollarSign, Cpu, Save, RefreshCw, BarChart2, List, Settings, Search } from 'lucide-react';
-import { doc, setDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 
@@ -12,7 +12,14 @@ const DEFAULTS = {
   defaultUserCredit: 5.00,
   openaiModel: 'gpt-4o-mini',
   aiEnabled: true,
-  aiMarkupMultiplier: 1.0
+  aiMarkupMultiplier: 1.0,
+  creditMonthlyPlan: 10.00,
+  creditAnnualPlan: 120.00,
+  creditLifetimePlan: 500.00,
+  aiTemperature: 0.7,
+  aiMaxTokens: 1000,
+  aiSystemInstruction: '',
+  aiMaxMonthlyBudget: 100.00
 };
 
 const AiSettingsPage = () => {
@@ -34,6 +41,14 @@ const AiSettingsPage = () => {
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterTool, setFilterTool] = useState('all');
+  const [filterModel, setFilterModel] = useState('all');
+
+  // Refill Modal state
+  const [refillModalUser, setRefillModalUser] = useState(null); // { userId, email, name, currentCredits }
+  const [refillAmount, setRefillAmount] = useState('');
+  const [refilling, setRefilling] = useState(false);
+
   const [globalStats, setGlobalStats] = useState({
     totalAiSpend: 0,
     totalAiTokens: 0,
@@ -51,7 +66,14 @@ const AiSettingsPage = () => {
           defaultUserCredit: data.defaultUserCredit !== undefined ? Number(data.defaultUserCredit) : 5.00,
           openaiModel: data.openaiModel || 'gpt-4o-mini',
           aiEnabled: data.aiEnabled !== false,
-          aiMarkupMultiplier: data.aiMarkupMultiplier !== undefined ? Number(data.aiMarkupMultiplier) : 1.0
+          aiMarkupMultiplier: data.aiMarkupMultiplier !== undefined ? Number(data.aiMarkupMultiplier) : 1.0,
+          creditMonthlyPlan: data.creditMonthlyPlan !== undefined ? Number(data.creditMonthlyPlan) : 10.00,
+          creditAnnualPlan: data.creditAnnualPlan !== undefined ? Number(data.creditAnnualPlan) : 120.00,
+          creditLifetimePlan: data.creditLifetimePlan !== undefined ? Number(data.creditLifetimePlan) : 500.00,
+          aiTemperature: data.aiTemperature !== undefined ? Number(data.aiTemperature) : 0.7,
+          aiMaxTokens: data.aiMaxTokens !== undefined ? Number(data.aiMaxTokens) : 1000,
+          aiSystemInstruction: data.aiSystemInstruction || '',
+          aiMaxMonthlyBudget: data.aiMaxMonthlyBudget !== undefined ? Number(data.aiMaxMonthlyBudget) : 100.00
         });
         setGlobalStats({
           totalAiSpend: data.totalAiSpend !== undefined ? Number(data.totalAiSpend) : 0,
@@ -101,6 +123,13 @@ const AiSettingsPage = () => {
         openaiModel: settings.openaiModel,
         aiEnabled: settings.aiEnabled,
         aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
+        creditMonthlyPlan: Number(settings.creditMonthlyPlan),
+        creditAnnualPlan: Number(settings.creditAnnualPlan),
+        creditLifetimePlan: Number(settings.creditLifetimePlan),
+        aiTemperature: Number(settings.aiTemperature),
+        aiMaxTokens: Number(settings.aiMaxTokens),
+        aiSystemInstruction: settings.aiSystemInstruction,
+        aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
         updatedAt: serverTimestamp(),
       }, { merge: true });
       setSaved(true);
@@ -155,7 +184,7 @@ const AiSettingsPage = () => {
       // User Aggregates
       const userKey = log.userEmail || log.userId || 'Unknown User';
       if (!userStats[userKey]) {
-        userStats[userKey] = { email: userKey, name: log.userName || '', cost: 0, calls: 0 };
+        userStats[userKey] = { email: userKey, name: log.userName || '', cost: 0, calls: 0, userId: log.userId };
       }
       userStats[userKey].cost += (log.cost || 0);
       userStats[userKey].calls += 1;
@@ -182,16 +211,105 @@ const AiSettingsPage = () => {
 
   const { topUsers, topTools } = getAnalytics();
 
-  // Filter logs for search
+  // Dynamic filter lists
+  const uniqueTools = Array.from(new Set(logs.map(l => l.tool || 'General')));
+  const uniqueModels = Array.from(new Set(logs.map(l => l.model).filter(Boolean)));
+
+  // Filter logs for search and dropdown filters
   const filteredLogs = logs.filter(log => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       (log.userEmail || '').toLowerCase().includes(term) ||
       (log.userName || '').toLowerCase().includes(term) ||
       (log.tool || '').toLowerCase().includes(term) ||
       (log.model || '').toLowerCase().includes(term)
     );
+    const matchesTool = filterTool === 'all' || (log.tool || 'General') === filterTool;
+    const matchesModel = filterModel === 'all' || log.model === filterModel;
+    return matchesSearch && matchesTool && matchesModel;
   });
+
+  // Export filtered logs to CSV file
+  const exportLogsToCSV = () => {
+    if (filteredLogs.length === 0) return;
+    const headers = isRTL 
+      ? ['المستخدم', 'البريد الإلكتروني', 'الأداة', 'النموذج', 'المدخلات (Tokens)', 'المخرجات (Tokens)', 'التكلفة ($)', 'الوقت']
+      : ['User', 'Email', 'Tool', 'Model', 'Input Tokens', 'Output Tokens', 'Cost ($)', 'Timestamp'];
+    const rows = filteredLogs.map(log => {
+      const ts = log.timestamp;
+      const dateObj = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
+      const dateStr = dateObj.toISOString().replace(/T/, ' ').replace(/\..+/, '');
+      return [
+        log.userName || 'Anonymous',
+        log.userEmail || '',
+        log.tool || 'General',
+        log.model || '',
+        log.inputTokens || 0,
+        log.outputTokens || 0,
+        Number(log.cost || 0).toFixed(6),
+        dateStr
+      ];
+    });
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `ai_usage_logs_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Open quick refill modal
+  const openRefillModal = async (userId, email, name) => {
+    setRefillModalUser({ userId, email, name, currentCredits: '...' });
+    setRefillAmount('');
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setRefillModalUser({
+          userId,
+          email,
+          name,
+          currentCredits: data.aiCredits !== undefined ? Number(data.aiCredits).toFixed(2) : '5.00'
+        });
+      } else {
+        setRefillModalUser(prev => ({ ...prev, currentCredits: '0.00' }));
+      }
+    } catch (e) {
+      console.error(e);
+      setRefillModalUser(prev => ({ ...prev, currentCredits: '0.00' }));
+    }
+  };
+
+  // Submit quick credit refill to Firestore
+  const handleRefillSubmit = async () => {
+    if (!refillModalUser?.userId || !refillAmount) return;
+    setRefilling(true);
+    try {
+      const userRef = doc(db, 'users', refillModalUser.userId);
+      const amountToAdd = Number(refillAmount);
+      if (isNaN(amountToAdd)) {
+        alert(isRTL ? 'الرجاء إدخال رقم صحيح' : 'Please enter a valid number');
+        setRefilling(false);
+        return;
+      }
+      const currentVal = refillModalUser.currentCredits === '...' ? 0 : Number(refillModalUser.currentCredits);
+      const newVal = Math.max(0, currentVal + amountToAdd);
+      await updateDoc(userRef, {
+        aiCredits: newVal
+      });
+      alert(isRTL ? 'تم شحن الرصيد بنجاح!' : 'Credits refilled successfully!');
+      setRefillModalUser(null);
+    } catch (err) {
+      console.error(err);
+      alert(isRTL ? 'فشل شحن الرصيد' : 'Failed to refill credits');
+    } finally {
+      setRefilling(false);
+    }
+  };
 
   const labelStyle = {
     display: 'block',
@@ -479,6 +597,135 @@ const AiSettingsPage = () => {
                     : 'Deducted credits from user balances are multiplied by this factor (e.g., 1.5 adds a 50% markup, 2.0 adds 100%). Platform logs will still show actual costs to display true profits.'}
                 </div>
               </div>
+
+              {/* Divider: Plan Credits */}
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px', marginTop: '8px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
+                  {isRTL ? 'ربط رصيد الذكاء الاصطناعي بخطط الاشتراك' : 'AI Credit Association with Subscription Plans'}
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'الخطة الشهرية ($)' : 'Monthly Plan Credit ($)'}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={settings.creditMonthlyPlan}
+                      onChange={e => handleFieldChange('creditMonthlyPlan', e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'الخطة السنوية ($)' : 'Annual Plan Credit ($)'}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={settings.creditAnnualPlan}
+                      onChange={e => handleFieldChange('creditAnnualPlan', e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'خطة مدى الحياة ($)' : 'Lifetime Plan Credit ($)'}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={settings.creditLifetimePlan}
+                      onChange={e => handleFieldChange('creditLifetimePlan', e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '6px' }}>
+                  {isRTL 
+                    ? 'سيتم منح هذا الرصيد تلقائياً للعميل عند ترقية أو تفعيل اشتراكه (سواء تمت الموافقة يدوياً من الآدمن أو تلقائياً عبر الدفع بـ Stripe).'
+                    : 'These credits will be added to user balances automatically upon plan activation (both manual admin approval & automatic Stripe checks).'}
+                </div>
+              </div>
+
+              {/* Divider: AI Model & Parameter Controls */}
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
+                  {isRTL ? 'إعدادات التحكم في الأداء الإبداعي والحدود' : 'AI Performance & Usage Controls'}
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'درجة الإبداع والحرارة (Temperature)' : 'Creativity & Temperature'}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      placeholder="0.7"
+                      value={settings.aiTemperature}
+                      onChange={e => handleFieldChange('aiTemperature', e.target.value)}
+                      style={inputStyle}
+                    />
+                    <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px' }}>
+                      {isRTL ? '0.0 تعني دقة متناهية، 0.7 توازن جيد، و 1.2 أو أكثر تعني إبداعية عالية جداً.' : '0.0 is deterministic, 0.7 is balanced, 1.2+ is highly creative.'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'الحد الأقصى للتوكنز (Max Tokens)' : 'Max Output Tokens Limit'}</label>
+                    <input
+                      type="number"
+                      step="50"
+                      min="100"
+                      max="8000"
+                      placeholder="1000"
+                      value={settings.aiMaxTokens}
+                      onChange={e => handleFieldChange('aiMaxTokens', e.target.value)}
+                      style={inputStyle}
+                    />
+                    <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px' }}>
+                      {isRTL ? 'يمنع العملاء من استهلاك رصيدك بالكامل في استفسار واحد ضخم (ينصح بـ 1000 إلى 2000).' : 'Prevents users from wiping out your API key balance in a single query (1000-2000 recommended).'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'درع الأمان والميزانية القصوى ($)' : 'Safety Budget Guard ($)'}</label>
+                    <input
+                      type="number"
+                      step="5"
+                      min="1"
+                      placeholder="100.00"
+                      value={settings.aiMaxMonthlyBudget}
+                      onChange={e => handleFieldChange('aiMaxMonthlyBudget', e.target.value)}
+                      style={inputStyle}
+                    />
+                    <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px' }}>
+                      {isRTL ? 'يتوقف الاستهلاك تلقائياً لحسابك كلياً بمجرد تخطي تكلفة استخدام المنصة لهذا المبلغ.' : 'Automatically stops usage when platform accumulated costs exceed this setting.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider: System Instructions branding */}
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '8px' }}>
+                  {isRTL ? 'تخصيص هوية وسلوك الذكاء الاصطناعي (System Prompt)' : 'Custom System Prompt & Assistant Behavior'}
+                </h4>
+                <textarea
+                  placeholder={isRTL ? "مثال: أنت مساعد ذكاء اصطناعي ذكي تابع لمنصة upKlick، تتحدث باللغة العربية وتساعد المستخدمين في إنشاء وإدارة صفحات الهبوط بحماس واحترافية..." : "e.g., You are upKlick AI assistant. Be helpful, professional, and guide users on how to optimize landing pages..."}
+                  value={settings.aiSystemInstruction}
+                  onChange={e => handleFieldChange('aiSystemInstruction', e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    width: '100%',
+                    minHeight: '80px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    padding: '10px 12px',
+                    fontSize: '12.5px'
+                  }}
+                />
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
+                  {isRTL 
+                    ? 'اكتب التعليمات التي ترغب في توجيهها للذكاء الاصطناعي لتخصيص إجاباته وجعله يمثل علامتك التجارية بحرفية.'
+                    : 'System-level instructions injected at the start of all chat conversations to brand your AI and tailor its responses.'}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -521,18 +768,83 @@ const AiSettingsPage = () => {
               <span>{isRTL ? 'سجلات استهلاك الذكاء الاصطناعي الفورية' : 'Live AI Transactions Logs'}</span>
             </div>
             
-            {/* Search Box */}
-            <div style={{ position: 'relative', width: '280px' }}>
-              <span style={{ position: 'absolute', top: '10px', [isRTL ? 'right' : 'left']: '12px', color: 'var(--text3)' }}>
-                <Search size={14} />
-              </span>
-              <input
-                type="text"
-                placeholder={isRTL ? 'ابحث بالمستخدم، الأداة، الموديل...' : 'Search by email, tool, model...'}
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                style={{ ...inputStyle, paddingLeft: isRTL ? '14px' : '34px', paddingRight: isRTL ? '34px' : '14px' }}
-              />
+            {/* Search, Filters & Export controls */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+              {/* Tool Filter */}
+              <select
+                value={filterTool}
+                onChange={e => setFilterTool(e.target.value)}
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line2)',
+                  color: 'var(--text)',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  fontSize: '12.5px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="all">{isRTL ? 'جميع الأدوات' : 'All Tools'}</option>
+                {uniqueTools.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+
+              {/* Model Filter */}
+              <select
+                value={filterModel}
+                onChange={e => setFilterModel(e.target.value)}
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line2)',
+                  color: 'var(--text)',
+                  padding: '9px 12px',
+                  borderRadius: '10px',
+                  fontSize: '12.5px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="all">{isRTL ? 'جميع النماذج' : 'All Models'}</option>
+                {uniqueModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+
+              {/* Export Button */}
+              <button 
+                onClick={exportLogsToCSV}
+                className="btn"
+                style={{ 
+                  background: 'var(--bg3)', 
+                  border: '1px solid var(--line2)', 
+                  color: 'var(--text)', 
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  fontSize: '12.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <span>📥 {isRTL ? 'تصدير CSV' : 'Export CSV'}</span>
+              </button>
+
+              {/* Search Box */}
+              <div style={{ position: 'relative', width: '220px' }}>
+                <span style={{ position: 'absolute', top: '10px', [isRTL ? 'right' : 'left']: '12px', color: 'var(--text3)' }}>
+                  <Search size={14} />
+                </span>
+                <input
+                  type="text"
+                  placeholder={isRTL ? 'ابحث بالمستخدم...' : 'Search user...'}
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  style={{ ...inputStyle, paddingLeft: isRTL ? '14px' : '34px', paddingRight: isRTL ? '34px' : '14px' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -688,9 +1000,29 @@ const AiSettingsPage = () => {
                         </td>
                         <td style={tableCellStyle}>{user.calls}</td>
                         <td style={tableCellStyle}>
-                          <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                            ${user.cost.toFixed(5)}
-                          </span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                              ${user.cost.toFixed(5)}
+                            </span>
+                            {user.userId && (
+                              <button
+                                onClick={() => openRefillModal(user.userId, user.email, user.name)}
+                                className="btn"
+                                style={{
+                                  padding: '4px 10px',
+                                  fontSize: '11px',
+                                  background: 'rgba(255, 107, 53, 0.12)',
+                                  border: '1px solid var(--orange)',
+                                  color: 'var(--orange)',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                {isRTL ? 'شحن رصيد' : 'Refill'}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -740,6 +1072,84 @@ const AiSettingsPage = () => {
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Refill Modal Overlay */}
+      {refillModalUser && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(8, 8, 15, 0.85)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div className="card" style={{
+            width: '100%',
+            maxWidth: '420px',
+            background: 'var(--panelColor, #101018)',
+            border: '1px solid var(--line, var(--edge))',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.5)'
+          }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text)', marginBottom: '8px' }}>
+              ⚡ {isRTL ? 'شحن رصيد ذكاء اصطناعي سريع' : 'Quick AI Credit Refill'}
+            </h3>
+            <p style={{ fontSize: '12.5px', color: 'var(--text2)', marginBottom: '16px', lineHeight: '1.4' }}>
+              {isRTL ? `إضافة رصيد للمستخدم: ` : `Refill balance for: `}
+              <strong style={{ color: 'var(--text)' }}>{refillModalUser.name || 'Anonymous'}</strong>
+              <br />
+              <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{refillModalUser.email}</span>
+            </p>
+
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '10px' }}>
+                <span style={{ color: 'var(--text3)' }}>{isRTL ? 'الرصيد الحالي للمستخدم:' : 'User Current Balance:'}</span>
+                <span style={{ color: 'var(--orange)', fontWeight: 'bold' }}>${refillModalUser.currentCredits}</span>
+              </div>
+              <label style={labelStyle}>{isRTL ? 'المبلغ المراد إضافته ($)' : 'Amount to Add ($)'}</label>
+              <input
+                type="number"
+                step="1"
+                placeholder={isRTL ? "مثال: 5.00 أو -5.00 لخصم الرصيد" : "e.g. 5.00 or -5.00 to deduct"}
+                value={refillAmount}
+                onChange={e => setRefillAmount(e.target.value)}
+                style={inputStyle}
+                autoFocus
+              />
+              <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px' }}>
+                {isRTL ? 'يمكنك كتابة رقم سالب للخصم من الرصيد.' : 'Use negative values to deduct credit.'}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={handleRefillSubmit}
+                disabled={refilling || !refillAmount}
+                className="btn btn-primary"
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                {refilling ? (isRTL ? 'جاري الشحن...' : 'Processing...') : (isRTL ? 'تأكيد الشحن' : 'Confirm Refill')}
+              </button>
+              <button
+                onClick={() => setRefillModalUser(null)}
+                className="btn"
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line2)',
+                  color: 'var(--text2)',
+                  padding: '9px 16px'
+                }}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+            </div>
           </div>
         </div>
       )}
