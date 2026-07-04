@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 export default function PublicBioPage() {
   const { username } = useParams();
   const [loading, setLoading] = useState(true);
-  
+
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('links'); // 'links' or 'cv'
 
