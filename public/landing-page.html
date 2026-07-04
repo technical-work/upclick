@@ -1221,6 +1221,12 @@
       font-weight: 700
     }
 
+    html[dir="rtl"] .price-badge,
+    [lang="ar"] .price-badge {
+      right: auto;
+      left: 16px;
+    }
+
     .price-name {
       font-family: var(--ff);
       font-size: 14px;
@@ -3989,9 +3995,18 @@
           '<div class="price-period">' + pPeriod + '</div>' +
           '<div class="price-divider"></div>' +
           '<div class="price-features">';
+        var monthlyCredit = tenantConfig.creditMonthlyPlan !== undefined ? Number(tenantConfig.creditMonthlyPlan) : 10.00;
         pFeatures.forEach(function (f) {
           if (f.trim()) {
-            html += '<div class="pf has"><span class="chk">✓</span> ' + f + '</div>';
+            var featureText = f;
+            if (featureText.indexOf('{ai_credits}') !== -1) {
+              featureText = featureText.replace('{ai_credits}', '<strong style="color:var(--or)">$' + monthlyCredit + '</strong>');
+            } else if (featureText.indexOf('مساعد الذكاء الاصطناعي') !== -1 && featureText.indexOf('رصيد') === -1) {
+              featureText = 'مساعد الذكاء الاصطناعي (<strong style="color:var(--or)">$' + monthlyCredit + ' رصيد شهرياً</strong>)';
+            } else if (featureText.toLowerCase().indexOf('ai assistant') !== -1 && featureText.toLowerCase().indexOf('credit') === -1) {
+              featureText = 'AI Assistant (<strong style="color:var(--or)">$' + monthlyCredit + ' monthly credit</strong>)';
+            }
+            html += '<div class="pf has"><span class="chk">✓</span> ' + featureText + '</div>';
           }
         });
         html += '</div>' +
@@ -4023,9 +4038,32 @@
           '<div class="price-period">' + apPeriod + '</div>' +
           '<div class="price-divider"></div>' +
           '<div class="price-features">';
+        var annualCredit = tenantConfig.creditAnnualPlan !== undefined ? Number(tenantConfig.creditAnnualPlan) : 120.00;
+        var hasAiFeature = false;
         apFeatures.forEach(function (f) {
+          if (f.indexOf('مساعد الذكاء الاصطناعي') !== -1 || f.toLowerCase().indexOf('ai assistant') !== -1) {
+            hasAiFeature = true;
+          }
+        });
+        var processedApFeatures = apFeatures.slice();
+        if (!hasAiFeature) {
+          if (_lang === 'ar') {
+            processedApFeatures.push('رصيد ذكاء اصطناعي بقيمة <strong style="color:var(--or)">$' + annualCredit + ' سنوياً</strong>');
+          } else {
+            processedApFeatures.push('<strong style="color:var(--or)">$' + annualCredit + ' annual AI credit</strong>');
+          }
+        }
+        processedApFeatures.forEach(function (f) {
           if (f.trim()) {
-            html += '<div class="pf has"><span class="chk">✓</span> ' + f + '</div>';
+            var featureText = f;
+            if (featureText.indexOf('{ai_credits}') !== -1) {
+              featureText = featureText.replace('{ai_credits}', '<strong style="color:var(--or)">$' + annualCredit + '</strong>');
+            } else if (featureText.indexOf('مساعد الذكاء الاصطناعي') !== -1 && featureText.indexOf('رصيد') === -1) {
+              featureText = 'مساعد الذكاء الاصطناعي (<strong style="color:var(--or)">$' + annualCredit + ' رصيد سنوياً</strong>)';
+            } else if (featureText.toLowerCase().indexOf('ai assistant') !== -1 && featureText.toLowerCase().indexOf('credit') === -1) {
+              featureText = 'AI Assistant (<strong style="color:var(--or)">$' + annualCredit + ' annual credit</strong>)';
+            }
+            html += '<div class="pf has"><span class="chk">✓</span> ' + featureText + '</div>';
           }
         });
         html += '</div>' +
@@ -4160,13 +4198,35 @@
         tenantConfig = snap.docs[0].data();
         applyTenantConfig();
       } else {
-        renderPricingPlans();
-        translatePage();
+        // Fallback to global config document
+        db.collection('tenants').doc('global').get().then(function (docSnap) {
+          if (docSnap.exists) {
+            tenantConfig = docSnap.data();
+            applyTenantConfig();
+          } else {
+            renderPricingPlans();
+            translatePage();
+          }
+        }).catch(function () {
+          renderPricingPlans();
+          translatePage();
+        });
       }
     }).catch(function (err) {
       console.error("Error loading dynamic layout configs:", err);
-      renderPricingPlans();
-      translatePage();
+      // Fallback to global config document
+      db.collection('tenants').doc('global').get().then(function (docSnap) {
+        if (docSnap.exists) {
+          tenantConfig = docSnap.data();
+          applyTenantConfig();
+        } else {
+          renderPricingPlans();
+          translatePage();
+        }
+      }).catch(function () {
+        renderPricingPlans();
+        translatePage();
+      });
     });
 
     window.addEventListener('message', function (event) {
