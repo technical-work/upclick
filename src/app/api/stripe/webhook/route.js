@@ -101,10 +101,32 @@ export async function POST(req) {
         const newExpiresDate = new Date(baseDate);
         newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
 
+        // Fetch global settings to get the credit configuration for this plan
+        const globalDoc = await adminDb.collection('tenants').doc('global').get();
+        let creditToAdd = 0;
+        if (globalDoc.exists) {
+          const globalData = globalDoc.data();
+          if (planDuration === 'annual') {
+            creditToAdd = globalData.creditAnnualPlan !== undefined ? Number(globalData.creditAnnualPlan) : 120.00;
+          } else if (planDuration === 'one-time') {
+            creditToAdd = globalData.creditLifetimePlan !== undefined ? Number(globalData.creditLifetimePlan) : 500.00;
+          } else {
+            creditToAdd = globalData.creditMonthlyPlan !== undefined ? Number(globalData.creditMonthlyPlan) : 10.00;
+          }
+        } else {
+          // Fallback defaults
+          if (planDuration === 'annual') creditToAdd = 120.00;
+          else if (planDuration === 'one-time') creditToAdd = 500.00;
+          else creditToAdd = 10.00;
+        }
+
+        const currentUserCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : 0;
+
         // Update user subscription state
         await userRef.set({
           expiresAt: newExpiresDate,
-          isTrial: false
+          isTrial: false,
+          aiCredits: currentUserCredits + creditToAdd
         }, { merge: true });
 
         // Add payment document to collection
