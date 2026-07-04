@@ -23,9 +23,9 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
   const customModel = gc?.integrations?.bynaraModel;
   const isCustomConnected = gc?.integrations?.bynaraConnected;
 
-  const API_KEY = (isCustomConnected && customKey) ? customKey : defaultKey;
-  const ENDPOINT = (isCustomConnected && customEndpoint) ? customEndpoint : defaultEndpoint;
-  const MODEL_NAME = (isCustomConnected && customModel) ? customModel : defaultModel;
+  const API_KEY = isCustomConnected ? (customKey || undefined) : undefined;
+  const ENDPOINT = isCustomConnected ? (customEndpoint || undefined) : undefined;
+  const MODEL_NAME = isCustomConnected ? (customModel || undefined) : undefined;
 
   try {
     const res = await fetch('/api/ai', {

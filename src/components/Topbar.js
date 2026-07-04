@@ -133,45 +133,47 @@ export default function Topbar() {
         </div>
 
         {/* AI Model Selector */}
-        <div className="model-sel">
-          <select 
-            className="inp" 
-            style={{ 
-              padding: '0 8px', 
-              fontSize: '11px', 
-              height: '28px', 
-              borderRadius: '6px', 
-              background: 'transparent', 
-              border: '1px solid var(--edge)', 
-              color: 'var(--t2)',
-              outline: 'none',
-              cursor: 'pointer',
-              minWidth: '130px'
-            }}
-            value={GC?.integrations?.bynaraModel || 'mistral-large'}
-            onChange={(e) => {
-              saveGC({
-                ...GC,
-                integrations: {
-                  ...(GC?.integrations || {}),
-                  bynaraModel: e.target.value,
-                  bynaraConnected: true
-                }
-              });
-            }}
-          >
-            {[
-              'mistral-large',
-              'mimo-v2.5-free',
-              'mimo-v2.5-pro-free',
-              'mistral-medium-3-5',
-              'mimo-v2.5-hermes',
-              'mimo-v2.5-pro-hermes'
-            ].map(m => (
-              <option key={m} value={m} style={{ background: 'var(--surface)', color: 'var(--t1)' }}>{m}</option>
-            ))}
-          </select>
-        </div>
+        {GC?.integrations?.bynaraConnected && (
+          <div className="model-sel">
+            <select 
+              className="inp" 
+              style={{ 
+                padding: '0 8px', 
+                fontSize: '11px', 
+                height: '28px', 
+                borderRadius: '6px', 
+                background: 'transparent', 
+                border: '1px solid var(--edge)', 
+                color: 'var(--t2)',
+                outline: 'none',
+                cursor: 'pointer',
+                minWidth: '130px'
+              }}
+              value={GC?.integrations?.bynaraModel || 'mistral-large'}
+              onChange={(e) => {
+                saveGC({
+                  ...GC,
+                  integrations: {
+                    ...(GC?.integrations || {}),
+                    bynaraModel: e.target.value,
+                    bynaraConnected: true
+                  }
+                });
+              }}
+            >
+              {[
+                'mistral-large',
+                'mimo-v2.5-free',
+                'mimo-v2.5-pro-free',
+                'mistral-medium-3-5',
+                'mimo-v2.5-hermes',
+                'mimo-v2.5-pro-hermes'
+              ].map(m => (
+                <option key={m} value={m} style={{ background: 'var(--surface)', color: 'var(--t1)' }}>{m}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Language Switcher */}
         <div className="lang-sw">

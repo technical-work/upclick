@@ -329,45 +329,47 @@ export default function Sidebar() {
             </div>
 
             {/* Model Selector */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: isRtl ? 'right' : 'left' }}>
-              <label style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'bold' }}>{isRtl ? '🤖 نموذج الذكاء الاصطناعي:' : '🤖 AI Model:'}</label>
-              <select 
-                className="inp" 
-                style={{ 
-                  padding: '6px 8px', 
-                  fontSize: '11.5px', 
-                  borderRadius: '6px', 
-                  background: 'var(--surface2)', 
-                  border: '1px solid var(--edge)', 
-                  color: 'var(--t2)',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  width: '100%'
-                }}
-                value={GC?.integrations?.bynaraModel || 'mistral-large'}
-                onChange={(e) => {
-                  saveGC({
-                    ...GC,
-                    integrations: {
-                      ...(GC?.integrations || {}),
-                      bynaraModel: e.target.value,
-                      bynaraConnected: true
-                    }
-                  });
-                }}
-              >
-                {[
-                  'mistral-large',
-                  'mimo-v2.5-free',
-                  'mimo-v2.5-pro-free',
-                  'mistral-medium-3-5',
-                  'mimo-v2.5-hermes',
-                  'mimo-v2.5-pro-hermes'
-                ].map(m => (
-                  <option key={m} value={m} style={{ background: 'var(--surface)', color: 'var(--t1)' }}>{m}</option>
-                ))}
-              </select>
-            </div>
+            {GC?.integrations?.bynaraConnected && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: isRtl ? 'right' : 'left' }}>
+                <label style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'bold' }}>{isRtl ? '🤖 نموذج الذكاء الاصطناعي:' : '🤖 AI Model:'}</label>
+                <select 
+                  className="inp" 
+                  style={{ 
+                    padding: '6px 8px', 
+                    fontSize: '11.5px', 
+                    borderRadius: '6px', 
+                    background: 'var(--surface2)', 
+                    border: '1px solid var(--edge)', 
+                    color: 'var(--t2)',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                  value={GC?.integrations?.bynaraModel || 'mistral-large'}
+                  onChange={(e) => {
+                    saveGC({
+                      ...GC,
+                      integrations: {
+                        ...(GC?.integrations || {}),
+                        bynaraModel: e.target.value,
+                        bynaraConnected: true
+                      }
+                    });
+                  }}
+                >
+                  {[
+                    'mistral-large',
+                    'mimo-v2.5-free',
+                    'mimo-v2.5-pro-free',
+                    'mistral-medium-3-5',
+                    'mimo-v2.5-hermes',
+                    'mimo-v2.5-pro-hermes'
+                  ].map(m => (
+                    <option key={m} value={m} style={{ background: 'var(--surface)', color: 'var(--t1)' }}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Language & Theme Selectors inline */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: isRtl ? 'right' : 'left' }}>
