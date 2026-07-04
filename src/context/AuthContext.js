@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -95,8 +95,12 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const resetPassword = async (email) => {
+    return sendPasswordResetEmail(auth, email);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, currentUser: user, userData, login, logout, updateUserAccount, loading }}>
+    <AuthContext.Provider value={{ user, currentUser: user, userData, login, logout, updateUserAccount, resetPassword, loading }}>
       {loading ? (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', justifyContent: 'center', alignItems: 'center', background: '#08080f', color: '#8275A3', fontFamily: 'sans-serif', flexDirection: 'column', gap: '12px' }}>
           <div className="spinner" style={{ width: '30px', height: '30px', border: '3px solid rgba(255,107,53,0.3)', borderTopColor: '#FF6B35', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
