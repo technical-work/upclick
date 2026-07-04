@@ -1048,6 +1048,9 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
     height: auto !important;
     min-height: 250px;
   }
+  .tb-actions {
+    display: none !important;
+  }
 }
 
 @media (max-width: 560px) {
@@ -1061,10 +1064,7 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
   #tb {
     padding: 0 10px !important;
     gap: 4px !important;
-  }
-  
-  .tb-breadcrumb {
-    display: none !important; /* Hide breadcrumb on very small screens to make room */
+    justify-content: space-between;
   }
 }
 
