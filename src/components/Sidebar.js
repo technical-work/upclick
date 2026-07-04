@@ -13,6 +13,7 @@ export default function Sidebar() {
     t,
     setAiPanelOpen,
     mobileMenuOpen,
+    setMobileMenuOpen,
     tenantConfig
   } = useBusiness();
 
@@ -142,7 +143,16 @@ export default function Sidebar() {
 
   return (
     <nav id="sb" className={`${collapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-      <button id="sb-tog" onClick={() => setCollapsed(!collapsed)}>
+      <button 
+        id="sb-tog" 
+        onClick={() => {
+          if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+            setMobileMenuOpen(false);
+          } else {
+            setCollapsed(!collapsed);
+          }
+        }}
+      >
         {collapsed ? '›' : '‹'}
       </button>
 
