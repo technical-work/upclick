@@ -43,6 +43,9 @@ const AiSettingsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTool, setFilterTool] = useState('all');
   const [filterModel, setFilterModel] = useState('all');
+  const [timeRange, setTimeRange] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'custom'
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Refill Modal state
   const [refillModalUser, setRefillModalUser] = useState(null); // { userId, email, name, currentCredits }
@@ -92,7 +95,7 @@ const AiSettingsPage = () => {
   useEffect(() => {
     if (activeSubTab !== 'logs' && activeSubTab !== 'analytics') return;
     setLoadingLogs(true);
-    const q = query(collection(db, 'ai_logs'), orderBy('timestamp', 'desc'), limit(150));
+    const q = query(collection(db, 'ai_logs'), orderBy('timestamp', 'desc'), limit(1000));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = [];
       snapshot.forEach(docSnap => {
@@ -175,12 +178,49 @@ const AiSettingsPage = () => {
     setTestResult(null);
   };
 
-  // Compute stats for Analytics Dashboard
+  // Filter logs by date range
+  const filterLogsByDate = (logList) => {
+    const now = new Date();
+    return logList.filter(log => {
+      const ts = log.timestamp;
+      const dateObj = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
+      
+      if (timeRange === 'today') {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return dateObj >= todayStart;
+      }
+      if (timeRange === 'week') {
+        const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return dateObj >= weekStart;
+      }
+      if (timeRange === 'month') {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        return dateObj >= monthStart;
+      }
+      if (timeRange === 'custom') {
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (dateObj < start) return false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (dateObj > end) return false;
+        }
+      }
+      return true;
+    });
+  };
+
+  const dateFilteredLogs = filterLogsByDate(logs);
+
+  // Compute stats for Analytics Dashboard (from date-filtered logs!)
   const getAnalytics = () => {
     const userStats = {};
     const toolStats = {};
 
-    logs.forEach(log => {
+    dateFilteredLogs.forEach(log => {
       // User Aggregates
       const userKey = log.userEmail || log.userId || 'Unknown User';
       if (!userStats[userKey]) {
@@ -211,12 +251,32 @@ const AiSettingsPage = () => {
 
   const { topUsers, topTools } = getAnalytics();
 
+  // Compute dynamic stats for the selected period
+  const getPeriodStats = () => {
+    let spend = 0;
+    let tokens = 0;
+    let calls = dateFilteredLogs.length;
+    
+    dateFilteredLogs.forEach(l => {
+      spend += (l.cost || 0);
+      tokens += ((l.inputTokens || 0) + (l.outputTokens || 0));
+    });
+
+    return {
+      totalAiSpend: timeRange === 'all' ? globalStats.totalAiSpend : spend,
+      totalAiTokens: timeRange === 'all' ? globalStats.totalAiTokens : tokens,
+      totalAiCalls: timeRange === 'all' ? globalStats.totalAiCalls : calls
+    };
+  };
+
+  const periodStats = getPeriodStats();
+
   // Dynamic filter lists
   const uniqueTools = Array.from(new Set(logs.map(l => l.tool || 'General')));
   const uniqueModels = Array.from(new Set(logs.map(l => l.model).filter(Boolean)));
 
-  // Filter logs for search and dropdown filters
-  const filteredLogs = logs.filter(log => {
+  // Filter logs for search and dropdown filters (from date-filtered logs!)
+  const filteredLogs = dateFilteredLogs.filter(log => {
     const term = searchTerm.toLowerCase();
     const matchesSearch = (
       (log.userEmail || '').toLowerCase().includes(term) ||
@@ -428,6 +488,80 @@ const AiSettingsPage = () => {
           <span>{isRTL ? 'لوحة التحليلات' : 'Analytics Dashboard'}</span>
         </button>
       </div>
+
+      {activeSubTab !== 'config' && (
+        <div className="card" style={{
+          ...cardStyle,
+          marginBottom: '16px',
+          padding: '12px 20px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text)' }}>
+            <span>📅 {isRTL ? 'تصفية الفترة الزمنية:' : 'Filter Time Period:'}</span>
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
+            <select
+              value={timeRange}
+              onChange={e => setTimeRange(e.target.value)}
+              style={{
+                background: 'var(--bg3)',
+                border: '1px solid var(--line2)',
+                color: 'var(--text)',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">{isRTL ? 'كل الأوقات' : 'All Time'}</option>
+              <option value="today">{isRTL ? 'اليوم' : 'Today'}</option>
+              <option value="week">{isRTL ? 'هذا الأسبوع' : 'This Week'}</option>
+              <option value="month">{isRTL ? 'هذا الشهر' : 'This Month'}</option>
+              <option value="custom">{isRTL ? 'فترة مخصصة...' : 'Custom Range...'}</option>
+            </select>
+
+            {timeRange === 'custom' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  style={{
+                    background: 'var(--bg3)',
+                    border: '1px solid var(--line2)',
+                    color: 'var(--text)',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    outline: 'none'
+                  }}
+                />
+                <span style={{ fontSize: '12px', color: 'var(--text3)' }}>{isRTL ? 'إلى' : 'to'}</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  style={{
+                    background: 'var(--bg3)',
+                    border: '1px solid var(--line2)',
+                    color: 'var(--text)',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {loadError && (
         <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px', border: '1px solid rgba(239,68,68,0.2)' }}>
@@ -934,7 +1068,7 @@ const AiSettingsPage = () => {
                 💰 {isRTL ? 'إجمالي تكلفة المنصة بالدولار' : 'TOTAL PLATFORM SPEND ($)'}
               </div>
               <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--green)', marginTop: '8px' }}>
-                ${globalStats.totalAiSpend.toFixed(4)}
+                ${periodStats.totalAiSpend.toFixed(4)}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '6px' }}>
                 {isRTL ? 'يتم التحديث لحظياً مع كل استعلام' : 'Updates in real-time with each request'}
@@ -947,7 +1081,7 @@ const AiSettingsPage = () => {
                 ⚡ {isRTL ? 'إجمالي التوكينز المستهلكة' : 'TOTAL TOKENS CONSUMED'}
               </div>
               <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text)', marginTop: '8px' }}>
-                {globalStats.totalAiTokens.toLocaleString()}
+                {periodStats.totalAiTokens.toLocaleString()}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '6px' }}>
                 {isRTL ? 'الحجم الكلي لمدخلات ومخرجات النصوص' : 'Total size of prompts & responses'}
@@ -960,7 +1094,7 @@ const AiSettingsPage = () => {
                 🤖 {isRTL ? 'إجمالي طلبات الذكاء الاصطناعي' : 'TOTAL AI CALLS'}
               </div>
               <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--accent)', marginTop: '8px' }}>
-                {globalStats.totalAiCalls.toLocaleString()}
+                {periodStats.totalAiCalls.toLocaleString()}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '6px' }}>
                 {isRTL ? 'عدد المعاملات الناجحة المنفذة' : 'Total successful transactions executed'}
