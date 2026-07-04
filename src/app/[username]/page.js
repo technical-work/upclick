@@ -10,7 +10,6 @@ export default function PublicBioPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('links'); // 'links' or 'cv'
-  
 
   useEffect(() => {
     if (!username) return;
