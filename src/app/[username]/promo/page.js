@@ -61,9 +61,41 @@ export default function PublicPromoPage() {
   }
 
   return (
-    <div 
-      style={{ width: '100%', minHeight: '100vh', margin: 0, padding: 0 }}
-      dangerouslySetInnerHTML={{ __html: profile.landingPageHtml }} 
-    />
+    <>
+      <style>{`
+        @media(max-width:768px){
+          section {
+            padding: 40px 16px !important;
+          }
+          div[style*="grid-template-columns:repeat(3"],
+          div[style*="grid-template-columns: repeat(3"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="grid-template-columns:1fr 1fr"],
+          div[style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="grid-template-columns:1fr 1.5fr"],
+          div[style*="grid-template-columns: 1fr 1.5fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="grid-template-columns:repeat(4"],
+          div[style*="grid-template-columns: repeat(4"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+        }
+        @media(max-width:480px){
+          div[style*="grid-template-columns:repeat(4"],
+          div[style*="grid-template-columns: repeat(4"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+      <div 
+        style={{ width: '100%', minHeight: '100vh', margin: 0, padding: 0 }}
+        dangerouslySetInnerHTML={{ __html: profile.landingPageHtml }} 
+      />
+    </>
   );
 }
