@@ -13,7 +13,10 @@ export default function TaskModal() {
     t,
     taskModalOpen,
     setTaskModalOpen,
-    addTask
+    addTask,
+    taskToEdit,
+    setTaskToEdit,
+    updateTask
   } = useBusiness();
 
   const { user: currentUser, userData } = useAuth();
@@ -41,7 +44,44 @@ export default function TaskModal() {
     return unsubscribe;
   }, [ownerUid]);
 
+  const selectOptions = [
+    { uid: ownerUid, name: L('Myself (Owner)', 'نفسي (المالك)') },
+    ...members
+  ];
+
+  // Sync state when editing a task
+  useEffect(() => {
+    if (taskToEdit) {
+      setTitle(taskToEdit.title || '');
+      setDesc(taskToEdit.desc || '');
+      setPriority(taskToEdit.priority || 'medium');
+      setDue(taskToEdit.due || '');
+      setCategory(taskToEdit.category || 'General');
+      
+      const foundOption = selectOptions.find(opt => opt.name === taskToEdit.assignee);
+      setAssignee(foundOption ? foundOption.uid : '');
+    } else {
+      setTitle('');
+      setDesc('');
+      setPriority('medium');
+      setDue('');
+      setCategory('General');
+      setAssignee('');
+    }
+  }, [taskToEdit, taskModalOpen]);
+
   if (!taskModalOpen) return null;
+
+  const handleClose = () => {
+    setTitle('');
+    setDesc('');
+    setPriority('medium');
+    setDue('');
+    setCategory('General');
+    setAssignee('');
+    setTaskToEdit(null);
+    setTaskModalOpen(false);
+  };
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -53,30 +93,29 @@ export default function TaskModal() {
       ? (userData?.name || currentUser?.displayName || currentUser?.email || 'Owner')
       : (members.find(m => m.uid === assignee)?.name || '');
 
-    addTask(title, priority, desc, due, category, assignedName);
+    if (taskToEdit) {
+      updateTask(taskToEdit.id, {
+        title,
+        desc,
+        priority,
+        due,
+        category,
+        assignee: assignedName
+      });
+    } else {
+      addTask(title, priority, desc, due, category, assignedName);
+    }
 
-    // Clear inputs and close
-    setTitle('');
-    setDesc('');
-    setPriority('medium');
-    setDue('');
-    setCategory('General');
-    setAssignee('');
-    setTaskModalOpen(false);
+    handleClose();
   };
 
-  const selectOptions = [
-    { uid: ownerUid, name: L('Myself (Owner)', 'نفسي (المالك)') },
-    ...members
-  ];
-
   return (
-    <div className="modal-overlay" onClick={() => setTaskModalOpen(false)}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-box" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-close" onClick={() => setTaskModalOpen(false)}>✕</div>
+        <div className="modal-close" onClick={handleClose}>✕</div>
         <div style={{ padding: '22px' }}>
           <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 800, marginBottom: '16px', color: 'var(--t1)' }}>
-            ➕ {t('Add New Task')}
+            {taskToEdit ? `✏️ ${L('Edit Task', 'تعديل المهمة')}` : `➕ ${L('Add New Task', 'إضافة مهمة جديدة')}`}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
             <div>
@@ -174,7 +213,7 @@ export default function TaskModal() {
             </div>
 
             <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
-              {L('Save & Create Task', 'حفظ وإنشاء المهمة')}
+              {taskToEdit ? L('Save Changes', 'حفظ التعديلات') : L('Save & Create Task', 'حفظ وإنشاء المهمة')}
             </button>
           </div>
         </div>

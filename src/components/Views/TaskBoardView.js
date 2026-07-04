@@ -60,7 +60,9 @@ export default function TaskBoardView() {
     toggleTask, 
     deleteTask, 
     setTaskModalOpen, 
-    isTeamMember 
+    isTeamMember,
+    setTaskToEdit,
+    updateTask
   } = useBusiness();
   
   const { userData, user: currentUser } = useAuth();
@@ -72,10 +74,11 @@ export default function TaskBoardView() {
   const [showMyTasks, setShowMyTasks] = useState(isTeamMember);
   const [expandedTaskDesc, setExpandedTaskDesc] = useState({});
 
-  // Date Filtering states
+  // Date & Status Filtering states
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const memberName = isTeamMember ? (userData?.name || currentUser?.displayName || currentUser?.email || '') : '';
 
@@ -155,11 +158,26 @@ export default function TaskBoardView() {
     const taskDate = t.due || t.dueDate || t.created || t.createdAt || '';
     return filterByDateRange(taskDate, filterPeriod, customStartDate, customEndDate);
   });
+
+  // Apply Status Filter (only active in list view tabs)
+  const statusFilteredItems = dateFilteredItems.filter(t => {
+    if (activeTab === 'kanban' || statusFilter === 'all') return true;
+    if (statusFilter === 'overdue') {
+      if (t.done) return false;
+      const taskDue = t.due || t.dueDate;
+      if (!taskDue) return false;
+      return new Date(taskDue) < new Date(new Date().setHours(0, 0, 0, 0));
+    }
+    if (statusFilter === 'done') return t.done;
+    if (statusFilter === 'in-progress') return !t.done && t.priority === 'medium';
+    if (statusFilter === 'todo') return !t.done && t.priority === 'high';
+    return true;
+  });
   
   // Filter by member name if showMyTasks is active
   const items = showMyTasks && memberName 
-    ? dateFilteredItems.filter(t => t.assignee && t.assignee.toLowerCase() === memberName.toLowerCase()) 
-    : dateFilteredItems;
+    ? statusFilteredItems.filter(t => t.assignee && t.assignee.toLowerCase() === memberName.toLowerCase()) 
+    : statusFilteredItems;
   
   const totalTasks = items.length;
   const highPriority = items.filter(t => !t.done && t.priority === 'high').length;
@@ -248,6 +266,10 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
     return (
       <div 
         key={task.id} 
+        onClick={() => {
+          setTaskToEdit(task);
+          setTaskModalOpen(true);
+        }}
         style={{ 
           background: 'var(--surface2)', 
           borderRadius: '12px', 
@@ -257,7 +279,8 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
           flexDirection: 'column',
           gap: '8px',
           opacity: task.done ? 0.65 : 1,
-          transition: 'all 0.2s ease'
+          transition: 'all 0.2s ease',
+          cursor: 'pointer'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -266,6 +289,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
             type="checkbox" 
             checked={task.done} 
             onChange={() => toggleTask(task.id)} 
+            onClick={(e) => e.stopPropagation()}
             style={{ width: '18px', height: '18px', cursor: 'pointer', borderRadius: '4px', accentColor: 'var(--orange)' }} 
           />
           
@@ -283,17 +307,22 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
           {/* Title & Toggle */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <span 
-              onClick={() => hasDesc && toggleDesc(task.id)}
               style={{ 
                 color: 'var(--t1)', 
                 fontSize: '13.5px', 
                 fontWeight: 600, 
                 textDecoration: task.done ? 'line-through' : 'none',
-                cursor: hasDesc ? 'pointer' : 'default',
                 display: 'block'
               }}
             >
-              {task.title} {hasDesc && <small style={{ color: 'var(--orange)', fontSize: '10.5px', marginInlineStart: '6px' }}>{isExpanded ? `▲ ${L('Hide', 'إخفاء')}` : `▼ ${L('Details', 'التفاصيل')}`}</small>}
+              {task.title} {hasDesc && (
+                <small 
+                  onClick={(e) => { e.stopPropagation(); toggleDesc(task.id); }}
+                  style={{ color: 'var(--orange)', fontSize: '10.5px', marginInlineStart: '6px', cursor: 'pointer' }}
+                >
+                  {isExpanded ? `▲ ${L('Hide', 'إخفاء')}` : `▼ ${L('Details', 'التفاصيل')}`}
+                </small>
+              )}
             </span>
           </div>
 
@@ -332,7 +361,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
           {/* Delete Button */}
           <button 
             className="btn btn-ghost" 
-            onClick={() => deleteTask(task.id)} 
+            onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
             style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--red)', minWidth: 'auto' }}
           >
             ✕
@@ -521,6 +550,25 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
             </div>
           )}
 
+          {/* Status Filter */}
+          {(activeTab === 'today' || activeTab === 'all') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '13px' }}>🎯</span>
+              <select
+                className="inp"
+                style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', minWidth: '120px', height: '32px', borderRadius: '8px' }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">{L('All Statuses', 'كل الحالات')}</option>
+                <option value="overdue">{L('Overdue ⏰', 'المتأخرة ⏰')}</option>
+                <option value="in-progress">{L('In Progress 🟡', 'قيد التنفيذ 🟡')}</option>
+                <option value="todo">{L('To Do 🔴', 'قيد الانتظار 🔴')}</option>
+                <option value="done">{L('Completed ✅', 'المكتملة ✅')}</option>
+              </select>
+            </div>
+          )}
+
           {/* Assignee filter switch */}
           {(isTeamMember || (GC.team?.members || []).length > 0) && (
             <button
@@ -622,12 +670,16 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
                         draggable="true"
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
                         onDragOver={(e) => e.stopPropagation()}
+                        onClick={() => {
+                          setTaskToEdit(task);
+                          setTaskModalOpen(true);
+                        }}
                         style={{ 
                           background: 'var(--surface)', 
                           border: '1px solid var(--edge2)', 
                           borderRadius: '10px', 
                           padding: '12px', 
-                          cursor: 'grab',
+                          cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '8px',
@@ -650,16 +702,16 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: getPriorityColor(task.priority, task.done), display: 'inline-block' }} />
                           
                           {task.category && (
-                            <span style={{ 
-                              background: getCategoryColor(task.category), 
-                              color: getCategoryTextColor(task.category), 
-                              fontSize: '9.5px', 
-                              padding: '1px 6px', 
-                              borderRadius: '4px',
-                              fontWeight: 600
-                            }}>
-                              {task.category}
-                            </span>
+                             <span style={{ 
+                               background: getCategoryColor(task.category), 
+                               color: getCategoryTextColor(task.category), 
+                               fontSize: '9.5px', 
+                               padding: '1px 6px', 
+                               borderRadius: '4px',
+                               fontWeight: 600
+                             }}>
+                               {task.category}
+                             </span>
                           )}
                         </div>
 
@@ -683,10 +735,11 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
                               type="checkbox" 
                               checked={task.done} 
                               onChange={() => toggleTask(task.id)} 
+                              onClick={(e) => e.stopPropagation()}
                               style={{ width: '15px', height: '15px', cursor: 'pointer' }} 
                             />
                             <button 
-                              onClick={() => deleteTask(task.id)} 
+                              onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} 
                               style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '12px', cursor: 'pointer', padding: '2px' }}
                             >
                               ✕

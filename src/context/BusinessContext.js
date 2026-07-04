@@ -238,6 +238,7 @@ export function BusinessProvider({ children }) {
   const [editingLead, setEditingLead] = useState(null);
   const [aiQuery, setAiQuery] = useState('');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
   const [financeModalOpen, setFinanceModalOpen] = useState(false);
   const [financeModalType, setFinanceModalType] = useState('income');
   const [lpPreviewOpen, setLpPreviewOpen] = useState(false);
@@ -831,6 +832,23 @@ export function BusinessProvider({ children }) {
     saveGC(updated);
   };
 
+  const updateTask = (taskId, updatedFields) => {
+    const updatedItems = (GC.tasks?.items || []).map((t) => (t.id === taskId ? { ...t, ...updatedFields } : t));
+    const updatedTeamTasks = (GC.team?.tasks || []).map((t) => (t.id === taskId ? { ...t, ...updatedFields } : t));
+    const updated = {
+      ...GC,
+      tasks: {
+        ...(GC.tasks || {}),
+        items: updatedItems
+      },
+      team: {
+        ...(GC.team || {}),
+        tasks: updatedTeamTasks
+      }
+    };
+    saveGC(updated);
+  };
+
   // Finance management
   const addFinanceEntry = (type, amount, desc, category, date) => {
     const newEntry = {
@@ -956,6 +974,7 @@ export function BusinessProvider({ children }) {
         addTask,
         toggleTask,
         deleteTask,
+        updateTask,
         addFinanceEntry,
         addSubscription,
         deleteSubscription,
@@ -982,6 +1001,8 @@ export function BusinessProvider({ children }) {
         openAIFor,
         taskModalOpen,
         setTaskModalOpen,
+        taskToEdit,
+        setTaskToEdit,
         financeModalOpen,
         setFinanceModalOpen,
         financeModalType,
