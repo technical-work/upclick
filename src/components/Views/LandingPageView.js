@@ -435,14 +435,13 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
       <div className="g12">
         {/* Left Side: Controls */}
-        {/* Left Side: Controls */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="card lp-editor-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="sec-hd" style={{ marginBottom: '8px' }}>
             <div className="sec-title">{L('Landing Page Editor', 'محرر صفحة الهبوط')}</div>
           </div>
 
           {/* Sub Navigation tabs */}
-          <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '6px', borderBottom: '1px solid var(--edge)', marginBottom: '14px' }}>
+          <div className="tabs-bar" style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '6px', borderBottom: '1px solid var(--edge)', marginBottom: '14px' }}>
             <button className={`tab-btn ${controlsTab === 'basic' ? 'on' : ''}`} style={{ fontSize: '11px', padding: '4px 10px', height: '30px' }} onClick={() => setControlsTab('basic')}>
               ⚙️ {L('Basic', 'الأساسية')}
             </button>
@@ -463,10 +462,10 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
             </button>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', maxHeight: '420px', paddingInlineEnd: '4px' }}>
+          <div className="lp-scroll-area" style={{ flex: 1, overflowY: 'auto', paddingInlineEnd: '4px' }}>
             {/* PANEL 1: BASIC INFO */}
             {controlsTab === 'basic' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'stretch', width: '100%' }}>
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Public Link / Username', 'اسم المستخدم / الرابط الخاص بك')}
@@ -522,7 +521,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                     placeholder="Style Masterclass"
                   />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
+                <div className="lp-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
                   <div>
                     <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                       {L('Price ($)', 'السعر ($)')}
@@ -594,7 +593,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
             {/* PANEL 2: HERO & ABOUT */}
             {controlsTab === 'about' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'stretch', width: '100%' }}>
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                     {L('Tagline Subtitle', 'العنوان الفرعي للمنتج')}
@@ -624,7 +623,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
             {/* PANEL 3: FEATURES (6 ITEMS) */}
             {controlsTab === 'features' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'stretch', width: '100%' }}>
                 {Array.from({ length: 6 }).map((_, idx) => {
                   const isAr = lang === 'ar';
                   const defaults = getDefaultLPData(isAr);
@@ -666,7 +665,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
             {/* PANEL 4: TESTIMONIALS (3 ITEMS) */}
             {controlsTab === 'testimonials' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'stretch', width: '100%' }}>
                 {Array.from({ length: 3 }).map((_, idx) => {
                   const isAr = lang === 'ar';
                   const defaults = getDefaultLPData(isAr);
@@ -679,7 +678,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                       <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--orange)', marginBottom: '8px' }}>
                         {L(`Review #${idx + 1}`, `التقييم رقم ${idx + 1}`)}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '40px 1.5fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                      <div className="lp-grid-3" style={{ display: 'grid', gridTemplateColumns: '40px 1.5fr 1fr', gap: '6px', marginBottom: '6px' }}>
                         <input
                           className="inp"
                           style={{ textAlign: 'center', padding: '6px 4px' }}
@@ -715,7 +714,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
             {/* PANEL 5: FAQS (4 ITEMS) */}
             {controlsTab === 'faq' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'stretch', width: '100%' }}>
                 {Array.from({ length: 4 }).map((_, idx) => {
                   const isAr = lang === 'ar';
                   const defaults = getDefaultLPData(isAr);
@@ -747,7 +746,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
             {/* PANEL 6: PLANS (3 ITEMS) */}
             {controlsTab === 'plans' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'stretch', width: '100%' }}>
                 {Array.from({ length: 3 }).map((_, idx) => {
                   const isAr = lang === 'ar';
                   const defaults = getDefaultLPData(isAr);
@@ -784,7 +783,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                         </label>
                       </div>
                       
-                      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <div className="lp-grid-2" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '8px', marginBottom: '8px' }}>
                         <div>
                           <label style={{ fontSize: '10px', color: 'var(--t3)', display: 'block', marginBottom: '2px' }}>
                             {L('Plan Name', 'اسم الباقة')}
@@ -837,7 +836,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
         </div>
 
         {/* Right Side: Live Iframe Preview */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '600px', padding: '0' }}>
+        <div className="card lp-preview-card" style={{ display: 'flex', flexDirection: 'column', padding: '0' }}>
           <div
             style={{
               padding: '12px 16px',
@@ -922,7 +921,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
               <iframe
                 srcDoc={lpCode}
                 style={{
-                  width: previewMode === 'mobile' ? '375px' : '100%',
+                  width: previewMode === 'mobile' ? 'min(375px, 100%)' : '100%',
                   height: '100%',
                   maxWidth: '100%',
                   border: '1px solid var(--edge)',

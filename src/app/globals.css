@@ -488,7 +488,7 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
 .pg-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:10px }
 .pg-title { font-family:var(--ff); font-size:22px; font-weight:800; color:var(--t1); display:flex; align-items:center; gap:8px; letter-spacing:-.02em }
 .pg-icon { font-size:20px }
-.pg-actions { display:flex; gap:7px; align-items:center }
+.pg-actions { display:flex; gap:7px; align-items:center; flex-wrap:wrap }
 .sec-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px }
 .sec-title { font-family:var(--ff); font-size:13px; font-weight:700; color:var(--t1); display:flex; align-items:center; gap:6px }
 
@@ -969,6 +969,11 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
 }
 
 @media (max-width: 768px) {
+  #mn {
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
   /* Sidebar mobile drawer state */
   #sb {
     position: fixed !important;
@@ -1106,12 +1111,100 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
     justify-content: center !important;
   }
   
-  /* Override inline ROI Results grid */
-  div[style*="grid-template-columns:1fr 1fr"] {
-    grid-template-columns: 1fr !important;
+
+}
+
+/* ── AI LANDING PAGE DASHBOARD EDITOR STYLES ── */
+
+/* Prevent the whole page from overflowing horizontally (RTL left-shift fix) */
+#pg-landing {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Force all inputs/textareas/selects inside the editor to respect parent width */
+#pg-landing .inp,
+#pg-landing textarea,
+#pg-landing select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Grid children must not grow beyond their cell */
+#pg-landing .g12 > * {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lp-editor-card, .lp-preview-card {
+  height: 600px;
+  min-width: 0;
+  overflow: hidden;
+}
+.lp-editor-card .lp-scroll-area {
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+/* Tabs bar inside editor: always scroll horizontally, never push width */
+#pg-landing .tabs-bar {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .lp-editor-card {
+    height: auto !important;
+    overflow: visible !important;
   }
-  div[style*="grid-template-columns: 1fr 1fr"] {
-    grid-template-columns: 1fr !important;
+  .lp-editor-card .lp-scroll-area {
+    max-height: none !important;
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
+  }
+  .lp-preview-card {
+    height: 700px !important;
   }
 }
+
+@media (max-width: 768px) {
+  /* Reduce card padding on mobile to give content more room */
+  #pg-landing .card {
+    padding: 12px !important;
+  }
+
+  /* Ensure the page header buttons wrap and don't overflow */
+  #pg-landing .pg-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  #pg-landing .pg-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+  #pg-landing .pg-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 11px !important;
+    padding: 7px 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Preview card toolbar: stack on mobile */
+  .lp-preview-card > div:first-child {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+  }
+}
+
+
 
