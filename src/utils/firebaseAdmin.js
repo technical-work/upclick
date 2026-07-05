@@ -4,18 +4,24 @@ import { getFirestore } from 'firebase-admin/firestore';
 let adminApp = null;
 let adminDb = null;
 
-const projectId = process.env.FIREBASE_PROJECT_ID;
-const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+const cleanEnvVar = (val) => {
+  if (!val) return val;
+  let cleaned = val.trim();
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  if (cleaned.startsWith("'") && cleaned.endsWith("'")) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  return cleaned.trim();
+};
+
+const projectId = cleanEnvVar(process.env.FIREBASE_PROJECT_ID);
+const clientEmail = cleanEnvVar(process.env.FIREBASE_CLIENT_EMAIL);
+const privateKey = cleanEnvVar(process.env.FIREBASE_PRIVATE_KEY);
 
 let formattedPrivateKey = privateKey;
 if (formattedPrivateKey) {
-  if (formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) {
-    formattedPrivateKey = formattedPrivateKey.slice(1, -1);
-  }
-  if (formattedPrivateKey.startsWith("'") && formattedPrivateKey.endsWith("'")) {
-    formattedPrivateKey = formattedPrivateKey.slice(1, -1);
-  }
   formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
 }
 
