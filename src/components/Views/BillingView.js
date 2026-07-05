@@ -8,6 +8,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp 
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import StripePaymentButton from '../Stripe/StripePaymentButton';
 
+
 export default function BillingView() {
   const { lang, L, t, tenantConfig, showToast } = useBusiness();
   const { currentUser, userData } = useAuth();
