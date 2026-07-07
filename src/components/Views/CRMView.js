@@ -325,6 +325,7 @@ export default function CRMView() {
             {L('AI Follow-up Suggestions', 'اقتراحات المتابعة بالذكاء الاصطناعي')}
           </button>
           <button
+            id="btn-new-lead"
             className="btn btn-prime"
             onClick={() => {
               setLeadModalStage(stages.length > 0 ? stages[0].key : 'new');
