@@ -403,6 +403,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
             {aiLoading ? `⏱️ ${L('Analyzing Tasks...', 'تحليل المهام...')}` : `⚡ ${L('AI Prioritizer', 'ترتيب الأولويات بالـ AI')}`}
           </button>
           <button 
+            id="btn-new-task"
             className="btn btn-prime" 
             style={{ background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none' }}
             onClick={() => setTaskModalOpen(true)}
