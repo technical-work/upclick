@@ -492,7 +492,7 @@ export default function ProfileView() {
           <div>
             <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Your Telegram User ID', 'معرّف تيليجرام الخاص بك')}</label>
             <div style={{ display: 'flex', gap: '6px' }}>
-              <input className="inp" placeholder="e.g. 123456789" style={{ fontSize: '13px' }} value={tgUserId} onChange={(e) => setTgUserId(e.target.value)} disabled={tgConnected} />
+              <input id="tg-user-id" className="inp" placeholder="e.g. 123456789" style={{ fontSize: '13px' }} value={tgUserId} onChange={(e) => setTgUserId(e.target.value)} disabled={tgConnected} />
               {!tgConnected && (
                 <button className="btn btn-ghost" style={{ flexShrink: 0, fontSize: '12px', padding: '7px 11px' }} onClick={() => window.open('https://t.me/userinfobot', '_blank')}>
                   {L('Get ID', 'احصل على المعرف')}
@@ -544,7 +544,7 @@ export default function ProfileView() {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {!tgConnected ? (
-            <button className="btn btn-prime" onClick={handleConnectTg} style={{ flex: 1, justifyContent: 'center', minWidth: '140px' }}>
+            <button id="tg-connect-btn" className="btn btn-prime" onClick={handleConnectTg} style={{ flex: 1, justifyContent: 'center', minWidth: '140px' }}>
               ✈️ {L('Connect Telegram', 'ربط تيليجرام')}
             </button>
           ) : (
