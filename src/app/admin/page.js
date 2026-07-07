@@ -22,7 +22,8 @@ import {
   CheckCircle2,
   DollarSign,
   Plus,
-  Smartphone
+  Smartphone,
+  X
 } from 'lucide-react';
 import {
   collection,
@@ -44,12 +45,29 @@ import {
   signOut,
   getAuth
 } from 'firebase/auth';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, firebaseConfig } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import BrandingSettings from './BrandingSettings';
 import PaymentSettingsPage from './PaymentSettingsPage';
 import AiSettingsPage from './AiSettingsPage';
+
+const secondaryFirebaseConfig = {
+  apiKey: "AIzaSyCaswftcLmfIepG_F8fzizqGXFl5mnXvj8",
+  authDomain: "aibrand-vision.firebaseapp.com",
+  projectId: "aibrand-vision",
+  storageBucket: "aibrand-vision.firebasestorage.app",
+  messagingSenderId: "36898907108",
+  appId: "1:36898907108:web:423352bb5b0f5825d65df1",
+  measurementId: "G-G0CFX66Q3V"
+};
+
+// Initialize secondary Firebase App instance safely
+const secondaryApp = getApps().find(app => app.name === 'supportStorageApp') 
+  || initializeApp(secondaryFirebaseConfig, 'supportStorageApp');
+
+const supportStorage = getStorage(secondaryApp);
 
 const countryData = {
   EG: { code: '+20', placeholder: '1xxxxxxxxx' },
@@ -100,6 +118,48 @@ const AdminSupportTab = ({ isRTL, t }) => {
   const [replyInput, setReplyInput] = useState('');
   const chatEndRef = useRef(null);
 
+  // Reply attachment states for admin
+  const [replyFile, setReplyFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUploadReplyFile = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const fileRef = ref(supportStorage, `support_attachments/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(fileRef, file);
+      
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const prog = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          setUploadProgress(prog);
+        },
+        (error) => {
+          console.error("Admin chat attachment upload error: ", error);
+          setUploading(false);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            setUploading(false);
+            resolve({
+              name: file.name,
+              url: downloadUrl,
+              type: file.type
+            });
+          } catch (err) {
+            setUploading(false);
+            reject(err);
+          }
+        }
+      );
+    });
+  };
+
   // Subscribe to ALL support tickets
   useEffect(() => {
     const q = collection(db, 'support_tickets');
@@ -134,22 +194,30 @@ const AdminSupportTab = ({ isRTL, t }) => {
 
   const handleSendReply = async (e) => {
     e.preventDefault();
-    if (!replyInput.trim() || !activeTicket) return;
-
-    const msgObj = {
-      sender: 'admin',
-      senderName: userData?.name || currentUser?.email?.split('@')[0] || 'Support Admin',
-      text: replyInput.trim(),
-      createdAt: new Date().toISOString()
-    };
+    if (!replyInput.trim() && !replyFile) return;
+    if (!activeTicket) return;
 
     try {
+      let attachment = null;
+      if (replyFile) {
+        attachment = await handleUploadReplyFile(replyFile);
+      }
+
+      const msgObj = {
+        sender: 'admin',
+        senderName: userData?.name || currentUser?.email?.split('@')[0] || 'Support Admin',
+        text: replyInput.trim(),
+        attachments: attachment ? [attachment] : [],
+        createdAt: new Date().toISOString()
+      };
+
       const ticketRef = doc(db, 'support_tickets', activeTicket.id);
       await updateDoc(ticketRef, {
         messages: arrayUnion(msgObj),
         updatedAt: new Date().toISOString()
       });
       setReplyInput('');
+      setReplyFile(null);
     } catch (err) {
       console.error("Error sending reply: ", err);
     }
@@ -265,28 +333,63 @@ const AdminSupportTab = ({ isRTL, t }) => {
         {activeTicket ? (
           <div style={{ display: 'flex', flexDirection: 'column', height: '65vh' }}>
             {/* Header */}
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--text)' }}>{activeTicket.title}</h4>
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>
-                  {activeTicket.userName} ({activeTicket.userEmail})
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--text)' }}>{activeTicket.title}</h4>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>
+                    {activeTicket.userName} ({activeTicket.userEmail})
+                  </div>
+                </div>
+                
+                {/* Status Update Control */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'تعديل الحالة:' : 'Change Status:'}</span>
+                  <select
+                    className="form-control"
+                    style={{ width: '120px', fontSize: '12px', padding: '4px 8px' }}
+                    value={activeTicket.status}
+                    onChange={(e) => handleUpdateStatus(e.target.value)}
+                  >
+                    <option value="open">{isRTL ? 'مفتوحة' : 'Open'}</option>
+                    <option value="in_progress">{isRTL ? 'قيد المتابعة' : 'In Progress'}</option>
+                    <option value="closed">{isRTL ? 'مغلقة' : 'Closed'}</option>
+                  </select>
                 </div>
               </div>
-              
-              {/* Status Update Control */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'تعديل الحالة:' : 'Change Status:'}</span>
-                <select
-                  className="form-control"
-                  style={{ width: '120px', fontSize: '12px', padding: '4px 8px' }}
-                  value={activeTicket.status}
-                  onChange={(e) => handleUpdateStatus(e.target.value)}
-                >
-                  <option value="open">{isRTL ? 'مفتوحة' : 'Open'}</option>
-                  <option value="in_progress">{isRTL ? 'قيد المتابعة' : 'In Progress'}</option>
-                  <option value="closed">{isRTL ? 'مغلقة' : 'Closed'}</option>
-                </select>
-              </div>
+
+              {/* Attachments Section in Admin */}
+              {activeTicket.attachments && activeTicket.attachments.length > 0 && (
+                <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--line)', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '4px' }}>
+                    📎 {isRTL ? 'المرفقات وملفات التوضيح:' : 'Attachments / Screenshots:'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {activeTicket.attachments.map((att, i) => (
+                      <a 
+                        key={i} 
+                        href={att.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '11px', 
+                          background: 'rgba(255, 107, 53, 0.08)', 
+                          color: 'var(--orange)', 
+                          padding: '4px 8px', 
+                          borderRadius: '4px',
+                          border: '1px solid rgba(255, 107, 53, 0.15)',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        {att.type?.startsWith('image/') ? '🖼️' : '📄'} {att.name || (isRTL ? 'عرض المرفق' : 'View Attachment')}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Chat Board Messages */}
@@ -321,6 +424,29 @@ const AdminSupportTab = ({ isRTL, t }) => {
                       }}
                     >
                       {msg.text}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px', borderTop: isAdmin ? '1px solid rgba(255,255,255,0.15)' : '1px solid var(--line)', paddingTop: '6px' }}>
+                          {msg.attachments.map((att, attIdx) => (
+                            <a 
+                              key={attIdx} 
+                              href={att.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                fontSize: '11px', 
+                                color: isAdmin ? '#fff' : 'var(--orange)', 
+                                fontWeight: 500,
+                                textDecoration: 'underline'
+                              }}
+                            >
+                              {att.type?.startsWith('image/') ? '🖼️' : '📄'} {att.name || (isRTL ? 'عرض المرفق' : 'View Attachment')}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -329,25 +455,66 @@ const AdminSupportTab = ({ isRTL, t }) => {
             </div>
 
             {/* Reply Input Bar */}
-            <form
-              onSubmit={handleSendReply}
-              style={{ padding: '12px 20px', borderTop: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)', display: 'flex', gap: '10px' }}
-            >
-              <input
-                className="form-control"
-                style={{ flex: 1 }}
-                value={replyInput}
-                onChange={(e) => setReplyInput(e.target.value)}
-                placeholder={isRTL ? 'اكتب رد الدعم الفني هنا...' : 'Write agent reply...'}
-              />
-              <button
-                type="submit"
-                className="btn btn-primary"
-                style={{ padding: '8px 24px', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none' }}
+            <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)' }}>
+              {(replyFile || uploading) && (
+                <div style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.01)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: '11px', color: 'var(--orange)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      📎 {replyFile?.name}
+                    </span>
+                    {uploading && (
+                      <span style={{ fontSize: '10px', color: 'var(--text3)' }}>
+                        ({uploadProgress}%)
+                      </span>
+                    )}
+                  </div>
+                  {!uploading && (
+                    <button 
+                      type="button" 
+                      onClick={() => setReplyFile(null)} 
+                      style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              <form
+                onSubmit={handleSendReply}
+                style={{ padding: '12px 20px', display: 'flex', gap: '10px', alignItems: 'center' }}
               >
-                {isRTL ? 'رد وإرسال' : 'Send'}
-              </button>
-            </form>
+                <input 
+                  type="file" 
+                  onChange={(e) => setReplyFile(e.target.files[0])}
+                  style={{ display: 'none' }}
+                  id="admin-chat-file-input"
+                  accept="image/*,application/pdf,video/*"
+                />
+                <label 
+                  htmlFor="admin-chat-file-input" 
+                  style={{ cursor: 'pointer', fontSize: '16px', padding: '6px', color: 'var(--text3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title={isRTL ? 'إرفاق ملف' : 'Attach File'}
+                >
+                  📎
+                </label>
+                <input
+                  className="form-control"
+                  style={{ flex: 1 }}
+                  value={replyInput}
+                  onChange={(e) => setReplyInput(e.target.value)}
+                  placeholder={isRTL ? 'اكتب رد الدعم الفني هنا...' : 'Write agent reply...'}
+                />
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ padding: '8px 24px', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none' }}
+                  disabled={uploading}
+                >
+                  {isRTL ? 'رد وإرسال' : 'Send'}
+                </button>
+              </form>
+            </div>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text3)', minHeight: '65vh' }}>
@@ -363,6 +530,119 @@ const AdminSupportTab = ({ isRTL, t }) => {
 
     </div>
   );
+};
+
+const getUserUsageStats = (user) => {
+  if (!user) return { timeSpent: 0, tasksCompleted: 0, classification: 'inactive', classLabelAr: 'خامل', classLabelEn: 'Inactive', classColor: 'var(--text3)', classBg: 'rgba(255,255,255,0.02)', sections: [] };
+
+  // Calculate real tasks completed dynamically from user.GC
+  let tasksCompleted = 0;
+  if (user.GC) {
+    const gc = user.GC;
+    // Count completed leads
+    if (gc.crm?.workspaces) {
+      gc.crm.workspaces.forEach(ws => {
+        if (ws.leads) {
+          ws.leads.forEach(lead => {
+            if (lead.stage === 'closed' || lead.stage === 'proposal') {
+              tasksCompleted++;
+            }
+          });
+        }
+      });
+    }
+    // Count completed tasks
+    if (gc.tasks?.workspaces) {
+      gc.tasks.workspaces.forEach(ws => {
+        if (ws.tasks) {
+          ws.tasks.forEach(task => {
+            if (task.status === 'done' || task.status === 'completed' || task.completed) {
+              tasksCompleted++;
+            }
+          });
+        }
+      });
+    }
+    // Count broadcast campaigns sent
+    if (gc.telegramHub?.broadcasts) {
+      tasksCompleted += gc.telegramHub.broadcasts.length;
+    }
+  }
+
+  // Calculate real hours spent
+  const realSeconds = user.totalTimeSpent || 0;
+  const timeSpent = realSeconds > 0 ? Number((realSeconds / 3600).toFixed(2)) : 0; // convert seconds to hours with decimals
+
+  // Section breakdown
+  const su = user.sectionUsage || {};
+  const secDetails = [
+    { key: 'marketing', labelAr: 'نظام التسويق (Marketing OS)', labelEn: 'Marketing OS', seconds: su.marketing || 0 },
+    { key: 'crm', labelAr: 'CRM الذكي (Smart CRM)', labelEn: 'Smart CRM', seconds: su.crm || 0 },
+    { key: 'tasks', labelAr: 'لوحة المهام (Task Board)', labelEn: 'Task Board', seconds: su.tasks || 0 },
+    { key: 'telegram', labelAr: 'مركز التليجرام (Telegram Hub)', labelEn: 'Telegram Hub', seconds: su.telegram || 0 },
+    { key: 'finance', labelAr: 'المالية (Finance Hub)', labelEn: 'Finance Hub', seconds: su.finance || 0 }
+  ];
+
+  const totalSecs = secDetails.reduce((a, b) => a + b.seconds, 0);
+
+  const formattedSections = secDetails.map(s => {
+    const pct = totalSecs > 0 ? Math.round((s.seconds / totalSecs) * 100) : 0;
+    const hours = s.seconds > 0 ? Number((s.seconds / 3600).toFixed(2)) : 0;
+    return {
+      ...s,
+      pct,
+      hours
+    };
+  }).sort((a, b) => b.pct - a.pct);
+
+  // Classify based on real metrics
+  let classification = 'inactive';
+  let classLabelAr = 'خامل (Inactive)';
+  let classLabelEn = 'Inactive';
+  let classColor = 'var(--text3)';
+  let classBg = 'rgba(255, 255, 255, 0.02)';
+
+  if (timeSpent > 90 && tasksCompleted > 30) {
+    classification = 'power';
+    classLabelAr = 'عميل خارق (Power)';
+    classLabelEn = 'Power User';
+    classColor = 'var(--green)';
+    classBg = 'rgba(0, 217, 139, 0.08)';
+  } else if (timeSpent >= 1 || tasksCompleted >= 1) {
+    if (timeSpent > 50) {
+      classification = 'active';
+      classLabelAr = 'نشط (Active)';
+      classLabelEn = 'Active';
+      classColor = 'var(--accent)';
+      classBg = 'rgba(236, 92, 49, 0.08)';
+    } else {
+      classification = 'moderate';
+      classLabelAr = 'متوسط (Moderate)';
+      classLabelEn = 'Moderate';
+      classColor = 'var(--purple)';
+      classBg = 'rgba(108, 53, 255, 0.08)';
+    }
+  }
+
+  // Fallback defaults for sections if they have no time logged yet to look clean in UI
+  const sectionsToReturn = totalSecs > 0 ? formattedSections : [
+    { key: 'marketing', labelAr: 'نظام التسويق (Marketing OS)', labelEn: 'Marketing OS', pct: 0, hours: 0 },
+    { key: 'crm', labelAr: 'CRM الذكي (Smart CRM)', labelEn: 'Smart CRM', pct: 0, hours: 0 },
+    { key: 'tasks', labelAr: 'لوحة المهام (Task Board)', labelEn: 'Task Board', pct: 0, hours: 0 },
+    { key: 'telegram', labelAr: 'مركز التليجرام (Telegram Hub)', labelEn: 'Telegram Hub', pct: 0, hours: 0 },
+    { key: 'finance', labelAr: 'المالية (Finance Hub)', labelEn: 'Finance Hub', pct: 0, hours: 0 }
+  ];
+
+  return {
+    timeSpent,
+    tasksCompleted,
+    classification,
+    classLabelAr,
+    classLabelEn,
+    classColor,
+    classBg,
+    sections: sectionsToReturn
+  };
 };
 
 const AdminDashboard = () => {
@@ -413,6 +693,8 @@ const AdminDashboard = () => {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState('');
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedAnalysisUser, setSelectedAnalysisUser] = useState(null);
+  const [activityFilter, setActivityFilter] = useState('all');
   const [processingPaymentId, setProcessingPaymentId] = useState('');
   const [newUser, setNewUser] = useState({
     name: '',
@@ -436,22 +718,22 @@ const AdminDashboard = () => {
   };
 
   const stats = [
-    { label: t('admin.myUsers'), value: users.length.toString(), change: 'Real-time', icon: <Users size={20} />, color: 'var(--accent)' },
+    { label: t('admin.myUsers'), value: users.length.toString(), change: 'Real-time', icon: <Users size={16} />, color: 'var(--accent)' },
     {
       label: t('admin.totalSales'),
       value: `${sales.reduce((acc, s) => acc + Number(s.amount), 0)} ${t('admin.currency')}`,
       change: 'Total',
-      icon: <DollarSign size={20} />,
+      icon: <DollarSign size={16} />,
       color: 'var(--green)'
     },
     {
       label: t('admin.avgProfit'),
       value: sales.length ? `${Math.round(sales.reduce((acc, s) => acc + Number(s.amount), 0) / sales.length)} ${t('admin.currency')}` : '0',
       change: 'Avg',
-      icon: <TrendingUp size={20} />,
+      icon: <TrendingUp size={16} />,
       color: 'var(--accent)'
     },
-    { label: t('admin.accountStatus'), value: t('common.active'), change: 'Live', icon: <Zap size={20} />, color: 'var(--amber)' },
+    { label: t('admin.accountStatus'), value: t('common.active'), change: 'Live', icon: <Zap size={16} />, color: 'var(--amber)' },
   ];
 
   const fetchUsers = () => {
@@ -879,9 +1161,22 @@ const AdminDashboard = () => {
     return { expired: false, daysLeft: Math.max(1, Math.ceil((expiresMs - Date.now()) / 86400000)) };
   };
 
-  const filteredUsers = users.filter(u =>
-    (u.email || u.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = (u.email || u.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+    
+    if (activityFilter === 'all' || activityFilter === 'time_desc') return true;
+    
+    const uStats = getUserUsageStats(u);
+    return uStats.classification === activityFilter;
+  }).sort((a, b) => {
+    if (activityFilter === 'time_desc') {
+      const statsA = getUserUsageStats(a);
+      const statsB = getUserUsageStats(b);
+      return statsB.timeSpent - statsA.timeSpent;
+    }
+    return 0;
+  });
 
   const dateLocale = isRTL ? 'ar-EG' : 'en-US';
 
@@ -948,44 +1243,44 @@ const AdminDashboard = () => {
 
       {activeTab === 'stats' ? (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px', marginBottom: '24px' }}>
+          <div className="grid-4" style={{ marginBottom: '24px', gap: '14px' }}>
             {stats.map((stat, i) => (
-              <div key={i} className="card" style={{ padding: '24px 16px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '8px', borderTop: `3px solid ${stat.color}` }}>
+              <div key={i} className="card" style={{ padding: '14px 12px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '6px', borderTop: `3px solid ${stat.color}`, marginBottom: '0' }}>
                 <div style={{
-                  width: '48px',
-                  height: '48px',
+                  width: '36px',
+                  height: '36px',
                   background: 'var(--bg3)',
                   border: '1px solid var(--line2)',
-                  borderRadius: '14px',
+                  borderRadius: '10px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: stat.color,
-                  marginBottom: '4px'
+                  marginBottom: '2px'
                 }}>
                   {stat.icon}
                 </div>
-                <div style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)', lineHeight: '1.2' }}>
+                <div style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)', lineHeight: '1.2' }}>
                   {stat.value}
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--text3)', fontWeight: '700' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '700' }}>
                   {stat.label}
                 </div>
                 <div style={{
-                  fontSize: '11px',
+                  fontSize: '10px',
                   fontWeight: '800',
                   color: stat.change.startsWith('+') ? 'var(--green)' : 'var(--text3)',
                   background: stat.change.startsWith('+') ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg3)',
                   border: stat.change.startsWith('+') ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--line2)',
-                  padding: '4px 12px',
+                  padding: '3px 10px',
                   borderRadius: '20px',
-                  marginTop: '4px',
+                  marginTop: '2px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px'
                 }}>
                   {stat.change}
-                  {stat.change.startsWith('+') ? <ArrowUpRight size={12} /> : null}
+                  {stat.change.startsWith('+') ? <ArrowUpRight size={10} /> : null}
                 </div>
               </div>
             ))}
@@ -1413,132 +1708,473 @@ const AdminDashboard = () => {
         <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '800' }}>{t('admin.myUsersTitle') || 'My Users List'}</h3>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
-              <Search size={16} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-              <input
+          <div className="flex-responsive" style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>{t('admin.myUsersTitle') || 'My Users List'}</h3>
+            <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '550px', justifyContent: 'flex-end' }}>
+              <select
                 className="form-control"
-                style={{ [isRTL ? 'paddingRight' : 'paddingLeft']: '36px' }}
-                placeholder={t('admin.searchUser') || 'Search email/name...'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+                style={{ width: '100%', maxWidth: '220px', cursor: 'pointer', fontSize: '13px' }}
+                value={activityFilter}
+                onChange={(e) => setActivityFilter(e.target.value)}
+              >
+                <option value="all">{isRTL ? 'جميع التصنيفات' : 'All Classifications'}</option>
+                <option value="time_desc">{isRTL ? 'العملاء الأكثر نشاطاً (الأعلى وقتاً)' : 'Most Active Users (Top Time)'}</option>
+                <option value="power">{isRTL ? 'العملاء الخارقين (Power Users)' : 'Power Users only'}</option>
+                <option value="active">{isRTL ? 'العملاء النشطين (Active)' : 'Active Users only'}</option>
+                <option value="moderate">{isRTL ? 'العملاء المتوسطين (Moderate)' : 'Moderate Users only'}</option>
+                <option value="inactive">{isRTL ? 'العملاء غير النشطين (Inactive)' : 'Inactive Users only'}</option>
+              </select>
+              <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
+                <Search size={16} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+                <input
+                  className="form-control"
+                  style={{ [isRTL ? 'paddingRight' : 'paddingLeft']: '36px' }}
+                  placeholder={t('admin.searchUser') || 'Search email/name...'}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}><div className="loader"></div></div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)' }}>
-                  <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.userCol') || 'User'}</th>
-                  <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.statusCode') || 'Subscription & Device Status'}</th>
-                  <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.phoneCol') || 'Phone'}</th>
-                  <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.joinDateCol') || 'Join Date'}</th>
-                  <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.operationsCol') || 'Actions'}</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Desktop Table View */}
+              <div className="table-responsive desktop-only-table">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)' }}>
+                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.userCol') || 'User'}</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.statusCode') || 'Subscription & Device Status'}</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.phoneCol') || 'Phone'}</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.joinDateCol') || 'Join Date'}</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.operationsCol') || 'Actions'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text3)' }}>{t('admin.noUsers') || 'No users found.'}</td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map(user => {
+                        const uStats = getUserUsageStats(user);
+                        return (
+                          <tr key={user.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div className="user-avatar" style={{ width: '30px', height: '30px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%' }}>
+                                  {(user.name || user.email).charAt(0).toUpperCase()}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
+                                  <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold' }}>
+                                      🤖 ${(() => {
+                                        const val = user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits;
+                                        return val > 0 && val < 0.01 ? val.toFixed(4) : val.toFixed(2);
+                                      })()}
+                                    </span>
+                                    <span style={{
+                                      fontSize: '9px',
+                                      fontWeight: '700',
+                                      padding: '1px 6px',
+                                      borderRadius: '12px',
+                                      color: uStats.classColor,
+                                      background: uStats.classBg,
+                                      border: `1px solid ${uStats.classColor}33`,
+                                      display: 'inline-block'
+                                    }}>
+                                      {isRTL ? uStats.classLabelAr : uStats.classLabelEn}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              {user.isTrial ? (() => {
+                                const ts = getTrialStatus(user);
+                                if (!ts) return <span style={{ fontSize: '12px', color: 'var(--text3)' }}>{t('admin.freeTrial')}</span>;
+                                if (ts.expired) return (
+                                  <span style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--red)', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                    ❌ {t('admin.trialExpired') || 'Trial Expired'}
+                                  </span>
+                                );
+                                return (
+                                  <span style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                    ⏰ {t('admin.daysLeft', { count: ts.daysLeft }) || `${ts.daysLeft} days left`}
+                                  </span>
+                                );
+                              })() : (
+                                <div>
+                                  <code style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: 'var(--accent)' }}>
+                                    {user.licenseKey || t('admin.noCode')}
+                                  </code>
+                                  {user.expiresAt && (() => {
+                                    const ss = getSubscriptionStatus(user);
+                                    if (ss.expired) return <div style={{ color: 'var(--red)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>❌ {t('admin.expired')}</div>;
+                                    return <div style={{ color: 'var(--green)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ss.daysLeft })}</div>;
+                                  })()}
+                                  {!user.expiresAt && <div style={{ color: 'var(--accent)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>♾ {t('admin.lifetimeStatus') || 'Lifetime'}</div>}
+                                  <div style={{ fontSize: '10px', color: (user.devices?.length || 0) >= 2 ? 'var(--amber)' : 'var(--text3)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <Smartphone size={9} />
+                                    {t('admin.devicesCount', { count: user.devices?.length || 0 }) || `Devices: ${user.devices?.length || 0}`}
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '16px 20px', color: 'var(--text2)', fontSize: '13px' }}>
+                              {user.phoneNumber || '—'}
+                            </td>
+                            <td style={{ padding: '16px 20px', color: 'var(--text2)', fontSize: '13px' }}>
+                              {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString(dateLocale) : ''}
+                            </td>
+                            <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAnalysisUser(user)}
+                                className="btn btn-ghost btn-sm"
+                                title={isRTL ? 'تحليل سلوك العميل' : 'Client Behavior Analysis'}
+                                style={{ padding: '6px', color: 'var(--accent)' }}
+                              >
+                                <BarChart3 size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditClick(user)}
+                                className="btn btn-ghost btn-sm"
+                                title={t('common.edit') || 'Edit'}
+                                style={{ padding: '6px' }}
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              {!user.isTrial && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetDevices(user.id)}
+                                  className="btn btn-ghost btn-sm"
+                                  title={`${t('admin.resetDevicesTitle') || 'Reset Devices'} (${user.devices?.length || 0}/2)`}
+                                  style={{ padding: '6px', color: 'var(--amber)' }}
+                                >
+                                  <Smartphone size={14} />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="btn btn-ghost btn-sm"
+                                title={t('common.delete') || 'Delete'}
+                                style={{ padding: '6px', color: 'var(--red)' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards View */}
+              <div className="mobile-only-cards">
                 {filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text3)' }}>{t('admin.noUsers') || 'No users found.'}</td>
-                  </tr>
+                  <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text3)' }}>
+                    {t('admin.noUsers') || 'No users found.'}
+                  </div>
                 ) : (
-                  filteredUsers.map(user => (
-                    <tr key={user.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: '16px 20px' }}>
+                  filteredUsers.map(user => {
+                    const uStats = getUserUsageStats(user);
+                    const name = user.name || t('admin.newUser');
+                    const email = user.email;
+                    const phone = user.phoneNumber || '—';
+                    const joinedDate = user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString(dateLocale) : '';
+                    
+                    return (
+                      <div key={user.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', margin: 0, border: '1px solid var(--line)', background: 'var(--bg2)' }}>
+                        {/* Header: Avatar, Name, Email, Badge */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div className="user-avatar" style={{ width: '30px', height: '30px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%' }}>
-                            {(user.name || user.email).charAt(0).toUpperCase()}
+                          <div className="user-avatar" style={{ width: '36px', height: '36px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%', fontWeight: '700' }}>
+                            {(name || email).charAt(0).toUpperCase()}
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold', marginTop: '2px' }}>
-                              🤖 {isRTL ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${(() => {
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</span>
+                          </div>
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: '700',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            color: uStats.classColor,
+                            background: uStats.classBg,
+                            border: `1px solid ${uStats.classColor}33`,
+                            flexShrink: 0
+                          }}>
+                            {isRTL ? uStats.classLabelAr : uStats.classLabelEn}
+                          </span>
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ height: '1px', background: 'var(--line)' }} />
+
+                        {/* Details */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <span style={{ color: 'var(--text3)' }}>{t('admin.statusCode') || 'Subscription'}:</span>
+                            <div style={{ textAlign: 'end' }}>
+                              {user.isTrial ? (() => {
+                                const ts = getTrialStatus(user);
+                                if (!ts) return <span style={{ color: 'var(--text3)' }}>{t('admin.freeTrial')}</span>;
+                                if (ts.expired) return <span style={{ color: 'var(--red)', fontWeight: '700' }}>❌ {t('admin.trialExpired') || 'Expired'}</span>;
+                                return <span style={{ color: '#f59e0b', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ts.daysLeft }) || `${ts.daysLeft} days left`}</span>;
+                              })() : (
+                                <div>
+                                  <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: 'var(--accent)' }}>
+                                    {user.licenseKey || t('admin.noCode')}
+                                  </code>
+                                  {user.expiresAt && (() => {
+                                    const ss = getSubscriptionStatus(user);
+                                    if (ss.expired) return <div style={{ color: 'var(--red)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>❌ {t('admin.expired')}</div>;
+                                    return <div style={{ color: 'var(--green)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ss.daysLeft })}</div>;
+                                  })()}
+                                  {!user.expiresAt && <div style={{ color: 'var(--accent)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>♾ {t('admin.lifetimeStatus') || 'Lifetime'}</div>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text3)' }}>{isRTL ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'}</span>
+                            <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
+                              🤖 ${(() => {
                                 const val = user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits;
                                 return val > 0 && val < 0.01 ? val.toFixed(4) : val.toFixed(2);
                               })()}
                             </span>
                           </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        {user.isTrial ? (() => {
-                          const ts = getTrialStatus(user);
-                          if (!ts) return <span style={{ fontSize: '12px', color: 'var(--text3)' }}>{t('admin.freeTrial')}</span>;
-                          if (ts.expired) return (
-                            <span style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--red)', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                              ❌ {t('admin.trialExpired') || 'Trial Expired'}
-                            </span>
-                          );
-                          return (
-                            <span style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                              ⏰ {t('admin.daysLeft', { count: ts.daysLeft }) || `${ts.daysLeft} days left`}
-                            </span>
-                          );
-                        })() : (
-                          <div>
-                            <code style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: 'var(--accent)' }}>
-                              {user.licenseKey || t('admin.noCode')}
-                            </code>
-                            {user.expiresAt && (() => {
-                              const ss = getSubscriptionStatus(user);
-                              if (ss.expired) return <div style={{ color: 'var(--red)', fontSize: '11px', marginTop: '4px', fontWeight: '700' }}>❌ {t('admin.expired') || 'Expired'}</div>;
-                              return <div style={{ color: 'var(--green)', fontSize: '11px', marginTop: '4px', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ss.daysLeft }) || `${ss.daysLeft} days left`}</div>;
-                            })()}
-                            {!user.expiresAt && <div style={{ color: 'var(--accent)', fontSize: '11px', marginTop: '4px', fontWeight: '700' }}>♾ {t('admin.lifetimeStatus') || 'Lifetime'}</div>}
-                            <div style={{ fontSize: '10px', color: (user.devices?.length || 0) >= 2 ? 'var(--amber)' : 'var(--text3)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                              <Smartphone size={9} />
-                              {t('admin.devicesCount', { count: user.devices?.length || 0 }) || `Devices: ${user.devices?.length || 0}`}
-                            </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text3)' }}>{t('admin.phoneCol') || 'Phone'}:</span>
+                            <span style={{ color: 'var(--text2)' }}>{phone}</span>
                           </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '16px 20px', color: 'var(--text2)', fontSize: '13px' }}>
-                        {user.phoneNumber || '—'}
-                      </td>
-                      <td style={{ padding: '16px 20px', color: 'var(--text2)', fontSize: '13px' }}>
-                        {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString(dateLocale) : ''}
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                        <button
-                          onClick={() => handleEditClick(user)}
-                          className="btn btn-ghost btn-sm"
-                          title={t('common.edit') || 'Edit'}
-                          style={{ padding: '6px' }}
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        {!user.isTrial && (
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text3)' }}>{t('admin.joinDateCol') || 'Joined'}:</span>
+                            <span style={{ color: 'var(--text2)' }}>{joinedDate}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--text3)' }}>{isRTL ? 'الأجهزة المتصلة:' : 'Connected Devices:'}</span>
+                            <span style={{ color: (user.devices?.length || 0) >= 2 ? 'var(--amber)' : 'var(--text2)', fontWeight: '600' }}>
+                              {user.devices?.length || 0} / 2
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ height: '1px', background: 'var(--line)' }} />
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap' }}>
                           <button
-                            onClick={() => handleResetDevices(user.id)}
+                            type="button"
+                            onClick={() => setSelectedAnalysisUser(user)}
                             className="btn btn-ghost btn-sm"
-                            title={`${t('admin.resetDevicesTitle') || 'Reset Devices'} (${user.devices?.length || 0}/2)`}
-                            style={{ padding: '6px', color: 'var(--amber)' }}
+                            style={{ color: 'var(--accent)', padding: '6px 10px', border: '1px solid rgba(236,92,49,0.15)', background: 'rgba(236,92,49,0.03)', gap: '4px' }}
                           >
-                            <Smartphone size={14} />
+                            <BarChart3 size={12} />
+                            <span style={{ fontSize: '11px' }}>{isRTL ? 'التحليلات' : 'Analytics'}</span>
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="btn btn-ghost btn-sm"
-                          title={t('common.delete') || 'Delete'}
-                          style={{ padding: '6px', color: 'var(--red)' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                          <button
+                            type="button"
+                            onClick={() => handleEditClick(user)}
+                            className="btn btn-ghost btn-sm"
+                            style={{ color: 'var(--text)', padding: '6px 10px', border: '1px solid var(--line)', background: 'rgba(255,255,255,0.02)', gap: '4px' }}
+                          >
+                            <Edit3 size={12} />
+                            <span style={{ fontSize: '11px' }}>{t('common.edit') || 'Edit'}</span>
+                          </button>
+                          {!user.isTrial && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetDevices(user.id)}
+                              className="btn btn-ghost btn-sm"
+                              style={{ color: 'var(--amber)', padding: '6px 10px', border: '1px solid rgba(245,158,11,0.15)', background: 'rgba(245,158,11,0.03)', gap: '4px' }}
+                            >
+                              <Smartphone size={12} />
+                              <span style={{ fontSize: '11px' }}>{isRTL ? 'تصفير' : 'Reset'}</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="btn btn-ghost btn-sm"
+                            style={{ color: 'var(--red)', padding: '6px 10px', border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.03)', gap: '4px' }}
+                          >
+                            <Trash2 size={12} />
+                            <span style={{ fontSize: '11px' }}>{t('common.delete') || 'Delete'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       )}
+
+      {/* Client Analysis Modal */}
+      {selectedAnalysisUser && (() => {
+        const uStats = getUserUsageStats(selectedAnalysisUser);
+        const name = selectedAnalysisUser.name || t('admin.newUser');
+        const email = selectedAnalysisUser.email;
+        const joinedDate = selectedAnalysisUser.createdAt?.toDate 
+          ? selectedAnalysisUser.createdAt.toDate().toLocaleDateString(dateLocale) 
+          : '';
+
+        return (
+          <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 12, 20, 0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div className="card" style={{ width: '100%', maxWidth: '550px', margin: 0, padding: 0, overflow: 'hidden', animation: 'scaleUp 0.3s ease' }}>
+              
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--line)', background: 'var(--bg3)' }}>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <BarChart3 size={18} style={{ color: 'var(--accent)' }} />
+                    {isRTL ? 'التحليل الشامل لسلوك العميل' : 'Comprehensive Client Analysis'}
+                  </h3>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{email}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAnalysisUser(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text2)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '70vh', overflowY: 'auto' }}>
+                
+                {/* Profile Brief */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg3)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                  <div className="user-avatar" style={{ width: '42px', height: '42px', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%' }}>
+                    {(name || email).charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)' }}>{name}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? `تاريخ الانضمام: ${joinedDate}` : `Joined: ${joinedDate}`}</span>
+                  </div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    color: uStats.classColor,
+                    background: uStats.classBg,
+                    border: `1px solid ${uStats.classColor}22`
+                  }}>
+                    {isRTL ? uStats.classLabelAr : uStats.classLabelEn}
+                  </span>
+                </div>
+
+                {/* Key KPIs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ background: 'var(--bg3)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--line)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
+                      {isRTL ? 'الوقت المقضي (30 يوم)' : 'Time Spent (30 Days)'}
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)' }}>
+                      {uStats.timeSpent} {isRTL ? 'ساعة' : 'Hrs'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--bg3)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--line)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
+                      {isRTL ? 'العمليات المنجزة' : 'Tasks Completed'}
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)' }}>
+                      {uStats.tasksCompleted} {isRTL ? 'عملية' : 'Tasks'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section breakdown usage */}
+                <div>
+                  <h4 style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '12px' }}>
+                    {isRTL ? 'توزيع الاستخدام حسب الأقسام' : 'Usage Breakdown by Section'}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {uStats.sections.map((sec, sIdx) => (
+                      <div key={sIdx}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', fontWeight: '600' }}>
+                          <span style={{ color: 'var(--text2)' }}>{isRTL ? sec.labelAr : sec.labelEn}</span>
+                          <span style={{ color: 'var(--text)' }}>
+                            {sec.hours} {isRTL ? 'ساعة' : 'hrs'} ({sec.pct}%)
+                          </span>
+                        </div>
+                        <div style={{ height: '6px', background: 'var(--bg)', borderRadius: '10px', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${sec.pct}%`,
+                            height: '100%',
+                            background: sIdx === 0 ? 'var(--accent)' : sIdx === 1 ? 'var(--purple)' : 'var(--green)',
+                            borderRadius: '10px'
+                          }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AI Behavioral Insight */}
+                <div style={{ background: 'rgba(236, 92, 49, 0.04)', border: '1px dashed rgba(236, 92, 49, 0.2)', padding: '16px', borderRadius: '12px', marginTop: '4px' }}>
+                  <h4 style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--accent)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    ✨ {isRTL ? 'تحليل سلوك العميل وتوصيات التعامل' : 'Client Analysis & Retention Insights'}
+                  </h4>
+                  <p style={{ fontSize: '12px', color: 'var(--text2)', lineHeight: '1.6', margin: 0, textAlign: 'justify' }}>
+                    {(() => {
+                      if (uStats.classification === 'power') {
+                        return isRTL
+                          ? 'المستخدِم يعتمد بشكل مكثف على أدوات المنصة، خاصة نظام التسويق وCRM الذكي. سلوكه يشير إلى أنه عميل ذو قيمة عالية. نوصي بالتواصل الشخصي معه لتقديم دعم ذو أولوية وعرض ترقيات خاصة بالشبكات الإعلانية للحفاظ على ولائه للمنصة.'
+                          : 'The user actively relies on the platform, especially Marketing OS and CRM. Behavioral patterns suggest a high-value customer. We recommend proactive communication, priority support, and showcasing integration options to maximize retention.';
+                      } else if (uStats.classification === 'inactive') {
+                        return isRTL
+                          ? 'المستخدِم يظهر نشاطاً ضعيفاً جداً ولم يقم بإنشاء حملات أو مهام مؤخراً. هناك احتمالية لخطر إلغاء الاشتراك. نوصي بإرسال بريد إلكتروني ترحيبي تذكيري أو عرض جلسة إرشادية سريعة (Onboarding Session) لمساعدته في بدء استخدام المنصة وتفعيل حسابه.'
+                          : 'The user has very low activity and hasn\'t created campaigns recently. There is a high churn risk. We recommend automated email reminders or offering a quick onboarding review session to trigger usage.';
+                      } else {
+                        return isRTL
+                          ? 'استخدام العميل معتدل ومستقر، حيث يقسم وقته بين لوحة المهام ونظام التسويق. هذا يشير إلى تبني جيد للمنصة. نوصي بإرسال مقالات تعليمية وتلميحات دورية حول التحديثات الجديدة لمساعدته في استكشاف باقي الأدوات لزيادة تفاعله.'
+                          : 'Usage is moderate and stable, distributed across task boards and marketing tools. Suggest sending educational tips and update notices to guide them towards exploring other core features.';
+                      }
+                    })()}
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 24px', borderTop: '1px solid var(--line)', background: 'var(--bg3)' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAnalysisUser(null)}
+                  className="btn"
+                  style={{ background: 'var(--bg3)', border: '1px solid var(--line)', color: 'var(--text2)', padding: '8px 18px' }}
+                >
+                  {isRTL ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Edit User Modal */}
       {showEditModal && editingUser && (

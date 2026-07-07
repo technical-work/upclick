@@ -10,6 +10,7 @@ import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import AIPanel from '@/components/AIPanel';
 import Onboarding from '@/components/Onboarding';
+import ActiveSessionTracker from '@/components/ActiveSessionTracker';
 
 // Modals
 import LeadModal from '@/components/Modals/LeadModal';
@@ -361,6 +362,7 @@ function DashboardShell() {
 
   return (
     <>
+      <ActiveSessionTracker />
       {/* Ambient background particles/glows for premium dark styling */}
       <div className="ambient">
         <div className="ambient-orb ao1"></div>

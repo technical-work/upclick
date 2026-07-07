@@ -1070,7 +1070,7 @@ const BrandingSettings = () => {
       </div>
 
       {/* ── Live Preview ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--line)', background: 'var(--bg2)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--line)', background: 'var(--bg2)', height: '100%', minHeight: '650px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', borderBottom: '1px solid var(--line)', background: 'var(--bg3)' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
             <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444' }} />

@@ -6,6 +6,9 @@ import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
 import CustomSelect from '../CustomSelect';
 
+// Helper to generate a unique ID outside component scope
+const generateReportId = () => 'rep_' + Date.now();
+
 export default function MarketingView() {
   const { lang, L, t, GC, saveGC, formatMoney, confirmAction } = useBusiness();
   const [activeTab, setActiveTab] = useState('research');
@@ -81,6 +84,17 @@ export default function MarketingView() {
     // One-Click Campaign Launcher
     launchName: '', launchProduct: '', launchAudience: '', launchGoal: 'Sales / Conversions',
 
+    // Campaign Planner enhancements
+    campaignType: 'new_product',
+    pastResultsStrategy: 'scale',
+    pastResultsText: '',
+    pastResultsFileName: '',
+    pastResultsFileContent: '',
+    newProductName: '',
+    newProductDesc: '',
+    newProductPrice: '',
+    newProductAudience: '',
+
     // AI Consultant
     aiInp: ''
   });
@@ -88,22 +102,25 @@ export default function MarketingView() {
   // Sync state from Firebase GC.marketing when GC changes
   React.useEffect(() => {
     if (GC?.marketing) {
-      const m = GC.marketing;
-      if (m.counts) {
-        setCompetitorsCount(m.counts.competitors || 0);
-        setAudienceCount(m.counts.audience || 0);
-        setTrendsCount(m.counts.trends || 0);
-        setPersonasCount(m.counts.personas || 0);
-      }
-      if (m.outputs) {
-        setOutputs(m.outputs);
-      }
-      if (m.savedReports) {
-        setSavedReports(m.savedReports);
-      }
-      if (m.inputs) {
-        setInputs(prev => ({ ...prev, ...m.inputs }));
-      }
+      const timer = setTimeout(() => {
+        const m = GC.marketing;
+        if (m.counts) {
+          setCompetitorsCount(m.counts.competitors || 0);
+          setAudienceCount(m.counts.audience || 0);
+          setTrendsCount(m.counts.trends || 0);
+          setPersonasCount(m.counts.personas || 0);
+        }
+        if (m.outputs) {
+          setOutputs(m.outputs);
+        }
+        if (m.savedReports) {
+          setSavedReports(m.savedReports);
+        }
+        if (m.inputs) {
+          setInputs(prev => ({ ...prev, ...m.inputs }));
+        }
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [GC]);
 
@@ -146,7 +163,7 @@ export default function MarketingView() {
     if (title === null) return;
     const finalTitle = title.trim() || defaultTitle;
     const newReport = {
-      id: 'rep_' + Date.now(),
+      id: generateReportId(),
       title: finalTitle,
       category: category,
       content: content,
@@ -339,6 +356,41 @@ Suggest the best organic and paid marketing channels, monthly budget allocation,
     triggerAI('strategy', 'strat-plan-out', prompt, system);
   };
 
+  const handleCampaignFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 200 * 1024) {
+        alert(L('File size too large. Please upload files under 200KB.', 'حجم الملف كبير جداً. يرجى رفع ملفات أقل من 200 كيلوبايت.'));
+        return;
+      }
+      handleInputChange('pastResultsFileName', file.name);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target.result;
+        const truncatedText = text.substring(0, 100000);
+        handleInputChange('pastResultsFileContent', truncatedText);
+        
+        const toast = document.getElementById('toast');
+        if (toast) {
+          toast.innerText = L('Report file loaded successfully!', 'تم تحميل ملف التقرير بنجاح!');
+          toast.className = 'toast show';
+          setTimeout(() => { toast.className = 'toast'; }, 3000);
+        }
+      };
+      reader.onerror = () => {
+        alert(L('Error reading file.', 'حدث خطأ أثناء قراءة الملف.'));
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const clearUploadedFile = () => {
+    handleInputChange('pastResultsFileName', '');
+    handleInputChange('pastResultsFileContent', '');
+    const fileInput = document.getElementById('campaign-file-upload');
+    if (fileInput) fileInput.value = '';
+  };
+
   const runCampaignPlanner = () => {
     const mktPlan = outputs['strat-plan-out'] || '';
     const offer = GC.profile?.offer?.name || '';
@@ -347,20 +399,92 @@ Suggest the best organic and paid marketing channels, monthly budget allocation,
     const selectedPlatforms = inputs.campaignPlatforms || [];
     const platformsStr = selectedPlatforms.join(', ') || 'Meta (Facebook/Instagram)';
 
-    const prompt = `Based on my Marketing Plan: "${mktPlan}" (Offer: "${offer}", ICP: "${icp}").
-Build a highly structured Campaign Planner. 
-Target Platforms: "${platformsStr}"
-Campaign Start Date: "${inputs.campaignStartDate || 'As soon as possible'}"
-Campaign Budget: "${inputs.campaignBudget || 'Organic / Minimal'}"
-Campaign Goal: "${inputs.campaignGoal || 'Sales / Conversions'}"
+    let prompt = '';
+    let system = '';
 
-Generate the campaign structure containing:
-1. Timeline & Key Milestones (starting from "${inputs.campaignStartDate || 'now'}")
-2. Budget Allocation across the selected platforms: "${platformsStr}"
-3. Campaign Goals & Main KPI Targets
-4. Platform-Specific Copy Blueprint & Visual Hooks (tailored ONLY to the selected platforms: "${platformsStr}").`;
+    if (inputs.campaignType === 'past_results') {
+      system = `You are an expert Chief Growth Officer and digital marketing analyst. Write a highly analytical, data-driven optimization report for next month's campaign. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+      prompt = `We are optimizing an existing marketing campaign based on past results.
+Strategic Direction Chosen: **${inputs.pastResultsStrategy === 'scale' ? 'Scale & Expand (توسيع وتوسيع الميزانية)' : 'Pivot & Adjust Direction (تغيير التوجه واختبار زوايا جديدة)'}**
 
-    const system = `You are a senior growth marketing architect. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+Offer Details:
+- Offer Name: "${offer || GC.profile?.name || ''}"
+- Offer Price: "${GC.profile?.offer?.price || ''}"
+- Ideal Client Profile (ICP): "${icp}"
+
+Past Campaign Results Summary:
+"${inputs.pastResultsText || 'No summary notes provided.'}"
+
+${inputs.pastResultsFileName ? `Uploaded Past Performance Report File Name: "${inputs.pastResultsFileName}"
+Uploaded Performance Data:
+"""
+${inputs.pastResultsFileContent || ''}
+"""` : 'No past performance report file uploaded.'}
+
+Campaign Setup Details:
+- Target Platforms: "${platformsStr}"
+- Start Date: "${inputs.campaignStartDate || 'As soon as possible'}"
+- Budget: "${inputs.campaignBudget || 'Organic / Minimal'}"
+- Primary Goal: "${inputs.campaignGoal || 'Sales / Conversions'}"
+
+Please analyze the past campaign performance data and write a detailed, data-driven optimization and implementation plan for the new campaign. Make sure to determine and calculate the recommended budget, budget distribution, and target goals:
+
+1. **Data Diagnostics**: Analyze the past performance inputs. Detail conversion bottlenecks, high-performing vs failing assets, and identify what key factors led to the current results.
+2. **Budget Allocation & Distribution Plan (CRITICAL)**:
+   - Provide a recommended monthly budget size. If the user input "${inputs.campaignBudget}" is "Organic" or unspecified, calculate and recommend a realistic starting advertising budget for their niche.
+   - Present a **Markdown Table** showing the recommended budget distribution (in percentages and currency) across:
+     - The selected advertising platforms: "${platformsStr}"
+     - Funnel stages: Cold Traffic (Prospecting) vs. Warm Traffic (Retargeting)
+   - Explain the rationale for this distribution based on past bottlenecks (e.g., if Google had low conversion rates, shift budget to Meta).
+3. **KPI Goals & Targets (CRITICAL)**:
+   - Present a **Markdown Table** outlining the target goals for the upcoming campaign, including:
+     - Target CTR (Click-Through Rate)
+     - Target Cost Per Lead (CPL)
+     - Target Cost Per Acquisition (CPA)
+     - Target Conversion Rate (CVR)
+     - Target ROAS (Return on Ad Spend)
+   - Base these targets directly on the offer price and the past campaign performance data.
+4. **Strategic Realignment & Action Items**:
+   ${inputs.pastResultsStrategy === 'scale' 
+     ? 'Explain how we can scale up: budget scaling rules (e.g. 20% budget increases, CBO vs ABO), duplication strategies, lookalike audience structures, and broadening parameters while maintaining ROAS.' 
+     : 'Explain how we will pivot: define 3 new marketing angles/hooks, adjust target audience segments to avoid previous bottlenecks, and restructure the messaging to tackle price/value objections.'}
+5. **Optimized Campaign Structure & Timeline**: Step-by-step launch timeline starting from "${inputs.campaignStartDate || 'now'}".
+6. **Ad Creative & Platform Copy Blueprint**: Visual hook recommendations, copy templates, and specific guidelines for "${platformsStr}".`;
+    } else {
+      system = `You are a Product Launch Specialist and Growth Marketer. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+      prompt = `We are launching a new product/service campaign.
+New Product Details:
+- Name: "${inputs.newProductName || 'New Product'}"
+- Description & Features: "${inputs.newProductDesc || 'A premium product'}"
+- Launch Offer & Price: "${inputs.newProductPrice || 'TBD'}"
+- Target Audience: "${inputs.newProductAudience || icp || 'General audience'}"
+
+Campaign Setup Details:
+- Target Platforms: "${platformsStr}"
+- Start Date: "${inputs.campaignStartDate || 'As soon as possible'}"
+- Budget: "${inputs.campaignBudget || 'Organic / Minimal'}"
+- Primary Goal: "${inputs.campaignGoal || 'Sales / Conversions'}"
+
+Please design a comprehensive launch campaign blueprint. Make sure to determine and calculate the recommended budget, budget distribution, and target goals:
+
+1. **Launch Positioning & Angle**: How to position "${inputs.newProductName || 'this new product'}" to appeal directly to the target audience and create launch hype.
+2. **Budget Allocation & Distribution Plan (CRITICAL)**:
+   - Provide a recommended monthly launch budget. If the user input "${inputs.campaignBudget}" is "Organic" or unspecified, calculate and suggest a realistic starting advertising budget for launching this product.
+   - Present a **Markdown Table** showing the recommended budget distribution (in percentages and currency) across:
+     - The selected advertising platforms: "${platformsStr}"
+     - Funnel stages: Cold Traffic (Prospecting / Awareness) vs. Warm Traffic (Retargeting / Launch Offer)
+3. **KPI Goals & Targets (CRITICAL)**:
+   - Present a **Markdown Table** outlining the target goals and benchmarks for this launch campaign, including:
+     - Target CTR (Click-Through Rate)
+     - Target Cost Per Lead (CPL)
+     - Target Cost Per Acquisition (CPA)
+     - Target Conversion Rate (CVR)
+     - Target ROAS (Return on Ad Spend)
+   - Base these targets directly on the product launch price of "${inputs.newProductPrice || 'TBD'}" and the target audience behavior.
+4. **Detailed Multi-Phase Timeline**: Milestones for Pre-Launch (buzz building), Launch Week (hard pitch & urgency), and Post-Launch (follow-up).
+5. **Ad Creative Concept & Copy Direction**: Visual hooks, main copy angles (focusing on product features and target audience pain points), and platform specific CTA instructions.`;
+    }
+
     triggerAI('campaign-planner', 'launcher-out', prompt, system);
   };
 
@@ -716,57 +840,224 @@ Analyze these campaign results and compare them with the previous plan. Propose:
             <div className="g2">
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">⚡ {L('Campaign Planner', 'مخطط الحملات التسويقية')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Start Date', 'تاريخ بدء الحملة')}</label>
-                    <input 
-                      className="inp" 
-                      type="date" 
-                      value={inputs.campaignStartDate || ''} 
-                      onChange={e => handleInputChange('campaignStartDate', e.target.value)} 
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Budget', 'ميزانية الحملة')}</label>
-                    <input 
-                      className="inp" 
-                      placeholder="e.g. $500, or Organic" 
-                      value={inputs.campaignBudget || ''} 
-                      onChange={e => handleInputChange('campaignBudget', e.target.value)} 
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Primary Goal', 'الهدف الأساسي للحملة')}</label>
-                    <input 
-                      className="inp" 
-                      placeholder="e.g. Sales, Lead Gen, Brand Awareness" 
-                      value={inputs.campaignGoal || ''} 
-                      onChange={e => handleInputChange('campaignGoal', e.target.value)} 
-                    />
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   
+                  {/* Mode Toggle */}
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Select Platforms', 'اختر المنصات الإعلانية')}</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                      {['Meta (Facebook/Instagram)', 'Google Ads', 'TikTok Ads', 'Snapchat Ads', 'YouTube Ads', 'LinkedIn Ads'].map(plat => {
-                        const platforms = inputs.campaignPlatforms || [];
-                        const isChecked = platforms.includes(plat);
-                        return (
-                          <label key={plat} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', background: 'var(--surface2)', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--edge)' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={isChecked} 
-                              onChange={(e) => {
-                                const next = e.target.checked 
-                                  ? [...platforms, plat]
-                                  : platforms.filter(p => p !== plat);
-                                handleInputChange('campaignPlatforms', next);
-                              }} 
-                            />
-                            {plat}
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>
+                      {L('Campaign Mode', 'نوع الحملة التسويقية')}
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'var(--surface2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                      <button
+                        type="button"
+                        className={`tab-btn ${inputs.campaignType !== 'past_results' ? 'on' : ''}`}
+                        style={{ fontSize: '12px', padding: '6px', borderRadius: '6px', justifyContent: 'center', minHeight: '30px', border: 'none' }}
+                        onClick={() => handleInputChange('campaignType', 'new_product')}
+                      >
+                        🆕 {L('New Product Launch', 'إطلاق منتج جديد')}
+                      </button>
+                      <button
+                        type="button"
+                        className={`tab-btn ${inputs.campaignType === 'past_results' ? 'on' : ''}`}
+                        style={{ fontSize: '12px', padding: '6px', borderRadius: '6px', justifyContent: 'center', minHeight: '30px', border: 'none' }}
+                        onClick={() => handleInputChange('campaignType', 'past_results')}
+                      >
+                        📈 {L('Based on Past Results', 'تحليل نتائج سابقة')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mode 1: New Product Form */}
+                  {inputs.campaignType !== 'past_results' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', borderTop: '1px solid var(--line)', paddingTop: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                          {L('New Product Name', 'اسم المنتج الجديد')}
+                        </label>
+                        <input 
+                          className="inp" 
+                          placeholder={L('e.g., UpKlick Software', 'مثال: منصة أبكليك')} 
+                          value={inputs.newProductName || ''} 
+                          onChange={e => handleInputChange('newProductName', e.target.value)} 
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                          {L('Product Description & Key Features', 'وصف المنتج وميزاته الأساسية')}
+                        </label>
+                        <textarea 
+                          className="inp" 
+                          rows="3" 
+                          placeholder={L('e.g., A drag-and-drop landing page builder for Arabic creators...', 'مثال: منشئ صفحات هبوط بالسحب والإفلات لصناع المحتوى...')} 
+                          value={inputs.newProductDesc || ''} 
+                          onChange={e => handleInputChange('newProductDesc', e.target.value)} 
+                        />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                            {L('Price / Launch Offer', 'السعر وتفاصيل العرض')}
                           </label>
-                        );
-                      })}
+                          <input 
+                            className="inp" 
+                            placeholder={L('e.g., $49/month with 14-day trial', 'مثال: 49$/شهرياً مع فترة تجربة')} 
+                            value={inputs.newProductPrice || ''} 
+                            onChange={e => handleInputChange('newProductPrice', e.target.value)} 
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                            {L('Target Audience', 'الجمهور المستهدف')}
+                          </label>
+                          <input 
+                            className="inp" 
+                            placeholder={L('e.g., Arabic creators & freelancers', 'مثال: المستقلين وصناع المحتوى العرب')} 
+                            value={inputs.newProductAudience || ''} 
+                            onChange={e => handleInputChange('newProductAudience', e.target.value)} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mode 2: Past Results Form */}
+                  {inputs.campaignType === 'past_results' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', borderTop: '1px solid var(--line)', paddingTop: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>
+                          {L('Strategic Direction', 'التوجه الاستراتيجي المطلوب')}
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'var(--surface2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                          <button
+                            type="button"
+                            className={`tab-btn ${inputs.pastResultsStrategy !== 'pivot' ? 'on' : ''}`}
+                            style={{ fontSize: '11.5px', padding: '5px', borderRadius: '6px', justifyContent: 'center', minHeight: '28px', border: 'none' }}
+                            onClick={() => handleInputChange('pastResultsStrategy', 'scale')}
+                          >
+                            🚀 {L('Scale Current Direction', 'توسيع وتكبير (Scale)')}
+                          </button>
+                          <button
+                            type="button"
+                            className={`tab-btn ${inputs.pastResultsStrategy === 'pivot' ? 'on' : ''}`}
+                            style={{ fontSize: '11.5px', padding: '5px', borderRadius: '6px', justifyContent: 'center', minHeight: '28px', border: 'none' }}
+                            onClick={() => handleInputChange('pastResultsStrategy', 'pivot')}
+                          >
+                            🔄 {L('Pivot & New Direction', 'تغيير التوجه (Pivot)')}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                          {L('Past Campaign Results (Notes / Feedback)', 'نتائج الحملة السابقة (ملاحظات ونصوص)')}
+                        </label>
+                        <textarea 
+                          className="inp" 
+                          rows="3" 
+                          placeholder={L('e.g., Spent $300, CTR was 1.2%, lead quality was poor...', 'مثال: صرفنا 300$، نسبة النقر 1.2%، وجودة العملاء كانت منخفضة...')} 
+                          value={inputs.pastResultsText || ''} 
+                          onChange={e => handleInputChange('pastResultsText', e.target.value)} 
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                          {L('Upload Past Campaign Data (CSV, TXT, JSON)', 'رفع تقرير أو بيانات الحملة السابقة (CSV, TXT, JSON)')}
+                        </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input 
+                              type="file" 
+                              id="campaign-file-upload" 
+                              style={{ display: 'none' }} 
+                              accept=".csv,.txt,.json,.tsv,.log"
+                              onChange={handleCampaignFileChange}
+                            />
+                            <button 
+                              type="button"
+                              className="btn btn-ghost btn-sm" 
+                              onClick={() => document.getElementById('campaign-file-upload').click()}
+                              style={{ fontSize: '11.5px', padding: '6px 12px' }}
+                            >
+                              📁 {L('Choose File', 'اختر ملف')}
+                            </button>
+                            <span style={{ fontSize: '11.5px', color: 'var(--t3)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                              {inputs.pastResultsFileName || L('No file selected', 'لم يتم اختيار ملف')}
+                            </span>
+                            {inputs.pastResultsFileName && (
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={clearUploadedFile}
+                                style={{ color: 'var(--red)', borderColor: 'rgba(239, 68, 68, 0.2)', padding: '2px 6px', fontSize: '10px' }}
+                              >
+                                ❌ {L('Clear', 'إزالة')}
+                              </button>
+                            )}
+                          </div>
+                          {inputs.pastResultsFileContent && (
+                            <div style={{ fontSize: '10.5px', color: 'var(--green)', background: 'rgba(16, 185, 129, 0.08)', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                              ✓ {L(`Parsed ${inputs.pastResultsFileContent.length} characters of campaign data`, `تم تحليل ${inputs.pastResultsFileContent.length} حرف من بيانات التقرير`)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* General / Shared Form Fields */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', borderTop: '1px solid var(--line)', paddingTop: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Start Date', 'تاريخ بدء الحملة')}</label>
+                        <input 
+                          className="inp" 
+                          type="date" 
+                          value={inputs.campaignStartDate || ''} 
+                          onChange={e => handleInputChange('campaignStartDate', e.target.value)} 
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Budget', 'ميزانية الحملة')}</label>
+                        <input 
+                          className="inp" 
+                          placeholder="e.g. $500, or Organic" 
+                          value={inputs.campaignBudget || ''} 
+                          onChange={e => handleInputChange('campaignBudget', e.target.value)} 
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Campaign Primary Goal', 'الهدف الأساسي للحملة')}</label>
+                      <input 
+                        className="inp" 
+                        placeholder="e.g. Sales, Lead Gen, Brand Awareness" 
+                        value={inputs.campaignGoal || ''} 
+                        onChange={e => handleInputChange('campaignGoal', e.target.value)} 
+                      />
+                    </div>
+                    
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Select Platforms', 'اختر المنصات الإعلانية')}</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {['Meta (Facebook/Instagram)', 'Google Ads', 'TikTok Ads', 'Snapchat Ads', 'YouTube Ads', 'LinkedIn Ads'].map(plat => {
+                          const platforms = inputs.campaignPlatforms || [];
+                          const isChecked = platforms.includes(plat);
+                          return (
+                            <label key={plat} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', background: 'var(--surface2)', padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--edge)', transition: 'all 0.2s ease' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={isChecked} 
+                                onChange={(e) => {
+                                  const next = e.target.checked 
+                                    ? [...platforms, plat]
+                                    : platforms.filter(p => p !== plat);
+                                  handleInputChange('campaignPlatforms', next);
+                                }} 
+                              />
+                              {plat}
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -1425,9 +1716,11 @@ Analyze these campaign results and compare them with the previous plan. Propose:
                             </button>
                           </div>
                         </div>
-                        <div className="ai-box" style={{ whiteSpace: 'pre-line', overflowY: 'auto', maxHeight: '450px', background: 'var(--surface2)', padding: '14px', borderRadius: '8px' }}>
-                          {report.content}
-                        </div>
+                        <div 
+                          className="ai-box" 
+                          style={{ overflowY: 'auto', maxHeight: '450px', background: 'var(--surface2)', padding: '14px', borderRadius: '8px' }}
+                          dangerouslySetInnerHTML={{ __html: parseMarkdown(report.content) }}
+                        />
                       </div>
                     );
                   })()

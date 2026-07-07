@@ -598,7 +598,31 @@ export function BusinessProvider({ children }) {
     const amt = parseFloat(amount) || 0;
     const rate = rates[currency.code] || 1;
     const converted = amt * rate;
-    return `${currency.symbol}${converted.toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${currency.code}`;
+    const formattedVal = converted.toLocaleString('en', { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 2 
+    });
+    
+    const isRTL = lang?.startsWith('ar');
+    
+    if (isRTL) {
+      if (currency.code === 'SAR') {
+        return `${formattedVal} ريال`;
+      }
+      // For Arabic symbols like د.إ, ج.م, etc., put after the number
+      const isArabicSymbol = ['د.إ', 'د.ك', 'ر.ق', '.د.ب', 'ر.ع', 'ج.م', 'د.ا', 'د.م', 'دج', 'ع.د'].includes(currency.symbol);
+      if (isArabicSymbol) {
+        return `${formattedVal} ${currency.symbol}`;
+      }
+      return `${currency.symbol}${formattedVal}`;
+    } else {
+      // English
+      const isWesternSymbol = ['$', '€', '£', '¥', 'C$', 'A$', '₺', '₹'].includes(currency.symbol);
+      if (isWesternSymbol) {
+        return `${currency.symbol}${formattedVal}`;
+      }
+      return `${formattedVal} ${currency.code}`;
+    }
   };
 
   // Profile management

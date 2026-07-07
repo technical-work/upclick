@@ -67,11 +67,11 @@ export default function FinanceView() {
   // Run AI Financial Analysis
   const runFinancialAnalysis = async () => {
     setAiLoading(true);
-    const transText = entries.map(e => `- [${e.type.toUpperCase()}] ${e.desc}: $${e.amount} (${e.category})`).join('\n');
-    const subsText = subscriptions.map(s => `- ${s.name}: $${s.amount}/mo`).join('\n');
+    const transText = entries.map(e => `- [${e.type.toUpperCase()}] ${e.desc}: ${formatMoney(e.amount)} (${e.category})`).join('\n');
+    const subsText = subscriptions.map(s => `- ${s.name}: ${formatMoney(s.amount)}/mo`).join('\n');
 
     const prompt = `Perform a financial checkup on my business. 
-Data: Monthly Income: $${totalIncome}, Monthly Expenses: $${totalExpenses}, Net Profit: $${netProfit} (${profitMargin}% margin), Monthly Subscriptions: $${totalRecurring}.
+Data: Monthly Income: ${formatMoney(totalIncome)}, Monthly Expenses: ${formatMoney(totalExpenses)}, Net Profit: ${formatMoney(netProfit)} (${profitMargin}% margin), Monthly Subscriptions: ${formatMoney(totalRecurring)}.
 Transactions:
 ${transText || 'None recorded yet.'}
 Subscriptions:
@@ -90,8 +90,15 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
   };
 
   useEffect(() => {
-    runFinancialAnalysis();
-  }, [GC.finance.entries, GC.finance.subscriptions, lang]);
+    // Run once on mount if no analysis is present
+    if (!aiAnalysis) {
+      const timer = setTimeout(() => {
+        runFinancialAnalysis();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   // Chart data simulation based on real records
   const maxVal = Math.max(totalIncome, totalExpenses, 1000);
@@ -160,12 +167,22 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
           </div>
         </div>
         <div className="card" style={{ height: '220px', overflowY: 'auto' }}>
-          <div className="sec-hd"><div className="sec-title">✦ {L('AI Financial Insights', 'رؤى مالية بالذكاء الاصطناعي')}</div></div>
+          <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <div className="sec-title">✦ {L('AI Financial Insights', 'رؤى مالية بالذكاء الاصطناعي')}</div>
+            <button 
+              className="btn btn-ghost" 
+              style={{ padding: '2px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }} 
+              onClick={runFinancialAnalysis}
+              disabled={aiLoading}
+            >
+              🔄 {aiLoading ? L('Analyzing...', 'جاري التحليل...') : L('Update Analysis', 'تحديث التحليل')}
+            </button>
+          </div>
           <div 
             className="ai-box" 
             style={{ fontSize: '12.5px' }}
             dangerouslySetInnerHTML={{ 
-              __html: aiLoading ? L('Calculating metrics...', 'جاري حساب المقاييس...') : parseMarkdown(aiAnalysis || L('Add transactions to view financial health suggestions.', 'أضف عمليات مالية لرؤية نصائح تعزيز الأرباح.'))
+              __html: aiLoading ? L('Calculating metrics...', 'جاري حساب المقاييس...') : parseMarkdown(aiAnalysis || L('Click "Update Analysis" to view financial suggestions.', 'اضغط على "تحديث التحليل" لرؤية نصائح تعزيز الأرباح.'))
             }}
           />
         </div>

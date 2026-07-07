@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import CustomSelect from '../CustomSelect';
+import { callClaudeAPI } from '../../utils/ai';
 
 export default function NicheStudioView() {
   const [filterPeriod, setFilterPeriod] = useState('all');
@@ -58,16 +59,19 @@ export default function NicheStudioView() {
   // Sync state if GC updates
   useEffect(() => {
     if (GC.nicheStudio) {
-      setLanguage(GC.nicheStudio.language || 'ar');
-      setField(GC.nicheStudio.field || 'coaching');
-      setStyles(GC.nicheStudio.styles || ['catchy']);
-      setWordCount(GC.nicheStudio.wordCount ?? 1);
-      setKeywords(GC.nicheStudio.keywords || '');
-      setAudience(GC.nicheStudio.audience || 'Arab entrepreneurs');
-      setGeneratedNames(GC.nicheStudio.generatedNames || []);
-      setSavedNames(GC.nicheStudio.savedNames || []);
-      setSelectedNiche(GC.nicheStudio.selectedNiche || null);
-      setSelectedMicro(GC.nicheStudio.selectedMicro || null);
+      const timer = setTimeout(() => {
+        setLanguage(GC.nicheStudio.language || 'ar');
+        setField(GC.nicheStudio.field || 'coaching');
+        setStyles(GC.nicheStudio.styles || ['catchy']);
+        setWordCount(GC.nicheStudio.wordCount ?? 1);
+        setKeywords(GC.nicheStudio.keywords || '');
+        setAudience(GC.nicheStudio.audience || 'Arab entrepreneurs');
+        setGeneratedNames(GC.nicheStudio.generatedNames || []);
+        setSavedNames(GC.nicheStudio.savedNames || []);
+        setSelectedNiche(GC.nicheStudio.selectedNiche || null);
+        setSelectedMicro(GC.nicheStudio.selectedMicro || null);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [GC.nicheStudio]);
 
@@ -90,20 +94,50 @@ export default function NicheStudioView() {
     saveStudioData({ styles: newStyles });
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
     setGeneratedNames([]);
     
-    // Simulate generation
-    setTimeout(() => {
-      setIsGenerating(false);
-      const names = ['UpKlick', 'Najah', 'GrowArabia', 'RiyadaHub', 'Numuw', 'FutureBiz'];
-      setGeneratedNames(names);
+    const prompt = `Generate 6 unique, creative, and memorable business/brand names.
+Domain/Niche: ${field}
+Styles preferred: ${styles.join(', ')}
+Word count constraint: ${wordCount === 1 ? 'exactly 1 word' : wordCount === 2 ? 'exactly 2 words' : '1 or 2 words'}
+Keywords to incorporate or get inspiration from: ${keywords || 'None'}
+Target audience: ${audience}
+Preferred language: ${language === 'ar' ? 'Arabic' : 'English'}
+
+Provide ONLY the 6 generated names in a clean list, with one name per line, no numbers, no explanation, no bullet points, no extra text.`;
+
+    const system = `You are a professional brand namer and naming consultant. Output only a plain list of 6 names, one per line. Do not include markdown formatting or numbers.`;
+
+    try {
+      const res = await callClaudeAPI(prompt, system, language, GC);
+      const names = res.split('\n')
+        .map(n => n.replace(/^[-*•\d.\s]+/, '').trim())
+        .filter(n => n.length > 0)
+        .slice(0, 6);
+
+      if (names.length > 0) {
+        setGeneratedNames(names);
+        saveStudioData({
+          language, field, styles, wordCount, keywords, audience,
+          generatedNames: names
+        });
+      } else {
+        throw new Error("Empty names list");
+      }
+    } catch (err) {
+      console.error("AI Naming error, using fallback:", err);
+      // Fallback list of nice names
+      const fallbackList = ['UpKlick', 'Najah', 'GrowArabia', 'RiyadaHub', 'Numuw', 'FutureBiz'];
+      setGeneratedNames(fallbackList);
       saveStudioData({
         language, field, styles, wordCount, keywords, audience,
-        generatedNames: names
+        generatedNames: fallbackList
       });
-    }, 1500);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSaveName = (name) => {

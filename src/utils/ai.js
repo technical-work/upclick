@@ -168,7 +168,7 @@ function getAR(val, defaultVal = '') {
 function generateSmartFallback(prompt, lang, context) {
   const pStr = String(prompt || '');
   // Detect language: ar if lang is 'ar' or contains Arabic chars
-  const isAR = lang === 'ar' || /[\u0600-\u06FF]/.test(pStr);
+  const isAR = lang ? (lang === 'ar') : /[\u0600-\u06FF]/.test(pStr);
   
   // Extract values with helper, falling back to context defaults if missing
   const name = extract(pStr, 'Brand Name') || extract(pStr, 'Name') || extract(pStr, 'Name:') || context?.profile?.name || 'UpKlick Business';
@@ -265,6 +265,11 @@ function generateSmartFallback(prompt, lang, context) {
     return JSON.stringify(obj, null, 2);
   }
 
+  // Brand Name Generator fallback
+  if (normalized.includes('brand name') || normalized.includes('business/brand names') || normalized.includes('brand namer')) {
+    return generateSmartBrandNames(prompt);
+  }
+
   // 1. Daily Brief / Analyze My Business Today / حلل بزنسي اليوم
   if (normalized.includes('daily business brief') || normalized.includes('daily brief') || normalized.includes('analyze my business today') || normalized.includes('حلل بزنسي اليوم')) {
     return generateDailyBrief(isAR, context, name, localizedNiche, localizedChannel, goals, localizedPain);
@@ -275,8 +280,17 @@ function generateSmartFallback(prompt, lang, context) {
     return generateCRMInsights(isAR, context);
   }
 
-  // 3. How much is my revenue this month? / كم إيراداتي هذا الشهر؟
-  if (normalized.includes('revenue this month') || normalized.includes('كم إيراداتي') || normalized.includes('إيراداتي') || normalized.includes('revenue check')) {
+  // 3. How much is my revenue this month? / كم إيراداتي هذا الشهر؟ / تحليل مالي
+  if (
+    normalized.includes('revenue this month') || 
+    normalized.includes('كم إيراداتي') || 
+    normalized.includes('إيراداتي') || 
+    normalized.includes('revenue check') ||
+    normalized.includes('financial checkup') ||
+    normalized.includes('financial') ||
+    normalized.includes('finance') ||
+    normalized.includes('transaction')
+  ) {
     return generateFinanceInsights(isAR, context);
   }
 
@@ -325,7 +339,14 @@ function generateSmartFallback(prompt, lang, context) {
   }
 
   // 12. Video Script Writer & Content Hub
-  if (normalized.includes('video script') || normalized.includes('script writer') || normalized.includes('script') || normalized.includes('content') || normalized.includes('hook') || normalized.includes('idea')) {
+  if (
+    normalized.includes('video script') || 
+    normalized.includes('script writer') || 
+    (normalized.includes('script') && !normalized.includes('subscription')) || 
+    normalized.includes('content') || 
+    normalized.includes('hook') || 
+    normalized.includes('idea')
+  ) {
     return generateVideoScript(isAR, name, localizedNiche, localizedDemo, localizedPain, localizedHours, localizedChannel, goals);
   }
 
@@ -990,6 +1011,32 @@ function generateFinanceInsights(isAR, context) {
   const profit = totalIncome - totalExpenses;
   const profitMargin = totalIncome > 0 ? Math.round((profit / totalIncome) * 100) : 100;
 
+  // Retrieve user's configured currency symbol & code safely
+  let symbol = '$';
+  let currencyCode = 'USD';
+  try {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('upklick_currency');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        symbol = parsed.symbol || '$';
+        currencyCode = parsed.code || 'USD';
+      }
+    }
+  } catch (e) {}
+
+  const formatLocalVal = (val) => {
+    const formatted = Number(val).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    if (currencyCode === 'SAR') {
+      return isAR ? `${formatted} ريال` : `${formatted} SAR`;
+    }
+    const isArabicSymbol = ['د.إ', 'د.ك', 'ر.ق', '.د.ب', 'ر.ع', 'ج.م', 'د.ا', 'د.م', 'دج', 'ع.د'].includes(symbol);
+    if (isArabicSymbol) {
+      return isAR ? `${formatted} ${symbol}` : `${formatted} ${currencyCode}`;
+    }
+    return isAR ? `${symbol}${formatted}` : `${symbol}${formatted}`;
+  };
+
   if (isAR) {
     if (entries.length === 0) {
       return `### 💰 الوضع المالي للبزنس
@@ -1003,9 +1050,9 @@ function generateFinanceInsights(isAR, context) {
     }
 
     return `### 💰 تحليل المؤشرات المالية الذكي لشهر ${new Date().toLocaleString('ar-EG', { month: 'long' })}:
-• **إجمالي الإيرادات المسجلة:** **$${totalIncome}**
-• **إجمالي المصاريف التشغيلية:** **$${totalExpenses}**
-• **صافي الأرباح:** **$${profit}**
+• **إجمالي الإيرادات المسجلة:** **${formatLocalVal(totalIncome)}**
+• **إجمالي المصاريف التشغيلية:** **${formatLocalVal(totalExpenses)}**
+• **صافي الأرباح:** **${formatLocalVal(profit)}**
 • **هامش الربحية الصافي:** **${profitMargin}%**
 
 ---
@@ -1014,7 +1061,7 @@ function generateFinanceInsights(isAR, context) {
 • ${leakCheck}
 
 #### 💡 خطة تحسين التدفقات النقدية المقترحة:
-1. **أعد استثمار الأرباح:** خصص 20% من صافي أرباحك البالغ **$${profit}** لإعلانات التسويق المدفوعة لإعادة ملء قمع المبيعات.
+1. **أعد استثمار الأرباح:** خصص 20% من صافي أرباحك البالغ **${formatLocalVal(profit)}** لإعلانات التسويق المدفوعة لإعادة ملء قمع المبيعات.
 2. **الفوترة الفورية:** تفادى التأخر في تحصيل أموال الصفقات المغلقة وصمم فواتير واضحة لعملائك ليدفعوا مباشرة.`;
   } else {
     if (entries.length === 0) {
@@ -1029,9 +1076,9 @@ function generateFinanceInsights(isAR, context) {
     }
 
     return `### 💰 Business Financial Audit:
-• **Total Revenue Earned:** **$${totalIncome}**
-• **Total Operational Cost:** **$${totalExpenses}**
-• **Net Take-home Profit:** **$${profit}**
+• **Total Revenue Earned:** **${formatLocalVal(totalIncome)}**
+• **Total Operational Cost:** **${formatLocalVal(totalExpenses)}**
+• **Net Take-home Profit:** **${formatLocalVal(profit)}**
 • **Net Profit Margin:** **${profitMargin}%**
 
 ---
@@ -1040,7 +1087,7 @@ function generateFinanceInsights(isAR, context) {
 • ${leakCheck}
 
 #### 💡 Financial Acceleration Advice:
-1. **Reinvestment Ratio:** Reallocate 15-20% of your **$${profit}** profit margin back into lead generation campaigns.
+1. **Reinvestment Ratio:** Reallocate 15-20% of your **${formatLocalVal(profit)}** profit margin back into lead generation campaigns.
 2. **Optimize Operational Leaks:** Reduce processing time and implement upfront payments on contracts to maintain cash flow velocity.`;
   }
 }
@@ -1442,4 +1489,85 @@ Hello! Based on your query and active profile setup in the "**${niche}**" niche 
 
 *💡 Tell me more about your challenge (e.g., pricing, video hooks, email sequences) and I will construct a tailored roadmap for you.*`;
   }
+}
+
+function generateSmartBrandNames(prompt) {
+  const normalized = prompt.toLowerCase();
+  const isAR = normalized.includes('arabic') || normalized.includes('عربي') || normalized.includes('language: arabic') || normalized.includes('لغة: عربي');
+  
+  // Extract niche/field
+  let field = 'coaching';
+  if (normalized.includes('niche/domain:')) {
+    const parts = prompt.split(/niche\/domain:/i);
+    if (parts[1]) field = parts[1].split('\n')[0].trim();
+  } else if (normalized.includes('domain/niche:')) {
+    const parts = prompt.split(/domain\/niche:/i);
+    if (parts[1]) field = parts[1].split('\n')[0].trim();
+  }
+
+  // Extract keywords
+  let keyword = '';
+  if (normalized.includes('keywords to incorporate or get inspiration from:')) {
+    const parts = prompt.split(/keywords to incorporate or get inspiration from:/i);
+    if (parts[1]) keyword = parts[1].split('\n')[0].trim();
+  } else if (normalized.includes('keywords to incorporate:')) {
+    const parts = prompt.split(/keywords to incorporate:/i);
+    if (parts[1]) keyword = parts[1].split('\n')[0].trim();
+  } else if (normalized.includes('keywords:')) {
+    const parts = prompt.split(/keywords:/i);
+    if (parts[1]) keyword = parts[1].split('\n')[0].trim();
+  }
+  if (keyword.toLowerCase() === 'none' || keyword === 'لا يوجد') {
+    keyword = '';
+  }
+
+  // Generate dynamic names based on field & language
+  let names = [];
+  if (isAR) {
+    if (field.includes('coach') || field.includes('تدريب') || field.includes('تعليم') || field.includes('استشار')) {
+      names = ['تمكين', 'مسار', 'إلهام', 'توجيه', 'روافد', 'منارة'];
+    } else if (field.includes('market') || field.includes('تسويق') || field.includes('اعلانات')) {
+      names = ['أثر', 'رؤية', 'انتشار', 'نبض', 'مدى', 'وميض'];
+    } else if (field.includes('finan') || field.includes('مال') || field.includes('استثمار')) {
+      names = ['ثروة', 'نمو', 'أصول', 'رصيد', 'تداول', 'كسب'];
+    } else {
+      names = ['ريادة', 'انجاز', 'أفق', 'خطوة', 'طموح', 'امتياز'];
+    }
+
+    if (keyword) {
+      names = [
+        `${keyword} ويب`,
+        `مركز ${keyword}`,
+        `منصة ${keyword}`,
+        `${keyword} برو`,
+        `${keyword} الذكية`,
+        `${keyword} تك`
+      ];
+    }
+  } else {
+    // English
+    if (field.includes('coach') || field.includes('train') || field.includes('educat') || field.includes('consult')) {
+      names = ['Leadify', 'MindPath', 'Coachingly', 'ElevateHub', 'AimUp', 'NextLevel'];
+    } else if (field.includes('market') || field.includes('advertis') || field.includes('brand')) {
+      names = ['Marketa', 'GrowthFly', 'SpreadPulse', 'BrandVibe', 'AdWave', 'ReachMax'];
+    } else if (field.includes('finan') || field.includes('invest') || field.includes('crypto')) {
+      names = ['FinFlow', 'Investo', 'CapGrow', 'WealthGrid', 'AssetIQ', 'VaultUp'];
+    } else {
+      names = ['BizSprint', 'CoreWave', 'UpKlick', 'Najah', 'GrowArabia', 'FutureBiz'];
+    }
+
+    if (keyword) {
+      const capKey = keyword.charAt(0).toUpperCase() + keyword.slice(1);
+      names = [
+        `${capKey}ify`,
+        `${capKey}Hub`,
+        `${capKey}Flow`,
+        `${capKey}Core`,
+        `Go${capKey}`,
+        `Smart${capKey}`
+      ];
+    }
+  }
+
+  return names.join('\n');
 }

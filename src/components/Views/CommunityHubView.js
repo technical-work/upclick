@@ -17,6 +17,25 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 
+import { initializeApp, getApps } from 'firebase/app';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+
+const secondaryFirebaseConfig = {
+  apiKey: "AIzaSyCaswftcLmfIepG_F8fzizqGXFl5mnXvj8",
+  authDomain: "aibrand-vision.firebaseapp.com",
+  projectId: "aibrand-vision",
+  storageBucket: "aibrand-vision.firebasestorage.app",
+  messagingSenderId: "36898907108",
+  appId: "1:36898907108:web:423352bb5b0f5825d65df1",
+  measurementId: "G-G0CFX66Q3V"
+};
+
+// Initialize secondary Firebase App instance safely
+const secondaryApp = getApps().find(app => app.name === 'supportStorageApp') 
+  || initializeApp(secondaryFirebaseConfig, 'supportStorageApp');
+
+const supportStorage = getStorage(secondaryApp);
+
 export default function CommunityHubView() {
   const { lang, L, t, GC, saveGC, formatMoney } = useBusiness();
   const { user: currentUser, userData } = useAuth();
@@ -46,6 +65,61 @@ export default function CommunityHubView() {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [pollOptionsText, setPollOptionsText] = useState('');
+
+  // Community Post image upload states
+  const [postFile, setPostFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  
+  // Edit post file upload states
+  const [editPostFile, setEditPostFile] = useState(null);
+  const [editUploadProgress, setEditUploadProgress] = useState(0);
+  const [editUploading, setEditUploading] = useState(false);
+
+  const handleUploadFile = (file, isEdit = false) => {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      if (isEdit) {
+        setEditUploading(true);
+        setEditUploadProgress(0);
+      } else {
+        setUploading(true);
+        setUploadProgress(0);
+      }
+      
+      const fileRef = ref(supportStorage, `community_posts/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(fileRef, file);
+      
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const prog = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          if (isEdit) {
+            setEditUploadProgress(prog);
+          } else {
+            setUploadProgress(prog);
+          }
+        },
+        (error) => {
+          console.error("Error uploading community image:", error);
+          if (isEdit) setEditUploading(false);
+          else setUploading(false);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            if (isEdit) setEditUploading(false);
+            else setUploading(false);
+            resolve(downloadUrl);
+          } catch (err) {
+            if (isEdit) setEditUploading(false);
+            else setUploading(false);
+            reject(err);
+          }
+        }
+      );
+    });
+  };
 
   // Edit Post states
   const [isEditPostOpen, setIsEditPostOpen] = useState(false);
@@ -218,6 +292,11 @@ export default function CommunityHubView() {
     }
 
     try {
+      let finalImageUrl = null;
+      if (showImageInput && postFile) {
+        finalImageUrl = await handleUploadFile(postFile, false);
+      }
+
       const newPost = {
         spaceId: activeSpaceId,
         author: authorName,
@@ -229,7 +308,7 @@ export default function CommunityHubView() {
         celebrates: 0,
         insights: 0,
         reactions: {},
-        imageUrl: showImageInput ? imageUrl.trim() : null,
+        imageUrl: finalImageUrl,
         linkUrl: showLinkInput ? linkUrl.trim() : null,
         poll: poll,
         comments: [],
@@ -241,6 +320,7 @@ export default function CommunityHubView() {
       // Reset fields
       setPostText('');
       setImageUrl('');
+      setPostFile(null);
       setLinkUrl('');
       setPollOptionsText('');
       setShowImageInput(false);
@@ -270,14 +350,20 @@ export default function CommunityHubView() {
     if (!editPostText.trim()) return;
 
     try {
+      let finalImageUrl = editPostImageUrl;
+      if (editPostFile) {
+        finalImageUrl = await handleUploadFile(editPostFile, true);
+      }
+
       const postRef = doc(db, 'community_posts', editingPostId);
       await updateDoc(postRef, {
         content: editPostText,
         tag: editPostTag,
-        imageUrl: editPostImageUrl.trim() || null,
+        imageUrl: finalImageUrl || null,
         linkUrl: editPostLinkUrl.trim() || null
       });
       setIsEditPostOpen(false);
+      setEditPostFile(null);
       alert(L('Post updated successfully!', 'تم تحديث المنشور بنجاح!'));
     } catch (err) {
       console.error(err);
@@ -689,13 +775,47 @@ export default function CommunityHubView() {
 
                     {/* Optional Inputs */}
                     {showImageInput && (
-                      <input 
-                        className="inp" 
-                        placeholder={L('Enter Image URL...', 'أدخل رابط الصورة...')} 
-                        value={imageUrl} 
-                        onChange={(e) => setImageUrl(e.target.value)} 
-                        style={{ marginBottom: '10px', fontSize: '12px' }}
-                      />
+                      <div style={{ marginBottom: '12px', padding: '12px', background: 'var(--surface3)', borderRadius: '8px', border: '1px solid var(--edge2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            id="community-post-image-file"
+                            style={{ display: 'none' }}
+                            onChange={(e) => setPostFile(e.target.files[0])}
+                            disabled={uploading}
+                          />
+                          <label 
+                            htmlFor="community-post-image-file"
+                            style={{ 
+                              background: 'var(--surface2)', 
+                              border: '1px solid var(--edge2)', 
+                              padding: '6px 12px', 
+                              borderRadius: '6px', 
+                              cursor: 'pointer',
+                              fontSize: '11.5px',
+                              color: 'var(--t1)',
+                              display: 'inline-block'
+                            }}
+                          >
+                            📁 {postFile ? L('Change Photo', 'تغيير الصورة') : L('Select Photo', 'اختر صورة من جهازك')}
+                          </label>
+                          <span style={{ fontSize: '11px', color: 'var(--t2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {postFile ? postFile.name : L('No image selected', 'لم يتم اختيار صورة')}
+                          </span>
+                        </div>
+                        {uploading && (
+                          <div style={{ marginTop: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--orange)', marginBottom: '4px' }}>
+                              <span>{L('Uploading image...', 'جاري رفع الصورة...')}</span>
+                              <span>{uploadProgress}%</span>
+                            </div>
+                            <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'linear-gradient(90deg, var(--orange), #f43f5e)' }}></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                     {showLinkInput && (
                       <input 
@@ -814,8 +934,8 @@ export default function CommunityHubView() {
 
                         {/* Attached Image */}
                         {hasImage && (
-                          <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--edge2)', maxHeight: '300px' }}>
-                            <img src={post.imageUrl} alt="Attached attachment" style={{ width: '100%', height: 'auto', objectFit: 'cover' }} onError={(e) => e.target.style.display = 'none'} />
+                          <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--edge2)', maxWidth: '360px', marginTop: '4px' }}>
+                            <img src={post.imageUrl} alt="Attached attachment" style={{ width: '100%', height: 'auto', display: 'block' }} onError={(e) => e.target.style.display = 'none'} />
                           </div>
                         )}
 
@@ -1380,8 +1500,47 @@ export default function CommunityHubView() {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Image URL (Optional)', 'رابط الصورة (اختياري)')}</label>
-                    <input className="inp" value={editPostImageUrl} onChange={(e) => setEditPostImageUrl(e.target.value)} />
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Image Attachment', 'مرفق الصورة')}</label>
+                    <div style={{ padding: '10px', background: 'var(--surface3)', borderRadius: '8px', border: '1px solid var(--edge2)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          id="edit-post-image-file"
+                          style={{ display: 'none' }}
+                          onChange={(e) => setEditPostFile(e.target.files[0])}
+                          disabled={editUploading}
+                        />
+                        <label 
+                          htmlFor="edit-post-image-file"
+                          style={{ 
+                            background: 'var(--surface2)', 
+                            border: '1px solid var(--edge2)', 
+                            padding: '5px 10px', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            color: 'var(--t1)'
+                          }}
+                        >
+                          📁 {editPostFile ? L('Change Photo', 'تغيير الصورة') : L('Select Photo', 'اختر صورة')}
+                        </label>
+                        <span style={{ fontSize: '11px', color: 'var(--t2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {editPostFile ? editPostFile.name : (editPostImageUrl ? L('Has current image', 'يوجد صورة للمنشور حالياً') : L('No image', 'لا توجد صورة'))}
+                        </span>
+                      </div>
+                      {editUploading && (
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--orange)', marginBottom: '3px' }}>
+                            <span>{L('Uploading...', 'جاري الرفع...')}</span>
+                            <span>{editUploadProgress}%</span>
+                          </div>
+                          <div style={{ height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '1.5px', overflow: 'hidden' }}>
+                            <div style={{ width: `${editUploadProgress}%`, height: '100%', background: 'var(--orange)' }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Link URL (Optional)', 'الرابط (اختياري)')}</label>

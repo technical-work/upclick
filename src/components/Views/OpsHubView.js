@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 
 const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
   if (!itemDate) return rangeType === 'all';
@@ -81,8 +82,17 @@ export default function OpsHubView() {
   const { lang, L, t, GC, saveGC, confirmAction } = useBusiness();
 
   // Tab state inside Ops Hub
-  const [activeSubTab, setActiveSubTab] = useState('ops-automations');
+  const [activeSubTab, setActiveSubTab] = useState('ops-sops');
   const [generatingSOP, setGeneratingSOP] = useState(false);
+
+  // Modal & Form States for Team Members
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [editingMemberIndex, setEditingMemberIndex] = useState(null);
+  const [memberName, setMemberName] = useState('');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberRole, setMemberRole] = useState('VA Assistant');
+  const [memberDept, setMemberDept] = useState('Operations');
+  const [memberSalary, setMemberSalary] = useState(1000);
 
   // Bind to GC values
   const automations = GC.opsHub?.automations || {
@@ -149,32 +159,71 @@ export default function OpsHubView() {
     });
   };
 
-  const handleAddTeamMember = () => {
-    const name = prompt(L('Enter Team Member Name:', 'أدخل اسم عضو الفريق:'));
-    if (!name) return;
-    const role = prompt(L('Enter Role (e.g. Assistant VA):', 'أدخل الدور الوظيفي:'), 'VA Assistant');
-    if (!role) return;
+  const handleAddTeamMemberClick = () => {
+    setEditingMemberIndex(null);
+    setMemberName('');
+    setMemberEmail('');
+    setMemberRole('VA Assistant');
+    setMemberDept('Operations');
+    setMemberSalary(1000);
+    setShowMemberModal(true);
+  };
 
-    const newMember = {
-      name,
-      role,
-      status: 'active',
-      email: `${name.toLowerCase().replace(/\s/g, '')}@upklick.com`,
-      phone: '',
-      department: 'Operations',
-      salary: 1000,
-      contractType: 'Full-time',
-      joinDate: new Date().toLocaleDateString('en-GB'),
-      permissions: ['dashboard']
-    };
+  const handleEditTeamMemberClick = (index) => {
+    const member = teamList[index];
+    setEditingMemberIndex(index);
+    setMemberName(member.name || '');
+    setMemberEmail(member.email || '');
+    setMemberRole(member.role || 'VA Assistant');
+    setMemberDept(member.department || 'Operations');
+    setMemberSalary(member.salary || 1000);
+    setShowMemberModal(true);
+  };
 
-    const updatedMembers = [...teamList, newMember];
+  const handleSaveTeamMember = (e) => {
+    e.preventDefault();
+    if (!memberName.trim() || !memberEmail.trim()) return;
+
+    let updatedMembers = [...teamList];
+    let logMsg = '';
+
+    if (editingMemberIndex === null) {
+      // Add mode
+      const newMember = {
+        name: memberName.trim(),
+        role: memberRole.trim(),
+        status: 'active',
+        email: memberEmail.trim(),
+        phone: '',
+        department: memberDept,
+        salary: parseFloat(memberSalary) || 1000,
+        contractType: 'Full-time',
+        joinDate: new Date().toLocaleDateString('en-GB'),
+        permissions: ['dashboard']
+      };
+      updatedMembers = [...teamList, newMember];
+      logMsg = L(`Added team member ${memberName}`, `تم إضافة عضو الفريق ${memberName}`);
+    } else {
+      // Edit mode
+      const original = teamList[editingMemberIndex];
+      const updatedMember = {
+        ...original,
+        name: memberName.trim(),
+        role: memberRole.trim(),
+        email: memberEmail.trim(),
+        department: memberDept,
+        salary: parseFloat(memberSalary) || 1000
+      };
+      updatedMembers[editingMemberIndex] = updatedMember;
+      logMsg = L(`Updated team member ${memberName}`, `تم تحديث بيانات عضو الفريق ${memberName}`);
+    }
+
     const newLog = {
       id: Date.now(),
-      action: L(`Added team member ${name}`, `تم إضافة عضو الفريق ${name}`),
+      action: logMsg,
       date: new Date().toLocaleString()
     };
-    
+
     saveGC({
       ...GC,
       team: {
@@ -183,6 +232,8 @@ export default function OpsHubView() {
         logs: [newLog, ...(GC.team?.logs || [])]
       }
     });
+
+    setShowMemberModal(false);
   };
 
   const handleDeleteTeamMember = (index) => {
@@ -267,17 +318,7 @@ export default function OpsHubView() {
         </div>
       </div>
 
-      <div className="g4 stagger mb">
-        <div className="stat-card">
-          <div className="stat-lbl">⏱️ {L('Hours Saved', 'ساعات تم توفيرها')}</div>
-          <div className="stat-val ch-up">{hoursSavedCount}</div>
-          <div className="stat-ch ch-nu">{L('via automation', 'من خلال الأتمتة')}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-lbl">🔄 {L('Active Automations', 'الأتمتة النشطة')}</div>
-          <div className="stat-val">{activeAutomationsCount}</div>
-          <div className="stat-ch ch-nu">{L('running', 'قيد التشغيل')}</div>
-        </div>
+      <div className="g2 stagger mb">
         <div className="stat-card">
           <div className="stat-lbl">📋 {L('SOPs Created', 'أدلة العمل SOPs')}</div>
           <div className="stat-val">{dateFilteredSops.length}</div>
@@ -291,64 +332,13 @@ export default function OpsHubView() {
       </div>
 
       <div className="tabs-bar" id="ops-tabs">
-        <button className={`tab-btn ${activeSubTab === 'ops-automations' ? 'on' : ''}`} onClick={() => setActiveSubTab('ops-automations')}>
-          🔄 {L('Automations', 'الأتمتة')}
-        </button>
         <button className={`tab-btn ${activeSubTab === 'ops-sops' ? 'on' : ''}`} onClick={() => setActiveSubTab('ops-sops')}>
           📋 {L('SOPs', 'أدلة التشغيل SOPs')}
         </button>
         <button className={`tab-btn ${activeSubTab === 'ops-team' ? 'on' : ''}`} onClick={() => setActiveSubTab('ops-team')}>
           👥 {L('Team', 'الفريق')}
         </button>
-        <button className={`tab-btn ${activeSubTab === 'ops-tools' ? 'on' : ''}`} onClick={() => setActiveSubTab('ops-tools')}>
-          🛠️ {L('Tools Stack', 'مجموعة الأدوات')}
-        </button>
       </div>
-
-      {/* AUTOMATIONS TAB */}
-      {activeSubTab === 'ops-automations' && (
-        <div className="tab-panel on" id="ops-automations">
-          <div className="card mb">
-            <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div className="sec-title">⚡ {L('Quick Automations', 'الأتمتة السريعة')}</div>
-              <button className="btn btn-prime" style={{ fontSize: '12px', padding: '5px 12px' }} onClick={() => alert('+ New Automation')}>
-                + {L('New Automation', 'أتمتة جديدة')}
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
-              {[
-                { key: 'welcome', icon: '👋', title: L('New Lead Welcome', 'ترحيب بالعميل الجديد'), desc: L('Auto-send welcome message when new lead added', 'إرسال رسالة ترحيبية فورية عند إضافة عميل محتمل جديد للـ CRM') },
-                { key: 'followup', icon: '📤', title: L('3-Day Follow-up', 'متابعة بعد ٣ أيام'), desc: L('Auto-remind leads who haven\'t replied in 3 days', 'تذكير العملاء تلقائياً في حال عدم الرد بعد ٣ أيام من إرسال العرض') },
-                { key: 'report', icon: '📊', title: L('Daily Report', 'التقرير اليومي'), desc: L('Send yourself a Telegram report every morning at 8am', 'إرسال تقرير ملخص لحالة البزنس يومياً لتيليجرام الخاص بك الساعة ٨ صباحاً') },
-                { key: 'invoice', icon: '🧾', title: L('Auto Invoice', 'الفواتير التلقائية'), desc: L('Generate and send invoice when deal is marked Won', 'توليد وإرسال الفاتورة تلقائياً للعميل عند إغلاق الصفقة بنجاح') }
-              ].map(auto => {
-                const isActive = automations[auto.key];
-                return (
-                  <div 
-                    key={auto.key}
-                    onClick={() => toggleAutomation(auto.key)}
-                    style={{ 
-                      background: 'var(--surface2)', 
-                      borderRadius: '10px', 
-                      padding: '13px', 
-                      border: isActive ? '1px solid var(--orange)' : '1px solid var(--edge)', 
-                      cursor: 'pointer', 
-                      transition: 'all .14s' 
-                    }}
-                  >
-                    <div style={{ fontSize: '20px', marginBottom: '7px' }}>{auto.icon}</div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '4px' }}>{auto.title}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '8px' }}>{auto.desc}</div>
-                    <span className="badge" style={{ background: isActive ? 'var(--green-d)' : 'var(--surface3)', color: isActive ? 'var(--green)' : 'var(--t2)' }}>
-                      {isActive ? L('Active', 'نشط') : L('Not Active', 'غير نشط')}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* SOPs TAB */}
       {activeSubTab === 'ops-sops' && (
@@ -385,9 +375,11 @@ export default function OpsHubView() {
                     <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '8px', color: 'var(--orange)' }}>
                       {sop.title}
                     </div>
-                    <div style={{ whiteSpace: 'pre-line', fontSize: '12.5px', lineHeight: 1.6 }} className="ai-box">
-                      {sop.content}
-                    </div>
+                    <div 
+                      style={{ fontSize: '12.5px', lineHeight: 1.6 }} 
+                      className="ai-box"
+                      dangerouslySetInnerHTML={{ __html: parseMarkdown(sop.content) }}
+                    />
                   </div>
                 ))}
               </div>
@@ -402,15 +394,15 @@ export default function OpsHubView() {
           <div className="card">
             <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div className="sec-title">👥 {L('Team Members', 'أعضاء الفريق')}</div>
-              <button className="btn btn-prime" style={{ fontSize: '12px', padding: '5px 12px' }} onClick={handleAddTeamMember}>
+              <button className="btn btn-prime" style={{ fontSize: '12px', padding: '5px 12px' }} onClick={handleAddTeamMemberClick}>
                 + {L('Add Member', 'إضافة عضو')}
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {teamList.length === 0 ? (
-                <div className="empty-state" style={{ padding: '20px' }}>
-                  <div className="es-sub">{L('No team members yet', 'لا يوجد أعضاء في الفريق بعد')}</div>
-                </div>
+                 <div className="empty-state" style={{ padding: '20px' }}>
+                   <div className="es-sub">{L('No team members yet', 'لا يوجد أعضاء في الفريق بعد')}</div>
+                 </div>
               ) : (
                 teamList.map((member, index) => (
                   <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }}>
@@ -418,17 +410,26 @@ export default function OpsHubView() {
                       {member.name[0]?.toUpperCase() || '?'}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{member.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{member.role} · {member.email}</div>
+                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{member.name} <span style={{ fontSize: '10.5px', color: 'var(--orange)', background: 'rgba(255,107,53,0.08)', padding: '2px 6px', borderRadius: '4px', marginInlineStart: '6px' }}>{member.department || 'Operations'}</span></div>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>{member.role} · {member.email} · {member.salary ? `$${member.salary}` : '$1000'}</div>
                     </div>
                     <span className="badge b-green" style={{ marginRight: '8px', marginLeft: '8px' }}>{L('Active', 'نشط')}</span>
-                    <button 
-                      className="btn btn-ghost" 
-                      style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
-                      onClick={() => handleDeleteTeamMember(index)}
-                    >
-                      {L('Remove', 'إزالة')}
-                    </button>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button 
+                        className="btn" 
+                        style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--orange)', borderColor: 'var(--orange)', background: 'none' }}
+                        onClick={() => handleEditTeamMemberClick(index)}
+                      >
+                        {L('Edit', 'تعديل')}
+                      </button>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--red)', borderColor: 'var(--red)' }}
+                        onClick={() => handleDeleteTeamMember(index)}
+                      >
+                        {L('Remove', 'إزالة')}
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -437,30 +438,127 @@ export default function OpsHubView() {
         </div>
       )}
 
-      {/* TOOLS TAB */}
-      {activeSubTab === 'ops-tools' && (
-        <div className="tab-panel on" id="ops-tools">
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">🛠️ {L('Your Tech Stack', 'البنية البرمجية الخاصة بك')}</div>
+      {/* Add / Edit Team Member Modal */}
+      {showMemberModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--surface1)',
+            border: '1px solid var(--edge2)',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '450px',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            position: 'relative'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--t1)' }}>
+                👤 {editingMemberIndex === null ? L('Add Team Member', 'إضافة عضو فريق جديد') : L('Edit Team Member', 'تعديل بيانات عضو الفريق')}
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowMemberModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--t3)', fontSize: '18px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }} id="ops-tools-grid">
-              <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '22px', marginBottom: '6px' }}>✦</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>UpKlick</div>
-                <div style={{ fontSize: '11px', color: 'var(--orange)' }}>✅ {L('Active', 'نشط')}</div>
+
+            <form onSubmit={handleSaveTeamMember} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Full Name *', 'الاسم الكامل *')}
+                </label>
+                <input 
+                  className="inp"
+                  required
+                  value={memberName}
+                  onChange={(e) => setMemberName(e.target.value)}
+                  placeholder={L('e.g. John Doe', 'مثال: أحمد محمد')}
+                />
               </div>
-              <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '22px', marginBottom: '6px' }}>💬</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>Telegram API</div>
-                <div style={{ fontSize: '11px', color: 'var(--green)' }}>✅ {L('Connected', 'متصل')}</div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Email Address *', 'البريد الإلكتروني *')}
+                </label>
+                <input 
+                  type="email"
+                  className="inp"
+                  required
+                  value={memberEmail}
+                  onChange={(e) => setMemberEmail(e.target.value)}
+                  placeholder="name@company.com"
+                />
               </div>
-              <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '12px', textAlign: 'center', opacity: 0.5, cursor: 'pointer' }} onClick={() => alert('Integrations link clicked')}>
-                <div style={{ fontSize: '22px', marginBottom: '6px' }}>+</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--t1)' }}>{L('Add Tool', 'أضف أداة')}</div>
-                <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('From Integrations', 'من الإضافات')}</div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Department', 'القسم')}
+                  </label>
+                  <select 
+                    className="inp"
+                    value={memberDept}
+                    onChange={(e) => setMemberDept(e.target.value)}
+                    style={{ height: '38px', borderRadius: '8px' }}
+                  >
+                    <option value="Operations">{L('Operations', 'العمليات')}</option>
+                    <option value="Marketing">{L('Marketing', 'التسويق')}</option>
+                    <option value="CRM/Sales">{L('Sales & CRM', 'المبيعات والعملاء')}</option>
+                    <option value="Finance">{L('Finance', 'المالية')}</option>
+                    <option value="Support">{L('Technical Support', 'الدعم الفني')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Job Title / Role', 'المسمى الوظيفي')}
+                  </label>
+                  <input 
+                    className="inp"
+                    value={memberRole}
+                    onChange={(e) => setMemberRole(e.target.value)}
+                    placeholder="e.g. Lead Developer"
+                  />
+                </div>
               </div>
-            </div>
+
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Monthly Salary ($) *', 'الراتب الشهري ($) *')}
+                </label>
+                <input 
+                  type="number"
+                  className="inp"
+                  required
+                  value={memberSalary}
+                  onChange={(e) => setMemberSalary(e.target.value)}
+                  placeholder="1000"
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="btn btn-prime"
+                style={{ width: '100%', justifyContent: 'center', padding: '10px', background: 'linear-gradient(135deg, var(--orange) 0%, #f43f5e 100%)', border: 'none', borderRadius: '8px', marginTop: '6px' }}
+              >
+                💾 {editingMemberIndex === null ? L('Add Member', 'إضافة العضو') : L('Save Changes', 'حفظ التعديلات')}
+              </button>
+            </form>
           </div>
         </div>
       )}

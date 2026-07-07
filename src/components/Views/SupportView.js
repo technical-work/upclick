@@ -17,6 +17,24 @@ import {
   arrayUnion,
   serverTimestamp 
 } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+
+const secondaryFirebaseConfig = {
+  apiKey: "AIzaSyCaswftcLmfIepG_F8fzizqGXFl5mnXvj8",
+  authDomain: "aibrand-vision.firebaseapp.com",
+  projectId: "aibrand-vision",
+  storageBucket: "aibrand-vision.firebasestorage.app",
+  messagingSenderId: "36898907108",
+  appId: "1:36898907108:web:423352bb5b0f5825d65df1",
+  measurementId: "G-G0CFX66Q3V"
+};
+
+// Initialize secondary Firebase App instance safely
+const secondaryApp = getApps().find(app => app.name === 'supportStorageApp') 
+  || initializeApp(secondaryFirebaseConfig, 'supportStorageApp');
+
+const supportStorage = getStorage(secondaryApp);
 
 export default function SupportView() {
   const { lang, L } = useBusiness();
@@ -31,9 +49,51 @@ export default function SupportView() {
   const [ticketPriority, setTicketPriority] = useState('Medium');
   const [initialMessage, setInitialMessage] = useState('');
   
+  // File Attachment States
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  
   // Chat input state
   const [messageInput, setMessageInput] = useState('');
   const chatEndRef = useRef(null);
+
+  const handleUploadFile = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      setUploading(true);
+      setUploadProgress(0);
+      
+      const fileRef = ref(supportStorage, `support_attachments/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(fileRef, file);
+      
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const prog = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          setUploadProgress(prog);
+        },
+        (error) => {
+          console.error("Error uploading file to secondary storage:", error);
+          setUploading(false);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            setUploading(false);
+            resolve({
+              name: file.name,
+              url: downloadUrl,
+              type: file.type
+            });
+          } catch (err) {
+            setUploading(false);
+            reject(err);
+          }
+        }
+      );
+    });
+  };
 
   // Subscribe to user's tickets in real-time
   useEffect(() => {
@@ -81,6 +141,11 @@ export default function SupportView() {
     if (!ticketTitle.trim() || !initialMessage.trim()) return;
 
     try {
+      let attachment = null;
+      if (attachmentFile) {
+        attachment = await handleUploadFile(attachmentFile);
+      }
+
       const newTicket = {
         userId: user.uid,
         userName: userData?.name || user?.email?.split('@')[0] || 'Client',
@@ -88,6 +153,7 @@ export default function SupportView() {
         title: ticketTitle.trim(),
         priority: ticketPriority,
         status: 'open',
+        attachments: attachment ? [attachment] : [],
         messages: [
           {
             sender: 'client',
@@ -105,6 +171,7 @@ export default function SupportView() {
       setTicketTitle('');
       setInitialMessage('');
       setTicketPriority('Medium');
+      setAttachmentFile(null);
       setShowCreateForm(false);
       
       // Set newly created ticket as active
@@ -248,6 +315,50 @@ export default function SupportView() {
                   ></textarea>
                 </div>
 
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    📎 {L('Attach Screenshots or Files', 'إرفاق صور أو ملفات توضيحية')}
+                  </label>
+                  <input 
+                    type="file" 
+                    onChange={(e) => setAttachmentFile(e.target.files[0])}
+                    style={{ display: 'none' }}
+                    id="ticket-file-input"
+                    accept="image/*,application/pdf,video/*"
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label 
+                      htmlFor="ticket-file-input" 
+                      className="btn" 
+                      style={{ 
+                        cursor: 'pointer', 
+                        fontSize: '12px', 
+                        padding: '6px 12px', 
+                        background: 'var(--surface2)', 
+                        border: '1px solid var(--edge2)',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      📁 {attachmentFile ? L('Change File', 'تغيير الملف') : L('Choose File', 'اختيار ملف')}
+                    </label>
+                    {attachmentFile && (
+                      <span style={{ fontSize: '11px', color: 'var(--orange)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                        {attachmentFile.name}
+                      </span>
+                    )}
+                  </div>
+                  {uploading && (
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ height: '4px', background: 'var(--edge2)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--orange)', transition: 'width 0.2s' }}></div>
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '2px' }}>
+                        {L(`Uploading: ${uploadProgress}%`, `جاري الرفع: ${uploadProgress}%`)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   type="submit" 
                   className="btn btn-prime"
@@ -335,6 +446,38 @@ export default function SupportView() {
                   </button>
                 )}
               </div>
+
+              {activeTicket.attachments && activeTicket.attachments.length > 0 && (
+                <div style={{ padding: '8px 16px', background: 'var(--surface2)', borderBottom: '1px solid var(--edge)', display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--t2)' }}>
+                    📎 {L('Attachments:', 'المرفقات:')}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {activeTicket.attachments.map((att, i) => (
+                      <a 
+                        key={i} 
+                        href={att.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '11px', 
+                          background: 'rgba(236, 92, 49, 0.08)', 
+                          color: 'var(--orange)', 
+                          padding: '4px 8px', 
+                          borderRadius: '4px',
+                          border: '1px solid rgba(236, 92, 49, 0.15)',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        {att.type?.startsWith('image/') ? '🖼️' : '📄'} {att.name || L('View Attachment', 'عرض المرفق')}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Chat Board */}
               <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface1)' }}>
