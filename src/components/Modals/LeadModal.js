@@ -224,7 +224,7 @@ export default function LeadModal() {
                 onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
               />
             </div>
-            <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center' }}>
+            <button id="btn-save-lead" className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center' }}>
               {L('Save Lead', 'حفظ العميل')}
             </button>
           </div>
