@@ -131,7 +131,7 @@ export default function FinanceModal() {
                 </select>
               )}
             </div>
-            <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center' }} id="fin-save-btn">
+            <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center' }} id="btn-save-finance">
               {L('Save', 'حفظ')}
             </button>
           </div>
