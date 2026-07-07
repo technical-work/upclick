@@ -212,7 +212,7 @@ export default function TaskModal() {
               </div>
             </div>
 
-            <button className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+            <button id="btn-save-task" className="btn btn-prime" onClick={handleSave} style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
               {taskToEdit ? L('Save Changes', 'حفظ التعديلات') : L('Save & Create Task', 'حفظ وإنشاء المهمة')}
             </button>
           </div>
