@@ -107,7 +107,7 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
           <button className="btn-ai" onClick={runFinancialAnalysis} disabled={aiLoading}>
             {aiLoading ? L('Analyzing...', 'جاري التحليل...') : L('AI Financial Analysis', 'تحليل مالي بالـ AI')}
           </button>
-          <button className="btn btn-prime" onClick={() => {
+          <button id="btn-add-income" className="btn btn-prime" onClick={() => {
             setFinanceModalType('income');
             setFinanceModalOpen(true);
           }}>
