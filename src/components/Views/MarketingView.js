@@ -256,26 +256,24 @@ export default function MarketingView() {
       
       const finalResponse = response || accumulated || L('Error generating report.', 'حدث خطأ أثناء التوليد.');
       
-      setOutputs(prev => {
-        const next = { ...prev, [outputId]: finalResponse };
-        const updatedGC = {
-          ...GC,
-          marketing: {
-            ...(GC?.marketing || {}),
-            inputs: inputs,
-            outputs: next,
-            counts: {
-              competitors: competitorsCount,
-              audience: audienceCount,
-              trends: trendsCount,
-              personas: personasCount,
-              ...extraCounts
-            }
+      setOutputs(prev => ({ ...prev, [outputId]: finalResponse }));
+      
+      const updatedGC = {
+        ...GC,
+        marketing: {
+          ...(GC?.marketing || {}),
+          inputs: inputs,
+          outputs: { ...(GC?.marketing?.outputs || {}), [outputId]: finalResponse },
+          counts: {
+            competitors: competitorsCount,
+            audience: audienceCount,
+            trends: trendsCount,
+            personas: personasCount,
+            ...extraCounts
           }
-        };
-        saveGC(updatedGC);
-        return next;
-      });
+        }
+      };
+      saveGC(updatedGC);
 
       return finalResponse;
     } catch (err) {
@@ -301,19 +299,25 @@ Identify 3-4 competitor brands or similar businesses in this space. Provide thei
     setOutputs(prev => ({ ...prev, 'comp-out': '', 'comp-ads-out': '', 'direction-out': '' }));
     setLoading(prev => ({ ...prev, 'comp-out': true, 'comp-ads-out': true, 'direction-out': true }));
 
-    await triggerAI('competitor-finder', 'comp-out', compPrompt, compSystem);
+    const compResult = await triggerAI('competitor-finder', 'comp-out', compPrompt, compSystem);
 
-    const adsPrompt = `Based on our competitors in Niche "${inputs.resNiche}" (Website/Page: "${inputs.resWebsite}"), outline winning hooks, ad copy angles, creative formats (image/video style), and conversion strategies we should use.`;
+    const adsPrompt = `My Niche: "${inputs.resNiche}"
+Our Business Description: "${GC.profile?.desc || ''}"
+Our Competitors: "${compResult || ''}"
+
+Based on these specific competitors, outline winning competitor hooks, ad copy angles, creative formats (image/video style), and conversion strategies we should deploy. Do not invent other competitor names; build directly on top of the competitors listed above.`;
     const adsSystem = `You are a PPC & Ad Intelligence specialist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    await triggerAI('competitor-ads', 'comp-ads-out', adsPrompt, adsSystem);
+    const adsResult = await triggerAI('competitor-ads', 'comp-ads-out', adsPrompt, adsSystem);
 
     const dirPrompt = `Generate a Comprehensive Marketing Directions report:
 Website/Page: "${inputs.resWebsite}"
 Niche: "${inputs.resNiche}"
 Target Client (ICP): "${icpData}"
 Current Offer: "${GC.profile?.offer?.name || ''}" (${GC.profile?.offer?.price || ''})
+Competitors: "${compResult || ''}"
+Competitor Ad Angles: "${adsResult || ''}"
 
-Perform a combined analysis merging our service details, ideal client profile, and competitor ad strategies. Provide 3 highly targeted marketing directions/angles, highlighting specific client pain points to hook them, and explain how we can position our service as the ultimate solution compared to competitors.`;
+Perform a combined analysis merging our service details, ideal client profile, and competitor ad strategies. Provide 3 highly targeted marketing directions/angles, highlighting specific client pain points to hook them, and explain how we can position our service as the ultimate solution compared to these competitors. Do NOT repeat or duplicate the competitor lists; focus strictly on our unique marketing angles and directions.`;
     const dirSystem = `You are a master brand and marketing strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     await triggerAI('marketing-directions', 'direction-out', dirPrompt, dirSystem);
   };
@@ -358,6 +362,26 @@ Generate the campaign structure containing:
 
     const system = `You are a senior growth marketing architect. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     triggerAI('campaign-planner', 'launcher-out', prompt, system);
+  };
+
+  const runFeedbackOptimization = async () => {
+    const originalPlan = outputs['strat-plan-out'] || L('No prior plan generated.', 'لا توجد خطة سابقة.');
+    
+    const feedbackPrompt = `My Business Name: "${GC.profile?.name || ''}"
+Business Description: "${GC.profile?.desc || ''}"
+Previous Strategy/Marketing Plan: "${originalPlan}"
+Actual Campaign Results / Feedback of the past month: "${inputs.pastResultsText || ''}"
+Uploaded File Reference (if any): "${inputs.feedbackFileName || 'None'}"
+
+Analyze these campaign results and compare them with the previous plan. Propose:
+1. **Critical Strategy Assessment**: What worked, what failed, and why (conversion drops, target mismatch).
+2. **Channel & Budget Realignment**: Specific modifications to budgets, spend allocations, or channel focus.
+3. **Copy & Creative Pivot Rules**: Recommendations to change hooks or messages based on user feedback.
+4. **Optimized Marketing Plan for Next Month**: A complete, updated plan to get better results.`;
+
+    const feedbackSystem = `You are a chief growth officer and digital marketing analyst. Write a highly analytical, data-driven optimization report for next month's campaign. Propose concrete changes to the strategy based on the feedback of what failed. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+
+    await triggerAI('strategy-feedback-opt', 'strat-feedback-out', feedbackPrompt, feedbackSystem);
   };
 
   // ── 3. OFFERS SUB-ACTIONS ──
@@ -650,7 +674,7 @@ Generate the campaign structure containing:
       {activeTab === 'strategy' && (
         <div className="mkt-section on">
           <div className="tabs-bar" style={{ marginBottom: '14px' }}>
-            {['plan', 'launcher'].map(sub => (
+            {['plan', 'launcher', 'feedback'].map(sub => (
               <button
                 key={sub}
                 className={`tab-btn ${stratTab === sub ? 'on' : ''}`}
@@ -659,6 +683,7 @@ Generate the campaign structure containing:
               >
                 {sub === 'plan' && `📋 ${L('Marketing Plan', 'خطة التسويق')}`}
                 {sub === 'launcher' && `⚡ ${L('Campaign Planner', 'مخطط الحملات')}`}
+                {sub === 'feedback' && `🔄 ${L('Continuous Optimization', 'التحسين المستمر')}`}
               </button>
             ))}
           </div>
@@ -751,6 +776,77 @@ Generate the campaign structure containing:
                 </div>
               </div>
               {renderResultCard('مخطط الحملات والمخرجات', 'Campaign Planner Output', 'launcher-out', 'جاري تخطيط وتوليد الحملات...', 'Generating campaign plan...', 'اختر المنصات وحدد الميزانية لتوليد هيكل الحملات بكل تفاصيلها هنا.', 'Select platforms and budget to generate detailed campaigns structure here.', 'Campaign Planner')}
+            </div>
+          )}
+
+          {stratTab === 'feedback' && (
+            <div className="g2">
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                  🔄 {L('Feedback Loop & Continuous Optimization', 'حلقة التغذية الراجعة والتحسين المستمر')}
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
+                  {L('Submit results or upload reports from the past month to iterate and generate next month\'s optimized strategy plan.', 'قم بتقديم النتائج أو رفع التقارير من الشهر الماضي للتكرار وتوليد خطة الاستراتيجية المحسنة للشهر القادم.')}
+                </div>
+                
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Past Month Results & Feedback (Text)', 'نتائج الشهر الماضي والتعليقات (نص)')}
+                  </label>
+                  <textarea 
+                    className="inp" 
+                    rows="4" 
+                    placeholder={L('e.g., Spent $300 on Meta, got 25 leads, but conversion was low because price was a barrier...', 'مثال: صرفت 300 دولار على ميتا، حصلت على 25 ليد ولكن نسبة الإغلاق كانت ضعيفة بسبب اعتراض السعر...')} 
+                    value={inputs.pastResultsText || ''} 
+                    onChange={e => handleInputChange('pastResultsText', e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Upload Past Strategy / Performance Report (Optional)', 'رفع تقرير الأداء أو الاستراتيجية السابقة (اختياري)')}
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input 
+                      type="file" 
+                      id="opt-file-upload" 
+                      style={{ display: 'none' }} 
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          handleInputChange('feedbackFileName', file.name);
+                        }
+                      }}
+                    />
+                    <button 
+                      className="btn btn-ghost" 
+                      onClick={() => document.getElementById('opt-file-upload').click()}
+                      style={{ fontSize: '11.5px', padding: '6px 12px' }}
+                    >
+                      📁 {L('Choose File', 'اختر ملف')}
+                    </button>
+                    <span style={{ fontSize: '11.5px', color: 'var(--t3)' }}>
+                      {inputs.feedbackFileName || L('No file selected', 'لم يتم اختيار ملف')}
+                    </span>
+                  </div>
+                </div>
+
+                <button 
+                  className="btn btn-prime" 
+                  onClick={runFeedbackOptimization} 
+                  style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }} 
+                  disabled={loading['strat-feedback-out']}
+                >
+                  {loading['strat-feedback-out'] ? L('Optimizing...', 'جاري التحسين...') : `🔄 ${L('Generate Next Month\'s Plan', 'توليد خطة الشهر القادم ✦')}`}
+                </button>
+              </div>
+
+              {renderResultCard(
+                'خطة تحسين الشهر القادم', 'Next Month\'s Optimized Strategy', 'strat-feedback-out',
+                'جاري تحليل النتائج وتوليد خطة التحسين...', 'Analyzing results and optimizing strategy...',
+                'سيظهر تحليل الأداء وخطة الشهر القادم المحسنة هنا.', 'Performance analysis and next month\'s optimized plan will appear here.',
+                'Strategy Feedback Loop'
+              )}
             </div>
           )}
         </div>
