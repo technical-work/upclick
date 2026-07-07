@@ -21,7 +21,11 @@ export default function Topbar() {
     GC,
     saveGC,
     L,
-    rates
+    rates,
+    guideActive,
+    setGuideActive,
+    guideFlowKey,
+    setGuideFlowKey
   } = useBusiness();
 
   const { userData } = useAuth();
@@ -261,7 +265,18 @@ export default function Topbar() {
         </div>
 
         {/* AI assistant toggle icon */}
-        <button className="tb-icon" onClick={() => setAiPanelOpen((prev) => !prev)}>
+        <button 
+          className="tb-icon" 
+          onClick={() => {
+            if (guideActive && guideFlowKey) {
+              setGuideActive(false);
+              setGuideFlowKey('');
+              setAiPanelOpen(true);
+            } else {
+              setAiPanelOpen((prev) => !prev);
+            }
+          }}
+        >
           ✦
         </button>
       </div>
