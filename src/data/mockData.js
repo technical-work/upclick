@@ -682,53 +682,60 @@ export const CURRENCIES = [
 export const GUIDE_FLOWS = {
   add_lead: {
     title: 'Add a New Lead',
+    titleAr: 'إضافة عميل جديد',
     steps: [
-      { target: '[onclick*="crm"]', text: 'First, click on Smart CRM in the sidebar', nav: 'crm' },
-      { target: '#btn-new-lead, [onclick*="openLeadModal"]', text: 'Click "+ New Lead" to add a lead', highlight: true },
-      { target: '#lead-name', text: 'Enter the lead\'s name here', highlight: true },
-      { target: '#lead-phone', text: 'Add their phone number', highlight: true },
-      { target: '[onclick*="saveLead"]', text: 'Click Save to add the lead!', highlight: true }
+      { target: '#sb-crm', text: 'First, click on Smart CRM in the sidebar', textAr: 'أولاً، اضغط على إدارة العملاء (Smart CRM) في القائمة الجانبية', nav: 'crm' },
+      { target: '#btn-new-lead', text: 'Click "+ New Lead" to add a lead', textAr: 'اضغط على "+ عميل جديد" لإضافة عميل', highlight: true },
+      { target: '#lead-name', text: 'Enter the lead\'s name here', textAr: 'أدخل اسم العميل هنا', highlight: true },
+      { target: '#lead-phone', text: 'Add their phone number', textAr: 'أدخل رقم هاتف العميل', highlight: true },
+      { target: '#btn-save-lead', text: 'Click Save to add the lead!', textAr: 'اضغط على حفظ لإضافة العميل!', highlight: true }
     ]
   },
   add_task: {
     title: 'Add a Task',
+    titleAr: 'إضافة مهمة',
     steps: [
-      { target: '[onclick*="tasks"]', text: 'Click Task Board in the sidebar', nav: 'tasks' },
-      { target: '[onclick*="openTaskModal"]', text: 'Click "+ Add Task"', highlight: true },
-      { target: '#task-title', text: 'Enter your task title', highlight: true },
-      { target: '[onclick*="saveTask"]', text: 'Save the task!', highlight: true }
+      { target: '#sb-tasks', text: 'Click Task Board in the sidebar', textAr: 'اضغط على لوحة المهام (Task Board) في القائمة الجانبية', nav: 'tasks' },
+      { target: '#btn-new-task', text: 'Click "+ Add Task"', textAr: 'اضغط على "+ مهمة جديدة"', highlight: true },
+      { target: '#task-title', text: 'Enter your task title', textAr: 'أدخل عنوان المهمة', highlight: true },
+      { target: '#btn-save-task', text: 'Save the task!', textAr: 'احفظ المهمة!', highlight: true }
     ]
   },
   record_income: {
     title: 'Record Income',
+    titleAr: 'تسجيل دخل',
     steps: [
-      { target: '[onclick*="finance"]', text: 'Go to Finance Dashboard', nav: 'finance' },
-      { target: '[onclick*="openFinanceModal.*income"]', text: 'Click "+ Add Income"', highlight: true },
-      { target: '#fin-amount', text: 'Enter the amount', highlight: true },
-      { target: '#fin-desc', text: 'Add a description', highlight: true },
-      { target: '[onclick*="saveFinanceEntry"]', text: 'Save to record it!', highlight: true }
+      { target: '#sb-finance', text: 'Go to Finance Dashboard', textAr: 'اذهب إلى المالية (Finance) في القائمة الجانبية', nav: 'finance' },
+      { target: '#btn-add-income', text: 'Click "+ Add Income"', textAr: 'اضغط على "+ إيراد"', highlight: true },
+      { target: '#fin-amount', text: 'Enter the amount', textAr: 'أدخل المبلغ', highlight: true },
+      { target: '#fin-desc', text: 'Add a description', textAr: 'أدخل الوصف', highlight: true },
+      { target: '#btn-save-finance', text: 'Save to record it!', textAr: 'اضغط على حفظ لتسجيل الإيراد!', highlight: true }
     ]
   },
   setup_telegram: {
     title: 'Setup Telegram Bot',
+    titleAr: 'إعداد بوت تيليجرام',
     steps: [
-      { target: '[onclick*="profile"]', text: 'Go to your Profile', nav: 'profile' },
-      { target: '#tg-user-id', text: 'Enter your Telegram User ID here (send /start to @userinfobot on Telegram to get it)', highlight: true },
-      { target: '#tg-connect-btn', text: 'Click Connect Telegram!', highlight: true }
+      { target: '#sb-telegram', text: 'Go to Telegram Hub', textAr: 'اذهب إلى منصة تيليجرام (Telegram Hub) في القائمة الجانبية', nav: 'telegram' },
+      { target: '#btn-connect-tg-hub', text: 'Click "Connect Telegram Bot"', textAr: 'اضغط على "ربط بوت التليجرام"', highlight: true },
+      { target: '#tg-bot-token-input', text: 'Enter your Telegram Bot Token here (create via @BotFather)', textAr: 'أدخل توكن البوت هنا (يمكنك إنشاؤه عبر @BotFather)', highlight: true },
+      { target: '#btn-save-tg-token', text: 'Click Connect & Save', textAr: 'اضغط على ربط وحفظ', highlight: true }
     ]
   },
   change_currency: {
     title: 'Change Currency',
+    titleAr: 'تغيير العملة',
     steps: [
-      { target: '#curr-sel', text: 'Click the currency flag in the top bar', highlight: true },
-      { target: '#curr-list', text: 'Search and select your currency', highlight: true }
+      { target: '.curr-pill', text: 'Click the currency flag in the top bar', textAr: 'اضغط على علم العملة في الشريط العلوي', highlight: true },
+      { target: '#curr-list', text: 'Search and select your currency', textAr: 'ابحث عن عملتك واخترها', highlight: true }
     ]
   },
   create_content: {
     title: 'Create Content',
+    titleAr: 'صناعة محتوى',
     steps: [
-      { target: '[onclick*="content"]', text: 'Go to Content Hub', nav: 'content' },
-      { target: '.tab-btn', text: 'Choose a content tool from the tabs', highlight: true }
+      { target: '#sb-content', text: 'Go to Content Hub', textAr: 'اذهب إلى صناعة المحتوى (Content Hub) في القائمة الجانبية', nav: 'content' },
+      { target: '.tbb', text: 'Choose a content tool from the tabs', textAr: 'اختر أداة من التبويبات للبدء بصناعة المحتوى', highlight: true }
     ]
   }
 };
