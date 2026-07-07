@@ -22,7 +22,11 @@ export default function Sidebar() {
     setTheme,
     currency,
     setCurrency,
-    rates
+    rates,
+    guideActive,
+    setGuideActive,
+    guideFlowKey,
+    setGuideFlowKey
   } = useBusiness();
 
   const { logout, userData } = useAuth();
@@ -216,8 +220,24 @@ export default function Sidebar() {
       <div className="sb-sections">
         <div style={{ padding: '5px 7px 3px' }}>
           <button
-            className="sb-btn"
-            onClick={() => setAiPanelOpen(prev => !prev)}
+            className="sb-btn sidebar-ai-btn"
+            onClick={() => {
+              if (guideActive && guideFlowKey) {
+                setGuideActive(false);
+                setGuideFlowKey('');
+                setAiPanelOpen(true);
+                if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                  setMobileMenuOpen(false);
+                }
+              } else {
+                if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                  setMobileMenuOpen(false);
+                  setAiPanelOpen(prev => !prev);
+                } else {
+                  setAiPanelOpen(prev => !prev);
+                }
+              }
+            }}
             style={{
               background: 'var(--orange-d)',
               color: 'var(--orange)',
@@ -280,7 +300,7 @@ export default function Sidebar() {
                 {sec.items.map((item) => (
                   <button
                     key={item.page}
-                    id={item.id}
+                    id={item.id || `sb-${item.page}`}
                     className={`sb-btn ${currentPage === item.page ? 'on' : ''}`}
                     onClick={() => setCurrentPage(item.page)}
                   >
@@ -449,6 +469,7 @@ export default function Sidebar() {
 
         {/* User profile row */}
         <div
+          id="sb-profile"
           className="sb-user"
           onClick={() => setCurrentPage('profile')}
           title={isRtl ? 'عرض الملف الشخصي' : 'View Profile'}
