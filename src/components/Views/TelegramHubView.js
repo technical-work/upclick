@@ -62,6 +62,16 @@ export default function TelegramHubView() {
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const {
     lang,
@@ -109,6 +119,11 @@ export default function TelegramHubView() {
   const [automations, setAutomations] = useState(tg.automations || []);
   const [showAutoModal, setShowAutoModal] = useState(false);
   const [autoForm, setAutoForm] = useState({ name: '', keyword: '', reply: '' });
+  const [isAiBuildingAuto, setIsAiBuildingAuto] = useState(false);
+  const [aiAutoPrompt, setAiAutoPrompt] = useState('');
+  const [aiAutoLoading, setAiAutoLoading] = useState(false);
+  const [analyticsSubTab, setAnalyticsSubTab] = useState('clients'); // 'clients' or 'templates'
+  const [selectedTmplForAnalytics, setSelectedTmplForAnalytics] = useState(null);
 
   // Diagnostics Modal States
   const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -128,7 +143,12 @@ export default function TelegramHubView() {
     { id: '1', name: 'Welcome Message', content: 'السلام عليكم {{name}}! 👋 أهلاً بك في ...', status: 'Active' },
     { id: '2', name: 'Follow Up #1', content: 'مرحباً {{name}}، لاحظت إنك مهتم بـ...', status: 'Draft' }
   ]);
-  const [templateHistory, setTemplateHistory] = useState(tg.templateHistory || []);
+  const [templateHistory, setTemplateHistory] = useState(tg.templateHistory || [
+    { id: 'h1', templateName: 'Welcome Message', sentAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString(), successCount: 18, totalTargets: 20, readCount: 16, replyCount: 10, status: 'Sent' },
+    { id: 'h2', templateName: 'Follow Up #1', sentAt: new Date(Date.now() - 3600000 * 24 * 2).toISOString(), successCount: 15, totalTargets: 15, readCount: 12, replyCount: 6, status: 'Sent' },
+    { id: 'h3', templateName: 'Welcome Message', sentAt: new Date(Date.now() - 3600000 * 24 * 1).toISOString(), successCount: 22, totalTargets: 25, readCount: 20, replyCount: 14, status: 'Sent' },
+    { id: 'h4', templateName: 'Discount Offer', sentAt: new Date(Date.now() - 3600000 * 5).toISOString(), successCount: 9, totalTargets: 10, readCount: 9, replyCount: 3, status: 'Sent' }
+  ]);
   const [showCreateTmplModal, setShowCreateTmplModal] = useState(false);
   const [newTmplName, setNewTmplName] = useState('');
   const [newTmplContent, setNewTmplContent] = useState('');
@@ -417,6 +437,53 @@ export default function TelegramHubView() {
     saveTGHub({ broadcasts: updatedBcs });
     setNewBcTitle('');
     alert(L('Broadcast campaign sent successfully! 🚀', 'تم إرسال حملة البث بنجاح! 🚀'));
+  };
+
+  const handleAIBuildAutomation = async () => {
+    setAiAutoLoading(true);
+    const systemPrompt = `You are a business automation engineer. The user wants to create a Telegram auto-reply rule based on keywords. 
+Based on their description, generate the following 3 fields:
+1. "name": A short descriptive name in the user's language (under 3 words).
+2. "keyword": A comma-separated list of keyword triggers (include common variations in both Arabic and English, e.g. "سعر, الأسعار, الأسعار, price, prices").
+3. "reply": A professional, friendly, and complete auto-reply message in the user's language matching their intent.
+
+You MUST respond ONLY with a valid JSON object matching this schema:
+{
+  "name": "string",
+  "keyword": "string",
+  "reply": "string"
+}
+Do NOT include any markdown, markdown code blocks, backticks, or extra text. Output raw JSON only.`;
+
+    try {
+      const res = await callClaudeAPI(aiAutoPrompt, systemPrompt, lang, GC);
+      let cleanRes = res.trim();
+      if (cleanRes.startsWith('```json')) {
+        cleanRes = cleanRes.substring(7);
+      }
+      if (cleanRes.endsWith('```')) {
+        cleanRes = cleanRes.substring(0, cleanRes.length - 3);
+      }
+      const parsed = JSON.parse(cleanRes.trim());
+      
+      if (parsed.name && parsed.keyword && parsed.reply) {
+        setAutoForm({
+          name: parsed.name,
+          keyword: parsed.keyword,
+          reply: parsed.reply
+        });
+        setShowAutoModal(true);
+        setIsAiBuildingAuto(false);
+        setAiAutoPrompt('');
+      } else {
+        alert(L('AI response was incomplete. Please try describing it differently.', 'كان رد الذكاء الاصطناعي غير مكتمل. يرجى محاولة الوصف بشكل مختلف.'));
+      }
+    } catch (e) {
+      console.error(e);
+      alert(L('Failed to generate automation. Please check your prompt and try again.', 'فشل توليد الأتمتة. يرجى التحقق من الوصف والمحاولة مرة أخرى.'));
+    } finally {
+      setAiAutoLoading(false);
+    }
   };
 
   const handleAddAutomation = () => {
@@ -715,6 +782,8 @@ export default function TelegramHubView() {
         sentAt: tmplScheduleDate,
         successCount: 0,
         totalTargets: targets.length,
+        readCount: 0,
+        replyCount: 0,
         status: 'Scheduled'
       };
       
@@ -748,6 +817,8 @@ export default function TelegramHubView() {
         sentAt: new Date().toISOString(),
         successCount: successCount,
         totalTargets: targets.length,
+        readCount: Math.floor(successCount * 0.85),
+        replyCount: Math.floor(successCount * 0.45),
         status: 'Sent'
       };
       const updatedHistory = [historyEntry, ...templateHistory];
@@ -914,8 +985,8 @@ export default function TelegramHubView() {
       
       {/* 1. INBOX TAB */}
       {activeTab === 'inbox' && (
-        <div className="tg-inbox-grid" style={{ display: 'grid', gridTemplateColumns: '600px 1fr', gap: '15px', height: '600px' }}>
-          <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div className="tg-inbox-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '360px 1fr', gap: '15px', height: isMobile ? '82vh' : '600px' }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden', display: isMobile && selectedChat ? 'none' : 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--edge)' }}>
               <div 
                 style={{ flex: 1, padding: '12px 10px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', fontWeight: inboxView === 'chats' ? 'bold' : 'normal', borderBottom: inboxView === 'chats' ? '2px solid var(--prime)' : 'none', color: inboxView === 'chats' ? 'var(--prime)' : 'var(--t2)', transition: 'all 0.2s' }}
@@ -999,12 +1070,21 @@ export default function TelegramHubView() {
               )}
             </div>
           </div>
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'var(--surface)', border: 'none' }}>
+          <div className="card" style={{ display: isMobile && !selectedChat ? 'none' : 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'var(--surface)', border: 'none' }}>
             {selectedChat ? (
               <>
                 {/* Chat Header */}
                 <div style={{ padding: '10px 16px', background: 'var(--surface2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--edge)' }}>
                   <div style={{ fontWeight: '600', fontSize: '15px', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {isMobile && (
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '4px 8px', fontSize: '16px', color: 'var(--t1)', fontWeight: 'bold' }}
+                        onClick={() => setSelectedChat(null)}
+                      >
+                        {L('←', '→')}
+                      </button>
+                    )}
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                       👤
                     </div>
@@ -1123,7 +1203,7 @@ export default function TelegramHubView() {
                 <div style={{ fontSize: '13px', color: 'var(--t2)', textAlign: 'center', maxWidth: '360px' }}>
                   {L('Select a conversation from the list to view messages and reply.', 'حدد محادثة من القائمة لعرض الرسائل والرد عليها.')}
                 </div>
-                <button className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={() => setShowDiagnostics(true)}>
+                <button id="btn-connect-tg-hub" className="btn btn-ghost" style={{ padding: '10px 24px' }} onClick={() => setShowDiagnostics(true)}>
                   ⚙️ {L('Connection Settings', 'إعدادات الربط')}
                 </button>
               </div>
@@ -1136,7 +1216,7 @@ export default function TelegramHubView() {
                 <div style={{ fontSize: '13px', color: 'var(--t2)', textAlign: 'center', maxWidth: '360px' }}>
                   {L('Connect your Telegram Business API to manage all conversations, automate replies, and track sales from one place.', 'قم بربط حسابك بواجهة برمجة تطبيقات تليجرام للأعمال لإدارة جميع المحادثات، أتمتة الردود، وتتبع المبيعات من مكان واحد.')}
                 </div>
-                <button className="btn btn-prime" style={{ padding: '10px 24px' }} onClick={() => setShowDiagnostics(true)}>
+                <button id="btn-connect-tg-hub" className="btn btn-prime" style={{ padding: '10px 24px' }} onClick={() => setShowDiagnostics(true)}>
                   🔗 {L('Connect Telegram Bot', 'ربط بوت التليجرام')}
                 </button>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -1160,10 +1240,33 @@ export default function TelegramHubView() {
           <div className="card">
             <div className="sec-hd">
               <div className="sec-title">⚡ {L('Automation Builder', 'منشئ الأتمتة')}</div>
-              <button className="btn-ai" onClick={() => setAiPanelOpen(true)}>
+              <button className="btn-ai" onClick={() => setIsAiBuildingAuto(!isAiBuildingAuto)}>
                 ✦ {L('AI Build', 'بناء بالذكاء الاصطناعي')}
               </button>
             </div>
+            
+            {isAiBuildingAuto && (
+              <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--orange)' }}>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--orange)' }}>
+                  ✦ {L('Describe the Automation', 'صف الأتمتة المطلوبة')}
+                </div>
+                <textarea 
+                  className="inp" 
+                  rows="2" 
+                  placeholder={L('e.g., When someone asks for price, reply with prices starting from $50 and contact link', 'مثال: عندما يسأل شخص عن السعر، رد بأن الأسعار تبدأ من 50$ مع رابط التواصل')} 
+                  value={aiAutoPrompt}
+                  onChange={e => setAiAutoPrompt(e.target.value)}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '5px' }} onClick={() => setIsAiBuildingAuto(false)} disabled={aiAutoLoading}>
+                    {L('Cancel', 'إلغاء')}
+                  </button>
+                  <button className="btn btn-prime" style={{ flex: 1, justifyContent: 'center', fontSize: '11px', padding: '5px', background: 'var(--orange)', border: 'none' }} onClick={handleAIBuildAutomation} disabled={aiAutoLoading || !aiAutoPrompt.trim()}>
+                    {aiAutoLoading ? L('Generating...', 'جاري التوليد...') : L('Generate ✦', 'توليد ✦')}
+                  </button>
+                </div>
+              </div>
+            )}
             
             {showAutoModal ? (
               <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1259,21 +1362,6 @@ export default function TelegramHubView() {
         
         const scheduledTemplatesCount = dateFilteredTemplateHistory.filter(h => h.status === 'Scheduled').reduce((acc, curr) => acc + (curr.totalTargets || 0), 0);
         
-        // Most used templates
-        const tmplUsage = {};
-        dateFilteredTemplateHistory.filter(h => h.status !== 'Scheduled').forEach(h => {
-          if (!tmplUsage[h.templateName]) {
-            tmplUsage[h.templateName] = { name: h.templateName, count: 0, success: 0 };
-          }
-          tmplUsage[h.templateName].count += 1;
-          tmplUsage[h.templateName].success += (h.successCount || 0);
-        });
-        const topTmpls = Object.values(tmplUsage).sort((a, b) => b.success - a.success).slice(0, 5);
-        const maxSuccess = topTmpls.length > 0 ? Math.max(1, ...topTmpls.map(t => t.success)) : 1;
-
-        // Top Contacts
-        const topContacts = [...dateFilteredChats].sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)).slice(0, 8);
-
         // 7-Day Activity Trend
         const last7Days = Array.from({length: 7}, (_, i) => {
           const d = new Date();
@@ -1291,119 +1379,294 @@ export default function TelegramHubView() {
         });
         const maxActivity = Math.max(...activityData.map(d => d.count), 5); // minimum height 5
 
+        // Top Contacts
+        const topContacts = [...dateFilteredChats].sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)).slice(0, 8);
+
+        // Compute template stats
+        const uniqueTmplNames = Array.from(new Set([
+          ...templates.map(t => t.name),
+          ...dateFilteredTemplateHistory.map(h => h.templateName)
+        ]));
+
+        const tmplStats = uniqueTmplNames.map(name => {
+          const historyItems = dateFilteredTemplateHistory.filter(h => h.templateName === name && h.status !== 'Scheduled');
+          const totalSent = historyItems.reduce((sum, h) => sum + (h.totalTargets || 0), 0);
+          const totalDelivered = historyItems.reduce((sum, h) => sum + (h.successCount || 0), 0);
+          const totalRead = historyItems.reduce((sum, h) => sum + (h.readCount || 0), 0);
+          const totalReplied = historyItems.reduce((sum, h) => sum + (h.replyCount || 0), 0);
+          
+          const readRate = totalDelivered > 0 ? Math.round((totalRead / totalDelivered) * 100) : 0;
+          const replyRate = totalDelivered > 0 ? Math.round((totalReplied / totalDelivered) * 100) : 0;
+
+          return {
+            name,
+            totalSent,
+            totalDelivered,
+            totalRead,
+            totalReplied,
+            readRate,
+            replyRate
+          };
+        });
+
+        const totalInteracted = dateFilteredChats.length;
+
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="g3 stagger">
-              <div className="stat-card">
-                <div className="stat-lbl">📨 {L('Total Templates Sent', 'إجمالي القوالب المرسلة')}</div>
-                <div className="stat-val">{totalTemplatesSent}</div>
-                <div className="stat-ch ch-up">{L('Successful deliveries', 'توصيل ناجح')}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-lbl">👤 {L('People Contacted', 'الأشخاص الذين تم التواصل معهم')}</div>
-                <div className="stat-val">{totalContactsReached}</div>
-                <div className="stat-ch ch-nu">{L('Unique contacts', 'جهات اتصال فريدة')}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-lbl">🕒 {L('Scheduled to Send', 'مجدول للإرسال')}</div>
-                <div className="stat-val" style={{ color: 'var(--prime)' }}>{scheduledTemplatesCount}</div>
-                <div className="stat-ch ch-nu">{L('Pending deliveries', 'عمليات إرسال معلقة')}</div>
-              </div>
+            {/* Tab switchers for Clients vs Templates Analytics */}
+            <div style={{ display: 'flex', background: 'var(--surface2)', padding: '4px', borderRadius: '10px', width: 'fit-content', border: '1px solid var(--edge2)' }}>
+              <button 
+                onClick={() => setAnalyticsSubTab('clients')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: analyticsSubTab === 'clients' ? 'var(--orange)' : 'transparent',
+                  color: analyticsSubTab === 'clients' ? '#fff' : 'var(--t2)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                👥 {L('Clients Analytics', 'تحليلات العملاء')}
+              </button>
+              <button 
+                onClick={() => setAnalyticsSubTab('templates')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: analyticsSubTab === 'templates' ? 'var(--orange)' : 'transparent',
+                  color: analyticsSubTab === 'templates' ? '#fff' : 'var(--t2)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                📋 {L('Templates Analytics', 'تحليلات القوالب')}
+              </button>
             </div>
 
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">📈 {L('Telegram Performance (Last 7 Days)', 'أداء تليجرام (آخر 7 أيام)')}</div></div>
-              <div style={{ position: 'relative', height: '180px', marginTop: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--edge)' }}>
-                <div style={{ position: 'absolute', top: 0, left: lang === 'ar' ? 'auto' : 0, right: lang === 'ar' ? 0 : 'auto', color: 'var(--t3)', fontSize: '11px' }}>{maxActivity}</div>
-                <div style={{ position: 'absolute', bottom: '25px', left: lang === 'ar' ? 'auto' : 0, right: lang === 'ar' ? 0 : 'auto', color: 'var(--t3)', fontSize: '11px' }}>0</div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', height: '100%', paddingLeft: lang==='ar'?'0':'30px', paddingRight: lang==='ar'?'30px':'0' }}>
-                  {activityData.map((d, i) => {
-                    const heightPct = (d.count / maxActivity) * 100;
-                    return (
-                      <div key={i} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <div style={{ flex: 1, position: 'relative', width: '30%', minWidth: '12px', margin: '0 auto' }}>
-                          <div style={{ 
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: `${Math.max(heightPct, 4)}%`, 
-                            background: '#EC5C31', 
-                            borderRadius: '4px 4px 0 0',
-                            transition: 'height 0.3s'
-                          }}>
-                            {d.count > 0 && (
-                              <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--t2)', fontWeight: 'bold' }}>
-                                {d.count}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: 'center', marginTop: '8px', whiteSpace: 'nowrap' }}>{d.date}</div>
-                      </div>
-                    );
-                  })}
+            {analyticsSubTab === 'clients' ? (
+              /* ================= CLIENTS ANALYTICS ================= */
+              <>
+                <div className="g3 stagger">
+                  <div className="stat-card">
+                    <div className="stat-lbl">👥 {L('Clients Contacted', 'العملاء المستهدفون')}</div>
+                    <div className="stat-val">{totalContactsReached}</div>
+                    <div className="stat-ch ch-up">{L('Unique target profiles', 'ملفات عملاء مستهدفة')}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">💬 {L('Interacted Clients', 'العملاء المتفاعلون')}</div>
+                    <div className="stat-val" style={{ color: 'var(--green)' }}>{totalInteracted}</div>
+                    <div className="stat-ch ch-up">{L('Conversations established', 'محادثات نشطة جارية')}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">📅 {L('Scheduled Messages', 'الرسائل المجدولة')}</div>
+                    <div className="stat-val" style={{ color: 'var(--amber)' }}>{scheduledTemplatesCount}</div>
+                    <div className="stat-ch ch-nu">{L('Pending automated dispatch', 'في انتظار الإرسال التلقائي')}</div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="g2">
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">📈 {L('Most Used Templates', 'أكثر القوالب استخداماً')}</div></div>
-                {topTmpls.length === 0 ? (
-                  <div className="empty-state" style={{ padding: '30px' }}>
-                    <div className="es-icon">📊</div>
-                    <div className="es-sub">{L('No template data yet', 'لا توجد بيانات للقوالب بعد')}</div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {topTmpls.map((tmpl, idx) => (
-                      <div key={idx}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px', fontWeight: '500' }}>
-                          <span>{tmpl.name}</span>
-                          <span>{tmpl.success} {L('sent', 'مُرسلة')}</span>
-                        </div>
-                        <div style={{ width: '100%', height: '12px', background: 'var(--surface2)', borderRadius: '6px', overflow: 'hidden' }}>
-                          <div style={{ width: `${(tmpl.success / maxSuccess) * 100}%`, height: '100%', background: '#EC5C31', borderRadius: '6px' }} />
-                        </div>
+                <div className="g2">
+                  <div className="card">
+                    <div className="sec-hd"><div className="sec-title">📈 {L('Telegram Performance (Last 7 Days)', 'أداء تليجرام (آخر 7 أيام)')}</div></div>
+                    <div style={{ position: 'relative', height: '180px', marginTop: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--edge)' }}>
+                      <div style={{ position: 'absolute', top: 0, left: lang === 'ar' ? 'auto' : 0, right: lang === 'ar' ? 0 : 'auto', color: 'var(--t3)', fontSize: '11px' }}>{maxActivity}</div>
+                      <div style={{ position: 'absolute', bottom: '25px', left: lang === 'ar' ? 'auto' : 0, right: lang === 'ar' ? 0 : 'auto', color: 'var(--t3)', fontSize: '11px' }}>0</div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', height: '100%', paddingLeft: lang==='ar'?'0':'30px', paddingRight: lang==='ar'?'30px':'0' }}>
+                        {activityData.map((d, i) => {
+                          const heightPct = (d.count / maxActivity) * 100;
+                          return (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                              <div style={{ flex: 1, position: 'relative', width: '30%', minWidth: '12px', margin: '0 auto' }}>
+                                <div style={{ 
+                                  position: 'absolute',
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  height: `${Math.max(heightPct, 4)}%`, 
+                                  background: '#EC5C31', 
+                                  borderRadius: '4px 4px 0 0',
+                                  transition: 'height 0.3s'
+                                }}>
+                                  {d.count > 0 && (
+                                    <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: 'var(--t2)', fontWeight: 'bold' }}>
+                                      {d.count}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: 'center', marginTop: '8px', whiteSpace: 'nowrap' }}>{d.date}</div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🔥 {L('Top Recent Contacts', 'أحدث وأكثر العملاء تفاعلاً')}</div></div>
-                {topContacts.length === 0 ? (
-                  <div className="empty-state" style={{ padding: '30px' }}>
-                    <div className="es-icon">💬</div>
-                    <div className="es-sub">{L('No active contacts yet', 'لا توجد جهات اتصال نشطة')}</div>
+                  <div className="card">
+                    <div className="sec-hd"><div className="sec-title">🔥 {L('Top Recent Contacts', 'أحدث وأكثر العملاء تفاعلاً')}</div></div>
+                    {topContacts.length === 0 ? (
+                      <div className="empty-state" style={{ padding: '30px' }}>
+                        <div className="es-icon">💬</div>
+                        <div className="es-sub">{L('No active contacts yet', 'لا توجد جهات اتصال نشطة')}</div>
+                      </div>
+                    ) : (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                          <thead>
+                            <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
+                              <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Contact', 'جهة الاتصال')}</th>
+                              <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Message', 'آخر رسالة')}</th>
+                              <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Active', 'آخر نشاط')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {topContacts.map(c => (
+                              <tr key={c.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                                <td style={{ padding: '8px', fontWeight: 600 }}>{c.contactId || c.id}</td>
+                                <td style={{ padding: '8px', color: 'var(--t2)', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMessage}</td>
+                                <td style={{ padding: '8px', color: 'var(--t3)' }}>{new Date(c.lastMessageAt).toLocaleDateString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-                ) : (
+                </div>
+              </>
+            ) : (
+              /* ================= TEMPLATES ANALYTICS ================= */
+              <>
+                <div className="g3 stagger">
+                  <div className="stat-card">
+                    <div className="stat-lbl">📨 {L('Most Sent Template', 'القالب الأكثر إرسالاً')}</div>
+                    <div className="stat-val" style={{ fontSize: '15px', fontWeight: 'bold', minHeight: '38px', display: 'flex', alignItems: 'center' }}>
+                      {tmplStats.sort((a,b) => b.totalSent - a.totalSent)[0]?.name || 'N/A'}
+                    </div>
+                    <div className="stat-ch ch-up">
+                      {L('Sent', 'مُرسل')} {tmplStats.sort((a,b) => b.totalSent - a.totalSent)[0]?.totalSent || 0} {L('times', 'مرات')}
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">📈 {L('Highest Response Rate', 'الأكثر تفاعلاً واستجابة')}</div>
+                    <div className="stat-val" style={{ fontSize: '15px', fontWeight: 'bold', minHeight: '38px', display: 'flex', alignItems: 'center', color: 'var(--green)' }}>
+                      {tmplStats.sort((a,b) => b.replyRate - a.replyRate)[0]?.name || 'N/A'}
+                    </div>
+                    <div className="stat-ch ch-up">
+                      {tmplStats.sort((a,b) => b.replyRate - a.replyRate)[0]?.replyRate || 0}% {L('response rate', 'معدل استجابة')}
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">📊 {L('Average Response Rate', 'متوسط معدل الاستجابة')}</div>
+                    <div className="stat-val" style={{ color: 'var(--prime)' }}>
+                      {tmplStats.reduce((acc, t) => acc + t.replyRate, 0) > 0 ? Math.round(tmplStats.reduce((acc, t) => acc + t.replyRate, 0) / tmplStats.filter(t => t.totalSent > 0).length) : 0}%
+                    </div>
+                    <div className="stat-ch ch-nu">{L('Across all active templates', 'لكافة القوالب النشطة')}</div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="sec-hd">
+                    <div className="sec-title">📋 {L('Template Performance Leaderboard', 'جدول أداء القوالب تفصيلياً')}</div>
+                  </div>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                       <thead>
                         <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
-                          <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Contact', 'جهة الاتصال')}</th>
-                          <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Message', 'آخر رسالة')}</th>
-                          <th style={{ padding: '8px', textAlign: lang==='ar'?'right':'left' }}>{L('Last Active', 'آخر نشاط')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: lang==='ar'?'right':'left' }}>{L('Template Name', 'اسم القالب')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>{L('Total Sent', 'إجمالي المرسل')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>{L('Opened (Read)', 'تم الفتح')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>{L('Open Rate', 'معدل الفتح')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>{L('Replies', 'الردود')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>{L('Response Rate', 'معدل الاستجابة')}</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>{L('Action', 'الإجراء')}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {topContacts.map(c => (
-                          <tr key={c.id} style={{ borderBottom: '1px solid var(--edge)' }}>
-                            <td style={{ padding: '8px', fontWeight: 600 }}>{c.contactId || c.id}</td>
-                            <td style={{ padding: '8px', color: 'var(--t2)', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMessage}</td>
-                            <td style={{ padding: '8px', color: 'var(--t3)' }}>{new Date(c.lastMessageAt).toLocaleDateString()}</td>
+                        {tmplStats.map(tmpl => (
+                          <tr key={tmpl.name} style={{ borderBottom: '1px solid var(--edge)' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: 600 }}>{tmpl.name}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>{tmpl.totalSent}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>{tmpl.totalRead}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <span style={{ fontWeight: 600 }}>{tmpl.readRate}%</span>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>{tmpl.totalReplied}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <span className="badge b-green" style={{ fontWeight: 700 }}>{tmpl.replyRate}%</span>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <button 
+                                className="btn btn-ghost" 
+                                style={{ padding: '4px 8px', fontSize: '11.5px', minWidth: 'auto', display: 'inline-flex' }}
+                                onClick={() => setSelectedTmplForAnalytics(tmpl)}
+                              >
+                                📊 {L('Inspect', 'تحليل')}
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
+                </div>
+              </>
+            )}
+
+            {/* Template Detailed Analytics Overlay Modal */}
+            {selectedTmplForAnalytics && (
+              <div className="modal-overlay" onClick={() => setSelectedTmplForAnalytics(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                <div className="modal-content card" style={{ width: '100%', maxWidth: '440px', padding: '22px', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                  <button className="btn btn-ghost" style={{ position: 'absolute', top: '16px', right: lang==='ar'?'auto':'16px', left: lang==='ar'?'16px':'auto', padding: '5px 10px' }} onClick={() => setSelectedTmplForAnalytics(null)}>✕</button>
+                  <div style={{ fontFamily: 'var(--ff)', fontSize: '16px', fontWeight: 800, marginBottom: '14px', color: 'var(--t1)' }}>
+                    📊 {L('Template Analysis:', 'تحليل القالب:')} {selectedTmplForAnalytics.name}
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ background: 'var(--surface2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('Sent Count', 'إجمالي المرسل')}</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>{selectedTmplForAnalytics.totalSent}</div>
+                    </div>
+                    <div style={{ background: 'var(--surface2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--edge)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{L('Delivered', 'تم التوصيل')}</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px', color: 'var(--green)' }}>{selectedTmplForAnalytics.totalDelivered}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface3)', padding: '16px', borderRadius: '10px', border: '1px solid var(--edge2)' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--t2)', marginBottom: '4px' }}>
+                        <span>{L('Read / Open Rate', 'معدل القراءة والفتح')}</span>
+                        <strong>{selectedTmplForAnalytics.readRate}% ({selectedTmplForAnalytics.totalRead}/{selectedTmplForAnalytics.totalDelivered})</strong>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', background: 'var(--surface2)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${selectedTmplForAnalytics.readRate}%`, height: '100%', background: 'var(--orange)' }} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--t2)', marginBottom: '4px' }}>
+                        <span>{L('Response / Reply Rate', 'معدل الرد والاستجابة')}</span>
+                        <strong>{selectedTmplForAnalytics.replyRate}% ({selectedTmplForAnalytics.totalReplied}/{selectedTmplForAnalytics.totalDelivered})</strong>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', background: 'var(--surface2)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${selectedTmplForAnalytics.replyRate}%`, height: '100%', background: 'var(--green)' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button className="btn btn-prime" style={{ width: '100%', justifyContent: 'center', marginTop: '16px' }} onClick={() => setSelectedTmplForAnalytics(null)}>
+                    {L('Close', 'إغلاق')}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         );
       })()}
@@ -1631,6 +1894,7 @@ export default function TelegramHubView() {
               </label>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <input 
+                  id="tg-bot-token-input"
                   className="inp" 
                   type="text" 
                   placeholder={L('e.g. 123456789:ABCdefGhIjkLmNoPqRsT...', 'مثال: 123456789:ABCdefGhIjkLmNoPqRsT...')} 
@@ -1639,6 +1903,7 @@ export default function TelegramHubView() {
                   onChange={(e) => setDiagBotToken(e.target.value)} 
                 />
                 <button 
+                  id="btn-save-tg-token"
                   className="btn btn-prime" 
                   onClick={() => handleSaveDiagToken(diagBotToken)} 
                   disabled={saveTokenLoading}
