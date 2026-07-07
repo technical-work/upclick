@@ -143,6 +143,8 @@ export async function POST(request) {
     }
     if (globalData.aiMaxTokens !== undefined) {
       openAiPayload.max_tokens = Number(globalData.aiMaxTokens);
+    } else {
+      openAiPayload.max_tokens = 4096;
     }
 
     // 4. Request OpenAI API with Streaming enabled
