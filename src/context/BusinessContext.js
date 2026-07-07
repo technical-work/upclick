@@ -208,18 +208,38 @@ const themeColors = {
 };
 
 export function BusinessProvider({ children }) {
-  const [lang, setLang] = useState('en');
-  const [theme, setTheme] = useState('dark');
+  const authContext = useAuth();
+  const userData = authContext?.userData;
+
+  const [lang, setLang] = useState(() => {
+    if (userData?.lang) return userData.lang;
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('upklick_lang');
+      if (savedLang) return savedLang;
+    }
+    return 'ar';
+  });
+
+  const [theme, setTheme] = useState(() => {
+    if (userData?.theme) return userData.theme;
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('upklick_theme');
+      if (savedTheme) return savedTheme;
+    }
+    return 'dark';
+  });
+
   const [currentPage, setCurrentPage] = useState('home');
   const [crmActiveTab, setCrmActiveTab] = useState('pipeline');
   const [currency, setCurrencyState] = useState({ code: 'USD', name: 'US Dollar', symbol: '$', flag: '🇺🇸' });
   const [GC, setGC] = useState(initialGC);
   const [savedNotes, setSavedNotes] = useState([]);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [guideActive, setGuideActive] = useState(false);
+  const [guideFlowKey, setGuideFlowKey] = useState('');
+  const [guideStepIdx, setGuideStepIdx] = useState(0);
   const [tenantConfig, setTenantConfig] = useState(null);
   
-  const authContext = useAuth();
-  const userData = authContext?.userData;
   const [supportOpen, setSupportOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -986,6 +1006,12 @@ export function BusinessProvider({ children }) {
         clearNotes,
         aiPanelOpen,
         setAiPanelOpen,
+        guideActive,
+        setGuideActive,
+        guideFlowKey,
+        setGuideFlowKey,
+        guideStepIdx,
+        setGuideStepIdx,
         supportOpen,
         setSupportOpen,
         onboardingDone,
