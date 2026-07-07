@@ -76,7 +76,7 @@ export default function StrategyView() {
     }
   };
 
-  const runCompleteStrategy = async () => {
+  const saveProfileFields = () => {
     handleSaveGC({
       profile: { 
         ...GC.profile, 
@@ -84,41 +84,144 @@ export default function StrategyView() {
         offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
       }
     });
+  };
 
+  const runIdeaStrategy = async () => {
+    saveProfileFields();
     const ideaPrompt = `Analyze my business and offer: 
-Brand: "${bizName}", Desc: "${bizDesc}", Niche: "${bizNiche}", Stage: "${bizStage}".
-Offer: "${offerName}", Transformation: "${offerTransform}", Price: "${offerPrice}", Duration: "${offerDuration}", Deliverables: "${offerDeliverables}".
-Provide 3 core strengths, 2 major risks, a clear next-step action plan, and rate/optimize the offer with 2 suggested bonuses.`;
-    const ideaSystem = `You are an expert business architect. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+Brand Name: "${bizName}"
+Business Description: "${bizDesc}"
+Niche/Industry: "${bizNiche}"
+Business Stage: "${bizStage}"
+Main Offer Name: "${offerName}"
+Transformation/Final Result: "${offerTransform}"
+Price: "${offerPrice}"
+Duration: "${offerDuration}"
+Deliverables: "${offerDeliverables}"
 
-    const icpPrompt = `Based on this Business and Offer:
-Brand: "${bizName}", Desc: "${bizDesc}", Niche: "${bizNiche}", Offer: "${offerName}" (${offerTransform}) at ${offerPrice}.
-Build an Ideal Client Profile (ICP). Provide demographics, pain points, goals, where they spend time online, and key marketing messages.`;
-    const icpSystem = `You are a customer marketing strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+Write a comprehensive, professional, and detailed "Business & Offer Analysis" master plan. You must cover:
+1. **Value Proposition Analysis**: A deep analysis of the transformation offered compared to the market.
+2. **Pricing & Packaging Strategy**: Evaluate the price point of "${offerPrice}" for "${offerDuration}". Offer concrete advice on whether to position as premium, high-ticket, or low-ticket, and how to increase perceived value.
+3. **Core Strategic Strengths (3 Items)**: Detailed breakdown of each strength with actionable recommendations on how to leverage it.
+4. **Major Strategic Risks (3 Items)**: Identify deep business or market risks with detailed mitigation plans for each.
+5. **Detailed Customer Validation Plan**: Step-by-step validation guide on how to test this concept with real potential buyers during the "${bizStage}" stage.
+6. **Offer Optimization & Bonuses (3 Items)**: Propose 3 high-value, highly-customized bonus ideas that directly complement the main offer and reduce customer friction.`;
+    const ideaSystem = `You are a world-class business architect and strategy consultant. You write highly comprehensive, detailed, masterclass-level reports. Avoid short lists, generic summaries, or brief bullet points. Expand on every point with detailed strategic theories, professional frameworks, and actionable business models. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
-    const swotPrompt = `Based on this Business and Offer:
-Brand: "${bizName}", Desc: "${bizDesc}", Niche: "${bizNiche}", Stage: "${bizStage}", Offer: "${offerName}".
-Provide a comprehensive SWOT Analysis (Strengths, Weaknesses, Opportunities, Threats) and a summary of how to leverage strengths and close weaknesses.`;
-    const swotSystem = `You are a corporate strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-
-    const roadmapPrompt = `Based on this Business and Offer:
-Brand: "${bizName}", Niche: "${bizNiche}", Stage: "${bizStage}", Offer: "${offerName}" (${offerPrice}).
-Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for the next 12 weeks to launch/scale this offer successfully.`;
-    const roadmapSystem = `You are a scaling strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-
-    // Fire concurrently
     triggerStrategyAI('idea', ideaPrompt, ideaSystem, (finalRes) => {
-      handleSaveGC({ strategy: { ...GC.strategy, idea_analysis: finalRes } });
+      handleSaveGC({ 
+        profile: { 
+          ...GC.profile, 
+          name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
+          offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
+        },
+        strategy: { ...GC.strategy, idea_analysis: finalRes } 
+      });
     });
+  };
+
+  const runIcpStrategy = async () => {
+    saveProfileFields();
+    const icpPrompt = `Based on this Business and Offer:
+Brand Name: "${bizName}"
+Description: "${bizDesc}"
+Niche: "${bizNiche}"
+Main Offer Name: "${offerName}"
+Transformation: "${offerTransform}"
+Price: "${offerPrice}"
+
+Build a highly comprehensive "Ideal Client Profile (ICP)" analysis. You must cover:
+1. **Demographics & Detailed Psychographics**: Age group, role, income bracket, daily routine, core frustrations, inner hopes, and emotional triggers.
+2. **Objection Handling Playbook (3 Key Objections)**: Detail the 3 most likely objections they will raise when pitched this offer (e.g. price, time, authority) and provide the exact response or angle to overcome each objection.
+3. **Conversion-Optimized Copywriting Hooks (3 Angles)**: Write 3 highly compelling marketing hooks/headlines designed to capture this target client's attention.
+4. **Traffic & Acquisition Channels**: Explain exactly where this specific persona spends time online (specific platforms, communities, search behaviors) and how to reach them.`;
+    const icpSystem = `You are an expert consumer psychology and growth marketing strategist. Write a highly detailed, professional, and comprehensive Ideal Client Profile report. Avoid generic advice, short summaries, or brief bullet points. Expand fully on every section with deep behavioral psychology insights. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+
     triggerStrategyAI('icp', icpPrompt, icpSystem, (finalRes) => {
-      handleSaveGC({ strategy: { ...GC.strategy, icp: finalRes } });
+      handleSaveGC({ 
+        profile: { 
+          ...GC.profile, 
+          name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
+          offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
+        },
+        strategy: { ...GC.strategy, icp: finalRes } 
+      });
     });
+  };
+
+  const runSwotStrategy = async () => {
+    saveProfileFields();
+    const swotPrompt = `Based on this Business and Offer:
+Brand Name: "${bizName}"
+Description: "${bizDesc}"
+Niche: "${bizNiche}"
+Business Stage: "${bizStage}"
+Main Offer Name: "${offerName}"
+
+Perform a comprehensive, highly strategic, and localized "SWOT Analysis" and "Tactical Action Plan" specifically for this SaaS/software business. You must analyze the actual market, competitors (like ClickUp, Notion, custom spreadsheets, or WhatsApp workflows), and local business challenges (such as low trust in automation, data security concerns, migration friction, and pricing value perception).
+
+You must cover:
+1. **Strengths (S)**: 4 deep-dive, product-specific strengths. Do not list generic terms. Focus on localized value, personalization, all-in-one AI workflows, or specific onboarding support.
+2. **Weaknesses (W)**: 4 real internal bottlenecks. Focus on validation stage issues, developer capacity, trust establishment, and high customer friction in migrating data.
+3. **Opportunities (O)**: 4 actionable market trends. Focus on the rapid surge of AI adoption in small/medium businesses, demand for productivity consolidation, and the rise of remote team management.
+4. **Threats (T)**: 4 real market risks. Focus on fast competitors, high customer churn if they don't see immediate value, pricing pressure, and customer technical illiteracy.
+5. **Tactical Action Matrix (The Strategic Brain - عقل يفكر)**: Propose deep, concrete action steps:
+   - SO Strategy: How to use your strengths (like localized setup) to capture opportunities (like the demand for AI productivity).
+   - WO Strategy: How to leverage opportunities (like the surge in AI interest) to overcome weaknesses (like validation stage or lack of trust) through beta test campaigns or educational workshops.
+   - ST Strategy: How to use your strengths (like tailored customization) to defend against threats (like competitors or copycats).
+   - WT Strategy: How to minimize internal bottlenecks and defend against threats (e.g., how to build an easy-onboarding program to prevent churn and overcome customer technical illiteracy).`;
+    const swotSystem = `You are an elite business advisor, startup strategist, and SaaS consultant specializing in AI applications and productivity platforms. You have deep knowledge of the competitive landscape (Notion, ClickUp, custom CRM solutions) and startup challenges. Write a highly analytical, critical, and strategic report. Avoid generic statements or textbook definitions. Speak like a real board advisor who understands startup mechanics, customer acquisition, and product-led growth. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+
     triggerStrategyAI('swot', swotPrompt, swotSystem, (finalRes) => {
-      handleSaveGC({ strategy: { ...GC.strategy, swot_analysis: finalRes } });
+      handleSaveGC({ 
+        profile: { 
+          ...GC.profile, 
+          name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
+          offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
+        },
+        strategy: { ...GC.strategy, swot_analysis: finalRes } 
+      });
     });
+  };
+
+  const runRoadmapStrategy = async () => {
+    saveProfileFields();
+    const roadmapPrompt = `Based on this Business and Offer:
+Brand Name: "${bizName}"
+Niche: "${bizNiche}"
+Business Stage: "${bizStage}"
+Main Offer Name: "${offerName}"
+Price: "${offerPrice}"
+Duration/Period: "${offerDuration}"
+
+Build a highly comprehensive, week-by-week Growth Roadmap and Operational Blueprint designed specifically for the duration of "${offerDuration}". This roadmap is not just for marketing; it is a complete business execution plan.
+
+You must cover:
+1. **Strategic Timeline & Feedback Loop**: Emphasize that the user will follow this blueprint for "${offerDuration}". Clearly explain that as they log their leads, tasks, chats, and sales in their CRM, the AI will ingest this real-world performance data at the end of the "${offerDuration}" period to analyze conversion metrics, address weaknesses, and generate an even stronger, optimized strategy for the next phase.
+2. **Three Concurrent Action Tracks (Product, Marketing, Sales)**: For every single week in the duration of "${offerDuration}" (e.g., if duration is 1 month, write weeks 1 to 4; if 3 months, write weeks 1 to 12. List them individually, e.g. Week 1, Week 2, Week 3, etc.):
+   - **Product & Delivery Track**: Specific operational tasks, setup of tools, resource preparation, or beta onboarding.
+   - **Marketing & Attraction Track**: Specific campaigns, lead magnets, social content topics, and automated outreach triggers.
+   - **Sales & Closing Track**: Sales script adjustments, outreach follow-up schedule, payment links setup, and closing templates.
+3. **Actionable Weekly Metrics to Track**: List specific numbers (like connection requests, link clicks, sales calls booked, screenshots received) they must record in their system daily.`;
+    const roadmapSystem = `You are a world-class startup consultant, operations manager, and growth strategist. You write highly practical, comprehensive, week-by-week growth blueprints. Do not lump weeks together or give generic high-level marketing tips. For every single week of the specified duration, detail clear tasks for Product/Delivery, Marketing, and Sales. Establish a strong connection showing how logging data in the CRM feeds back into the AI for the next phase. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+
     triggerStrategyAI('roadmap', roadmapPrompt, roadmapSystem, (finalRes) => {
-      handleSaveGC({ strategy: { ...GC.strategy, roadmap: finalRes } });
+      handleSaveGC({ 
+        profile: { 
+          ...GC.profile, 
+          name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
+          offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
+        },
+        strategy: { ...GC.strategy, roadmap: finalRes } 
+      });
     });
+  };
+
+  const runCompleteStrategy = async () => {
+    runIdeaStrategy();
+    runIcpStrategy();
+    runSwotStrategy();
+    runRoadmapStrategy();
   };
 
   return (
@@ -219,7 +322,12 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
             </div>
           </div>
           <div className="card">
-            <div className="sec-hd"><div className="sec-title">{L('Idea & Offer Analysis', 'تحليل الفكرة والعرض')}</div></div>
+            <div className="sec-hd">
+              <div className="sec-title">{L('Idea & Offer Analysis', 'تحليل الفكرة والعرض')}</div>
+              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', minWidth: 'auto' }} onClick={runIdeaStrategy} disabled={loading.idea}>
+                ✦ {L('Generate / Update', 'توليد / تحديث')}
+              </button>
+            </div>
             <div 
               className="ai-box"
               dangerouslySetInnerHTML={{ 
@@ -233,7 +341,12 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
       {/* ── TAB 2: ICP BUILDER ── */}
       {activeTab === 'icp' && (
         <div className="card">
-          <div className="sec-hd"><div className="sec-title">🎯 {L('Ideal Client Profile (ICP)', 'الملف المثالي للعميل')}</div></div>
+          <div className="sec-hd">
+            <div className="sec-title">🎯 {L('Ideal Client Profile (ICP)', 'الملف المثالي للعميل')}</div>
+            <button className="btn-ai" style={{ fontSize: '11.5px', padding: '5px 10px' }} onClick={runIcpStrategy} disabled={loading.icp}>
+              ✦ {L('Generate ICP', 'توليد الملف المثالي')}
+            </button>
+          </div>
           <div 
             className="ai-box"
             dangerouslySetInnerHTML={{ 
@@ -246,7 +359,12 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
       {/* ── TAB 3: SWOT ── */}
       {activeTab === 'swot' && (
         <div className="card">
-          <div className="sec-hd"><div className="sec-title">⚔️ {L('SWOT Analysis', 'تحليل SWOT')}</div></div>
+          <div className="sec-hd">
+            <div className="sec-title">⚔️ {L('SWOT Analysis', 'تحليل SWOT')}</div>
+            <button className="btn-ai" style={{ fontSize: '11.5px', padding: '5px 10px' }} onClick={runSwotStrategy} disabled={loading.swot}>
+              ✦ {L('Generate SWOT', 'توليد تحليل SWOT')}
+            </button>
+          </div>
           <div 
             className="ai-box"
             dangerouslySetInnerHTML={{ 
@@ -259,7 +377,12 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
       {/* ── TAB 4: ROADMAP ── */}
       {activeTab === 'roadmap' && (
         <div className="card">
-          <div className="sec-hd"><div className="sec-title">🗺️ {L('Growth Roadmap', 'خارطة طريق النمو')}</div></div>
+          <div className="sec-hd">
+            <div className="sec-title">🗺️ {L('Growth Roadmap', 'خارطة طريق النمو')}</div>
+            <button className="btn-ai" style={{ fontSize: '11.5px', padding: '5px 10px' }} onClick={runRoadmapStrategy} disabled={loading.roadmap}>
+              ✦ {L('Generate Roadmap', 'توليد خارطة الطريق')}
+            </button>
+          </div>
           <div 
             className="ai-box"
             dangerouslySetInnerHTML={{ 
