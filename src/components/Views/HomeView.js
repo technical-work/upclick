@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { callClaudeAPI } from '../../utils/ai';
@@ -30,6 +30,8 @@ export default function HomeView() {
   const [chartPeriod, setChartPeriod] = useState('7d');
   const [dailyBrief, setDailyBrief] = useState('');
   const [briefLoading, setBriefLoading] = useState(false);
+  const [briefStreaming, setBriefStreaming] = useState(false);
+  const latestLangRef = useRef(lang);
 
   const monthlyIncome = GC.finance.entries
     .filter(e => e.type === 'income')
@@ -158,13 +160,9 @@ export default function HomeView() {
   const maxBarVal = Math.max(...chartData.map(d => Math.max(d[0], d[1]))) || 100;
 
   // Generate AI Daily Brief
-  const generateDailyBrief = async () => {
-    setBriefLoading(true);
-    const today = new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric'
-    });
+  const generateDailyBrief = async (force = false) => {
+    const targetLang = lang;
+    const todayStr = new Date().toDateString();
 
     const overdueLeads = allLeads.filter(l => {
       if (!l.followupDate) return false;
@@ -176,22 +174,92 @@ export default function HomeView() {
     const pName = userData?.name || user?.displayName || L('Sara', 'سارة');
     const bName = GC.profile.name || L('your business', 'عملك التجاري');
 
+    // Unique cache key based on state, date, and user details
+    const currentCacheKey = `lang_${targetLang}|date_${todayStr}|tasks_${openTasks}_hp_${highPri}|leads_${allLeads.length}_od_${overdueLeads}|income_${monthlyIncome}_exp_${monthlyExpenses}|name_${pName}_biz_${bName}|niche_${GC.profile.niche || ''}_stage_${GC.profile.stage || ''}`;
+
+    // 1. Check local cache
+    if (!force) {
+      const cached = localStorage.getItem('upklick_daily_brief_cache');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.cacheKey === currentCacheKey && parsed.brief) {
+            setDailyBrief(parsed.brief);
+            setBriefLoading(false);
+            setBriefStreaming(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Error reading cached daily brief:", e);
+        }
+      }
+    }
+
+    // 2. Generate with AI streaming
+    setBriefLoading(true);
+    setBriefStreaming(false);
+    setDailyBrief('');
+
+    const today = new Date().toLocaleDateString(targetLang === 'ar' ? 'ar-EG' : 'en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    });
+
     const prompt = `Generate a concise daily business brief for ${today}.
 User Personal Name: ${pName}, Business/Company Name: ${bName}.
 Data: ${openTasks} open tasks (${highPri} high priority), ${allLeads.length} CRM leads (${overdueLeads} overdue follow-ups), Monthly income so far: $${monthlyIncome}, Monthly expenses: $${monthlyExpenses}.
 Business Niche: ${GC.profile.niche || 'Not specified'}, Stage: ${GC.profile.stage || 'Getting started'}.
 Address the user directly by their personal name (${pName}) and refer to their business (${bName}). Be direct and motivating. 3-4 sentences max.`;
 
-    const systemPrompt = `You are Business Architect AI. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Be direct and motivating.`;
+    const systemPrompt = `You are Business Architect AI. Respond in ${targetLang === 'ar' ? 'Arabic' : 'English'}. Be direct and motivating.`;
 
-    const brief = await callClaudeAPI(prompt, systemPrompt, lang, GC);
-    setDailyBrief(brief);
-    setBriefLoading(false);
+    try {
+      let currentText = '';
+      const brief = await callClaudeAPI(prompt, systemPrompt, targetLang, GC, 'General', (chunk) => {
+        if (currentText === '') {
+          setBriefLoading(false);
+          setBriefStreaming(true);
+        }
+        currentText += chunk;
+        if (targetLang === latestLangRef.current) {
+          setDailyBrief(currentText);
+        }
+      });
+
+      if (targetLang === latestLangRef.current) {
+        setDailyBrief(brief);
+        setBriefLoading(false);
+        setBriefStreaming(false);
+
+        // Cache the completed brief
+        localStorage.setItem('upklick_daily_brief_cache', JSON.stringify({
+          brief,
+          cacheKey: currentCacheKey
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to generate daily brief:", err);
+      setBriefLoading(false);
+      setBriefStreaming(false);
+    }
   };
 
   useEffect(() => {
-    generateDailyBrief();
-  }, [allLeads.length, GC.tasks?.items?.length, GC.finance?.entries?.length, lang]);
+    latestLangRef.current = lang;
+    generateDailyBrief(false);
+  }, [
+    allLeads.length,
+    GC.tasks?.items?.length,
+    monthlyIncome,
+    monthlyExpenses,
+    openTasks,
+    GC.profile.name,
+    GC.profile.niche,
+    GC.profile.stage,
+    userData?.name,
+    lang
+  ]);
 
   // Compute Health Score
   let healthScore = 40;
@@ -417,19 +485,109 @@ Address the user directly by their personal name (${pName}) and refer to their b
         {/* LEFT column */}
         <div>
           {/* AI Brief */}
-          <div className="card mb">
-            <div className="sec-hd">
-              <div className="sec-title">✦ {t('AI Daily Brief')}</div>
-              <button className="btn-ai" onClick={generateDailyBrief} disabled={briefLoading}>
-                {L('Refresh', 'تحديث')}
+          <div className="card mb" style={{
+            position: 'relative',
+            overflow: 'hidden',
+            background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.03) 0%, rgba(108, 53, 255, 0.02) 100%)',
+            border: '1px solid rgba(255, 107, 53, 0.08)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
+            borderRadius: '16px',
+            padding: '20px'
+          }}>
+            {/* Ambient subtle glow background */}
+            <div style={{
+              position: 'absolute',
+              top: '-20px',
+              right: '-20px',
+              width: '100px',
+              height: '100px',
+              background: 'radial-gradient(circle, rgba(255,107,53,0.15) 0%, transparent 70%)',
+              zIndex: 0,
+              pointerEvents: 'none'
+            }} />
+            
+            <style>{`
+              @keyframes pulse {
+                0%, 100% { opacity: 0; }
+                50% { opacity: 1; }
+              }
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              .typing-cursor {
+                display: inline-block;
+                width: 7px;
+                height: 14px;
+                background: var(--orange);
+                margin-inline-start: 4px;
+                animation: pulse 0.8s infinite;
+                vertical-align: middle;
+              }
+              .ai-box p {
+                margin: 0 0 10px 0;
+              }
+              .ai-box p:last-child {
+                margin-bottom: 0;
+              }
+            `}</style>
+
+            <div className="sec-hd" style={{ position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <div className="sec-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: '800', color: 'var(--t1)' }}>
+                <span style={{ color: 'var(--orange)', textShadow: '0 0 10px rgba(255,107,53,0.3)' }}>✦</span>
+                <span>{t('AI Daily Brief')}</span>
+              </div>
+              <button 
+                className="btn-ai" 
+                onClick={() => generateDailyBrief(true)} 
+                disabled={briefLoading || briefStreaming}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  background: 'rgba(255, 107, 53, 0.1)',
+                  color: 'var(--orange)',
+                  border: '1px solid rgba(255, 107, 53, 0.2)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {briefLoading || briefStreaming ? (
+                  <>
+                    <div style={{ width: '12px', height: '12px', border: '1.5px solid rgba(255,107,53,0.3)', borderTopColor: '#FF6B35', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <span>{L('Loading...', 'جاري التحميل...')}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔄</span>
+                    <span>{L('Refresh', 'تحديث')}</span>
+                  </>
+                )}
               </button>
             </div>
-            <div id="ai-brief">
+            
+            <div id="ai-brief" style={{ position: 'relative', zIndex: 1 }}>
               <div 
                 className="ai-box" 
                 id="ai-brief-content" 
+                style={{
+                  fontSize: '14.5px',
+                  lineHeight: '1.75',
+                  color: 'var(--t1)',
+                  fontFamily: 'inherit',
+                  textAlign: 'justify'
+                }}
                 dangerouslySetInnerHTML={{ 
-                  __html: briefLoading ? L('Generating brief...', 'جاري توليد الملخص...') : parseMarkdown(dailyBrief)
+                  __html: briefLoading 
+                    ? `<div style="display: flex; align-items: center; gap: 10px; color: var(--t2); padding: 8px 0;">
+                        <div class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,107,53,0.3); border-top-color: #FF6B35; border-radius: 50%; animation: spin 1s linear infinite; flex-shrink: 0;"></div>
+                        <span style="font-size: 13.5px;">${L('Scanning your data & formulating today\'s plan...', 'جاري قراءة البيانات وتشكيل خطة اليوم المخصصة...')}</span>
+                       </div>`
+                    : parseMarkdown(dailyBrief) + (briefStreaming ? '<span class="typing-cursor"></span>' : '')
                 }}
               />
             </div>
@@ -537,13 +695,7 @@ Address the user directly by their personal name (${pName}) and refer to their b
               >
                 ⚡ <span>{L('Landing Page', 'صفحة هبوط')}</span>
               </button>
-              <button
-                className="btn btn-ghost"
-                style={{ flexDirection: 'column', padding: '10px 5px', gap: '4px', fontSize: '11px', justifyContent: 'center', borderRadius: '11px', height: '64px' }}
-                onClick={() => setCurrentPage('launchpad')}
-              >
-                🚀 <span>{L('Launch', 'أطلق')}</span>
-              </button>
+
             </div>
           </div>
         </div>
@@ -692,22 +844,46 @@ Address the user directly by their personal name (${pName}) and refer to their b
             <div className="sec-hd">
               <div className="sec-title">☑ {L('Tasks Checklist', 'قائمة المهام اليومية')}</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {GC.tasks.items.filter(t => !t.done).length === 0 ? (
-                <div style={{ fontSize: '12px', color: 'var(--t3)', padding: '12px 0', textAlign: 'center' }}>
-                  {L('No tasks today. Add some! ✅', 'لا توجد مهام اليوم. أضف بعضها! ✅')}
-                </div>
-              ) : (
-                GC.tasks.items
-                  .filter(t => !t.done)
-                  .slice(0, 4)
-                  .map(task => (
-                    <div className="task-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }} key={task.id}>
-                      <div className="task-check" style={{ border: '1px solid var(--edge3)', borderRadius: '3px', width: '16px', height: '16px', cursor: 'pointer' }} onClick={() => toggleTask(task.id)}></div>
-                      <div className={`task-priority p-${task.priority}`} style={{ width: '6px', height: '6px', borderRadius: '50%', background: task.priority === 'high' ? 'var(--red)' : task.priority === 'medium' ? 'var(--amber)' : 'var(--green)' }}></div>
-                      <div style={{ flex: 1, fontSize: '12.5px', color: 'var(--t1)' }}>{task.title}</div>
-                    </div>
-                  ))
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '250px', overflowY: 'auto', paddingInlineEnd: '4px' }}>
+              {/* Pending Tasks */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {GC.tasks.items.filter(t => !t.done).length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--t3)', padding: '6px 0', textAlign: 'center' }}>
+                    {L('No pending tasks. Great job! 🎉', 'لا توجد مهام معلقة. عمل رائع! 🎉')}
+                  </div>
+                ) : (
+                  GC.tasks.items
+                    .filter(t => !t.done)
+                    .map(task => (
+                      <div className="task-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }} key={task.id}>
+                        <div className="task-check" style={{ border: '1px solid var(--edge3)', borderRadius: '3px', width: '16px', height: '16px', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => toggleTask(task.id)}></div>
+                        <div className={`task-priority p-${task.priority}`} style={{ width: '6px', height: '6px', borderRadius: '50%', background: task.priority === 'high' ? 'var(--red)' : task.priority === 'medium' ? 'var(--amber)' : 'var(--green)' }}></div>
+                        <div style={{ flex: 1, fontSize: '12.5px', color: 'var(--t1)' }}>{task.title}</div>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              {/* Completed Tasks */}
+              {GC.tasks.items.filter(t => t.done).length > 0 && (
+                <>
+                  <div style={{ height: '1px', background: 'var(--edge)', margin: '4px 0' }} />
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--green)', opacity: 0.8, marginBottom: '2px' }}>
+                    {L('Completed Tasks', 'المهام المكتملة')}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {GC.tasks.items
+                      .filter(t => t.done)
+                      .map(task => (
+                        <div className="task-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0', opacity: 0.6 }} key={task.id}>
+                          <div className="task-check" style={{ border: '1px solid var(--green)', borderRadius: '3px', width: '16px', height: '16px', cursor: 'pointer', background: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '10px' }} onClick={() => toggleTask(task.id)}>
+                            ✓
+                          </div>
+                          <div style={{ flex: 1, fontSize: '12.5px', color: 'var(--t2)', textDecoration: 'line-through' }}>{task.title}</div>
+                        </div>
+                      ))}
+                  </div>
+                </>
               )}
             </div>
           </div>
