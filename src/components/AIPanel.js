@@ -18,7 +18,15 @@ export default function AIPanel() {
     currentPage,
     setCurrentPage,
     aiQuery,
-    setAiQuery
+    setAiQuery,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    guideActive,
+    setGuideActive,
+    guideFlowKey,
+    setGuideFlowKey,
+    guideStepIdx,
+    setGuideStepIdx
   } = useBusiness();
 
   const [input, setInput] = useState('');
@@ -26,9 +34,6 @@ export default function AIPanel() {
   const [loading, setLoading] = useState(false);
 
   // Guide Mode State
-  const [guideActive, setGuideActive] = useState(false);
-  const [guideFlowKey, setGuideFlowKey] = useState('');
-  const [guideStepIdx, setGuideStepIdx] = useState(0);
   const [guideStepText, setGuideStepText] = useState('Choose a guide walkthrough below.');
   const overlaysRef = useRef([]);
 
@@ -44,8 +49,21 @@ export default function AIPanel() {
   // Close panel on click outside
   useEffect(() => {
     function handleClickOutside(event) {
+      // If a guide walkthrough is active, do not close the panel on outside clicks
+      if (guideActive) {
+        return;
+      }
       if (aiPanelOpen && panelRef.current && !panelRef.current.contains(event.target)) {
-        const isToggle = event.target.closest('.tb-icon') || event.target.closest('.btn-ai') || event.target.closest('.sidebar-ai-btn') || event.target.closest('.ai-qa-btn');
+        // If the target element is detached from the document body, ignore it (common React re-render behavior)
+        if (!document.body.contains(event.target)) {
+          return;
+        }
+        const isToggle = event.target.closest('.tb-icon') || 
+                         event.target.closest('.btn-ai') || 
+                         event.target.closest('.sidebar-ai-btn') || 
+                         event.target.closest('.ai-qa-btn') ||
+                         event.target.closest('.guide-tooltip') ||
+                         event.target.closest('.guide-highlight');
         const isModal = event.target.closest('.modal-overlay') || event.target.closest('.modal-box') || event.target.closest('#toast');
         if (!isToggle && !isModal) {
           setAiPanelOpen(false);
@@ -57,7 +75,7 @@ export default function AIPanel() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [aiPanelOpen, setAiPanelOpen]);
+  }, [aiPanelOpen, guideActive, setAiPanelOpen]);
 
   // Add initial message on mount
   useEffect(() => {
@@ -85,6 +103,7 @@ export default function AIPanel() {
       clearGuideOverlays();
       stopVoiceInput();
       setGuideActive(false);
+      setGuideFlowKey('');
     }
   }, [aiPanelOpen]);
 
@@ -97,37 +116,36 @@ export default function AIPanel() {
     }
   }, [aiQuery]);
 
-  // FAQ Buttons
+  // FAQ Buttons with associated navigation destinations
   const faqs = lang === 'ar' ? [
-    { q: 'كيف أضيف عميل جديد؟ (إدارة العملاء)', a: 'لإضافة عميل جديد، انتقل إلى قسم "إدارة العملاء" واضغط على زر "عميل جديد".' },
-    { q: 'كيف أدير مشاريعي؟ (المهام)', a: 'في قسم "إدارة المهام"، يمكنك إضافة مهام جديدة وتغيير حالتها بسهولة عبر السحب والإفلات.' },
-    { q: 'كيف أسجل مبيعاتي؟ (المالية)', a: 'من قسم "المالية"، اضغط على "معاملة جديدة" لتسجيل الإيرادات والمصروفات بدقة.' },
-    { q: 'كيف أكتب محتوى ذكي؟ (المحتوى)', a: 'توجه إلى قسم "المحتوى"، اختر نوع المنشور والمنصة، وسيقوم الذكاء الاصطناعي بكتابته لك.' },
-    { q: 'كيف أربط حساب التليجرام الخاص بي؟ (المساعد التلقائي)', a: 'انتقل إلى قسم "تليجرام هب"، واتبع التعليمات لربط البوت الخاص بك بـ Token لتلقي الرسائل وتفعيل الرد الآلي.' },
-    { q: 'كيف أنشئ رابط بايولينك مخصص؟ (أستوديو التصميم)', a: 'من خلال "أستوديو التصميم"، يمكنك تصميم صفحة البايولينك الخاصة بك وإضافة روابط ومنتجات وتخصيص الألوان بسهولة.' },
-    { q: 'كيف أربط حساب الفيس والانستا لجلب المتابعين؟', a: 'من الصفحة الرئيسية أو قسم "الحسابات الاجتماعية"، اضغط على زر "ربط" أو "تعديل" وأدخل اسم المستخدم لتقوم أداة Apify بجلب عدد المتابعين تلقائياً.' },
-    { q: 'كيف أعدل ألوان النظام واللوجو؟ (الإعدادات)', a: 'من خلال قسم "الإعدادات" ثم "الهوية البصرية"، يمكنك تغيير ألوان النظام وتحديث اللوجو.' },
-    { q: 'كيف أضيف أعضاء فريق عمل جدد؟ (الفريق)', a: 'انتقل إلى قسم "إدارة الفريق"، واضغط على زر "إضافة عضو" لإرسال دعوة أو تعيين دور وصلاحيات للعضو الجديد.' },
-    { q: 'كيف أغير عملة النظام الافتراضية؟ (المالية)', a: 'انتقل إلى "المالية" أو "الإعدادات العامة"، ومن خيار العملة، يمكنك تغيير العملة الافتراضية التي تظهر في التقارير والصفقات.' }
+    { q: 'كيف أضيف عميل جديد؟ (إدارة العملاء)', nav: 'crm' },
+    { q: 'كيف أدير مشاريعي؟ (المهام)', nav: 'tasks' },
+    { q: 'كيف أسجل مبيعاتي؟ (المالية)', nav: 'finance' },
+    { q: 'كيف أكتب محتوى ذكي؟ (المحتوى)', nav: 'content' },
+    { q: 'كيف أربط حساب التليجرام الخاص بي؟ (المساعد التلقائي)', nav: 'telegram' },
+    { q: 'كيف أنشئ رابط بايولينك مخصص؟ (أستوديو التصميم)', nav: 'design' },
+    { q: 'كيف أربط حساب الفيس والانستا لجلب المتابعين؟', nav: 'social' },
+    { q: 'كيف أعدل ألوان النظام واللوجو؟ (الإعدادات)', nav: 'profile' },
+    { q: 'كيف أضيف أعضاء فريق عمل جدد؟ (الفريق)', nav: 'team' },
+    { q: 'كيف أغير عملة النظام الافتراضية؟ (المالية)', nav: 'finance' }
   ] : [
-    { q: 'How to add a new lead? (CRM)', a: 'Go to the "Smart CRM" section and click on the "New Lead" button to add a new client.' },
-    { q: 'How to manage my tasks? (Tasks)', a: 'In the "Tasks" section, you can add new tasks and update their status using drag and drop.' },
-    { q: 'How to record sales? (Finance)', a: 'From the "Finance" section, click "New Transaction" to accurately record your income and expenses.' },
-    { q: 'How to generate AI content? (Content)', a: 'Go to the "Content" section, select the post type, and the AI will write it for you.' },
-    { q: 'How to connect my Telegram Bot? (Telegram Hub)', a: 'Go to the "Telegram Hub" section and follow the instructions to connect your bot token for automated responses.' },
-    { q: 'How to build my Bio Link page? (Design Studio)', a: 'From the "Design Studio", you can visually build your custom bio link page, add links, products, and style it.' },
-    { q: 'How to connect Facebook/Instagram for followers?', a: 'Click the "Connect" or "Edit" button on the dashboard or social profiles view, input your username, and the Apify API will sync your followers.' },
-    { q: 'How to change colors and branding? (Settings)', a: 'Through the "Settings" section under "Branding", you can change the system theme and update the logo.' },
-    { q: 'How to invite team members? (Team)', a: 'Navigate to "Team Management", and click "Add Member" to send an invite or assign roles and permissions.' },
-    { q: 'How to change default currency? (Finance)', a: 'Go to the "Finance" or "General Settings" section, and choose your preferred currency for deals and analytics.' }
+    { q: 'How to add a new lead? (CRM)', nav: 'crm' },
+    { q: 'How to manage my tasks? (Tasks)', nav: 'tasks' },
+    { q: 'How to record sales? (Finance)', nav: 'finance' },
+    { q: 'How to generate AI content? (Content)', nav: 'content' },
+    { q: 'How to connect my Telegram Bot? (Telegram Hub)', nav: 'telegram' },
+    { q: 'How to build my Bio Link page? (Design Studio)', nav: 'design' },
+    { q: 'How to connect Facebook/Instagram for followers?', nav: 'social' },
+    { q: 'How to change colors and branding? (Settings)', nav: 'profile' },
+    { q: 'How to invite team members? (Team)', nav: 'team' },
+    { q: 'How to change default currency? (Finance)', nav: 'finance' }
   ];
 
   const handleFaqClick = (faq) => {
-    setMessages(prev => [
-      ...prev,
-      { sender: 'user', text: faq.q },
-      { sender: 'ai', text: faq.a }
-    ]);
+    if (faq.nav) {
+      setCurrentPage(faq.nav);
+    }
+    askAI(faq.q);
   };
 
   const getContextSummary = () => {
@@ -145,11 +163,10 @@ export default function AIPanel() {
   const askAI = async (question) => {
     if (!question.trim()) return;
 
-    // Append user message and a placeholder AI message
+    // Append user message only at first
     setMessages(prev => [
       ...prev,
-      { sender: 'user', text: question },
-      { sender: 'ai', text: '' }
+      { sender: 'user', text: question }
     ]);
     setLoading(true);
 
@@ -157,19 +174,21 @@ export default function AIPanel() {
       const context = getContextSummary();
       const leadsCount = (GC?.crm?.leads || []).length;
       const tasksCount = (GC?.tasks?.items || []).length;
-      const systemPrompt = `You are Business Architect AI, a premium business operating system assistant for the UpKlick software.
+      
+      const systemPrompt = `You are Business Architect AI, a premium business partner, consultant, and operating system assistant for the UpKlick software.
 Context about this user: ${context}
 You have access to their CRM (${leadsCount} leads), tasks (${tasksCount} tasks), and finance data inside the platform.
 
-CRITICAL RULE: You must ONLY answer questions that are directly related to the UpKlick software, its tools/features (such as CRM, Tasks, Finances, Landing Pages, Marketing, Content creation, Bio Link, etc.), and the user's business context within this app.
-If the user asks a question that is off-topic or outside the scope of the UpKlick software and their business context here (for example: general knowledge, history, unrelated coding, recipes, entertainment, etc.), you must politely decline to answer, explaining in the chosen language that you are a dedicated assistant for the UpKlick software and can only answer questions related to it and their business operations inside the platform.
+Your goal is to help the user grow, manage, and optimize their business using UpKlick. 
+You should act as an advanced business consultant, copywriter, strategist, and guide. 
+Provide detailed, friendly, and actionable answers. You are fully capable of writing social media copy, brainstorming product/course concepts, recommending sales strategies, analyzing their current stats (like leads and finances), and explaining how to use UpKlick tools.
+Ensure you remain helpful for any business or copywriting inquiry. If a query is completely off-topic (e.g. cooking recipes, history trivia, general coding outside this app), politely steer the conversation back to their business growth and how they can build operations here.
 
-Be concise, specific, and actionable. Reference their actual data when available.
 Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
       const constraintInstruction = lang === 'ar'
-        ? `[تعليمات هامة جداً: يجب عليك الإجابة فقط إذا كان هذا السؤال متعلقاً بمنصة برمجيات UpKlick أو أدواتها وميزاتها (مثل إدارة العملاء CRM، المهام، المالية، صفحات الهبوط، التسويق، المحتوى، إلخ) أو سياق عمل المستخدم داخل التطبيق. إذا كان السؤال خارجاً عن هذا النطاق أو غير متعلق بالبرنامج وبزنس المستخدم فيه (مثل معلومات عامة، طبخ، تاريخ، كود برمجيات عامة خارج المنصة، إلخ)، يجب عليك الرفض بلطف والاعتذار عن الإجابة موضحاً أنك مساعد مخصص لمنصة UpKlick فقط ومصمم لمساعدته في أعماله داخل المنصة.]`
-        : `[CRITICAL INSTRUCTION: You must ONLY answer if this question is related to the UpKlick software platform, its features (CRM, Tasks, Finances, Landing Pages, Marketing, Content, Bio Link, etc.), or the user's business context inside UpKlick. If it is off-topic or unrelated (e.g. general knowledge, recipes, general coding, history, etc.), you MUST politely decline to answer, explaining that you are a dedicated assistant for UpKlick and only support operations inside it.]`;
+        ? `[تعليمات: ركّز إجابتك على مساعدة المستخدم في إدارة وتنمية أعماله وصناعة المحتوى مستخدماً أدوات منصة UpKlick وسياق البزنس الخاص به هنا.]`
+        : `[Instruction: Focus your answer on helping the user manage and grow their business or create content using the tools of the UpKlick platform.]`;
 
       const formattedQuestion = `${constraintInstruction}\n\nQuestion: ${question}`;
 
@@ -183,42 +202,50 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
         (chunk) => {
           if (!hasReceivedFirstChunk) {
             hasReceivedFirstChunk = true;
-            setLoading(false); // Turn off loading spinner as typing begins
+            setLoading(false); // Turn off loading bubble as first chunk arrives
+            setMessages(prev => [
+              ...prev,
+              { sender: 'ai', text: chunk }
+            ]);
+          } else {
+            setMessages(prev => {
+              if (prev.length === 0) return prev;
+              const next = [...prev];
+              const lastIdx = next.length - 1;
+              const last = next[lastIdx];
+              if (last && last.sender === 'ai') {
+                next[lastIdx] = {
+                  ...last,
+                  text: last.text + chunk
+                };
+              }
+              return next;
+            });
           }
-          setMessages(prev => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            if (last && last.sender === 'ai') {
-              last.text += chunk;
-            }
-            return next;
-          });
         }
       );
 
       if (!hasReceivedFirstChunk || !resText) {
-        setMessages(prev => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last && last.sender === 'ai' && !last.text) {
-            last.text = L(
+        setMessages(prev => [
+          ...prev,
+          {
+            sender: 'ai',
+            text: L(
               "I'm sorry, I am a dedicated assistant for the UpKlick platform and your business operations inside it. I cannot answer questions outside this scope.",
               "عذراً، أنا هنا لمساعدتك في منصة UpKlick وإدارة أعمالك داخل التطبيق فقط. لا يمكنني الإجابة على أسئلة خارجة عن هذا النطاق."
-            );
+            )
           }
-          return next;
-        });
+        ]);
       }
     } catch (e) {
       console.error('AI Panel askAI error:', e);
-      setMessages(prev => {
-        const next = [...prev];
-        const last = next[next.length - 1];
-        if (last && last.sender === 'ai' && !last.text) {
-          last.text = L('Could not reach AI. Check connection.', 'لم نتمكن من الوصول للذكاء الاصطناعي. تحقق من الاتصال.');
+      setMessages(prev => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: L('Could not reach AI. Check connection.', 'لم نتمكن من الوصول للذكاء الاصطناعي. تحقق من الاتصال.')
         }
-        return next;
-      });
+      ]);
     } finally {
       setLoading(false);
     }
@@ -269,41 +296,63 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     const step = flow.steps[stepIdx];
     clearGuideOverlays();
     setGuideStepIdx(stepIdx);
-    setGuideStepText(L(`Step ${stepIdx + 1} of ${flow.steps.length}: ${step.text}`, `الخطوة ${stepIdx + 1} من ${flow.steps.length}: ${step.text}`));
+    setGuideStepText(L(`Step ${stepIdx + 1} of ${flow.steps.length}: ${step.text}`, `الخطوة ${stepIdx + 1} من ${flow.steps.length}: ${step.textAr || step.text}`));
 
     // Navigate to page if defined
     if (step.nav) {
       setCurrentPage(step.nav);
     }
 
+    // Mobile Sidebar Handling: Open sidebar if target is sidebar-related; otherwise, close it.
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+    const isSidebarTarget = step.target.includes('onclick*="crm"') || 
+                            step.target.includes('onclick*="tasks"') || 
+                            step.target.includes('onclick*="finance"') || 
+                            step.target.includes('onclick*="profile"') || 
+                            step.target.includes('onclick*="content"') || 
+                            step.target.includes('sb-') || 
+                            step.target.includes('#sb') || 
+                            step.target.includes('.sb-');
+                            
+    let delay = step.nav ? 500 : 150;
+    
+    if (isMobile) {
+      const shouldOpen = !!isSidebarTarget;
+      if (mobileMenuOpen !== shouldOpen) {
+        setMobileMenuOpen(shouldOpen);
+        delay = 550; // Give sufficient time for slide animation transition (normally 300ms)
+      }
+    }
+
     setTimeout(() => {
       // Find element in rendered DOM
       let selector = step.target;
       // Adapt selector to match React structure
-      if (selector.includes('onclick*="crm"')) selector = '[id="sb-crm"], .sb-btn[onClick*="crm"], button:contains("Smart CRM")';
+      if (selector.includes('onclick*="crm"')) selector = '[id="sb-crm"], .sb-btn[onClick*="crm"]';
       if (selector.includes('onclick*="tasks"')) selector = '[id="sb-tasks"], .sb-btn[onClick*="tasks"]';
       if (selector.includes('onclick*="finance"')) selector = '[id="sb-finance"], .sb-btn[onClick*="finance"]';
       if (selector.includes('onclick*="profile"')) selector = '[id="sb-profile"], .sb-btn[onClick*="profile"]';
       if (selector.includes('onclick*="content"')) selector = '[id="sb-content"], .sb-btn[onClick*="content"]';
       
-      let targetEl = document.querySelector(step.target);
+      let targetEl = document.querySelector(selector);
       if (!targetEl) {
         // Try fallback selector strategies
-        if (step.target.includes('crm')) targetEl = document.querySelector('.sb-btn:nth-child(3)');
-        else if (step.target.includes('tasks')) targetEl = document.querySelector('.sb-btn[onClick*="tasks"]');
-        else if (step.target.includes('finance')) targetEl = document.querySelector('.sb-btn[onClick*="finance"]');
+        if (selector.includes('crm')) targetEl = document.querySelector('.sb-btn:nth-child(3)');
+        else if (selector.includes('tasks')) targetEl = document.querySelector('.sb-btn[onClick*="tasks"]');
+        else if (selector.includes('finance')) targetEl = document.querySelector('.sb-btn[onClick*="finance"]');
       }
 
       if (targetEl) {
-        showGuideHighlight(targetEl, step.text, stepIdx, flow.steps.length, flowKey);
+        showGuideHighlight(targetEl, L(step.text, step.textAr || step.text), stepIdx, flow.steps.length, flowKey);
       } else {
         // Skip
         showGuideStep(flowKey, stepIdx + 1);
       }
-    }, step.nav ? 500 : 150);
+    }, delay);
   };
 
   const showGuideHighlight = (el, text, stepIdx, totalSteps, flowKey) => {
+    el.scrollIntoView({ behavior: 'auto', block: 'center' });
     const rect = el.getBoundingClientRect();
 
     // Create highlight box overlay
@@ -327,7 +376,7 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
       ttLeft = window.innerWidth - 250;
     }
 
-    tooltip.style.cssText = `top:${ttTop}px;left:${ttLeft}px;position:absolute;z-index:10000;background:var(--surface3);border:1px solid var(--edge2);border-radius:8px;padding:12px;width:220px;box-shadow:0 4px 12px rgba(0,0,0,.3);color:var(--t1);font-size:12px;`;
+    tooltip.style.cssText = `top:${ttTop}px;left:${ttLeft}px;position:absolute;z-index:10000;background:var(--surface3);border:1px solid var(--edge2);border-radius:8px;padding:12px;width:220px;box-shadow:0 4px 12px rgba(0,0,0,.3);color:var(--t1);font-size:12px;pointer-events:auto;`;
     
     // Tooltip Content
     const isLast = stepIdx + 1 === totalSteps;
@@ -335,16 +384,30 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
       <div style="margin-bottom:8px;line-height:1.4">${t(text)}</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:10px;opacity:.7">${stepIdx + 1} / ${totalSteps}</span>
-        <button id="guide-next-btn" style="background:var(--orange);border:none;border-radius:4px;color:#fff;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600">
-          ${isLast ? L('Done ✓', 'تم ✓') : L('Next →', 'التالي →')}
-        </button>
+        <div style="display:flex;gap:6px">
+          <button id="guide-cancel-btn" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:var(--t2);padding:3px 8px;cursor:pointer;font-size:11px">
+            ${L('Cancel', 'إلغاء')}
+          </button>
+          <button id="guide-next-btn" style="background:var(--orange);border:none;border-radius:4px;color:#fff;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600">
+            ${isLast ? L('Done ✓', 'تم ✓') : L('Next →', 'التالي →')}
+          </button>
+        </div>
       </div>
     `;
 
     document.body.appendChild(tooltip);
     overlaysRef.current.push(tooltip);
 
-    // Attach click handler to Next/Done button
+    // Attach click handlers
+    const cancelBtn = tooltip.querySelector('#guide-cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        clearGuideOverlays();
+        setGuideActive(false);
+        setGuideFlowKey('');
+      };
+    }
+
     const btn = tooltip.querySelector('#guide-next-btn');
     if (btn) {
       btn.onclick = () => {
@@ -355,8 +418,6 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
         }
       };
     }
-
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const clearGuideOverlays = () => {
@@ -451,7 +512,17 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
   if (!aiPanelOpen) return null;
 
   return (
-    <div id="ai-panel" className="open" ref={panelRef}>
+    <div 
+      id="ai-panel" 
+      className="open" 
+      ref={panelRef}
+      style={{
+        transform: (guideActive && guideFlowKey) ? 'translateX(105%)' : 'translateX(0)',
+        opacity: (guideActive && guideFlowKey) ? 0 : 1,
+        pointerEvents: (guideActive && guideFlowKey) ? 'none' : 'auto',
+        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
       <div className="ai-panel-hd">
         <div className="ai-panel-title">
           <div className="ai-status-dot"></div>
@@ -506,7 +577,7 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
                 style={{ fontSize: '11px', padding: '4px 10px', borderColor: 'rgba(255,107,53,.3)' }}
                 onClick={() => runGuideFlow(k)}
               >
-                {t(GUIDE_FLOWS[k].title)}
+                {L(GUIDE_FLOWS[k].title, GUIDE_FLOWS[k].titleAr || GUIDE_FLOWS[k].title)}
               </button>
             ))}
           </div>
@@ -531,6 +602,21 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
       {/* Messages List */}
       <div className="ai-panel-body" id="ai-chat-body" ref={chatBodyRef}>
+        {/* Quick actions buttons grid */}
+        {!loading && (
+          <div className="ai-quick-actions" style={{ marginBottom: '14px', marginTop: '4px' }}>
+            {faqs.map((faq, index) => (
+              <button
+                className="ai-qa-btn"
+                key={index}
+                onClick={() => handleFaqClick(faq)}
+              >
+                {faq.q}
+              </button>
+            ))}
+          </div>
+        )}
+
         {messages.map((m, idx) => (
           <div className="ai-chat-msg" key={idx}>
             <div className="ai-msg-label">{m.sender === 'user' ? t('You') : t('Business Architect AI')}</div>
@@ -546,21 +632,6 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
             <div className="ai-msg-ai ai-thinking">
               {L('Analyzing business context...', 'جاري تحليل سياق البزنس...')}
             </div>
-          </div>
-        )}
-
-        {/* Quick actions buttons grid */}
-        {!loading && (
-          <div className="ai-quick-actions" style={{ marginTop: '14px' }}>
-            {faqs.map((faq, index) => (
-              <button
-                className="ai-qa-btn"
-                key={index}
-                onClick={() => handleFaqClick(faq)}
-              >
-                {faq.q}
-              </button>
-            ))}
           </div>
         )}
       </div>
