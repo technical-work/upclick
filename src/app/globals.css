@@ -574,12 +574,13 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
   outline: none;
   transition: all .15s;
   width: 100%;
+  caret-color: var(--orange);
 }
 .inp:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,107,53,.1) }
 .inp::placeholder { color:var(--t3) }
 select.inp { cursor:pointer; background:var(--surface2) !important; color:var(--t1) !important }
 textarea.inp { resize:vertical; line-height:1.6 }
-.nb-area { background:var(--surface2); border:1px solid var(--edge2); border-radius:10px; color:var(--t1); font-family:var(--fb); font-size:13px; padding:10px 13px; outline:none; resize:vertical; transition:border .15s; width:100%; line-height:1.6 }
+.nb-area { background:var(--surface2); border:1px solid var(--edge2); border-radius:10px; color:var(--t1); font-family:var(--fb); font-size:13px; padding:10px 13px; outline:none; resize:vertical; transition:border .15s; width:100%; line-height:1.6; caret-color: var(--orange); }
 .nb-area:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,107,53,.08) }
 
 /* ── TABS ── */
