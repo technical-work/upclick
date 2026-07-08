@@ -447,15 +447,30 @@ export default function BioLinkView() {
         </div>
       </div>
 
-      <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '20px', direction: isRtl ? 'rtl' : 'ltr' }}>
+      <div className="g2" style={{ gap: '20px', direction: isRtl ? 'rtl' : 'ltr' }}>
         {/* LEFT COLUMN: EDITOR TABS */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           {/* EDITOR NAV TABS */}
-          <div style={{ display: 'flex', background: 'var(--surface2)', borderRadius: '10px', padding: '4px', marginBottom: '14px', border: '1px solid var(--edge)' }}>
+          <div 
+            className="tabs-bar" 
+            style={{ 
+              display: 'flex', 
+              background: 'var(--surface2)', 
+              borderRadius: '10px', 
+              padding: '4px', 
+              marginBottom: '14px', 
+              border: '1px solid var(--edge)',
+              flexWrap: 'nowrap',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+          >
             <button 
               onClick={() => setEditorTab('setup')}
               style={{
-                flex: 1,
+                flex: '1 0 auto',
+                whiteSpace: 'nowrap',
                 background: editorTab === 'setup' ? 'var(--orange)' : 'none',
                 color: editorTab === 'setup' ? '#fff' : 'var(--t2)',
                 border: 'none',
@@ -472,7 +487,8 @@ export default function BioLinkView() {
             <button 
               onClick={() => setEditorTab('links')}
               style={{
-                flex: 1,
+                flex: '1 0 auto',
+                whiteSpace: 'nowrap',
                 background: editorTab === 'links' ? 'var(--orange)' : 'none',
                 color: editorTab === 'links' ? '#fff' : 'var(--t2)',
                 border: 'none',
@@ -489,7 +505,8 @@ export default function BioLinkView() {
             <button 
               onClick={() => setEditorTab('cv')}
               style={{
-                flex: 1,
+                flex: '1 0 auto',
+                whiteSpace: 'nowrap',
                 background: editorTab === 'cv' ? 'var(--orange)' : 'none',
                 color: editorTab === 'cv' ? '#fff' : 'var(--t2)',
                 border: 'none',
@@ -614,7 +631,7 @@ export default function BioLinkView() {
                 {/* Layout Selector */}
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Layout Style', 'نمط التخطيط')}</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {[
                       { key: 'classic', icon: '☰', label: L('Classic', 'كلاسيكي') },
                       { key: 'grid', icon: '⊞', label: L('Grid', 'شبكي') },
@@ -624,6 +641,8 @@ export default function BioLinkView() {
                         key={lay.key}
                         onClick={() => setLayout(lay.key)}
                         style={{
+                          flex: '1 1 0',
+                          minWidth: '70px',
                           background: layout === lay.key ? 'var(--orange)' : 'var(--surface2)',
                           color: layout === lay.key ? '#fff' : 'var(--t2)',
                           border: '1px solid var(--edge)',
@@ -648,7 +667,7 @@ export default function BioLinkView() {
                 {/* Theme Selector */}
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Theme Palette', 'مظهر الألوان')}</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                  <div className="bio-theme-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                     {[
                       { key: 'dark', color: '#08080f', name: L('Dark', 'داكن') },
                       { key: 'purple', color: 'linear-gradient(135deg,#6C35FF,#a855f7)', name: L('Purple', 'بنفسجي') },
@@ -766,7 +785,7 @@ export default function BioLinkView() {
               {/* Social Accounts Handles */}
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">📱 {L('Social Profiles', 'حسابات التواصل')}</div></div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="g2" style={{ gap: '10px', marginBottom: 0 }}>
                   {[
                     { key: 'ig', icon: '📸', placeholder: '@instagram' },
                     { key: 'tt', icon: '🎵', placeholder: '@tiktok' },
@@ -849,7 +868,7 @@ export default function BioLinkView() {
                         />
                       </div>
                       
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                      <div className="g2" style={{ gap: '10px', marginTop: '6px', marginBottom: 0 }}>
                         <div>
                           <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
                             {L('Email Address', 'البريد الإلكتروني')}
@@ -908,7 +927,7 @@ export default function BioLinkView() {
                             <button onClick={() => removeExperience(idx)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '13px' }}>✕</button>
                           </div>
                           
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div className="g2" style={{ gap: '8px', marginBottom: 0 }}>
                             <input 
                               className="inp" 
                               value={exp.role || ''} 
@@ -966,7 +985,7 @@ export default function BioLinkView() {
                             <button onClick={() => removeEducation(idx)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '13px' }}>✕</button>
                           </div>
                           
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div className="g2" style={{ gap: '8px', marginBottom: 0 }}>
                             <input 
                               className="inp" 
                               value={edu.degree || ''} 
@@ -1009,7 +1028,7 @@ export default function BioLinkView() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {skillsList.map((skill, idx) => (
-                        <div key={idx} style={{ background: 'var(--surface2)', padding: '10px', borderRadius: '8px', border: '1px solid var(--edge)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div key={idx} style={{ background: 'var(--surface2)', padding: '10px', borderRadius: '8px', border: '1px solid var(--edge)', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
                           <input 
                             className="inp" 
                             value={skill.name || ''} 
@@ -1048,7 +1067,7 @@ export default function BioLinkView() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {languages.map((langItem, idx) => (
-                        <div key={idx} style={{ background: 'var(--surface2)', padding: '10px', borderRadius: '8px', border: '1px solid var(--edge)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div key={idx} style={{ background: 'var(--surface2)', padding: '10px', borderRadius: '8px', border: '1px solid var(--edge)', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
                           <input 
                             className="inp" 
                             value={langItem.name || ''} 
@@ -1089,7 +1108,7 @@ export default function BioLinkView() {
                             <button onClick={() => removeCertification(idx)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '13px' }}>✕</button>
                           </div>
                           
-                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                          <div className="g21" style={{ gap: '8px', marginBottom: 0 }}>
                             <input 
                               className="inp" 
                               value={cert.name || ''} 
@@ -1173,7 +1192,7 @@ export default function BioLinkView() {
         </div>
 
         {/* RIGHT COLUMN: LIVE MOCK PREVIEW */}
-        <div className="card" style={{ position: 'sticky', top: '14px', height: 'fit-content' }}>
+        <div className="card bio-preview-col" style={{ position: 'sticky', top: '14px', height: 'fit-content' }}>
           <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="sec-title">📱 {L('Live Preview', 'معاينة مباشرة')}</div>
             {cvEnabled && (

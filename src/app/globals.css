@@ -1117,6 +1117,11 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
 
 /* ── AI LANDING PAGE DASHBOARD EDITOR STYLES ── */
 
+/* BioLink editor: editor column slightly wider than preview on desktop */
+#pg-bio > .g2 {
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
 /* Prevent the whole page from overflowing horizontally (RTL left-shift fix) */
 #pg-landing {
   overflow-x: hidden;
@@ -1204,6 +1209,38 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
     flex-direction: column !important;
     gap: 8px !important;
     padding: 10px 12px !important;
+  }
+
+  /* ── BIO LINK / CV PAGE MOBILE FIXES ── */
+  /* Prevent horizontal overflow on the bio page */
+  #pg-bio {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+
+  /* On mobile, remove sticky positioning on the preview so it flows naturally below */
+  #pg-bio .bio-preview-col {
+    position: static !important;
+  }
+
+  /* Force all inputs/textareas/selects inside bio editor to respect parent width */
+  #pg-bio .inp,
+  #pg-bio textarea,
+  #pg-bio select,
+  #pg-bio input {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Bio page cards: tighter padding on mobile */
+  #pg-bio .card {
+    padding: 12px !important;
+  }
+
+  /* Theme color palette: keep 5 columns on mobile (small color swatches) */
+  #pg-bio .bio-theme-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
   }
 }
 
