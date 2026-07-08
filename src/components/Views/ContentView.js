@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { DB, tvDB, soundsDB } from '../../data/mockData';
 import { callClaudeAPI } from '../../utils/ai';
@@ -87,12 +87,75 @@ export default function ContentView() {
   };
 
   // 2. Ideas Tab States
-  const [todayIdeas, setTodayIdeas] = useState([]);
+  const [todayIdeas, setTodayIdeas] = useState(GC.contentHub?.todayIdeas || []);
+  const [loadingIdeas, setLoadingIdeas] = useState(false);
   const savedIdeas = GC.contentHub?.savedIdeas || [];
+ 
+  const handleGenIdeas = async () => {
+    setLoadingIdeas(true);
+    const isArabic = lang === 'ar';
+    const systemPrompt = isArabic
+      ? `أنت مدير شبكات تواصل اجتماعي وصانع محتوى خبير. تقوم بتوليد أفكار ريلز وكاروسيل وتيك توك مبتكرة وخاطفة للانتباه ومخصصة بدقة لمجال المستخدم.
+يجب أن تعود بالإجابة كـ JSON Array صالح فقط بدون أي نصوص أو توضيحات أخرى.`
+      : `You are an expert social media manager and content creator. You generate attention-grabbing, highly viral ideas for Reels, Carousels, Stories, and TikToks, strictly tailored to the user's business niche.
+You MUST return the output strictly as a clean JSON array (no conversational filler, no markdown formatting blocks except the array itself).`;
 
-  const handleGenIdeas = () => {
-    setTodayIdeas(DB.ideas[lang] || []);
-    alert(L('5 new ideas generated! ✨', 'تم توليد ٥ أفكار جديدة! ✨'));
+    const prompt = isArabic
+      ? `قم بتوليد 5 أفكار محتوى يومية مخصصة ومبتكرة جداً ومناسبة للجمهور العربي.
+بيانات البزنس الحالية:
+- المجال: "${GC?.profile?.niche || 'صناعة المحتوى والنمو الرقمي'}"
+- الجمهور المستهدف: "${GC?.profile?.offer?.audience || 'المهتمين بالنمو والتطوير'}"
+- نموذج العمل: "${GC?.profile?.type || 'صانع محتوى'}"
+
+يرجى مراعاة ما يقوم به كبار صناع المحتوى والمنافسين في هذا المجال وجلب أفكار ريلز وتيك توك وكاروسيل مواكبة للترند وتخص هذا النطاق تحديداً.
+
+أرجع المخرجات بالصيغة التالية (JSON Array):
+[
+  { "t": "عنوان الفكرة الجذاب المبتكر المتلائم مع المجال", "p": "ريل / كاروسيل / ستوري / تيك توك", "ty": "تعليمي / شخصي / مجتمع / لايف ستايل", "tm": "٧–٩ ص / ١٢–٢ م" }
+]`
+      : `Generate 5 daily customized and highly engaging content ideas matching current social media trends in the user's niche.
+Business Context:
+- Niche: "${GC?.profile?.niche || 'Content Creation & Digital Growth'}"
+- Target Audience: "${GC?.profile?.offer?.audience || 'Ambition professionals'}"
+- Model: "${GC?.profile?.type || 'Content Creator'}"
+
+Analyze what top creators and competitors in this niche are posting. Generate modern content templates.
+
+Return format (JSON Array):
+[
+  { "t": "Engaging idea title tailored to the niche", "p": "Reel / Carousel / Story / TikTok", "ty": "Educational / Personal / Community / Lifestyle", "tm": "7-9 AM / 12-2 PM" }
+]`;
+
+    try {
+      const resText = await callClaudeAPI(prompt, systemPrompt, lang, GC);
+      let cleanJson = resText.trim();
+      if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      }
+      const parsed = JSON.parse(cleanJson);
+      const finalIdeas = (Array.isArray(parsed) && parsed.length > 0) ? parsed : (DB.ideas[lang] || DB.ideas.en);
+      setTodayIdeas(finalIdeas);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          todayIdeas: finalIdeas
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      const finalIdeas = DB.ideas[lang] || DB.ideas.en;
+      setTodayIdeas(finalIdeas);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          todayIdeas: finalIdeas
+        }
+      });
+    } finally {
+      setLoadingIdeas(false);
+    }
   };
 
   const handleSaveIdea = (idea) => {
@@ -142,9 +205,10 @@ export default function ContentView() {
   };
 
   // 3. Captions Tab States
-  const [capInp, setCapInp] = useState('');
-  const [selectedTone, setSelectedTone] = useState(0); // 0: Funny, 1: Educational, 2: Emotional, 3: CTA
-  const [generatedCaptions, setGeneratedCaptions] = useState([]);
+  const [capInp, setCapInp] = useState(GC.contentHub?.capInp || '');
+  const [selectedTone, setSelectedTone] = useState(GC.contentHub?.selectedTone || 0); // 0: Funny, 1: Educational, 2: Emotional, 3: CTA
+  const [capHookType, setCapHookType] = useState(GC.contentHub?.capHookType || 'question'); // 'question', 'stat', 'pov', 'story', 'challenge'
+  const [generatedCaptions, setGeneratedCaptions] = useState(GC.contentHub?.generatedCaptions || []);
   const [generatingCaptions, setGeneratingCaptions] = useState(false);
 
   const handleGenCaps = async () => {
@@ -156,28 +220,59 @@ export default function ContentView() {
     setGeneratedCaptions([]);
 
     const tones = ['Funny', 'Educational', 'Emotional', 'CTA'];
-    const prompt = `Generate 3 captions with tone: ${tones[selectedTone]} for a post about: "${capInp}". Language: ${lang}. Focus on Arab audience. Output them as a list.`;
+    const hookNames = {
+      question: 'Question (سؤال)',
+      stat: 'Statistic (إحصائية)',
+      pov: 'POV',
+      story: 'Story (قصة)',
+      challenge: 'Challenge (تحدي)'
+    };
+
+    const prompt = `Generate 3 captions with tone: ${tones[selectedTone]} starting with a Hook type: "${hookNames[capHookType] || capHookType}" for a post about: "${capInp}". Language: ${lang}. Focus on Arab audience. Output them as a list.`;
     const sysPrompt = 'Arabic/English social media copywriter. Engaging, specific, emojis included.';
 
     try {
       const reply = await callClaudeAPI(prompt, sysPrompt, lang);
       const splitCaps = reply.split('\n\n').filter(Boolean).map(c => c.replace(/^\d+[\.\s]/, '').trim());
-      setGeneratedCaptions(splitCaps.length > 0 ? splitCaps : [reply]);
+      const finalCaps = splitCaps.length > 0 ? splitCaps : [reply];
+      setGeneratedCaptions(finalCaps);
+      
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          capInp,
+          selectedTone,
+          capHookType,
+          generatedCaptions: finalCaps
+        }
+      });
     } catch (e) {
       // Fallback captions
       const fallbacks = DB.capSets[lang] && DB.capSets[lang][selectedTone] || ['Generated caption fallback'];
       setGeneratedCaptions(fallbacks);
+      
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          capInp,
+          selectedTone,
+          capHookType,
+          generatedCaptions: fallbacks
+        }
+      });
     } finally {
       setGeneratingCaptions(false);
     }
   };
 
   // 4. Script Writer Tab States
-  const [scrTopic, setScrTopic] = useState('');
-  const [scrPlatform, setScrPlatform] = useState('Instagram Reel (30–60s)');
-  const [scrStyle, setScrStyle] = useState('Educational + Tips');
-  const [scrHookType, setScrHookType] = useState('question'); // 'question', 'stat', 'pov', 'story', 'challenge'
-  const [generatedScript, setGeneratedScript] = useState('');
+  const [scrTopic, setScrTopic] = useState(GC.contentHub?.scrTopic || '');
+  const [scrPlatform, setScrPlatform] = useState(GC.contentHub?.scrPlatform || 'Instagram Reel (30–60s)');
+  const [scrStyle, setScrStyle] = useState(GC.contentHub?.scrStyle || 'Educational + Tips');
+  const [scrHookType, setScrHookType] = useState(GC.contentHub?.scrHookType || 'question'); // 'question', 'stat', 'pov', 'story', 'challenge'
+  const [generatedScript, setGeneratedScript] = useState(GC.contentHub?.generatedScript || '');
   const [generatingScript, setGeneratingScript] = useState(false);
 
   const triggerContentAI = async (toolKey, loadingSetter, outputSetter, prompt, system, isArrayOutput = false, fallbackFn = null) => {
@@ -207,6 +302,7 @@ export default function ContentView() {
       } else {
         outputSetter(finalRes);
       }
+      return finalRes;
     } catch (e) {
       console.warn("AI generation failed, trying fallback:", e);
       if (fallbackFn) {
@@ -214,6 +310,7 @@ export default function ContentView() {
       } else {
         outputSetter(isArrayOutput ? ['Error generating content'] : 'Error generating content');
       }
+      return null;
     } finally {
       loadingSetter(false);
     }
@@ -255,9 +352,33 @@ export default function ContentView() {
 
       const fallbackText = `📱 Platform: ${scrPlatform}\n⏱️ Duration: ${isShort ? '30–60 sec' : '6–9 min'}\n\n🎬 OPENING\n${hook}\n\n💡 BODY\n${body}\n\n🎯 CTA\n${cta}`;
       setGeneratedScript(fallbackText);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          scrTopic,
+          scrPlatform,
+          scrStyle,
+          scrHookType,
+          generatedScript: fallbackText
+        }
+      });
     };
 
-    await triggerContentAI('Script Writer', setGeneratingScript, setGeneratedScript, prompt, sysPrompt, false, fallbackFn);
+    const finalRes = await triggerContentAI('Script Writer', setGeneratingScript, setGeneratedScript, prompt, sysPrompt, false, fallbackFn);
+    if (finalRes) {
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          scrTopic,
+          scrPlatform,
+          scrStyle,
+          scrHookType,
+          generatedScript: finalRes
+        }
+      });
+    }
   };
 
   const handleCopyScript = () => {
@@ -268,9 +389,9 @@ export default function ContentView() {
   };
 
   // 5. Trending Videos Tab States
-  const [tvPlatform, setTvPlatform] = useState('TikTok');
-  const [tvSelectedTrend, setTvSelectedTrend] = useState('Morning Routine Format');
-  const [trendIdeasOut, setTrendIdeasOut] = useState('');
+  const [tvPlatform, setTvPlatform] = useState(GC.contentHub?.tvPlatform || 'TikTok');
+  const [tvSelectedTrend, setTvSelectedTrend] = useState(GC.contentHub?.tvSelectedTrend || 'Morning Routine Format');
+  const [trendIdeasOut, setTrendIdeasOut] = useState(GC.contentHub?.trendIdeasOut || '');
   const [generatingTrendVersion, setGeneratingTrendVersion] = useState(false);
 
   const getTrendingVideos = () => {
@@ -283,16 +404,37 @@ export default function ContentView() {
     const sysPrompt = 'Viral video ideator specializing in MENA niche audience targeting.';
 
     const fallbackFn = () => {
-      setTrendIdeasOut(L('Click "Generate My Version" to customize your script.', 'اضغط على زر توليد نسختي للحصول على أفكار مخصصة.'));
+      const fbText = L('Click "Generate My Version" to customize your script.', 'اضغط على زر توليد نسختي للحصول على أفكار مخصصة.');
+      setTrendIdeasOut(fbText);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          tvPlatform,
+          tvSelectedTrend,
+          trendIdeasOut: fbText
+        }
+      });
     };
 
-    await triggerContentAI('Gen From Trend', setGeneratingTrendVersion, setTrendIdeasOut, prompt, sysPrompt, false, fallbackFn);
+    const finalRes = await triggerContentAI('Gen From Trend', setGeneratingTrendVersion, setTrendIdeasOut, prompt, sysPrompt, false, fallbackFn);
+    if (finalRes) {
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          tvPlatform,
+          tvSelectedTrend,
+          trendIdeasOut: finalRes
+        }
+      });
+    }
   };
 
   // 6. Repurpose Tab States
-  const [repInp, setRepInp] = useState('');
-  const [repType, setRepType] = useState('Instagram Reel script');
-  const [repOutputs, setRepOutputs] = useState([]);
+  const [repInp, setRepInp] = useState(GC.contentHub?.repInp || '');
+  const [repType, setRepType] = useState(GC.contentHub?.repType || 'Instagram Reel script');
+  const [repOutputs, setRepOutputs] = useState(GC.contentHub?.repOutputs || []);
   const [repurposing, setRepurposing] = useState(false);
 
   const handleRepurposeContent = async () => {
@@ -305,13 +447,34 @@ export default function ContentView() {
     const sysPrompt = 'Content repurposing machine. Return the 5 formats labeled clearly.';
 
     const fallbackFn = () => {
-      setRepOutputs(lang === 'ar'
+      const fbOutputs = lang === 'ar'
         ? ['١. سكريبت ريل معاد صياغته', '٢. ثريد تويتر', '٣. نيوزليتر إيميل', '٤. تصميم شرائح كاروسيل', '٥. مقدمة مقال']
-        : ['1. Repurposed Reel script', '2. Twitter Thread', '3. Email newsletter', '4. Carousel slides outline', '5. Blog post intro']
-      );
+        : ['1. Repurposed Reel script', '2. Twitter Thread', '3. Email newsletter', '4. Carousel slides outline', '5. Blog post intro'];
+      setRepOutputs(fbOutputs);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          repInp,
+          repType,
+          repOutputs: fbOutputs
+        }
+      });
     };
 
-    await triggerContentAI('Repurpose', setRepurposing, setRepOutputs, prompt, sysPrompt, true, fallbackFn);
+    const finalRes = await triggerContentAI('Repurpose', setRepurposing, setRepOutputs, prompt, sysPrompt, true, fallbackFn);
+    if (finalRes) {
+      const parts = finalRes.split(/(?=\d\.\s*)/g).filter(Boolean);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          repInp,
+          repType,
+          repOutputs: parts
+        }
+      });
+    }
   };
 
   // 7. Radar Tab (Trends) Lists
@@ -321,10 +484,10 @@ export default function ContentView() {
   const audioRadar = DB.trendAudio || [];
 
   // 8. Q&A Tab States
-  const [qaInp, setQaInp] = useState('');
-  const [qaStyle, setQaStyle] = useState('Friendly & Casual');
-  const [qaFormat, setQaFormat] = useState('Story reply');
-  const [qaAnswer, setQaAnswer] = useState('');
+  const [qaInp, setQaInp] = useState(GC.contentHub?.qaInp || '');
+  const [qaStyle, setQaStyle] = useState(GC.contentHub?.qaStyle || 'Friendly & Casual');
+  const [qaFormat, setQaFormat] = useState(GC.contentHub?.qaFormat || 'Story reply');
+  const [qaAnswer, setQaAnswer] = useState(GC.contentHub?.qaAnswer || '');
   const [generatingQA, setGeneratingQA] = useState(false);
 
   const handleGenQA = async () => {
@@ -333,15 +496,188 @@ export default function ContentView() {
       return;
     }
 
-    const prompt = `Create an answer to this question: "${qaInp}". Style: ${qaStyle}. Format: ${qaFormat}. Language: ${lang}. Write the output directly as if you are replying.`;
-    const sysPrompt = 'Personal assistant answering community questions in an engaging style.';
+    const prompt = `Create a reply/answer to this question: "${qaInp}".
+Style: ${qaStyle}
+Format: ${qaFormat}
+Language: ${lang === 'ar' ? 'Arabic' : 'English'}
+
+Write the output directly as if you are replying.
+IMPORTANT: You MUST use rich Markdown styling to format the output.
+- Use headings (###) to separate logical sections.
+- Highlight key terms, metrics, numbers, and important lessons using bold text (**bold words**) so they stand out beautifully.
+- Use lists (- or 1.) for tips or step-by-step guidance.`;
+    const sysPrompt = 'You are a professional social media manager. You write replies using rich markdown format (headings, lists, bold highlights) to make them visually premium and highly structured.';
 
     const fallbackFn = () => {
-      setQaAnswer(L('Reply answer generated.', 'تم توليد الرد.'));
+      const fbAnswer = L('Reply answer generated.', 'تم توليد الرد.');
+      setQaAnswer(fbAnswer);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          qaInp,
+          qaStyle,
+          qaFormat,
+          qaAnswer: fbAnswer
+        }
+      });
     };
 
-    await triggerContentAI('Community Q&A', setGeneratingQA, setQaAnswer, prompt, sysPrompt, false, fallbackFn);
+    const finalRes = await triggerContentAI('Community Q&A', setGeneratingQA, setQaAnswer, prompt, sysPrompt, false, fallbackFn);
+    if (finalRes) {
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          qaInp,
+          qaStyle,
+          qaFormat,
+          qaAnswer: finalRes
+        }
+      });
+    }
   };
+
+  const handleCopyQA = () => {
+    if (!qaAnswer) return;
+    navigator.clipboard.writeText(qaAnswer).then(() => {
+      alert(L('Answer copied to clipboard!', 'تم نسخ الرد للحافظة!'));
+    });
+  };
+
+  const handleImproveQA = async (instruction) => {
+    if (!qaAnswer) return;
+    setGeneratingQA(true);
+    
+    const prompt = `Modify this generated response to follow this instruction: "${instruction}".
+Current response: "${qaAnswer}"
+Keep the reply format as selected: ${qaFormat}. Respond in same language: ${lang}.
+Make sure to keep/use rich Markdown formatting (headings, lists, and bold text for highlights) to structure the improved version.`;
+    const sysPrompt = 'You are a professional social media manager. You rewrite and optimize replies using rich markdown format (headings, lists, bold highlights) to make them visually premium.';
+
+    const fallbackFn = () => {
+      alert('Failed to modify reply.');
+    };
+
+    const finalRes = await triggerContentAI('Community Q&A Update', setGeneratingQA, setQaAnswer, prompt, sysPrompt, false, fallbackFn);
+    if (finalRes) {
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          qaInp,
+          qaStyle,
+          qaFormat,
+          qaAnswer: finalRes
+        }
+      });
+    }
+  };
+
+  // 8.5 Trending Sounds AI generator
+  const [trendingSounds, setTrendingSounds] = useState(GC.contentHub?.trendingSounds || soundsDB[lang] || soundsDB.en || []);
+  const [generatingSounds, setGeneratingSounds] = useState(false);
+
+  const handleGenTrendingSounds = async () => {
+    setGeneratingSounds(true);
+    const isArabic = lang === 'ar';
+    const systemPrompt = `You are a social media trend analyst specializing in social media viral audio tracking.
+You MUST return the output strictly as a clean JSON array (no markdown block wrapper except json, no extra explanation text).`;
+
+    const prompt = `Generate a list of 6 trending sounds/songs/audio styles currently popular on social media (TikTok/Instagram Reels) that are highly relevant to my niche.
+Business Context:
+- Niche: "${GC?.profile?.niche || 'Digital Growth'}"
+- Audience: "${GC?.profile?.offer?.audience || 'General'}"
+- Model: "${GC?.profile?.type || 'Content Creator'}"
+Preferred Language: ${isArabic ? 'Arabic' : 'English'}
+
+For each sound, provide:
+1. Sound Name (e.g. popular song title and artist, or audio trend description).
+2. Relevant tags/niche match.
+3. Estimate of usage count (e.g. "1.2M uses" or "450K uses").
+4. Whether it is hot/viral right now (boolean).
+
+Return strictly as a JSON array of objects:
+[
+  { "n": "Sound Name", "t": "Niche Match / Tags", "u": "Usage Count (e.g. 1.2M or 450K)", "h": true }
+]`;
+
+    try {
+      const resText = await callClaudeAPI(prompt, systemPrompt, lang, GC);
+      let cleanJson = resText.trim();
+      if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+      }
+      const parsed = JSON.parse(cleanJson);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setTrendingSounds(parsed);
+        saveGC({
+          ...GC,
+          contentHub: {
+            ...GC.contentHub,
+            trendingSounds: parsed
+          }
+        });
+      } else {
+        throw new Error("Invalid format");
+      }
+    } catch (e) {
+      console.error(e);
+      const fb = soundsDB[lang] || soundsDB.en || [];
+      setTrendingSounds(fb);
+      saveGC({
+        ...GC,
+        contentHub: {
+          ...GC.contentHub,
+          trendingSounds: fb
+        }
+      });
+    } finally {
+      setGeneratingSounds(false);
+    }
+  };
+
+  const audioPlayerRef = useRef(null);
+  const [playingIdx, setPlayingIdx] = useState(null);
+
+  const togglePlaySound = (idx, soundName) => {
+    const mp3Urls = [
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+      'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
+    ];
+    const url = mp3Urls[idx % mp3Urls.length];
+
+    if (playingIdx === idx) {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      setPlayingIdx(null);
+    } else {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+      const newAudio = new Audio(url);
+      newAudio.volume = 0.4;
+      newAudio.play().catch(err => console.log('Audio playback error:', err));
+      newAudio.onended = () => {
+        setPlayingIdx(null);
+      };
+      audioPlayerRef.current = newAudio;
+      setPlayingIdx(idx);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+    };
+  }, []);
 
   // 9. Burnout Tab States
   const [energyLevel, setEnergyLevel] = useState(80); // 0, 40, 65, 80, 100
@@ -403,7 +739,15 @@ export default function ContentView() {
       {/* ================= IDEAS PANEL ================= */}
       {activeSubTab === 'ct-ideas' && (
         <div className="tool-panel on" id="ct-ideas">
-          <div className="sh mb"><button className="btn btn-prime" onClick={handleGenIdeas}>✨ {L('Generate Ideas', 'توليد أفكار')}</button></div>
+          <div className="sh mb">
+            <button 
+              className="btn btn-prime" 
+              onClick={handleGenIdeas} 
+              disabled={loadingIdeas}
+            >
+              {loadingIdeas ? L('Generating...', 'جاري التوليد...') : `✨ ${L('Generate Ideas', 'توليد أفكار')}`}
+            </button>
+          </div>
           <div className="g2">
             <div className="card mb">
               <div className="sh"><div className="st">{L('Today\'s Ideas', 'أفكار اليوم')}</div></div>
@@ -482,7 +826,28 @@ export default function ContentView() {
                   ))}
                 </div>
               </div>
-              <button className="btn btn-prime" onClick={handleGenCaps} style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }}>
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '6px' }}>{L('Hook Type', 'نوع الجذب')}</div>
+                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'question', label: L('❓ Question', '❓ سؤال') },
+                    { key: 'stat', label: L('📊 Statistic', '📊 إحصائية') },
+                    { key: 'pov', label: L('👁️ POV', '👁️ POV') },
+                    { key: 'story', label: L('📖 Story', '📖 قصة') },
+                    { key: 'challenge', label: L('🎯 Challenge', '🎯 تحدي') }
+                  ].map((hookItem) => (
+                    <button
+                      key={hookItem.key}
+                      className={`btn ${capHookType === hookItem.key ? 'btn-prime' : 'btn-ghost'}`}
+                      onClick={() => setCapHookType(hookItem.key)}
+                      style={{ fontSize: '11.5px', padding: '5px 10px' }}
+                    >
+                      {hookItem.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button className="btn btn-prime" onClick={handleGenCaps} style={{ width: '100%', justifyContent: 'center', marginTop: '14px' }}>
                 {generatingCaptions ? L('Generating...', 'جاري الكتابة...') : L('✨ Generate Captions', '✨ كتابة كابشن')}
               </button>
             </div>
@@ -591,15 +956,17 @@ export default function ContentView() {
                   📋 {L('Copy', 'نسخ')}
                 </button>
               </div>
-              <div id="script-output" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              <div id="script-output">
                 {!generatedScript ? (
                   <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '36px 0' }}>
                     {L('Fill details and generate script', 'املأ التفاصيل واضغط لكتابة السكريبت')}
                   </div>
                 ) : (
-                  <div className="ai" style={{ whiteSpace: 'pre-line', fontSize: '12.5px', lineHeight: '1.8' }}>
-                    {generatedScript}
-                  </div>
+                  <div 
+                    className="ai-box" 
+                    style={{ background: 'var(--orange-dim)', padding: '16px', borderRadius: '10px', border: '1px solid var(--orange-d)', color: 'var(--t1)', fontSize: '13px', lineHeight: '1.8', maxHeight: '480px', overflowY: 'auto' }}
+                    dangerouslySetInnerHTML={{ __html: parseMarkdown(generatedScript) }}
+                  />
                 )}
               </div>
             </div>
@@ -659,47 +1026,76 @@ export default function ContentView() {
             </div>
             <div className="card mb">
               <div className="sh"><div className="st">{L('AI Ideas From Trends', 'أفكار الذكاء من الترند')}</div></div>
-              <select className="inp" value={tvSelectedTrend} onChange={(e) => setTvSelectedTrend(e.target.value)} style={{ marginStyle: '10px', width: '100%', marginBottom: '10px' }}>
-                {getTrendingVideos().map((v, i) => (
-                  <option key={i}>{v.t}</option>
-                ))}
-              </select>
-              <button className="btn btn-prime" onClick={() => handleGenFromTrend()} style={{ width: '100%', justifyContent: 'center', marginBottom: '9px' }}>
-                🤖 {L('Generate My Version', 'توليد نسختي')}
-              </button>
-              <div id="trend-ideas-output" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {generatingTrendVersion && (
-                  <div className="ai-box" style={{ animation: 'pulse 1.5s infinite' }}>{L('⚡ Rewriting trend format...', '⚡ جاري كتابة أفكار مناسبة...')}</div>
-                )}
-                {!generatingTrendVersion && !trendIdeasOut && (
-                  <div style={{ fontSize: '12px', color: 'var(--t3)' }}>
-                    {L('Select a trend and generate ideas', 'اختر ترند من الأعلى لتوليد أفكار مخصصة')}
-                  </div>
-                )}
-                {!generatingTrendVersion && trendIdeasOut && (
-                  <div
-                    className="ai-box"
-                    style={{ fontSize: '12.5px', lineHeight: '1.6' }}
-                    dangerouslySetInnerHTML={{ __html: parseMarkdown(trendIdeasOut) }}
-                  />
-                )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+                <select className="inp" value={tvSelectedTrend} onChange={(e) => setTvSelectedTrend(e.target.value)} style={{ width: '100%' }}>
+                  {getTrendingVideos().map((v, i) => (
+                    <option key={i}>{v.t}</option>
+                  ))}
+                </select>
+                <button className="btn btn-prime" onClick={() => handleGenFromTrend()} style={{ width: '100%', justifyContent: 'center' }}>
+                  🤖 {L('Generate My Version', 'توليد نسختي')}
+                </button>
+                <div id="trend-ideas-output" style={{ width: '100%' }}>
+                  {generatingTrendVersion && (
+                    <div className="ai-box" style={{ animation: 'pulse 1.5s infinite', width: '100%' }}>{L('⚡ Rewriting trend format...', '⚡ جاري كتابة أفكار مناسبة...')}</div>
+                  )}
+                  {!generatingTrendVersion && !trendIdeasOut && (
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', width: '100%', textAlign: 'center', padding: '16px 0' }}>
+                      {L('Select a trend and generate ideas', 'اختر ترند من الأعلى لتوليد أفكار مخصصة')}
+                    </div>
+                  )}
+                  {!generatingTrendVersion && trendIdeasOut && (
+                    <div
+                      className="ai-box"
+                      style={{ background: 'var(--orange-dim)', padding: '16px', borderRadius: '10px', border: '1px solid var(--orange-d)', color: 'var(--t1)', fontSize: '13px', lineHeight: '1.8', width: '100%', maxHeight: '550px', overflowY: 'auto', boxSizing: 'border-box' }}
+                      dangerouslySetInnerHTML={{ __html: parseMarkdown(trendIdeasOut) }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
           <div className="card mb">
-            <div className="sh"><div className="st">🎵 {L('Trending Sounds', 'أصوات ترند رائجة')}</div></div>
+            <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div className="st">🎵 {L('Trending Sounds', 'أصوات ترند رائجة')}</div>
+              <button 
+                className="btn btn-ai" 
+                onClick={handleGenTrendingSounds} 
+                disabled={generatingSounds} 
+                style={{ padding: '4px 10px', fontSize: '11px' }}
+              >
+                {generatingSounds ? L('Generating...', 'جاري التوليد...') : L('🤖 Generate Custom Sounds', '🤖 توليد أصوات لمجالي')}
+              </button>
+            </div>
             <div id="trending-sounds-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(soundsDB[lang] || soundsDB.en || []).map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: i < (soundsDB[lang] || []).length - 1 ? '1px solid var(--edge)' : 'none' }}>
-                  <div style={{ fontSize: '20px' }}>🎵</div>
+              {trendingSounds.map((s, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: i < trendingSounds.length - 1 ? '1px solid var(--edge)' : 'none' }}>
+                  <button 
+                    className="btn btn-ghost" 
+                    style={{ padding: '0', minWidth: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px' }} 
+                    onClick={() => togglePlaySound(i, s.n)}
+                  >
+                    {playingIdx === i ? '⏹️' : '▶️'}
+                  </button>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--t1)' }}>{s.n}</div>
                     <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{s.t} · {s.u} {L('uses', 'استخدام')}</div>
                   </div>
-                  {s.h && <span className="badge b-red">🔥 {L('Hot', 'حار')}</span>}
-                  <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: '11px' }} onClick={() => alert(L('Sound saved! 🎵', 'تم حفظ الصوت! 🎵'))}>
-                    {L('Use', 'استخدم')}
-                  </button>
+                  {s.h && <span className="badge b-red" style={{ flexShrink: 0 }}>🔥 {L('Hot', 'حار')}</span>}
+                  <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
+                    <a 
+                      href={`https://www.tiktok.com/search?q=${encodeURIComponent(s.n)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost" 
+                      style={{ padding: '4px 10px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      🎵 TikTok
+                    </a>
+                    <button className="btn btn-prime" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={() => alert(L('Sound saved! 🎵', 'تم حفظ الصوت! 🎵'))}>
+                      {L('Use', 'استخدم')}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -743,11 +1139,12 @@ export default function ContentView() {
                   </div>
                 ) : (
                   repOutputs.map((fText, i) => (
-                    <div className="ai mb" key={i} style={{ background: 'var(--surface2)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--orange)' }}>
-                      <div style={{ fontSize: '12.5px', color: 'var(--t1)', whiteSpace: 'pre-line', lineHeight: '1.6' }}>
-                        {fText}
-                      </div>
-                      <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(fText); alert(L('Copied!', 'تم النسخ!')); }} style={{ marginTop: '6px', padding: '3px 9px', fontSize: '11px' }}>
+                    <div className="ai mb" key={i} style={{ background: 'var(--orange-dim)', padding: '15px', borderRadius: '10px', border: '1px solid var(--orange-d)', marginBottom: '10px' }}>
+                      <div 
+                        style={{ fontSize: '13px', color: 'var(--t1)', lineHeight: '1.7' }}
+                        dangerouslySetInnerHTML={{ __html: parseMarkdown(fText) }}
+                      />
+                      <button className="btn btn-ghost" onClick={() => { navigator.clipboard.writeText(fText); alert(L('Copied!', 'تم النسخ!')); }} style={{ marginTop: '9px', padding: '3px 9px', fontSize: '11px' }}>
                         {L('Copy', 'نسخ')}
                       </button>
                     </div>
@@ -858,37 +1255,70 @@ export default function ContentView() {
               </button>
               <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--edge)' }}>
                 <div style={{ fontSize: '11.5px', color: 'var(--t2)', marginBottom: '7px' }}>{L('Frequently Asked', 'الأسئلة المتكررة')}</div>
-                <div id="qa-freq-list" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <div id="qa-freq-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {(DB.qaFreq[lang] || []).map((qText, idx) => (
                     <div
-                      className="idea"
                       key={idx}
-                      style={{ background: 'var(--surface2)', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer' }}
+                      style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
                       onClick={() => setQaInp(qText)}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--orange)'; e.currentTarget.style.background = 'var(--surface3)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--edge)'; e.currentTarget.style.background = 'var(--surface2)'; }}
                     >
-                      <div style={{ fontSize: '12.5px', color: 'var(--t1)' }}>{qText}</div>
+                      <div style={{ fontSize: '12.5px', color: 'var(--t1)' }}>💬 {qText}</div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-            <div className="card mb">
-              <div className="sh"><div className="st">{L('Generated Answer', 'الرد المقترح')}</div></div>
-              <div id="qaout">
+            <div className="card mb" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div className="st">{L('Generated Answer', 'الرد المقترح')}</div>
+                {qaAnswer && (
+                  <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: '11px' }} onClick={handleCopyQA}>
+                    📋 {L('Copy', 'نسخ')}
+                  </button>
+                )}
+              </div>
+              <div id="qaout" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 {generatingQA && (
-                  <div className="ai-box" style={{ animation: 'pulse 1.5s infinite' }}>{L('⚡ Generating response...', '⚡ جاري صياغة الرد...')}</div>
+                  <div className="ai-box" style={{ animation: 'pulse 1.5s infinite', flex: 1 }}>{L('⚡ Generating response...', '⚡ جاري صياغة الرد...')}</div>
                 )}
                 {!generatingQA && !qaAnswer && (
-                  <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '36px 0' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '36px 0', flex: 1 }}>
                     {L('Type a question and generate', 'اكتب سؤالك على اليسار لتوليد رد ذكي')}
                   </div>
                 )}
                 {!generatingQA && qaAnswer && (
-                  <div
-                    className="ai-box"
-                    style={{ fontSize: '13px', lineHeight: '1.6' }}
-                    dangerouslySetInnerHTML={{ __html: parseMarkdown(qaAnswer) }}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <div
+                      className="ai-box"
+                      style={{ background: 'var(--orange-dim)', padding: '16px', borderRadius: '10px', border: '1px solid var(--orange-d)', color: 'var(--t1)', fontSize: '13px', lineHeight: '1.8', maxHeight: '420px', overflowY: 'auto', boxSizing: 'border-box' }}
+                      dangerouslySetInnerHTML={{ __html: parseMarkdown(qaAnswer) }}
+                    />
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '6px' }}
+                        onClick={() => handleImproveQA('make it shorter')}
+                      >
+                        ⚡ {L('Shorter', 'تبسيط وتقصير')}
+                      </button>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '6px' }}
+                        onClick={() => handleImproveQA('add emojis')}
+                      >
+                        🔥 {L('Add Emojis', 'إضافة إيموجي')}
+                      </button>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '6px' }}
+                        onClick={() => handleImproveQA('add Call-to-Action')}
+                      >
+                        🎯 {L('Add Call-to-Action', 'دعوة تفاعل (CTA)')}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

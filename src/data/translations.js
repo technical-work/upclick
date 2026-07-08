@@ -1251,7 +1251,7 @@ export const ARTEXT = {
   "Draft": "مسودة",
   "Ready": "جاهز",
   "Free tier": "مجاني",
-  "AI Growth Intel": "ذكاء النمو الاصطناعي",
+  "AI Growth Intel": "رادار استخبارات النمو",
   "Social Trends": "الترندات الاجتماعية",
   "Grow": "النمو",
   "Marketing Lab": "مختبر التسويق",

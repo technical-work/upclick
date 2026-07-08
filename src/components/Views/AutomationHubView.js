@@ -1075,7 +1075,7 @@ export default function AutomationHubView() {
       </div>
 
       {/* Category Tabs */}
-      <div className="tabs-bar" style={{ overflowX: 'auto', flexWrap: 'nowrap' }}>
+      <div className="tabs-bar" style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', paddingBottom: '6px' }}>
         {tabs.map(tab => (
           <button 
             key={tab.id}
@@ -1314,16 +1314,16 @@ export default function AutomationHubView() {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '7px' }}>
                     {[
-                      { id: 'telegram', icon: '💬', name: 'Telegram' },
+                      { id: 'whatsapp', icon: '💬', name: 'WhatsApp' },
                       { id: 'telegram', icon: '✈️', name: 'Telegram' },
                       { id: 'gmail', icon: '📧', name: 'Gmail' },
                       { id: 'sheets', icon: '📊', name: 'Sheets' },
                       { id: 'notion', icon: '📝', name: 'Notion' },
                       { id: 'stripe', icon: '💳', name: 'Stripe' },
                       { id: 'openai', icon: '🤖', name: 'OpenAI' }
-                    ].map(app => (
+                    ].map((app, idx) => (
                       <label 
-                        key={app.id} 
+                        key={`${app.id}-${idx}`} 
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 9px', background: 'var(--surface2)', borderRadius: '8px', cursor: 'pointer', fontSize: '12.5px', color: 'var(--t2)' }}
                       >
                         <input 

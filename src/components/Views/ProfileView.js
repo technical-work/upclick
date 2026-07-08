@@ -52,7 +52,7 @@ export default function ProfileView() {
   const [tgConnected, setTgConnected] = useState(false);
 
   // AI analysis state
-  const [aiAnalysis, setAiAnalysis] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState(GC.profile?.aiAnalysis || '');
   const [loadingAI, setLoadingAI] = useState(false);
 
   // Sync state with GC on mount or context changes
@@ -76,6 +76,7 @@ export default function ProfileView() {
       setOfferName(activeProfile.offer?.name || '');
       setTargetMarket(activeProfile.offer?.market || '');
       setRevenueGoal(activeProfile.goal || '');
+      setAiAnalysis(activeProfile.aiAnalysis || '');
     }
 
     if (typeof window !== 'undefined') {
@@ -156,7 +157,15 @@ export default function ProfileView() {
         lang, 
         GC
       );
-      setAiAnalysis(reply || L('Could not generate response.', 'تعذر توليد رد من الذكاء الاصطناعي.'));
+      const resVal = reply || L('Could not generate response.', 'تعذر توليد رد من الذكاء الاصطناعي.');
+      setAiAnalysis(resVal);
+      saveGC({
+        ...GC,
+        profile: {
+          ...GC.profile,
+          aiAnalysis: resVal
+        }
+      });
     } catch (e) {
       setAiAnalysis(L('Connection error. Please try again.', 'خطأ في الاتصال. يرجى المحاولة مرة أخرى.'));
     } finally {

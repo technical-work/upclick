@@ -24,7 +24,7 @@ export default function FinanceView() {
   const [newSubName, setNewSubName] = useState('');
   const [newSubAmount, setNewSubAmount] = useState('');
   const [showSubForm, setShowSubForm] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState(GC.finance?.aiAnalysis || '');
   const [aiLoading, setAiLoading] = useState(false);
 
   const entries = GC.finance.entries || [];
@@ -83,6 +83,13 @@ Provide 3 actionable tips to improve profit margin, optimize subscription softwa
     try {
       const res = await callClaudeAPI(prompt, system, lang, GC);
       setAiAnalysis(res);
+      saveGC({
+        ...GC,
+        finance: {
+          ...GC.finance,
+          aiAnalysis: res
+        }
+      });
     } catch (e) {
       setAiAnalysis(L('Error generating financial analysis.', 'حدث خطأ أثناء تحليل البيانات المالية.'));
     }

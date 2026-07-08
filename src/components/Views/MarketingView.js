@@ -10,7 +10,7 @@ import CustomSelect from '../CustomSelect';
 const generateReportId = () => 'rep_' + Date.now();
 
 export default function MarketingView() {
-  const { lang, L, t, GC, saveGC, formatMoney, confirmAction } = useBusiness();
+  const { lang, L, t, GC, saveGC, formatMoney, confirmAction, currency } = useBusiness();
   const [activeTab, setActiveTab] = useState('research');
 
   const [competitorsCount, setCompetitorsCount] = useState(0);
@@ -52,7 +52,8 @@ export default function MarketingView() {
 
     // Offers
     offerCore: '', offerPain: '', offerTransform: '', offerPrice: '',
-    priceCurrent: '', priceType: '1-on-1 Coaching', priceExp: 'Beginner (0-1 year)', priceIncome: '',
+    offerAudience: '', offerFormat: 'Hybrid Group Program', offerDuration: '8 Weeks', offerGuarantee: '30-Day Money-Back (No Questions Asked)',
+    priceCurrent: '', priceType: '1-on-1 Coaching', priceExp: 'Beginner (0-1 year)', priceIncome: '', priceExpenses: '',
     upsellCore: '', upsellPrice: '', upsellAfter: '',
 
     // Ads
@@ -76,8 +77,8 @@ export default function MarketingView() {
     convFunnel: '', convDropoff: '', convRate: '',
 
     // Analytics
-    kpiModel: 'Coaching / Services', kpiTarget: '', kpiStage: 'Just starting',
-    revAov: '', revLeads: '', revClose: '', revGrowth: 'Organic only',
+    kpiModel: 'Coaching / Services', kpiTarget: '', kpiStage: 'Just starting', kpiActualRev: '', kpiActualLeads: '', kpiAov: '', kpiActualConv: '',
+    revAov: '', revLeads: '', revClose: '', revGrowth: 'Organic only', revAdBudget: '', revOpCosts: '',
     leadAud: '', leadMethod: 'Organic content + DM', leadGoal: '',
     roiSpend: '', roiLeads: '', roiClosed: '', roiRev: '',
 
@@ -239,7 +240,7 @@ export default function MarketingView() {
         </div>
         <div 
           className="ai-box" 
-          style={{ flex: 1 }}
+          style={{ flex: 1, overflowY: 'auto', maxHeight: '580px' }}
           dangerouslySetInnerHTML={{ 
             __html: isLoading ? loadingMsg : parseMarkdown(content || placeholder) 
           }}
@@ -254,9 +255,16 @@ export default function MarketingView() {
     let accumulated = '';
     let hasReceivedFirstChunk = false;
 
+    // Append currency suffix context
+    const isArabic = lang === 'ar';
+    const currencySuffix = isArabic
+      ? `\n\n[ملاحظة هامة جداً للعملة]: يرجى كتابة وعرض جميع المبالغ المالية والأسعار وعائد الاستثمار (ROI/ROAS) والتقديرات المالية في كامل المخرجات والنتائج بالعملة المحددة للحساب: ${currency?.code || 'USD'} (ورمزها: ${currency?.symbol || '$'}).`
+      : `\n\n[IMPORTANT CURRENCY INSTRUCTION]: Please format and write all prices, monetary values, ROI/ROAS, and financial estimates in the output using the account's selected currency: ${currency?.code || 'USD'} (symbol: ${currency?.symbol || '$'}).`;
+    const finalPrompt = promptText + currencySuffix;
+
     try {
       const response = await callClaudeAPI(
-        promptText, 
+        finalPrompt, 
         systemText, 
         lang, 
         GC, 
@@ -510,20 +518,112 @@ Analyze these campaign results and compare them with the previous plan. Propose:
 
   // ── 3. OFFERS SUB-ACTIONS ──
   const runOfferBuilder = () => {
-    const prompt = `Build an irresistible offer: Core "${inputs.offerCore}", Pain: "${inputs.offerPain}", Transformation: "${inputs.offerTransform}", Price: "${inputs.offerPrice}". Give us a packaging name, list of 3 high-value bonuses, 1 bold risk-reversal guarantee, and urgency scripts.`;
-    const system = `You are a high-ticket offer architect.`;
+    const isArabic = lang === 'ar';
+    const system = isArabic 
+      ? `أنت خبير واستشاري في تصميم وصياغة العروض التجارية عالية التحويل والعروض التي لا تقاوم (Irresistible Offers). هدفك هو تحويل فكرة البزنس إلى عرض تجاري متكامل ومحكم يجذب العميل للشراء.` 
+      : `You are a world-class High-Ticket Offer Architect and conversion strategist. Your goal is to structure irresistible marketing offers that convert highly.`;
+
+    const prompt = isArabic 
+      ? `قم ببناء عرض تجاري كامل ولا يقاوم بناءً على التفاصيل التالية:
+- المنتج/الخدمة الأساسية: "${inputs.offerCore || 'غير محدد'}"
+- الجمهور المستهدف: "${inputs.offerAudience || 'غير محدد'}"
+- التحول/النتيجة النهائية: "${inputs.offerTransform || 'غير محدد'}"
+- السعر الحالي: "${inputs.offerPrice || 'غير محدد'}"
+- ألم العميل الأساسي: "${inputs.offerPain || 'غير محدد'}"
+- طريقة التقديم: "${inputs.offerFormat || 'غير محدد'}"
+- مدة العرض/البرنامج: "${inputs.offerDuration || 'غير محدد'}"
+- نوع الضمان المقترح: "${inputs.offerGuarantee || 'غير محدد'}"
+
+يرجى إعطاء هيكل عرض تجاري متكامل (وليس مجرد سكريبت فيديو!)، يشتمل على:
+1. **اسم العرض المقترح والتموضع (Name & Positioning):** اسم جذاب ومهني للمنتج/الخدمة مع سطر هوك قوي (Hook).
+2. **تفصيل الخدمة الجوهرية (Core Deliverable & Transformation):** ما يحصل عليه العميل بالتحديد وكيف يتم تقديمه خلال ${inputs.offerDuration || 'المدة'} لتحقيق التحول.
+3. **مكدس القيمة بالتفصيل (The Value Stack & Tiered Pricing):**
+   - جدول يقارن بين القيمة الحقيقية لكل مكون (Value) والسعر الفعلي المعروض (Price).
+   - توضيح القيمة المتصورة الإجمالية لرفع قيمة العرض.
+4. **ثلاثة بونصات عالية القيمة (3 High-Value Bonuses):** بونصات مخصصة تكسر الاعتراضات الشائعة للجمهور وتسهل عليهم التطبيق (مثال: قوالب جاهزة، جروب دعم، مكالمة خاصة...).
+5. **صياغة الضمان خالي المخاطر (Risk-Reversal Guarantee):** كتابة صيغة الضمان المختار بشكل قوي يزيل الخوف تماماً ويشجع العميل على الدفع.
+6. **محفزات الندرة والاستعجال الفعلية (Urgency & Scarcity Elements):** كيف ندفعه للشراء الآن (مثال: سعة الدفعة الأولى، بونص لأول 5 مسجلين فقط).
+7. **خطة تحويل العملاء (Conversion Action Plan / CTA):** الخطوات الدقيقة التي يجب أن يتخذها العميل ليشتري (مثال: حجز مكالمة تأهيلية، الانتقال لصفحة الدفع مباشرة).`
+      : `Build a complete, irresistible marketing offer structure based on the following details:
+- Core Product/Service: "${inputs.offerCore || 'Not specified'}"
+- Target Audience: "${inputs.offerAudience || 'Not specified'}"
+- Final Transformation/Dream Outcome: "${inputs.offerTransform || 'Not specified'}"
+- Current Price: "${inputs.offerPrice || 'Not specified'}"
+- Target Customer Pain Point: "${inputs.offerPain || 'Not specified'}"
+- Delivery Format: "${inputs.offerFormat || 'Not specified'}"
+- Program/Offer Duration: "${inputs.offerDuration || 'Not specified'}"
+- Guarantee Choice: "${inputs.offerGuarantee || 'Not specified'}"
+
+Please design a comprehensive, highly-converting business offer framework (NOT just a video script!). Include the following sections:
+1. **Offer Package Name & Hook (Positioning):** Catchy, professional name with a strong hook/tagline.
+2. **Core Deliverables Breakdown (Core Transformation):** What exactly the buyer gets, how it is delivered over ${inputs.offerDuration || 'the duration'}, and how it achieves the dream outcome.
+3. **The Value Stack & Pricing Matrix:**
+   - A markdown table detailing each component, its estimated real value, and the special bundled price.
+   - Total perceived value calculation.
+4. **3 High-Value Objection-Busting Bonuses:** Strategic bonuses addressing specific customer fears or roadblocks.
+5. **The Risk-Reversal Guarantee:** A bold, copy-written guarantee statement based on the chosen guarantee type.
+6. **Urgency & Scarcity Hacks:** Real reasons to buy now (e.g., cohort limits, early-bird pricing expiry).
+7. **Call to Action (CTA) & Conversion Path:** The exact step-by-step process for the prospect to buy or apply.`;
+
     triggerAI('offer-builder', 'offer-out', prompt, system);
   };
 
   const runPricingOptimizer = () => {
-    const prompt = `Optimize pricing: Current Price "${inputs.priceCurrent}", Product type "${inputs.priceType}", Experience level "${inputs.priceExp}", Target Monthly Income: "${inputs.priceIncome}". Give tiered pricing options (low, medium, high), pricing psychology hacks, and sales volume calculator.`;
+    const prompt = `Optimize pricing: Current Price "${inputs.priceCurrent}", Product type "${inputs.priceType}", Experience level "${inputs.priceExp}", Target Monthly Income: "${inputs.priceIncome}", Monthly Expenses: "${inputs.priceExpenses || '0'}". Give tiered pricing options (low, medium, high), pricing psychology hacks, and a detailed sales volume calculator that accounts for monthly expenses to show net profit.`;
     const system = `You are a pricing psychologist.`;
     triggerAI('pricing', 'pricing-out', prompt, system);
   };
 
   const runUpsellBuilder = () => {
-    const prompt = `Build upsell ladder: Core offer "${inputs.upsellCore}", Price "${inputs.upsellPrice}", Client needs after buy: "${inputs.upsellAfter}". Suggest 1 order bump, 1 immediate post-purchase upsell, and 1 high-ticket backend offer.`;
-    const system = `You are a funnel monetization expert.`;
+    const isArabic = lang === 'ar';
+    const system = isArabic
+      ? `أنت خبير واستشاري خبير في تحسين مبيعات القمع ومضاعفة القيمة المالية للعملاء (LTV) وتصميم سلالم البيع الإضافي (Upsell & Cross-Sell).`
+      : `You are a world-class Funnel Monetization and Upsell Strategist. You specialize in designing high-value backend ladders that double average customer value (LTV).`;
+
+    const prompt = isArabic
+      ? `قم ببناء خطة وسلّم مبيعات إضافية وخلفية متكاملة وعالية التحديد ومخصصة للبزنس.
+اسم المنتج/العرض الأساسي: "${inputs.upsellCore || 'منتجي الأساسي'}"
+سعر المنتج الأساسي: "${inputs.upsellPrice || '500'}"
+احتياجات العميل بعد الشراء التي حددها المستخدم: "${inputs.upsellAfter || 'غير محددة'}"
+
+يرجى تقسيم التحليل بدقة بالغة إلى جزأين رئيسيين وعرضهما بالكامل دون أي اختصار:
+
+### الجزء الأول: اقتراحات وحلول الذكاء الاصطناعي الذكية (AI Smart Upsell Engine)
+بناءً على فهمك لمجال عملنا، الجمهور المستهدف، والمنافسين، وما يحتاجه العميل طبيعياً كخطوة تالية بعد شراء المنتج الأساسي:
+- اقترح فكرة واحدة لبرنامج تدريبي عملي، معسكر تفاعلي (Cohort)، أو توجيه مباشر عالي القيمة يحل المشكلة التالية التي ستواجه العميل (مثال: إذا اشترى كورس برمجة، فالخطوة التالية الطبيعية هي تدريب عملي ومراجعة كود أو الإعداد للعمل).
+- حدد السعر المقترح لتقديم هذا البرنامج وطريقة تنفيذه وهيكلة التدريب.
+
+---
+
+### الجزء الثاني: عروض البيع الإضافي المخصصة بناءً على مدخلاتك (Custom-Built Upsell Ladder)
+بناءً على الاحتياجات المحددة التي أدخلها المستخدم ("${inputs.upsellAfter}")، قم بتصميم وتفصيل:
+1. **Order Bump (عرض الشراء الفوري الصغير):** صندوق اختيار يظهر في صفحة الدفع.
+2. **One-Time Offer (OTO) Upsell (العرض الإضافي المباشر بعد الشراء):** خطوة تالية مباشرة تظهر بعد الدفع.
+3. **High-Ticket Backend Program (العرض الخلفي عالي القيمة):** برنامج VIP متكامل للعملاء المميزين.
+
+لكل عرض من هذه العروض الثلاثة، قم بتوفير: اسم المنتج المقترح، الوصف التفصيلي، السعر المقترح بالعملة، والعبارة التسويقية الجاذبة (Copy Hook).`
+      : `Build a comprehensive, highly-specific Upsell & Backend Offer Ladder.
+Core Offer Name: "${inputs.upsellCore || 'My Main Product'}"
+Core Offer Price: "${inputs.upsellPrice || '$500'}"
+User-defined Customer Needs after buying: "${inputs.upsellAfter || 'Not specified'}"
+
+Please split your analysis into two main parts:
+
+### الجزء الأول: اقتراحات وحلول الذكاء الاصطناعي الذكية (AI Smart Upsell Engine)
+Based on your understanding of our business niche, target audience, competitors, and the typical post-purchase journey, suggest:
+- 1 next-step high-value coaching, community, or cohort training idea that solves the customer's unexpressed next bottleneck (e.g. if they bought a coding course, they need live mentorship, portfolio review, or job prep).
+- The suggested price point and delivery structure.
+
+---
+
+### الجزء الثاني: عروض البيع الإضافي المخصصة بناءً على مدخلاتك (Custom-Built Upsell Ladder)
+Based on the specific customer needs the user entered ("${inputs.upsellAfter}"), build a tailored:
+1. **Order Bump (عرض الشراء الفوري الصغير):** Checkbox on checkout page.
+2. **One-Time Offer (OTO) Upsell (العرض الإضافي المباشر بعد الشراء):** High-converting next step.
+3. **High-Ticket Backend Program (العرض الخلفي عالي القيمة):** Ultimate VIP package.
+
+For each, provide: Product Name, Description, Proposed Price, and Copy Hook.`;
+
     triggerAI('upsell', 'upsell-out', prompt, system);
   };
 
@@ -614,22 +714,93 @@ Analyze these campaign results and compare them with the previous plan. Propose:
     triggerAI('conversion', 'conv-out', prompt, system);
   };
 
-  // ── 7. ANALYTICS SUB-ACTIONS ──
   const runKPIPlanner = () => {
-    const prompt = `Build KPI planner: Business model "${inputs.kpiModel}", Target monthly rev "${inputs.kpiTarget}", Current stage "${inputs.kpiStage}". Define the exact metrics to track, benchmark ranges, and formulas.`;
-    const system = `You are a metrics dashboard analyst.`;
+    const prompt = `Build KPI planner and status dashboard:
+Business Model: "${inputs.kpiModel}"
+Target Monthly Revenue: "${inputs.kpiTarget}"
+Current Business Stage: "${inputs.kpiStage}"
+Average Order/Ticket Value: "${inputs.kpiAov || 'Not specified'}"
+Actual Monthly Revenue: "${inputs.kpiActualRev || '0'}"
+Actual Monthly Traffic/Leads: "${inputs.kpiActualLeads || '0'}"
+Actual Conversion Rate: "${inputs.kpiActualConv || '0'}%"
+
+Please compile a data-driven KPI progress dashboard:
+1. Progress analysis compared to the monthly target.
+2. Visual KPI progress table detailing target, actual, variance, and status color badges (e.g. green, yellow, red).
+3. Leak diagnostics (e.g. is traffic too low? is conversion below industry benchmarks for "${inputs.kpiModel}"?).
+4. Tactical action steps to improve.`;
+    const system = `You are a high-performance metrics dashboard analyst. You calculate precise KPI conversion rates and traffic-to-revenue projections.`;
     triggerAI('kpi', 'kpi-out', prompt, system);
   };
 
   const runRevenueForecast = () => {
-    const prompt = `Forecast revenue: Average Sale Value "${inputs.revAov}", Monthly leads "${inputs.revLeads}", Current Close Rate "${inputs.revClose}", Growth Plan "${inputs.revGrowth}". Project revenue for 30, 60, 90 days under conservative, realistic, and aggressive targets.`;
-    const system = `You are a financial analyst.`;
+    const prompt = `Forecast revenue and net profits:
+Average Sale Value (AOV): "${inputs.revAov}"
+Monthly Leads/Traffic: "${inputs.revLeads}"
+Current Closing Rate: "${inputs.revClose}"
+Growth Plan Model: "${inputs.revGrowth}"
+Monthly Ad Budget: "${inputs.revAdBudget || '0'}"
+Monthly Fixed Operational Costs: "${inputs.revOpCosts || '0'}"
+
+Please compute a financial projection for 30, 60, and 90 days under Conservative, Realistic, and Aggressive scenarios. Include:
+1. Gross Revenue
+2. Total Expenses (Ad Budget + Operating Costs)
+3. Net Profit and Profit Margin %
+4. Strategic growth advice based on the Growth Plan Model.`;
+    const system = `You are an expert financial analyst and SaaS/E-commerce growth CFO. You calculate exact net profit margins, advertising returns, and multi-scenario business projections.`;
     triggerAI('rev-forecast', 'rev-forecast-out', prompt, system);
   };
 
   const runLeadForecast = () => {
-    const prompt = `Forecast leads: Audience size "${inputs.leadAud}", Method "${inputs.leadMethod}", Goal "${inputs.leadGoal}". Suggest the daily audience reach and conversion metrics needed to hit the lead target.`;
-    const system = `You are a lead generation strategist.`;
+    const isArabic = lang === 'ar';
+    const system = isArabic
+      ? `أنت خبير نمو واستراتيجي جذب عملاء محتملين. تقوم بتحليل خارطة طريق الأعمال وتوقع نمو أعداد العملاء بناءً على نموذج العمل وقنوات الجذب المحددة بالبزنس.`
+      : `You are an expert growth strategist and lead generation analyst. You analyze business roadmaps and project lead growth trajectories based on marketing channels.`;
+
+    const prompt = isArabic
+      ? `قم بتحليل وتوقع نمو أعداد العملاء المحتملين (Leads & Clients) بناءً على بيانات الحساب والخطط الاستراتيجية التالية:
+
+بيانات البزنس الحالية:
+- المجال: "${GC?.profile?.niche || 'غير محدد'}"
+- العرض الأساسي: "${GC?.profile?.offer?.name || 'غير محدد'}"
+- سعر الاستثمار: "${GC?.profile?.offer?.price || 'غير محدد'}"
+- هدف الإيرادات الشهري: "${GC?.profile?.goal || 'غير محدد'}"
+- خارطة الطريق الحالية للنمو (Roadmap):
+"${GC?.strategy?.roadmap || 'لا توجد خارطة طريق مسجلة حالياً في النظام'}"
+
+المدخلات المحددة للعملاء:
+- حجم الجمهور/المتابعين الحالي: "${inputs.leadAud || '1500'}"
+- طريقة جذب العملاء المختارة: "${inputs.leadMethod || 'Paid ads'}"
+- هدف العملاء المحتملين شهرياً: "${inputs.leadGoal || '5000'}"
+
+المطلوب صياغة تقرير توقعات متكامل للعملاء (Lead Forecast Dashboard):
+1. **تحليل أثر خارطة الطريق الحالية (Roadmap Synergy):** كيف ستؤثر خطوات الـ Roadmap المسجلة حالياً على جلب هؤلاء العملاء.
+2. **جدول توقعات النمو لـ 30 و 60 و 90 يوماً (30/60/90 Day Forecast):**
+   - توقع أعداد العملاء المحتملين الجدد (Leads).
+   - توقع المبيعات الفعلية (Clients) بناءً على طريقة الجذب والمجال.
+3. **متطلبات الحملات اليومية والأسبوعية:** كم عدد المشاهدات/النقرات المطلوبة يومياً للوصول للهدف.
+4. **التوجيه الاستراتيجي القادم:** نصائح عملية لتنفيذ الـ Roadmap لضمان زيادة العملاء.`
+      : `Analyze and forecast lead & client growth based on the following business context and strategy roadmap:
+
+Business Profile Context:
+- Niche: "${GC?.profile?.niche || 'Not specified'}"
+- Core Offer: "${GC?.profile?.offer?.name || 'Not specified'}"
+- Price: "${GC?.profile?.offer?.price || 'Not specified'}"
+- Monthly Revenue Goal: "${GC?.profile?.goal || 'Not specified'}"
+- Current Strategy Roadmap:
+"${GC?.strategy?.roadmap || 'No roadmap saved yet'}"
+
+Lead Generation Settings:
+- Current Audience Size: "${inputs.leadAud || '1500'}"
+- Lead Generation Method: "${inputs.leadMethod || 'Paid ads'}"
+- Target Monthly Leads: "${inputs.leadGoal || '5000'}"
+
+Please compute a comprehensive Lead & Client Growth Forecast:
+1. **Roadmap Synergy Analysis:** How the user's strategy roadmap steps will drive lead acquisition.
+2. **30/60/90 Day Growth Table:** Projected Leads and Projected Closed Clients.
+3. **Daily/Weekly Reach Requirements:** Traffic or ad impressions needed to sustain this volume.
+4. **Strategic Alignment Advice:** Recommendations to optimize their roadmap actions for client acquisition.`;
+
     triggerAI('lead-forecast', 'lead-forecast-out', prompt, system);
   };
 
@@ -669,7 +840,18 @@ Analyze these campaign results and compare them with the previous plan. Propose:
     const system = `You are a CMOSage marketing assistant. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}. Know that the business niche is ${GC.profile.niche}, stage is ${GC.profile.stage}, monthly revenues: $${GC.finance.entries.filter(e=>e.type==='income').reduce((a,b)=>a+b.amount,0)}. Use these variables in recommendations.`;
     try {
       const res = await callClaudeAPI(query, system, lang, GC);
-      setOutputs(prev => ({ ...prev, 'ai-out': res }));
+      setOutputs(prev => {
+        const next = { ...prev, 'ai-out': res };
+        saveGC({
+          ...GC,
+          marketing: {
+            ...(GC?.marketing || {}),
+            inputs: inputs,
+            outputs: next
+          }
+        });
+        return next;
+      });
     } catch (e) {
       setOutputs(prev => ({ ...prev, 'ai-out': 'Error connecting to AI.' }));
     }
@@ -1165,16 +1347,24 @@ Analyze these campaign results and compare them with the previous plan. Propose:
             <div className="g2">
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">🎁 {L('Offer Builder', 'منشئ العروض')}</div></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What do you sell?', 'ما الذي تبيعه؟')}</label>
-                    <input className="inp" placeholder="Coaching program, course, service..." value={inputs.offerCore} onChange={e => handleInputChange('offerCore', e.target.value)} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What do you sell?', 'ما الذي تبيعه؟')}</label>
+                      <input className="inp" placeholder="Coaching program, course, service..." value={inputs.offerCore} onChange={e => handleInputChange('offerCore', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Audience', 'الجمهور المستهدف')}</label>
+                      <input className="inp" placeholder="E-commerce owners, freelancers..." value={inputs.offerAudience || ''} onChange={e => handleInputChange('offerAudience', e.target.value)} />
+                    </div>
                   </div>
+
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('What transformation do you deliver?', 'ما النتيجة / التحول الذي تقدمه؟')}</label>
                     <input className="inp" placeholder="From 0 to $5K/month in 90 days..." value={inputs.offerTransform} onChange={e => handleInputChange('offerTransform', e.target.value)} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Price', 'السعر الحالي')}</label>
                       <input className="inp" placeholder="$1,500" value={inputs.offerPrice} onChange={e => handleInputChange('offerPrice', e.target.value)} />
@@ -1184,7 +1374,42 @@ Analyze these campaign results and compare them with the previous plan. Propose:
                       <input className="inp" placeholder="Not consistent sales" value={inputs.offerPain} onChange={e => handleInputChange('offerPain', e.target.value)} />
                     </div>
                   </div>
-                  <button className="btn btn-prime" onClick={runOfferBuilder} style={{ width: '100%', justifyContent: 'center' }}>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Delivery Format', 'طريقة التقديم')}</label>
+                      <CustomSelect className="inp" value={inputs.offerFormat || 'Hybrid Group Program'} onChange={e => handleInputChange('offerFormat', e.target.value)}>
+                        <option value="1-on-1 Coaching">{L('1-on-1 Coaching', 'جلسات فردية 1-on-1')}</option>
+                        <option value="Hybrid Group Program">{L('Hybrid Group Program', 'برنامج جماعي هجين (مجموعات + مسجل)')}</option>
+                        <option value="Done-For-You (DFY) Service">{L('Done-For-You (DFY) Service', 'خدمة متكاملة بالنيابة عنك DFY')}</option>
+                        <option value="Done-With-You (DWY) Consulting">{L('Done-With-You (DWY) Consulting', 'استشارات ومرافقة DWY')}</option>
+                        <option value="Digital Course & Community">{L('Digital Course & Community', 'كورس رقمي ومجتمع تفاعلي')}</option>
+                        <option value="Paid Community">{L('Paid Community / Membership', 'اشتراك دوري / مجتمع مغلق')}</option>
+                      </CustomSelect>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Offer Duration', 'مدة العرض/البرنامج')}</label>
+                      <CustomSelect className="inp" value={inputs.offerDuration || '8 Weeks'} onChange={e => handleInputChange('offerDuration', e.target.value)}>
+                        <option value="4 Weeks">{L('4 Weeks', '٤ أسابيع')}</option>
+                        <option value="8 Weeks">{L('8 Weeks', '٨ أسابيع')}</option>
+                        <option value="12 Weeks / 90 Days">{L('12 Weeks / 90 Days', '١٢ أسبوع / ٩٠ يوم')}</option>
+                        <option value="6 Months">{L('6 Months', '٦ أشهر')}</option>
+                        <option value="Lifetime">{L('Lifetime Access', 'وصول مدى الحياة')}</option>
+                      </CustomSelect>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Guarantee Choice', 'نوع الضمان المقترح')}</label>
+                    <CustomSelect className="inp" value={inputs.offerGuarantee || '30-Day Money-Back (No Questions Asked)'} onChange={e => handleInputChange('offerGuarantee', e.target.value)}>
+                      <option value="30-Day Money-Back (No Questions Asked)">{L('30-Day Money-Back (No Questions Asked)', 'ضمان استرداد ٣٠ يوم (بدون طرح أسئلة)')}</option>
+                      <option value="Action-Based Conditional Guarantee">{L('Action-Based Conditional Guarantee', 'ضمان مشروط بالتطبيق الفعلي والعملي')}</option>
+                      <option value="Double Your Money Back Guarantee">{L('Double Your Money Back Guarantee', 'ضمان استرداد الضعف في حال عدم تحقيق النتيجة')}</option>
+                      <option value="No Guarantee (Low Price/High Scarcity)">{L('No Guarantee (Low Price/High Scarcity)', 'بدون ضمان (سعر مخفض / ندرة عالية)')}</option>
+                    </CustomSelect>
+                  </div>
+
+                  <button className="btn btn-prime" onClick={runOfferBuilder} style={{ width: '100%', justifyContent: 'center', marginTop: '6px' }}>
                     🎁 {L('Build Irresistible Offer', 'أعد عرضاً لا يقاوم')}
                   </button>
                 </div>
@@ -1198,20 +1423,22 @@ Analyze these campaign results and compare them with the previous plan. Propose:
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">💰 {L('Pricing Optimizer', 'مُحسن التسعير')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Price', 'السعر الحالي')}</label>
-                    <input className="inp" placeholder="$500" value={inputs.priceCurrent} onChange={e => handleInputChange('priceCurrent', e.target.value)} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Price', 'السعر الحالي')}</label>
+                      <input className="inp" placeholder="$500" value={inputs.priceCurrent} onChange={e => handleInputChange('priceCurrent', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product Type', 'نوع المنتج')}</label>
+                      <CustomSelect className="inp" value={inputs.priceType} onChange={e => handleInputChange('priceType', e.target.value)}>
+                        <option value="1-on-1 Coaching">1-on-1 Coaching</option>
+                        <option value="Group Program">Group Program</option>
+                        <option value="Online Course">Online Course</option>
+                        <option value="DFY Service">DFY Service</option>
+                      </CustomSelect>
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Product Type', 'نوع المنتج')}</label>
-                    <CustomSelect className="inp" value={inputs.priceType} onChange={e => handleInputChange('priceType', e.target.value)}>
-                      <option value="1-on-1 Coaching">1-on-1 Coaching</option>
-                      <option value="Group Program">Group Program</option>
-                      <option value="Online Course">Online Course</option>
-                      <option value="DFY Service">DFY Service</option>
-                    </CustomSelect>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Experience Level', 'مستوى الخبرة')}</label>
                       <CustomSelect className="inp" value={inputs.priceExp || ''} onChange={e => handleInputChange('priceExp', e.target.value)}>
@@ -1221,8 +1448,12 @@ Analyze these campaign results and compare them with the previous plan. Propose:
                       </CustomSelect>
                     </div>
                     <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Monthly Income', 'الدخل الشهري المستهدف')}</label>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Target Income', 'الدخل المستهدف')}</label>
                       <input className="inp" placeholder="$5,000" value={inputs.priceIncome || ''} onChange={e => handleInputChange('priceIncome', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Expenses', 'المصروفات الشهرية')}</label>
+                      <input className="inp" placeholder="$1,000" value={inputs.priceExpenses || ''} onChange={e => handleInputChange('priceExpenses', e.target.value)} />
                     </div>
                   </div>
                   <button className="btn btn-prime" onClick={runPricingOptimizer} style={{ width: '100%', justifyContent: 'center' }}>
@@ -1441,22 +1672,25 @@ Analyze these campaign results and compare them with the previous plan. Propose:
           {analTab === 'kpi' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">📊 {L('KPI Planner', 'مخطط مؤشرات الأداء')}</div></div>
+                <div className="sec-hd"><div className="sec-title">📊 {L('KPI Planner & Dashboard', 'مخطط ولوحة مؤشرات الأداء')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Model', 'نموذج العمل')}</label>
-                    <CustomSelect className="inp" value={inputs.kpiModel} onChange={e => handleInputChange('kpiModel', e.target.value)}>
-                      <option value="Coaching / Services">Coaching / Services</option>
-                      <option value="Online Courses">Online Courses</option>
-                      <option value="E-commerce">E-commerce</option>
-                      <option value="SaaS / App">SaaS / App</option>
-                    </CustomSelect>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Business Model', 'نموذج العمل')}</label>
+                      <CustomSelect className="inp" value={inputs.kpiModel} onChange={e => handleInputChange('kpiModel', e.target.value)}>
+                        <option value="Coaching / Services">Coaching / Services</option>
+                        <option value="Online Courses">Online Courses</option>
+                        <option value="E-commerce">E-commerce</option>
+                        <option value="SaaS / App">SaaS / App</option>
+                      </CustomSelect>
+                    </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Revenue Goal', 'هدف الإيرادات الشهري')}</label>
                       <input className="inp" placeholder="$10,000" value={inputs.kpiTarget} onChange={e => handleInputChange('kpiTarget', e.target.value)} />
                     </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Stage', 'المرحلة الحالية')}</label>
                       <CustomSelect className="inp" value={inputs.kpiStage} onChange={e => handleInputChange('kpiStage', e.target.value)}>
@@ -1466,35 +1700,57 @@ Analyze these campaign results and compare them with the previous plan. Propose:
                         <option value="$10K+/month">$10K+/month</option>
                       </CustomSelect>
                     </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Average Order Value (AOV)', 'متوسط قيمة الطلب/المبيعة')}</label>
+                      <input className="inp" placeholder="$200" value={inputs.kpiAov || ''} onChange={e => handleInputChange('kpiAov', e.target.value)} />
+                    </div>
                   </div>
-                  <button className="btn btn-prime" onClick={runKPIPlanner} style={{ width: '100%', justifyContent: 'center' }}>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Actual Monthly Revenue', 'الإيرادات الشهرية الفعلية')}</label>
+                      <input className="inp" placeholder="$3,000" value={inputs.kpiActualRev || ''} onChange={e => handleInputChange('kpiActualRev', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Actual Monthly Traffic/Leads', 'الزيارات/العملاء شهرياً')}</label>
+                      <input className="inp" placeholder="500" value={inputs.kpiActualLeads || ''} onChange={e => handleInputChange('kpiActualLeads', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Actual Conversion Rate (%)', 'معدل التحويل الحالي (%)')}</label>
+                    <input className="inp" placeholder="1.5%" value={inputs.kpiActualConv || ''} onChange={e => handleInputChange('kpiActualConv', e.target.value)} />
+                  </div>
+
+                  <button className="btn btn-prime" onClick={runKPIPlanner} style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}>
                     📊 {L('Build My KPI Dashboard', 'أعد لوحة مؤشرات الأداء')}
                   </button>
                 </div>
               </div>
-              {renderResultCard('مؤشرات الأداء الخاصة بك', 'Your KPIs', 'kpi-out', 'جاري إعداد المؤشرات...', 'Building KPIs...', 'المؤشرات الأساسية للمتابعة اليومية والأسبوعية.', 'Define metrics to track daily, weekly, and monthly.', 'KPI Planner')}
+              {renderResultCard('لوحة مؤشرات الأداء (KPIs)', 'KPI Dashboard', 'kpi-out', 'جاري إعداد وتحليل المؤشرات...', 'Analyzing performance metrics...', 'أدخل بياناتك الفعلية لتوليد لوحة متابعة الأداء مع تحليل الثغرات.', 'Enter your targets and actuals to generate a progress dashboard with leak analysis.', 'KPI Planner')}
             </div>
           )}
 
           {analTab === 'rev' && (
             <div className="g2">
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">💰 {L('Revenue Forecast', 'توقعات الأرباح')}</div></div>
+                <div className="sec-hd"><div className="sec-title">💰 {L('Revenue & Profit Forecast', 'توقعات الأرباح والإيرادات')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Average Sale Value', 'متوسط قيمة الصفقة')}</label>
-                      <input className="inp" placeholder="$2,000" value={inputs.revAov} onChange={e => handleInputChange('revAov', e.target.value)} />
+                      <input className="inp" placeholder="$200" value={inputs.revAov} onChange={e => handleInputChange('revAov', e.target.value)} />
                     </div>
                     <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Leads', 'العملاء المحتملون شهرياً')}</label>
-                      <input className="inp" placeholder="50 leads" value={inputs.revLeads} onChange={e => handleInputChange('revLeads', e.target.value)} />
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Leads/Traffic', 'العملاء المحتملون شهرياً')}</label>
+                      <input className="inp" placeholder="100 leads" value={inputs.revLeads} onChange={e => handleInputChange('revLeads', e.target.value)} />
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
-                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Close Rate', 'معدل الإغلاق الحالي')}</label>
-                      <input className="inp" placeholder="20%" value={inputs.revClose} onChange={e => handleInputChange('revClose', e.target.value)} />
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Current Close Rate (%)', 'معدل الإغلاق الحالي (%)')}</label>
+                      <input className="inp" placeholder="10%" value={inputs.revClose} onChange={e => handleInputChange('revClose', e.target.value)} />
                     </div>
                     <div>
                       <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Growth Plan', 'خطة النمو')}</label>
@@ -1505,12 +1761,24 @@ Analyze these campaign results and compare them with the previous plan. Propose:
                       </CustomSelect>
                     </div>
                   </div>
-                  <button className="btn btn-prime" onClick={runRevenueForecast} style={{ width: '100%', justifyContent: 'center' }}>
-                    💰 {L('Generate Revenue Forecast', 'ولّد توقعات الإيرادات')}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Ad Budget', 'الميزانية الإعلانية شهرياً')}</label>
+                      <input className="inp" placeholder="$1,000" value={inputs.revAdBudget || ''} onChange={e => handleInputChange('revAdBudget', e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Monthly Operating Costs', 'المصروفات التشغيلية شهرياً')}</label>
+                      <input className="inp" placeholder="$500" value={inputs.revOpCosts || ''} onChange={e => handleInputChange('revOpCosts', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <button className="btn btn-prime" onClick={runRevenueForecast} style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}>
+                    💰 {L('Generate Revenue Forecast', 'ولّد توقعات الإيرادات والأرباح')}
                   </button>
                 </div>
               </div>
-              {renderResultCard('التوقعات المالية', 'Revenue Projections', 'rev-forecast-out', 'جاري الاحتساب...', 'Forecasting revenue...', 'النمذجة المالية وتوقعات ٣٠ و ٦٠ و ٩٠ يوماً.', '30, 60, 90 day projections under different scenarios.', 'Revenue Forecast')}
+              {renderResultCard('التوقعات المالية والأرباح', 'Revenue & Profit Projections', 'rev-forecast-out', 'جاري الاحتساب المالي والتوقعات...', 'Forecasting revenue and margins...', 'النمذجة المالية وتوقعات الأرباح والإيرادات الصافية لـ ٣٠ و ٦٠ و ٩٠ يوماً.', '30, 60, 90 day net profit and gross revenue projections.', 'Revenue Forecast')}
             </div>
           )}
 
@@ -1531,11 +1799,7 @@ Analyze these campaign results and compare them with the previous plan. Propose:
                       <option value="Paid ads">Paid ads</option>
                     </CustomSelect>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Lead Goal (monthly)', 'هدف العملاء المحتملين شهرياً')}</label>
-                    <input className="inp" placeholder="100 leads" value={inputs.leadGoal} onChange={e => handleInputChange('leadGoal', e.target.value)} />
-                  </div>
-                  <button className="btn btn-prime" onClick={runLeadForecast} style={{ width: '100%', justifyContent: 'center' }}>
+                  <button className="btn btn-prime" onClick={runLeadForecast} style={{ width: '100%', justifyContent: 'center', marginTop: '6px' }}>
                     👥 {L('Forecast My Leads', 'توقع أعداد عملائي')}
                   </button>
                 </div>

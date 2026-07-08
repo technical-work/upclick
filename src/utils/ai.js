@@ -28,6 +28,16 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
   const MODEL_NAME = isCustomConnected ? (customModel || undefined) : undefined;
 
   try {
+    let finalSystemPrompt = systemPrompt || "You are a helpful assistant.";
+    let finalPrompt = prompt;
+
+    if (lang === 'ar') {
+      finalSystemPrompt = `[معلومة هامة جداً]: لغة واجهة المستخدم هي اللغة العربية. يجب عليك كتابة الرد بالكامل (العناوين، النصوص، التفاصيل، الجداول، الملاحظات) باللغة العربية الفصحى فقط. يمنع منعاً باتاً استخدام اللغة الإنجليزية إلا للمصطلحات التقنية التي لا يمكن تعريبها. حتى وإن كان نص الطلب التالي مكتوباً بالإنجليزية، قم بترجمته ذهنياً وصياغة الإجابة كاملة باللغة العربية.\n\n${finalSystemPrompt}`;
+      finalPrompt = `[طلب هام]: يرجى صياغة الإجابة كاملة باللغة العربية الفصحى وبشكل احترافي.\n---\n${prompt}`;
+    } else {
+      finalSystemPrompt = `${finalSystemPrompt}\n\n[SYSTEM NOTE]: Please write the response in English because the user interface is in English.`;
+    }
+
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: {
@@ -40,8 +50,8 @@ export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessC
         userId: auth?.currentUser?.uid || '',
         tool: toolName,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
+          { role: 'system', content: finalSystemPrompt },
+          { role: 'user', content: finalPrompt }
         ]
       })
     });
@@ -203,8 +213,46 @@ function generateSmartFallback(prompt, lang, context) {
   const localizedWeaknesses = isAR ? getAR(weaknesses, 'غياب الأتمتة وقمع المبيعات') : weaknesses;
   const localizedOpportunities = isAR ? getAR(opportunities, 'إطلاق عروض ومنتجات رقمية عالية الهامش') : opportunities;
   const localizedThreats = isAR ? getAR(threats, 'تحديثات خوارزميات شبكات التواصل') : threats;
+  // Retrieve user's configured currency symbol & code safely
+  let symbol = '$';
+  let currencyCode = 'USD';
+  try {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('upklick_currency');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        symbol = parsed.symbol || '$';
+        currencyCode = parsed.code || 'USD';
+      }
+    }
+  } catch (e) {}
 
   const normalized = pStr.toLowerCase();
+
+  // ── OFFERS & PRICING FALLBACK ROUTING ──
+  if (normalized.includes('offer-builder') || normalized.includes('irresistible offer') || normalized.includes('offer builder') || normalized.includes('هيكل عرض تجاري')) {
+    return generateSmartOfferBuilder(isAR, name, localizedNiche, price, localizedTransform, localizedPain, context, pStr, symbol, currencyCode);
+  }
+
+  if (normalized.includes('optimize pricing') || normalized.includes('pricing optimizer') || normalized.includes('pricing-out') || normalized.includes('optimize pricing:')) {
+    return generateSmartPricing(isAR, name, localizedNiche, price, localizedTransform, context, pStr, symbol, currencyCode);
+  }
+
+  if (normalized.includes('upsell ladder') || normalized.includes('upsell-out') || normalized.includes('upsell & cross-sell')) {
+    return generateSmartUpsell(isAR, name, localizedNiche, price, context, pStr, symbol, currencyCode);
+  }
+
+  if (normalized.includes('kpi planner') || normalized.includes('kpi-out') || normalized.includes('kpi dashboard') || normalized.includes('مخطط مؤشرات الأداء')) {
+    return generateSmartKPIPlanner(isAR, name, localizedNiche, context, pStr, symbol, currencyCode);
+  }
+
+  if (normalized.includes('forecast revenue') || normalized.includes('rev-forecast-out') || normalized.includes('revenue projections') || normalized.includes('توقعات الأرباح')) {
+    return generateSmartRevenueForecast(isAR, name, localizedNiche, context, pStr, symbol, currencyCode);
+  }
+
+  if (normalized.includes('forecast leads') || normalized.includes('lead-forecast-out') || normalized.includes('توقع أعداد عملائي') || normalized.includes('توقعات العملاء')) {
+    return generateSmartLeadForecast(isAR, name, localizedNiche, context, pStr, symbol, currencyCode);
+  }
 
   // 0. Landing Page copy generator
   if (normalized.includes('landing') || normalized.includes('landing page') || normalized.includes('صفحة الهبوط') || normalized.includes('copywriter') || normalized.includes('tagline')) {
@@ -1570,4 +1618,818 @@ function generateSmartBrandNames(prompt) {
   }
 
   return names.join('\n');
+}
+
+// ── CUSTOM OFFER / PRICING / UPSELL FALLBACKS ──
+
+function formatCurrencyFallback(amount, symbol, code, isAR) {
+  const formattedVal = Math.round(amount).toLocaleString('en');
+  if (isAR) {
+    if (code === 'SAR') {
+      return `${formattedVal} ريال`;
+    }
+    const isArabicSymbol = ['د.إ', 'د.ك', 'ر.ق', '.د.ب', 'ر.ع', 'ج.م', 'د.ا', 'د.م', 'دج', 'ع.د'].includes(symbol);
+    if (isArabicSymbol) {
+      return `${formattedVal} ${symbol}`;
+    }
+    return `${symbol}${formattedVal}`;
+  } else {
+    const isWesternSymbol = ['$', '€', '£', '¥', 'C$', 'A$', '₺', '₹'].includes(symbol);
+    if (isWesternSymbol) {
+      return `${symbol}${formattedVal}`;
+    }
+    return `${formattedVal} ${code}`;
+  }
+}
+
+function generateSmartOfferBuilder(isAR, name, niche, defaultPrice, defaultTransform, defaultPain, context, prompt, symbol = '$', currencyCode = 'USD') {
+  const pStr = String(prompt || '');
+  const core = extract(pStr, 'المنتج/الخدمة الأساسية') || extract(pStr, 'Core Product/Service') || extract(pStr, 'Core') || context?.profile?.offer?.core || 'برنامج التوجيه الخاص';
+  const audience = extract(pStr, 'الجمهور المستهدف') || extract(pStr, 'Target Audience') || context?.profile?.offer?.audience || 'المهنيين الطموحين';
+  const price = extract(pStr, 'السعر الحالي') || extract(pStr, 'Current Price') || defaultPrice || '$997';
+  const pain = extract(pStr, 'ألم العميل الأساسي') || extract(pStr, 'Target Customer Pain Point') || defaultPain || 'صعوبة الحصول على عملاء مستقرين';
+  const transform = extract(pStr, 'التحول/النتيجة النهائية') || extract(pStr, 'Final Transformation/Dream Outcome') || defaultTransform || 'بناء بزنس مستقر ومربح';
+  const format = extract(pStr, 'طريقة التقديم') || extract(pStr, 'Delivery Format') || 'برنامج هجين (مسجل + جلسات مباشرة)';
+  const duration = extract(pStr, 'مدة العرض/البرنامج') || extract(pStr, 'Program/Offer Duration') || '8 أسابيع';
+  const guarantee = extract(pStr, 'نوع الضمان المقترح') || extract(pStr, 'Guarantee Choice') || 'ضمان استرداد الأموال خلال 30 يوماً';
+
+  // Value stack calculations
+  const parsedPrice = parseFloat(price.replace(/[^0-9]/g, '')) || 500;
+  const coreValue = parsedPrice * 1.5;
+  const bonus1Value = Math.round(parsedPrice * 0.3);
+  const bonus2Value = Math.round(parsedPrice * 0.2);
+  const bonus3Value = Math.round(parsedPrice * 0.4);
+  const totalValue = coreValue + bonus1Value + bonus2Value + bonus3Value;
+
+  const fmtCore = formatCurrencyFallback(coreValue, symbol, currencyCode, isAR);
+  const fmtBonus1 = formatCurrencyFallback(bonus1Value, symbol, currencyCode, isAR);
+  const fmtBonus2 = formatCurrencyFallback(bonus2Value, symbol, currencyCode, isAR);
+  const fmtBonus3 = formatCurrencyFallback(bonus3Value, symbol, currencyCode, isAR);
+  const fmtTotal = formatCurrencyFallback(totalValue, symbol, currencyCode, isAR);
+  const fmtPrice = formatCurrencyFallback(parsedPrice, symbol, currencyCode, isAR);
+
+  if (isAR) {
+    return `### 🎁 هيكل العرض التجاري المتكامل الذي لا يقاوم (Irresistible Offer) لـ **${name}**
+
+مُصممة خصيصاً لاستهداف **${audience}** وحل مشكلتهم الجوهرية: **"${pain}"**.
+
+---
+
+#### 1. اسم العرض والتموضع الاستراتيجي (Name & Positioning Hook)
+* **الاسم المقترح:** \`برنامج ${core} الذهبي: ميثاق التحول المالي\`
+* **سطر الجذب (Hook Tagline):** *"احصل على ${transform} بالكامل خلال ${duration} من خلال نظام ${format} دون الوقوع في ${pain}."*
+* **التموضع (Positioning):** تموضع ذو قيمة عالية يركز على النتائج الفعلية وليس عدد الساعات.
+
+---
+
+#### 2. تفصيل المكونات الجوهرية للعرض (Core Deliverables Breakdown)
+طريقة التقديم هي **${format}** ومصممة لتوصيل العميل للهدف خطوة بخطوة:
+* **المرحلة الأولى (التهيئة وتفكيك العقبات):** تشخيص ألم العميل الحالي وتجهيز الأدوات الأساسية.
+* **المرحلة الثانية (بناء نظام التحول):** البدء العملي في تطبيق المنهج وتخطي عقبة **${pain}**.
+* **المرحلة الثالثة (الأتمتة والاستدامة):** ترسيخ النجاح وضمان استمراريته بعد انتهاء مدة الـ **${duration}**.
+
+---
+
+#### 3. مكدس القيمة المقدرة والتسعير (The Value Stack Matrix)
+
+| المكون / الخدمة | القيمة المدركة الفعلية | السعر المضمن في العرض |
+| :--- | :---: | :---: |
+| **البرنامج الجوهري:** ${core} (مدته ${duration}) | \`${fmtCore}\` | مضمن |
+| **بونص 1:** نظام عمل ونماذج جاهزة للتطبيق الفوري لتفادي ${pain} | \`${fmtBonus1}\` | **هدية مجانية** |
+| **بونص 2:** مجتمع تفاعلي مغلق مع زملائك وجلسات أسبوعية | \`${fmtBonus2}\` | **هدية مجانية** |
+| **بونص 3:** مكتبة الأدوات والاستراتيجيات الخاصة بتسريع النتائج | \`${fmtBonus3}\` | **هدية مجانية** |
+| **إجمالي القيمة الفعلية للمكدس:** | **\`${fmtTotal}\`** | |
+| **السعر الفعلي المطلوب للاستثمار اليوم:** | | **\`${fmtPrice}\`** |
+
+* **نسبة الخصم المتصورة للعميل:** **${Math.round((1 - parsedPrice / totalValue) * 100)}%** خصم حقيقي على القيمة الإجمالية!
+
+---
+
+#### 4. ثلاثة بونصات استراتيجية للتغلب على الاعتراضات (Objection-Crushing Bonuses)
+1. **البونص الأول: شيك-ليست وخارطة طريق الخطوات العملية الجاهزة** (يلغي اعتراض: *"ليس لدي وقت كافٍ للتطبيق"*).
+2. **البونص الثاني: مجتمع خاص مغلق ودعم يومي من الموجهين** (يلغي اعتراض: *"أخشى أن أبدأ بمفردي وأتوقف عند مواجهة أي مشكلة"*).
+3. **البونص الثالث: قالب أتمتة الأنظمة التشغيلية الجاهز** (يلغي اعتراض: *"التعقيد التقني يعيقني"*).
+
+---
+
+#### 5. الضمان المانع للمخاوف (Risk-Reversal Guarantee Copy)
+* **نوع الضمان المطبق:** **${guarantee}**
+* **صياغة الضمان الترويجية:** 
+  > **ضماننا الحديدي الموجه بالنتائج:** 
+  > "نحن نثق تماماً بنظامنا. إذا قمت بالانضمام إلينا اليوم وتطبيق الخطوات الموضحة بالكامل خلال ${duration} ولم تتمكن من تحقيق **${transform}**، أو لم تكن راضياً عن النتائج بنسبة 100%، فكل ما عليك هو إظهار عملك وسنقوم برد كامل استثمارك دون طرح أي أسئلة معقدة. المخاطرة تقع بالكامل على عاتقنا!"
+
+---
+
+#### 6. محفزات الندرة والاستعجال (Scarcity & Urgency Playbook)
+* **ندرة الأعداد:** "نظراً لأننا نقدم متابعة مباشرة مكثفة لضمان جودة النتائج، فإننا نقبل **10 مشتركين فقط** في هذه الدفعة."
+* **استعجال الوقت:** "البونصات الحصرية المرفقة والخصم الحالي متاحان فقط حتى تاريخ نهاية الأسبوع الحالي، بعدها سيعود السعر لقيمته الأصلية."
+
+---
+
+#### 7. خطة تحويل العميل (Call to Action & Conversion Path)
+* **المسار المقترح:** **مكالمة استكشافية وتأهيلية (Discovery & Qualification Call)**.
+* **الخطوة العملية للعميل:**
+  1. اضغط على الزر لحجز موعد جلسة تشخيص مجانية مدتها 15 دقيقة.
+  2. املأ استبيان التأهيل القصير للتأكد من ملاءمتك للبرنامج.
+  3. التقي بنا وسنقوم برسم خطة واضحة ومناقشة تفاصيل انضمامك لعرض **${fmtPrice}** إذا تأهلنا للعمل معاً.`;
+  } else {
+    return `### 🎁 The Irresistible High-Ticket Marketing Offer Blueprint for **${name}**
+
+Tailored specifically to target **${audience}** and solve their core friction: **"${pain}"**.
+
+---
+
+#### 1. Offer Package Name & Positioning Hook
+* **Suggested Name:** \`The Elite ${core} Transformation Cohort\`
+* **Positioning Tagline:** *"Achieve ${transform} in exactly ${duration} via our ${format} framework, without experiencing ${pain}."*
+* **Positioning Angle:** Results-driven premium positioning that focuses on the destination, not hourly metrics.
+
+---
+
+#### 2. Core Deliverables Breakdown
+The delivery structure is **${format}**, engineered to move the prospect step-by-step:
+* **Phase 1 (Diagnosis & Setup):** Audit current struggles and install the baseline systems.
+* **Phase 2 (Core Execution):** Directly work on overcoming "**${pain}**" by launching core campaigns.
+* **Phase 3 (Optimization & Offload):** Solidify systems, automate workflows, and guarantee continuity post-cohort.
+
+---
+
+#### 3. The Value Stack & Pricing Matrix
+
+| Component / Deliverable | Perceived Real Value | Special Bundled Price |
+| :--- | :---: | :---: |
+| **Core Program:** ${core} (${duration}) | \`${fmtCore}\` | Included |
+| **Bonus 1:** Step-by-Step Execution Templates to bypass ${pain} | \`${fmtBonus1}\` | **FREE Gift** |
+| **Bonus 2:** Private Interactive Cohort & Q&A Board | \`${fmtBonus2}\` | **FREE Gift** |
+| **Bonus 3:** Exclusive Implementation Toolkits & SOPs | \`${fmtBonus3}\` | **FREE Gift** |
+| **Total Combined Perceived Value:** | **\`${fmtTotal}\`** | |
+| **Your Special Investment Today:** | | **\`${fmtPrice}\`** |
+
+* **Calculated Perceived Discount:** **${Math.round((1 - parsedPrice / totalValue) * 100)}% off** the total combined value!
+
+---
+
+#### 4. 3 High-Value Objection-Busting Bonuses
+1. **Bonus #1: The Fast-Action Checklist & Blueprint** (Crushes objection: *"I don't have enough time to design this from scratch"*).
+2. **Bonus #2: Private Mastermind Group & Daily Mentor Feedback** (Crushes objection: *"I get stuck on technical steps and need advice"*).
+3. **Bonus #3: Pre-Built Copywriting & Tech Templates** (Crushes objection: *"I am not good at writing or building funnels"*).
+
+---
+
+#### 5. The Risk-Reversal Guarantee
+* **Guarantee Type:** **${guarantee}**
+* **Written Copy Statement:**
+  > **Our Iron-Clad, Results-Focused Guarantee:**
+  > "We back our systems 100%. If you join us today, review the materials, and apply the actions step-by-step for ${duration}, and do not achieve **${transform}**, simply email us your coursework. We will refund 100% of your investment. No hassles. The risk is entirely on our shoulders."
+
+---
+
+#### 6. Urgency & Scarcity Elements
+* **Scarcity Hook:** "To ensure premium support quality, we limit enrollment to **only 10 spots** per cohort."
+* **Urgency Trigger:** "All objection-busting bonuses and the bundled price expire by the end of this week, after which the price goes up."
+
+---
+
+#### 7. Conversion Path & Call to Action (CTA)
+* **Conversion Route:** **Application/Discovery Call Funnel**
+* **Action Steps for Prospect:**
+  1. Click 'Apply Now' to schedule your free 15-minute diagnostic call.
+  2. Complete the short questionnaire so we can review your profile.
+  3. Meet with us to map your action roadmap and decide if you're a fit for the **${fmtPrice}** cohort.`;
+  }
+}
+
+function generateSmartPricing(isAR, name, niche, defaultPrice, defaultTransform, context, prompt, symbol = '$', currencyCode = 'USD') {
+  const pStr = String(prompt || '');
+  const currentPrice = extract(pStr, 'Current Price') || extract(pStr, 'السعر الحالي') || defaultPrice || '$500';
+  const type = extract(pStr, 'Product Type') || extract(pStr, 'نوع المنتج') || 'Online Course';
+  const exp = extract(pStr, 'Experience Level') || extract(pStr, 'مستوى الخبرة') || 'Intermediate';
+  const targetIncome = extract(pStr, 'Target Monthly Income') || extract(pStr, 'الدخل الشهري المستهدف') || '$5,000';
+  const expenses = extract(pStr, 'Monthly Expenses') || extract(pStr, 'المصروفات الشهرية') || extract(pStr, 'Expenses') || '0';
+
+  const priceNum = parseFloat(currentPrice.replace(/[^0-9]/g, '')) || 500;
+  const incomeNum = parseFloat(targetIncome.replace(/[^0-9]/g, '')) || 5000;
+  const expensesNum = parseFloat(expenses.replace(/[^0-9]/g, '')) || 0;
+
+  // Pricing tiers
+  const tierLow = Math.round(priceNum * 0.5);
+  const tierMid = priceNum;
+  const tierHigh = Math.round(priceNum * 2.5);
+
+  // Sales Volume calculations to hit target net profit after covering expenses
+  const totalRequiredRevenue = incomeNum + expensesNum;
+  const salesNeededLow = Math.ceil(totalRequiredRevenue / tierLow);
+  const salesNeededMid = Math.ceil(totalRequiredRevenue / tierMid);
+  const salesNeededHigh = Math.ceil(totalRequiredRevenue / tierHigh);
+
+  const fmtLow = formatCurrencyFallback(tierLow, symbol, currencyCode, isAR);
+  const fmtMid = formatCurrencyFallback(tierMid, symbol, currencyCode, isAR);
+  const fmtHigh = formatCurrencyFallback(tierHigh, symbol, currencyCode, isAR);
+  const fmtIncome = formatCurrencyFallback(incomeNum, symbol, currencyCode, isAR);
+  const fmtExpenses = formatCurrencyFallback(expensesNum, symbol, currencyCode, isAR);
+  const fmtRequired = formatCurrencyFallback(totalRequiredRevenue, symbol, currencyCode, isAR);
+
+  if (isAR) {
+    return `### 💰 تقرير تحسين واستراتيجية التسعير لـ **${name}**
+
+مُعد بناءً على منتجك من نوع **${type}** بمستوى خبرة **${exp}** لتحقيق صافي دخل مستهدف **${fmtIncome}** شهرياً بعد تغطية مصروفات قدرها **${fmtExpenses}** (إجمالي الإيرادات المطلوبة: **${fmtRequired}**).
+
+---
+
+#### 1. خيارات الباقات والتسعير الثلاثي المقترح (Tiered Pricing Strategy)
+لتحقيق أقصى ربحية وتلبية احتياجات فئات العملاء المختلفة، ننصح بتقسيم عرضك لثلاث باقات:
+
+| الباقة | السعر المقترح | طبيعة العرض ومحتوياته | مبيعات مطلوبة لـ صافي ${fmtIncome} |
+| :--- | :---: | :--- | :---: |
+| **الباقة الأساسية (Lite)** | **\`${fmtLow}\`** | وصول ذاتي للمواد المسجلة فقط بدون دعم خاص. | **${salesNeededLow} مبيعات** |
+| **الباقة الموصى بها (Pro)** | **\`${fmtMid}\`** | الوصول الكامل للمنهج + الدعم الجماعي الأسبوعي والقوالب. | **${salesNeededMid} مبيعات** |
+| **الباقة النخبوية (VIP)** | **\`${fmtHigh}\`** | كل ما سبق + جلسات متابعة فردية 1-on-1 وخدمة مخصصة. | **${salesNeededHigh} مبيعات** |
+
+---
+
+#### 2. الحيل النفسية للتسعير (Pricing Psychology Hacks)
+* **تأثير الإرساء (Anchoring Effect):** اعرض الباقة النخبوية بسعر \`${fmtHigh}\` أولاً، ليظهر سعر الباقة الموصى بها \`${fmtMid}\` كخيار معقول واقتصادي للغاية.
+* **التسعير الفردي (Odd Pricing):** بدلاً من عرض الباقة بسعر دائري، استخدم الأسعار النفسية المنتهية بـ 7 أو 9 (مثال: \`${formatCurrencyFallback(tierMid - 3, symbol, currencyCode, isAR)}\`).
+* **مقارنة القيمة المدركة:** ضع جدول المقارنة ووضح أن الباقة VIP توفر مئات الساعات من الجهد مما يجعل قيمتها الفعلية أضعاف سعرها الحالي.
+
+---
+
+#### 3. حاسبة حجم المبيعات المطلوب (Sales Volume Calculator)
+لتحقيق صافي دخل شهري مستهدف قدره **${fmtIncome}** بعد تغطية المصروفات (**${fmtExpenses}**):
+* **الباقة الأساسية فقط:** تحتاج إلى **${salesNeededLow} مشتري** شهرياً.
+* **الباقة الموصى بها فقط:** تحتاج إلى **${salesNeededMid} مشتري** شهرياً.
+* **الباقة النخبوية فقط:** تحتاج إلى **${salesNeededHigh} مشترين** فقط شهرياً.
+
+* **💡 التوصية المثالية:** ركز على بيع الباقة النخبوية VIP لأول عميلين لتحقيق سيولة سريعة، ثم وسع الباقة الموصى بها للحصول على دخل مستقر وتلقائي.`;
+  } else {
+    return `### 💰 Pricing Strategy & Optimization Report for **${name}**
+
+Optimized for your **${type}** at an **${exp}** tier to achieve your net monthly income of **${fmtIncome}** after covering expenses of **${fmtExpenses}** (Total required revenue: **${fmtRequired}**).
+
+---
+
+#### 1. Tiered Pricing Options
+To maximize customer lifetime value (LTV), implement a three-tiered pricing framework:
+
+| Tier | Price Point | Deliverables Included | Sales Needed for Net ${fmtIncome} |
+| :--- | :---: | :--- | :---: |
+| **Basic (Self-Paced)** | **\`${fmtLow}\`** | Self-study access to resources with no mentoring support. | **${salesNeededLow} sales** |
+| **Pro (Supported) ★** | **\`${fmtMid}\`** | Full course/program access + weekly group calls & templates. | **${salesNeededMid} sales** |
+| **VIP (Done-With-You)** | **\`${fmtHigh}\`** | Complete Pro tier + 1-on-1 direct coaching & premium reviews. | **${salesNeededHigh} sales** |
+
+---
+
+#### 2. Pricing Psychology Hacks
+* **The Anchor Strategy:** Lead your sales pages with the VIP tier at \`${fmtHigh}\`. This sets a high value perception and makes the Pro tier at \`${fmtMid}\` look like an absolute bargain.
+* **Charm Pricing:** Instead of round numbers, price it ending in 7 or 9 (e.g., \`${formatCurrencyFallback(tierMid - 1, symbol, currencyCode, isAR)}\`).
+* **Perceived Savings Highlight:** State clearly that buying the bundle saves the client over 50% compared to buying items individually.
+
+---
+
+#### 3. Sales Volume & Goal Calculator
+To reach your net monthly revenue of **${fmtIncome}** (after covering **${fmtExpenses}** expenses):
+* **From Basic Tier:** You need **${salesNeededLow} customers** per month.
+* **From Pro Tier (Recommended):** You need **${salesNeededMid} customers** per month.
+* **From VIP Tier:** You only need **${salesNeededHigh} customers** per month.
+
+* **💡 Strategic Advice:** Secure 2-3 VIP clients first to build initial cash flow, then scale your Pro tier using automated landing pages.`;
+  }
+}
+
+function generateSmartUpsell(isAR, name, niche, defaultPrice, context, prompt, symbol = '$', currencyCode = 'USD') {
+  const pStr = String(prompt || '');
+  const core = extract(pStr, 'Core offer') || extract(pStr, 'المنتج الأساسي') || context?.profile?.offer?.core || 'البرنامج الأساسي';
+  const price = extract(pStr, 'Price') || extract(pStr, 'سعر المنتج الأساسي') || defaultPrice || '$997';
+  const needs = extract(pStr, 'Client needs after buy') || extract(pStr, 'الاحتياجات بعد الشراء') || 'دعم إضافي وأدوات جاهزة';
+
+  const priceNum = parseFloat(price.replace(/[^0-9]/g, '')) || 500;
+  const bumpPrice = Math.round(priceNum * 0.1) || 47;
+  const upsellPrice = Math.round(priceNum * 0.4) || 297;
+  const backendPrice = Math.round(priceNum * 2.0) || 1500;
+
+  const fmtBump = formatCurrencyFallback(bumpPrice, symbol, currencyCode, isAR);
+  const fmtUpsell = formatCurrencyFallback(upsellPrice, symbol, currencyCode, isAR);
+  const fmtBackend = formatCurrencyFallback(backendPrice, symbol, currencyCode, isAR);
+  const fmtPrice = formatCurrencyFallback(priceNum, symbol, currencyCode, isAR);
+
+  // Smart niche-based analysis
+  const nicheName = niche || context?.profile?.niche || 'برمجة وتطوير البرمجيات';
+  const isCoding = nicheName.toLowerCase().includes('code') || nicheName.toLowerCase().includes('program') || nicheName.toLowerCase().includes('برمج') || nicheName.toLowerCase().includes('تطوير') || core.toLowerCase().includes('برمج') || core.toLowerCase().includes('كود') || core.toLowerCase().includes('برنامج');
+
+  let smartIdeaAR = '';
+  let smartIdeaEN = '';
+
+  if (isCoding) {
+    smartIdeaAR = `* **الفكرة المقترحة (البرنامج التدريبي العملي الموجه):** \`معسكر المطور المحترف: الإعداد للعمل المباشر ومراجعة الكود الجماعية\`
+* **المفهوم الاستراتيجي:** بعد انتهاء الطالب من كورس البرمجة الأساسي، يواجه فجوة كبيرة في التطبيق العملي وبناء مشاريع حقيقية لسيرته الذاتية. هذا المعسكر يركز 100% على التطبيق العملي، ومراجعة الكود (Code Reviews)، والمحاكاة لبيئة عمل الشركات مع توجيه مباشر.
+* **التسعير المقترح:** **\`${fmtUpsell}\`** كعرض إضافي دفعة واحدة، أو **\`${fmtBackend}\`** للتدريب الشخصي الفردي المكثف.`;
+
+    smartIdeaEN = `* **Proposed Solution (Practical Cohort/Mentorship):** \`The Professional Dev Bootcamp & Live Code Review Pass\`
+* **Concept:** After finishing a coding course, students struggle with practical setup and building real portfolios. This program bridges that gap with code reviews, mock interviews, and group project collaboration.
+* **Suggested Pricing:** **\`${fmtUpsell}\`** for cohort access or **\`${fmtBackend}\`** for premium 1-on-1 career assistance.`;
+  } else {
+    smartIdeaAR = `* **الفكرة المقترحة (مجموعة مرافقة وتطبيق عملي):** \`مجموعات التنفيذ والمتابعة الأسبوعية المركزة لـ ${nicheName}\`
+* **المفهوم الاستراتيجي:** ينتقل العميل من مرحلة التعلم الذاتي إلى مرحلة التطبيق تحت إشراف وتوجيه مباشر، مما يضمن التزامهم وحل مشاكلهم فوراً.
+* **التسعير المقترح:** **\`${fmtUpsell}\`** للاشتراك الجماعي الدوري أو **\`${fmtBackend}\`** للاستشارة والخدمة المباشرة الفردية.`;
+
+    smartIdeaEN = `* **Proposed Solution (Weekly Implementation Cohort):** \`The ${nicheName} High-Accountability Action Group\`
+* **Concept:** Move the buyer from passive self-study to active, supervised implementation. Direct audits and live feedback sessions ensure maximum success rate.
+* **Suggested Pricing:** **\`${fmtUpsell}\`** for group access or **\`${fmtBackend}\`** for high-ticket individual feedback.`;
+  }
+
+  if (isAR) {
+    return `### ⬆️ خريطة البيع الإضافي والتقاطعي (Upsell Ladder Blueprint) لـ **${name}**
+
+مُصممة استراتيجياً لزيادة متوسط قيمة الطلب (AOV) لمنتجك الأساسي: **"${core}"** بسعر **${fmtPrice}**.
+
+---
+
+### الجزء الأول: اقتراحات وحلول الذكاء الاصطناعي الذكية (AI Smart Upsell Engine)
+*بناءً على فهمنا لمجال عملك (**${nicheName}**) والمنافسين، هذا هو الحل الطبيعي والمنطقي الذي سيحتاجه عميلك فوراً بعد إنهاء المنتج الأساسي:*
+
+${smartIdeaAR}
+
+---
+
+### الجزء الثاني: عروض البيع الإضافي المخصصة بناءً على مدخلاتك (Custom-Built Upsell Ladder)
+*تم تصميم هذه العروض الثلاثة خصيصاً لحل المشكلة المحددة التي أدخلتها: **"${needs}"**:*
+
+#### 1. عرض الشراء الفوري الصغير (Order Bump)
+*ترسل في صفحة الدفع مباشرة كصندوق اختيار بسيط قبل نقر زر الدفع.*
+* **اسم المنتج:** \`حقيبة الأدوات والملفات المسرعة لتطبيق ${core}\`
+* **السعر المقترح:** **\`${fmtBump}\`** (عرض استثنائي لمرة واحدة)
+* **المفهوم:** قالب عملي جاهز يوفر على المشتري عناء كتابة النماذج أو تجهيز الحسابات بمفرده لحل مشكلة: **"${needs}"**.
+* **كيفية بيعه:** *"اضغط هنا للحصول على حقيبة الملفات الجاهزة وتوفير 20 ساعة من العمل مقابل ${fmtBump} فقط!"*
+
+---
+
+#### 2. البيع الإضافي المباشر بعد الشراء (One-Time-Offer Upsell)
+*تظهر للعميل فوراً بعد نجاح عملية الدفع وقبل الانتقال لصفحة التأكيد.*
+* **اسم المنتج:** \`مخيم التنفيذ الجماعي المكثف - جلسات مراجعة أسبوعية لمدة 3 أشهر\`
+* **السعر المقترح:** **\`${fmtUpsell}\`** (سعر ترويجي مؤقت، السعر الأصلي ضعف ذلك)
+* **المفهوم:** لحل مشكلة احتياج العميل بعد الشراء وهي: **"${needs}"**.
+* **كيفية بيعه:** *"تهانينا على شرائك! الآن، هل تود أن نعمل معك جنباً إلى جنب لنراجع خطواتك ونصحح أخطاءك أسبوعياً لتضمن الوصول لأهدافك أسرع؟ احجز مقعدك الآن بخصم 50%."*
+
+---
+
+#### 3. العرض الخلفي عالي القيمة (High-Ticket Backend Offer)
+*يُعرض على المشترين المتميزين بعد مرور 14-30 يوماً من تجربة المنتج والاستفادة منه.*
+* **اسم المنتج:** \`برنامج التوجيه والمرافقة الفردية 1-on-1 مع ${name}\`
+* **السعر المقترح:** **\`${fmtBackend}\`**
+* **المفهوم:** تقديم حل كامل متكامل (Done-With-You أو Done-For-You) للعملاء الذين يمتلكون الميزانية ويريدون أقصى درجات الرعاية الفردية.
+* **كيفية بيعه:** *"برنامج مرافقة سنوي أو نصف سنوي مغلق لتصميم وتوسيع نظام عملك شخصياً لضمان الوصول لأعلى النتائج الممكنة."*`;
+  } else {
+    return `### ⬆️ Upsell & Cross-Sell Ladder Blueprint for **${name}**
+
+Strategically designed to maximize Average Order Value (AOV) for your core product: **"${core}"** at **${fmtPrice}**.
+
+---
+
+### Part 1: AI Smart Upsell Engine (Niche Recommendations)
+*Based on our understanding of your business niche (**${nicheName}**), this is the next high-value offer to maximize LTV:*
+
+${smartIdeaEN}
+
+---
+
+### Part 2: Custom-Built Upsell Ladder (Based on Your Inputs)
+*These three specific offers are engineered to directly address the post-purchase pain point: **"${needs}"**:*
+
+#### 1. The Checkout Order Bump
+*A simple checkbox addition on the checkout page before the buy button.*
+* **Product Name:** \`The Ultimate Fast-Track Toolkit & Swipe File for ${core}\`
+* **Suggested Price:** **\`${fmtBump}\`**
+* **Concept:** Ready-made templates, calculators, or worksheets that save hours of work.
+* **Copy Hook:** *"Check this box to unlock the complete swipe file and skip 20 hours of setup for just ${fmtBump} today!"*
+
+---
+
+#### 2. Immediate Post-Purchase Upsell (One-Time-Offer / OTO)
+*Shown immediately after payment is successful, before the thank-you page.*
+* **Product Name:** \`The 90-Day Implementation Cohort & Group Review Pass\`
+* **Suggested Price:** **\`${fmtUpsell}\`** (Regularly double this price)
+* **Concept:** Directly resolves the buyer's post-purchase need: **"${needs}"**.
+* **Copy Hook:** *"Wait! Don't build alone. Add 3 months of weekly implementation reviews and direct community support to your order at an exclusive 50% discount."*
+
+---
+
+#### 3. High-Ticket Backend Program (VIP Level)
+*Offered to your best active students/users 14-30 days post-purchase.*
+* **Product Name:** \`The VIP 1-on-1 Partnership & Advisory Program with ${name}\`
+* **Suggested Price:** **\`${fmtBackend}\`**
+* **Concept:** High-ticket private coaching or done-for-you package providing absolute customization.
+* **Copy Hook:** *"A high-access private partnership where we audit your campaigns weekly, refine your positioning, and scale your business to maximum capacity."*`;
+  }
+}
+
+function generateSmartKPIPlanner(isAR, name, niche, context, prompt, symbol = '$', currencyCode = 'USD') {
+  const pStr = String(prompt || '');
+  const model = extract(pStr, 'Business Model') || extract(pStr, 'نموذج العمل') || 'Coaching / Services';
+  const targetRev = extract(pStr, 'Target Monthly Revenue') || extract(pStr, 'هدف الإيرادات الشهري') || '$10,000';
+  const stage = extract(pStr, 'Current Business Stage') || extract(pStr, 'المرحلة الحالية') || 'Just starting';
+  const aov = extract(pStr, 'Average Order/Ticket Value') || extract(pStr, 'متوسط قيمة الطلب/المبيعة') || '$200';
+  const actualRev = extract(pStr, 'Actual Monthly Revenue') || extract(pStr, 'الإيرادات الشهرية الفعلية') || '0';
+  const actualLeads = extract(pStr, 'Actual Monthly Traffic/Leads') || extract(pStr, 'الزيارات/العملاء شهرياً') || '0';
+  const actualConv = extract(pStr, 'Actual Conversion Rate') || extract(pStr, 'معدل التحويل الحالي') || '0%';
+
+  const targetRevNum = parseFloat(targetRev.replace(/[^0-9.]/g, '')) || 10000;
+  const aovNum = parseFloat(aov.replace(/[^0-9.]/g, '')) || 200;
+  const actualRevNum = parseFloat(actualRev.replace(/[^0-9.]/g, '')) || 0;
+  const actualLeadsNum = parseFloat(actualLeads.replace(/[^0-9.]/g, '')) || 0;
+  const actualConvNum = parseFloat(actualConv.replace(/[^0-9.]/g, '')) || 0;
+
+  // Derived Target Calculations
+  const targetSales = Math.ceil(targetRevNum / aovNum) || 50;
+  // Assume a benchmark conversion rate depending on business model
+  let benchmarkConv = 2.0; // 2% default
+  if (model.includes('E-commerce')) benchmarkConv = 1.5;
+  if (model.includes('Online Courses')) benchmarkConv = 2.5;
+  if (model.includes('Coaching')) benchmarkConv = 3.0;
+  if (model.includes('SaaS')) benchmarkConv = 1.0;
+
+  const neededLeads = Math.ceil(targetSales / (benchmarkConv / 100)) || 2500;
+
+  // Actual Calculations
+  const actualSales = aovNum ? Math.round(actualRevNum / aovNum) : 0;
+  const revProgress = Math.min(100, Math.round((actualRevNum / targetRevNum) * 100)) || 0;
+  const trafficProgress = Math.min(100, Math.round((actualLeadsNum / neededLeads) * 100)) || 0;
+  const convProgress = Math.min(100, Math.round((actualConvNum / benchmarkConv) * 100)) || 0;
+
+  // Status Badges
+  const getStatusBadge = (progress) => {
+    if (progress >= 80) return '🟢'; // On Track
+    if (progress >= 40) return '🟡'; // Warning
+    return '🔴'; // Critical
+  };
+
+  const revStatus = getStatusBadge(revProgress);
+  const trafficStatus = getStatusBadge(trafficProgress);
+  const convStatus = getStatusBadge(convProgress);
+
+  const fmtTargetRev = formatCurrencyFallback(targetRevNum, symbol, currencyCode, isAR);
+  const fmtActualRev = formatCurrencyFallback(actualRevNum, symbol, currencyCode, isAR);
+  const fmtAov = formatCurrencyFallback(aovNum, symbol, currencyCode, isAR);
+
+  if (isAR) {
+    return `### 📊 لوحة تقييم ومؤشرات الأداء الرئيسية (KPIs) لـ **${name}**
+
+مُعدة ومحللة بناءً على نموذج العمل **${model}** لمقارنة الأرقام الفعلية بالهدف الشهري المستهدف **${fmtTargetRev}**.
+
+---
+
+#### 1. ملخص تحقيق الأهداف الحالية (Performance Goal Progress Summary)
+
+* **نسبة تحقيق هدف الإيرادات:** \`${revProgress}%\` ${revStatus}
+* **نسبة تحقيق الزيارات/العملاء المستهدفة:** \`${trafficProgress}%\` ${trafficStatus}
+* **نسبة تحقيق كفاءة معدل التحويل:** \`${convProgress}%\` ${convStatus}
+
+---
+
+#### 2. جدول مقارنة المؤشرات: الهدف مقابل الفعلي (KPI Comparison Dashboard)
+
+| مؤشر الأداء (Metric) | الهدف (Target) | الفعلي الحالي (Actual) | نسبة التحقيق | حالة المؤشر |
+| :--- | :---: | :---: | :---: | :---: |
+| **الإيرادات الشهرية** | **\`${fmtTargetRev}\`** | **\`${fmtActualRev}\`** | **\`${revProgress}%\`** | ${revStatus} |
+| **متوسط قيمة المبيعة (AOV)** | \`${fmtAov}\` | \`${fmtAov}\` | \`100%\` | 🟢 |
+| **عدد المبيعات المطلوبة** | \`${targetSales} مبيعة\` | \`${actualSales} مبيعة\` | \`${Math.min(100, Math.round((actualSales / targetSales) * 100)) || 0}%\` | ${revStatus} |
+| **العملاء المحتملون/الزيارات** | \`${neededLeads} زيارة\` | \`${actualLeadsNum} زيارة\` | \`${trafficProgress}%\` | ${trafficStatus} |
+| **معدل التحويل (CVR)** | \`${benchmarkConv}%\` | \`${actualConvNum}%\` | \`${convProgress}%\` | ${convStatus} |
+
+---
+
+#### 3. تشخيص ثغرات الأداء ومكامن التسريب (Performance Leak Diagnosis)
+بناءً على أرقامك الحالية، إليك تقييم مكامن التسريب في البزنس:
+${actualLeadsNum < neededLeads * 0.5 
+  ? `* 🔴 **ضعف تدفق الزيارات (Traffic Leak):** حجم الزيارات الحالي الخاص بك (${actualLeadsNum}) يمثل أقل من 50% من العدد المطلوب (${neededLeads}). هذا هو العائق الأساسي الذي يمنعك من الوصول لهدف المبيعات حتى وإن كان معدل تحويلك ممتازاً.` 
+  : `* 🟢 **حجم الزيارات مقبول:** حجم الزيارات الحالي مناسب وجيد للمرحلة الحالية.`
+}
+${actualConvNum < benchmarkConv
+  ? `* 🔴 **انخفاض معدل التحويل (Conversion Leak):** معدل التحويل الحالي لديك (${actualConvNum}%) يقل عن المؤشر المعياري لموديل ${model} وهو (${benchmarkConv}%). هذا يعني أنك تفقد عملاء محتملين في صفحة الدفع أو في مرحلة الإقناع.`
+  : `* 🟢 **معدل التحويل ممتاز:** معدل تحويلك الحالي يتخطى المعيار المتوقع لنموذج عملك.`
+}
+
+---
+
+#### 4. خطة العمل المباشرة لتحسين المؤشرات (Action Plan Steps)
+1. **إذا كان العائق هو الزيارات:** ركز 100% على قنوات الجذب (إعلانات Meta ممولة أو زيادة وتيرة صناعة المحتوى على TikTok/Instagram) لجلب ${neededLeads - actualLeadsNum} عميل محتمل إضافي شهرياً.
+2. **إذا كان العائق هو التحويل:** قم بتبسيط عملية الشراء، أضف ضماناً خالي المخاطر (Risk-Reversal)، وأضف بونصات استثنائية تقضي على اعتراضات العملاء في صفحة الهبوط.
+3. **إذا أردت تقليص مبيعاتك المطلوبة:** ارفع متوسط قيمة المبيعة (AOV) من خلال تقديم عروض بيع إضافي (Upsells) أو إطلاق باقة VIP بسعر أعلى.`;
+  } else {
+    return `### 📊 Key Performance Indicators (KPI) & Progress Dashboard for **${name}**
+
+Analyzed for **${model}** business model, comparing your current performance against the monthly revenue target of **${fmtTargetRev}**.
+
+---
+
+#### 1. Goal Progress Summary
+
+* **Revenue Goal Achieved:** \`${revProgress}%\` ${revStatus}
+* **Traffic/Leads Goal Achieved:** \`${trafficProgress}%\` ${trafficStatus}
+* **Conversion Rate Efficiency:** \`${convProgress}%\` ${convStatus}
+
+---
+
+#### 2. KPI Targets vs. Actual Dashboard
+
+| Metric Tracked | Target Goal | Current Actual | Achieved % | Health Status |
+| :--- | :---: | :---: | :---: | :---: |
+| **Monthly Revenue** | **\`${fmtTargetRev}\`** | **\`${fmtActualRev}\`** | **\`${revProgress}%\`** | ${revStatus} |
+| **Average Order Value (AOV)** | \`${fmtAov}\` | \`${fmtAov}\` | \`100%\` | 🟢 |
+| **Total Sales Needed** | \`${targetSales} sales\` | \`${actualSales} sales\` | \`${Math.min(100, Math.round((actualSales / targetSales) * 100)) || 0}%\` | ${revStatus} |
+| **Monthly Traffic/Leads** | \`${neededLeads} visitors\` | \`${actualLeadsNum} visitors\` | \`${trafficProgress}%\` | ${trafficStatus} |
+| **Conversion Rate (CVR)** | \`${benchmarkConv}%\` | \`${actualConvNum}%\` | \`${convProgress}%\` | ${convStatus} |
+
+---
+
+#### 3. Performance Leak Diagnostics
+Based on your metrics, here is the diagnosis of where your revenue funnel is leaking:
+${actualLeadsNum < neededLeads * 0.5 
+  ? `* 🔴 **Traffic Bottleneck:** Your traffic levels (${actualLeadsNum}) are under 50% of the required target (${neededLeads}). You must scale acquisition to see reliable sales volume, even with high conversion.` 
+  : `* 🟢 **Traffic Health:** Your visitor levels are currently on track for this growth stage.`
+}
+${actualConvNum < benchmarkConv
+  ? `* 🔴 **Conversion Rate Leak:** Your conversion rate (${actualConvNum}%) is below the industry benchmark of (${benchmarkConv}%) for a ${model} model. Traffic is arriving, but your landing page or follow-up offer isn't closing them effectively.`
+  : `* 🟢 **Conversion Health:** Your checkout and landing page conversion rate is healthy.`
+}
+
+---
+
+#### 4. Priority Action Steps
+1. **Traffic Scale Plan:** Launch Meta Ads or optimize Instagram Reels to drive at least ${neededLeads - actualLeadsNum} more leads/visitors per month.
+2. **Funnel Conversion Lift:** Simplify registration form lengths, place testimonials above the fold, and add high-ticket bumps to recover lost conversions.
+3. **Average Order Value Boost:** Add a checkout order bump or post-purchase OTO upsells to decrease the number of individual sales needed to reach **${fmtTargetRev}**.`;
+  }
+}
+
+function generateSmartRevenueForecast(isAR, name, niche, context, prompt, symbol = '$', currencyCode = 'USD') {
+  const pStr = String(prompt || '');
+  const aov = extract(pStr, 'Average Sale Value (AOV)') || extract(pStr, 'Average Sale Value') || '$200';
+  const leads = extract(pStr, 'Monthly Leads/Traffic') || extract(pStr, 'Monthly Leads') || '100';
+  const close = extract(pStr, 'Current Closing Rate') || extract(pStr, 'Current Close Rate') || '10%';
+  const growth = extract(pStr, 'Growth Plan Model') || extract(pStr, 'Growth Plan') || 'Organic only';
+  const adBudget = extract(pStr, 'Monthly Ad Budget') || '0';
+  const opCosts = extract(pStr, 'Monthly Fixed Operational Costs') || '0';
+
+  const aovNum = parseFloat(aov.replace(/[^0-9.]/g, '')) || 200;
+  const leadsNum = parseFloat(leads.replace(/[^0-9.]/g, '')) || 100;
+  const closeNum = parseFloat(close.replace(/[^0-9.]/g, '')) || 10;
+  const adBudgetNum = parseFloat(adBudget.replace(/[^0-9.]/g, '')) || 0;
+  const opCostsNum = parseFloat(opCosts.replace(/[^0-9.]/g, '')) || 0;
+
+  // Scenario Math
+  // 1. Conservative (60% close rate, same leads, expenses unchanged)
+  const closeRateCons = closeNum * 0.6;
+  const leadsCons = leadsNum;
+  const salesCons = Math.round(leadsCons * (closeRateCons / 100));
+  const revCons30 = salesCons * aovNum;
+  const costs30 = adBudgetNum + opCostsNum;
+  const profitCons30 = revCons30 - costs30;
+  
+  const revCons60 = revCons30 * 2.0;
+  const profitCons60 = revCons60 - (costs30 * 2);
+
+  const revCons90 = revCons30 * 3.0;
+  const profitCons90 = revCons90 - (costs30 * 3);
+
+  // 2. Realistic (100% close rate, 1.2x leads growth per month, expenses unchanged)
+  const closeRateReal = closeNum;
+  const salesReal30 = Math.round(leadsNum * (closeRateReal / 100));
+  const revReal30 = salesReal30 * aovNum;
+  const profitReal30 = revReal30 - costs30;
+
+  const leadsReal60 = leadsNum * 1.2;
+  const salesReal60 = Math.round(leadsReal60 * (closeRateReal / 100));
+  const revReal60 = revReal30 + (salesReal60 * aovNum);
+  const profitReal60 = revReal60 - (costs30 * 2);
+
+  const leadsReal90 = leadsNum * 1.4;
+  const salesReal90 = Math.round(leadsReal90 * (closeRateReal / 100));
+  const revReal90 = revReal60 + (salesReal90 * aovNum);
+  const profitReal90 = revReal90 - (costs30 * 3);
+
+  // 3. Aggressive (1.2x close rate, 2x leads growth per month, expenses grows for ads)
+  const closeRateAggr = closeNum * 1.2;
+  const salesAggr30 = Math.round(leadsNum * (closeRateAggr / 100));
+  const revAggr30 = salesAggr30 * aovNum;
+  const profitAggr30 = revAggr30 - costs30;
+
+  const leadsAggr60 = leadsNum * 1.5;
+  const adBudget60 = adBudgetNum * 1.3;
+  const costs60 = adBudget60 + opCostsNum;
+  const salesAggr60 = Math.round(leadsAggr60 * (closeRateAggr / 100));
+  const revAggr60 = revAggr30 + (salesAggr60 * aovNum);
+  const profitAggr60 = revAggr60 - (costs30 + costs60);
+
+  const leadsAggr90 = leadsNum * 2.0;
+  const adBudget90 = adBudgetNum * 1.6;
+  const costs90 = adBudget90 + opCostsNum;
+  const salesAggr90 = Math.round(leadsAggr90 * (closeRateAggr / 100));
+  const revAggr90 = revAggr60 + (salesAggr90 * aovNum);
+  const profitAggr90 = revAggr90 - (costs30 + costs60 + costs90);
+
+  // Helper formatting function
+  const f = (num) => formatCurrencyFallback(num, symbol, currencyCode, isAR);
+
+  if (isAR) {
+    return `### 💰 توقعات الأرباح والإيرادات المالية لـ **${name}**
+
+مُعدة بناءً على متوسط قيمة صفقة **${f(aovNum)}**، بمعدل إغلاق **${closeNum}%**، ومصاريف تشغيلية **${f(opCostsNum)}** وميزانية إعلانية **${f(adBudgetNum)}** (إجمالي المصاريف الشهرية: **${f(costs30)}**).
+
+---
+
+#### 1. السيناريو المتحفظ (Conservative Scenario - نمو بطيء)
+*يفترض هذا السيناريو انخفاض كفاءة المبيعات بنسبة 40% واستقرار عدد العملاء المحتملين.*
+
+| المدة | عدد المبيعات | إجمالي الإيرادات (Gross) | إجمالي المصاريف | صافي الأرباح (Net Profit) | هامش الربح |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **30 يوماً** | \`${salesCons} مبيعة\` | \`${f(revCons30)}\` | \`${f(costs30)}\` | **\`${f(profitCons30)}\`** | \`${revCons30 ? Math.round((profitCons30 / revCons30) * 100) : 0}%\` |
+| **60 يوماً** | \`${salesCons * 2} مبيعة\` | \`${f(revCons60)}\` | \`${f(costs30 * 2)}\` | **\`${f(profitCons60)}\`** | \`${revCons60 ? Math.round((profitCons60 / revCons60) * 100) : 0}%\` |
+| **90 يوماً** | \`${salesCons * 3} مبيعة\` | \`${f(revCons90)}\` | \`${f(costs30 * 3)}\` | **\`${f(profitCons90)}\`** | \`${revCons90 ? Math.round((profitCons90 / revCons90) * 100) : 0}%\` |
+
+---
+
+#### 2. السيناريو الواقعي (Realistic Scenario - نمو طبيعي) ★
+*يفترض هذا السيناريو الحفاظ على نسبة الإغلاق الحالية (${closeNum}%) مع نمو تدريجي في العملاء بنسبة 20% شهرياً.*
+
+| المدة | عدد المبيعات | إجمالي الإيرادات (Gross) | إجمالي المصاريف | صافي الأرباح (Net Profit) | هامش الربح |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **30 يوماً** | \`${salesReal30} مبيعة\` | \`${f(revReal30)}\` | \`${f(costs30)}\` | **\`${f(profitReal30)}\`** | \`${revReal30 ? Math.round((profitReal30 / revReal30) * 100) : 0}%\` |
+| **60 يوماً** | \`${salesReal30 + salesReal60} مبيعة\` | \`${f(revReal60)}\` | \`${f(costs30 * 2)}\` | **\`${f(profitReal60)}\`** | \`${revReal60 ? Math.round((profitReal60 / revReal60) * 100) : 0}%\` |
+| **90 يوماً** | \`${salesReal30 + salesReal60 + salesReal90} مبيعة\` | \`${f(revReal90)}\` | \`${f(costs30 * 3)}\` | **\`${f(profitReal90)}\`** | \`${revReal90 ? Math.round((profitReal90 / revReal90) * 100) : 0}%\` |
+
+---
+
+#### 3. السيناريو المتفائل / العدواني (Aggressive Scenario - نمو متسارع)
+*يفترض هذا السيناريو تحسين نسبة الإغلاق بنسبة 20% بفضل مهارات المبيعات، ومضاعفة الزيارات بمساعدة الحملات الإعلانية الممولة بقيمة إضافية تدريجية.*
+
+| المدة | عدد المبيعات | إجمالي الإيرادات (Gross) | إجمالي المصاريف | صافي الأرباح (Net Profit) | هامش الربح |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **30 يوماً** | \`${salesAggr30} مبيعة\` | \`${f(revAggr30)}\` | \`${f(costs30)}\` | **\`${f(profitAggr30)}\`** | \`${revAggr30 ? Math.round((profitAggr30 / revAggr30) * 100) : 0}%\` |
+| **60 يوماً** | \`${salesAggr30 + salesAggr60} مبيعة\` | \`${f(revAggr60)}\` | \`${f(costs30 + costs60)}\` | **\`${f(profitAggr60)}\`** | \`${revAggr60 ? Math.round((profitAggr60 / revAggr60) * 100) : 0}%\` |
+| **90 يوماً** | \`${salesAggr30 + salesAggr60 + salesAggr90} مبيعة\` | \`${f(revAggr90)}\` | \`${f(costs30 + costs60 + costs90)}\` | **\`${f(profitAggr90)}\`** | \`${revAggr90 ? Math.round((profitAggr90 / revAggr90) * 100) : 0}%\` |
+
+---
+
+#### 4. توصية وملاحظة استراتيجية لنموذج البزنس الخاص بك (${growth})
+* **تحسين عائد الإعلانات (ROAS):** مع ميزانية إعلانية قدرها **${f(adBudgetNum)}**، يجب الحفاظ على تكلفة اكتساب العميل (CAC) أقل من **${f(aovNum * 0.3)}** لضمان استدامة هامش الربح الإعلاني.
+* **الأتمتة وتوسيع التيم:** في السيناريو المتفائل، ستحتاج إلى مبيعات عالية في الشهر الثالث؛ لذا يُنصح بتجهيز أنظمة حجز مواجهات مؤتمتة لتفادي الضغط وتدريب موظف مبيعات عمولة (Commission-based Setter) للمساعدة في المكالمات.`;
+  } else {
+    return `### 💰 Multi-Scenario Revenue & Profit Projections for **${name}**
+
+Calculated based on an Average Order Value (AOV) of **${f(aovNum)}**, a closing rate of **${closeNum}%**, monthly operational costs of **${f(opCostsNum)}**, and a monthly marketing budget of **${f(adBudgetNum)}** (Total Monthly Costs: **${f(costs30)}**).
+
+---
+
+#### 1. Conservative Scenario (Slow Growth)
+*Assumes closing rate drops by 40% due to market friction, with flat lead volume.*
+
+| Period | Sales Volume | Gross Revenue | Total Expenses | Net Profit | Profit Margin |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **30 Days** | \`${salesCons} sales\` | \`${f(revCons30)}\` | \`${f(costs30)}\` | **\`${f(profitCons30)}\`** | \`${revCons30 ? Math.round((profitCons30 / revCons30) * 100) : 0}%\` |
+| **60 Days** | \`${salesCons * 2} sales\` | \`${f(revCons60)}\` | \`${f(costs30 * 2)}\` | **\`${f(profitCons60)}\`** | \`${revCons60 ? Math.round((profitCons60 / revCons60) * 100) : 0}%\` |
+| **90 Days** | \`${salesCons * 3} sales\` | \`${f(revCons90)}\` | \`${f(costs30 * 3)}\` | **\`${f(profitCons90)}\`** | \`${revCons90 ? Math.round((profitCons90 / revCons90) * 100) : 0}%\` |
+
+---
+
+#### 2. Realistic Scenario (Healthy Growth) ★
+*Assumes maintaining your ${closeNum}% close rate with organic/paid leads scaling at 20% month-over-month.*
+
+| Period | Sales Volume | Gross Revenue | Total Expenses | Net Profit | Profit Margin |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **30 Days** | \`${salesReal30} sales\` | \`${f(revReal30)}\` | \`${f(costs30)}\` | **\`${f(profitReal30)}\`** | \`${revReal30 ? Math.round((profitReal30 / revReal30) * 100) : 0}%\` |
+| **60 Days** | \`${salesReal30 + salesReal60} sales\` | \`${f(revReal60)}\` | \`${f(costs30 * 2)}\` | **\`${f(profitReal60)}\`** | \`${revReal60 ? Math.round((profitReal60 / revReal60) * 100) : 0}%\` |
+| **90 Days** | \`${salesReal30 + salesReal60 + salesReal90} sales\` | \`${f(revReal90)}\` | \`${f(costs30 * 3)}\` | **\`${f(profitReal90)}\`** | \`${revReal90 ? Math.round((profitReal90 / revReal90) * 100) : 0}%\` |
+
+---
+
+#### 3. Aggressive Scenario (Accelerated Scale)
+*Assumes conversion rate optimizes by 20% and traffic doubles by Month 3 using targeted paid advertising.*
+
+| Period | Sales Volume | Gross Revenue | Total Expenses | Net Profit | Profit Margin |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **30 Days** | \`${salesAggr30} sales\` | \`${f(revAggr30)}\` | \`${f(costs30)}\` | **\`${f(profitAggr30)}\`** | \`${revAggr30 ? Math.round((profitAggr30 / revAggr30) * 100) : 0}%\` |
+| **60 Days** | \`${salesAggr30 + salesAggr60} sales\` | \`${f(revAggr60)}\` | \`${f(costs30 + costs60)}\` | **\`${f(profitAggr60)}\`** | \`${revAggr60 ? Math.round((profitAggr60 / revAggr60) * 100) : 0}%\` |
+| **90 Days** | \`${salesAggr30 + salesAggr60 + salesAggr90} sales\` | \`${f(revAggr90)}\` | \`${f(costs30 + costs60 + costs90)}\` | **\`${f(profitAggr90)}\`** | \`${revAggr90 ? Math.round((profitAggr90 / revAggr90) * 100) : 0}%\` |
+
+---
+
+#### 4. Growth Strategy Advice for ${growth} Mode
+* **ROAS Target Calculation:** With a monthly ad spend of **${f(adBudgetNum)}**, target a Customer Acquisition Cost (CAC) below **${f(aovNum * 0.3)}** to secure healthy ad margins.
+* **Capacity Planning:** Under aggressive projections, ensure delivery automation or contract support is prepared for the Month 3 growth burst.`;
+  }
+}
+
+function generateSmartLeadForecast(isAR, name, niche, context, prompt, symbol = '$', currencyCode = 'USD') {
+  const pStr = String(prompt || '');
+  const aud = extract(pStr, 'حجم الجمهور/المتابعين الحالي') || extract(pStr, 'Current Audience Size') || '1500';
+  const method = extract(pStr, 'طريقة جذب العملاء المختارة') || extract(pStr, 'Lead Generation Method') || 'Paid ads';
+  const revenueGoalStr = extract(pStr, 'هدف الإيرادات الشهري') || extract(pStr, 'Monthly Revenue Goal') || '$5,000';
+  const offerPriceStr = extract(pStr, 'سعر الاستثمار') || extract(pStr, 'Price') || '$200';
+  const roadmap = context?.strategy?.roadmap || 'خطوات التسويق وتكبير الجمهور العضوي والمدفوع وفقاً للخطة التشغيلية.';
+
+  const audNum = parseFloat(aud.replace(/[^0-9]/g, '')) || 1500;
+  const targetRevNum = parseFloat(revenueGoalStr.replace(/[^0-9.]/g, '')) || 5000;
+  const priceNum = parseFloat(offerPriceStr.replace(/[^0-9.]/g, '')) || 200;
+
+  // Let's assume conversion rate from leads to sales based on the method
+  let leadsToSalesConv = 3; // 3% default
+  if (method.includes('Organic')) leadsToSalesConv = 5;
+  if (method.includes('email') || method.includes('magnet')) leadsToSalesConv = 4;
+
+  const targetSales = Math.ceil(targetRevNum / priceNum) || 25;
+  const targetLeadsNum = Math.ceil(targetSales / (leadsToSalesConv / 100)) || 1000;
+
+  // 30, 60, 90 day lead generation projection
+  // Month 1: 40% of target
+  const leads30 = Math.round(targetLeadsNum * 0.4);
+  const clients30 = Math.round(leads30 * (leadsToSalesConv / 100));
+
+  // Month 2: 75% of target
+  const leads60 = Math.round(targetLeadsNum * 0.75);
+  const clients60 = Math.round(leads60 * (leadsToSalesConv / 100));
+
+  // Month 3: 120% of target (as traffic optimization scales)
+  const leads90 = Math.round(targetLeadsNum * 1.2);
+  const clients90 = Math.round(leads90 * (leadsToSalesConv / 100));
+
+  // Calculations for daily metrics
+  const dailyLeadsNeeded = Math.ceil(targetLeadsNum / 30);
+  // assuming a standard landing page conversion rate of 20% (visitors -> leads)
+  const dailyVisitorsNeeded = Math.ceil(dailyLeadsNeeded / 0.2); 
+  // assuming 2% CTR for ads/content reach
+  const dailyReachNeeded = Math.ceil(dailyVisitorsNeeded / 0.02);
+
+  if (isAR) {
+    return `### 👥 لوحة توقعات نمو العملاء والجمهور (Lead & Client Forecast) لـ **${name}**
+
+مُعدة بناءً على طريقة جذب **${method}** وهدف شهري **${targetLeadsNum} عميل محتمل**، بالتكامل مع خارطة طريق البزنس (Strategy Roadmap) في مجال **${niche}**.
+
+---
+
+#### 1. تحليل المواءمة مع خارطة الطريق (Roadmap Alignment Synergy)
+بناءً على خطوات الـ Roadmap الخاصة بك ومجال عملك (**${niche}**):
+* **تفعيل القنوات:** يشير الـ Roadmap إلى أهمية تكبير قنوات الجذب من خلال **${method}**. حجم الجمهور الحالي لديك (**${audNum} متابع**) يعد قاعدة أساسية ممتازة للانطلاق.
+* **قمع المبيعات:** الخطة الاستراتيجية المعتمدة تركز على بناء تدفق مستمر للزيارات وتوجيههم لصفحات الهبوط المخصصة لعرضك الأساسي، مما يرفع نسبة تحويل الزوار إلى عملاء مهتمين بشكل طبيعي وتدريجي.
+
+---
+
+#### 2. جدول توقعات النمو لـ 90 يوماً (30/60/90 Day Forecast Dashboard)
+
+| الفترة الزمنية | أعداد العملاء المحتملين المتوقعة (Leads) | أعداد المشترين الفعليين المتوقعة (Clients) | معدل تحويل المبيعات (CVR) |
+| :--- | :---: | :---: | :---: |
+| **الشهر الأول (30 يوماً)** | \`${leads30} عميل محتمل\` | \`${clients30} عميل مشترٍ\` | \`${leadsToSalesConv}%\` |
+| **الشهر الثاني (60 يوماً)** | \`${leads60} عميل محتمل\` | \`${clients60} عميل مشترٍ\` | \`${leadsToSalesConv}%\` |
+| **الشهر الثالث (90 يوماً)** | \`${leads90} عميل محتمل\` | \`${clients90} عميل مشترٍ\` | \`${leadsToSalesConv}%\` |
+
+---
+
+#### 3. متطلبات حركة المرور اليومية للوصول للهدف (Daily Reach Requirements)
+لتحقيق هدفك الشهري البالغ **${targetLeadsNum} عميل محتمل** شهرياً:
+* **معدل العملاء اليومي المطلوب:** تحتاج إلى جذب **${dailyLeadsNeeded} عميل محتمل يومياً**.
+* **عدد زيارات صفحة الهبوط المطلوبة:** تحتاج لـ **${dailyVisitorsNeeded} زائر فريد يومياً** (بافتراض معدل تحويل صفحة هبوط 20%).
+* **الوصول اليومي المستهدف (Impressions):** تحتاج إلى ظهور إعلاناتك أو محتواك لـ **${dailyReachNeeded} شخص يومياً** (بافتراض نسبة نقر 2% CTR).
+
+---
+
+#### 4. توجيهات تنفيذ الـ Roadmap لضمان تحقيق التوقعات
+1. **استغلال الميزانية الذكية:** بما أنك تعتمد على **${method}**، احرص على تفعيل ميزة اختبار الإعلانات (A/B Testing) للوصول لأفضل تكلفة لكل عميل محتمل (CPL).
+2. **صناعة محتوى تكميلي:** قم بنشر دليل مجاني أو مغناطيس عملاء (Lead Magnet) يحل مشكلة جوهرية لجمهورك لتخفيض تكلفة الإعلانات وزيادة معدل التسجيل بصفحة الهبوط.
+3. **أتمتة المتابعة بالبريد:** بمجرد دخول العميل المحتمل للقائمة، استخدم سلسلة رسائل بريد إلكتروني ترحيبية تلقائية لتهيئة العميل ودفعه للشراء خلال أول 7 أيام.`;
+  } else {
+    return `### 👥 Lead & Client Growth Forecast for **${name}**
+
+Calculated based on **${method}** acquisition, targeting **${targetLeadsNum} leads/month** in the **${niche}** niche, integrated with your Strategy Roadmap.
+
+---
+
+#### 1. Roadmap Alignment Synergy Analysis
+Based on your business niche (**${niche}**) and strategy roadmap steps:
+* **Audience Foundation:** Your starting audience size of **${audNum}** is a solid foundation.
+* **Funnel Scaling:** Your roadmap prioritizes scaling traffic via **${method}**. The progressive launch of lead magnets and marketing funnels is expected to accelerate target acquisition month-over-month.
+
+---
+
+#### 2. 30/60/90 Day Growth Forecast Dashboard
+
+| Timeframe | Projected New Leads | Projected Closed Clients | Estimated Lead-to-Sale CVR |
+| :--- | :---: | :---: | :---: |
+| **Month 1 (30 Days)** | \`${leads30} leads\` | \`${clients30} sales\` | \`${leadsToSalesConv}%\` |
+| **Month 2 (60 Days)** | \`${leads60} leads\` | \`${clients60} sales\` | \`${leadsToSalesConv}%\` |
+| **Month 3 (90 Days)** | \`${leads90} leads\` | \`${clients90} sales\` | \`${leadsToSalesConv}%\` |
+
+---
+
+#### 3. Daily Funnel Traffic Requirements
+To hit your goal of **${targetLeadsNum} leads** per month:
+* **Daily New Leads Needed:** You need to generate **${dailyLeadsNeeded} new leads/day**.
+* **Daily Landing Page Visitors:** You need **${dailyVisitorsNeeded} unique visitors/day** (assuming a 20% landing page opt-in rate).
+* **Daily Campaign Impressions/Reach:** You need your campaigns to be viewed by **${dailyReachNeeded} users/day** (assuming a 2% Click-Through Rate).
+
+---
+
+#### 4. Strategic Recommendations from your Roadmap
+1. **Optimize Cost per Lead (CPL):** In **${method}**, run creative testing (angles, hooks) to lower cost and capture highly qualified leads.
+2. **Deploy High-Value Lead Magnets:** Pair your ads/organic content with a free template or calculator to drive up landing page conversions.
+3. **Automate Nurture Sequences:** Implement email follow-ups to warm up new leads instantly, raising your closing rate from ${leadsToSalesConv}% to the industry benchmark.`;
+  }
 }

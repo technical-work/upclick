@@ -59,10 +59,10 @@ export default function AnalyticsView() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
-  const { lang, L, t, GC } = useBusiness();
+  const { lang, L, t, GC, saveGC } = useBusiness();
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [aiAnalysisText, setAiAnalysisText] = useState('');
+  const [aiAnalysisText, setAiAnalysisText] = useState(GC.analytics?.aiAnalysisText || '');
   const [period, setPeriod] = useState('30d');
 
   // Compute stats from global context GC
@@ -99,8 +99,23 @@ export default function AnalyticsView() {
     try {
       const reply = await callClaudeAPI(prompt, sysPrompt, lang);
       setAiAnalysisText(reply);
+      saveGC({
+        ...GC,
+        analytics: {
+          ...GC.analytics,
+          aiAnalysisText: reply
+        }
+      });
     } catch (e) {
-      setAiAnalysisText(L('Good business health. Keep up your active outreach funnel.', 'صحة الأعمال ممتازة. استمري في تشغيل مسار الترويج النشط.'));
+      const fbText = L('Good business health. Keep up your active outreach funnel.', 'صحة الأعمال ممتازة. استمري في تشغيل مسار الترويج النشط.');
+      setAiAnalysisText(fbText);
+      saveGC({
+        ...GC,
+        analytics: {
+          ...GC.analytics,
+          aiAnalysisText: fbText
+        }
+      });
     } finally {
       setAnalyzing(false);
     }

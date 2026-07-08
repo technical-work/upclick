@@ -88,7 +88,7 @@ const AVAILABLE_TOOLS = [
   { key: 'marketing', labelAr: 'نظام التسويق', labelEn: 'Marketing OS' },
   { key: 'content', labelAr: 'مركز المحتوى', labelEn: 'Content Hub' },
   { key: 'automation', labelAr: 'مركز الأتمتة', labelEn: 'Automation Hub' },
-  { key: 'ai-growth', labelAr: 'ذكاء النمو الاصطناعي', labelEn: 'AI Growth Intel' },
+  { key: 'ai-growth', labelAr: 'رادار استخبارات النمو', labelEn: 'Growth Intel Radar' },
   { key: 'revenue', labelAr: 'مركز المبدع', labelEn: 'Creator Hub' },
   { key: 'social', labelAr: 'الحسابات الاجتماعية', labelEn: 'Social Accounts' },
   { key: 'tiktok-trends', labelAr: 'اتجاهات التواصل', labelEn: 'Social Trends' },

@@ -7,6 +7,16 @@ import { callClaudeAPI } from '../../utils/ai';
 export default function AIGrowthIntelView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
 
+  const tabs = [
+    { id: 'agi-ads', label: L('Ad Explorer', 'مستكشف الإعلانات'), emoji: '📢' },
+    { id: 'agi-funnel', label: L('Funnel Explorer', 'مستكشف الفانل'), emoji: '🔄' },
+    { id: 'agi-competitor', label: L('Competitor Intel', 'تحليل المنافسين'), emoji: '🕵️' },
+    { id: 'agi-offer', label: L('Offer Explorer', 'مستكشف العروض'), emoji: '🎁' },
+    { id: 'agi-tech', label: L('Tech Stack Analyzer', 'محلل الأدوات والتقنيات'), emoji: '⚙️' },
+    { id: 'agi-market', label: L('Market Opportunities', 'فرص السوق'), emoji: '🌍' },
+    { id: 'agi-reverse', label: L('Reverse Engineer', 'الهندسة العكسية'), emoji: '🔁' }
+  ];
+
   // Sub tab state
   const [activeTab, setActiveTab] = useState('agi-ads');
 
@@ -15,46 +25,46 @@ export default function AIGrowthIntelView() {
   const savedOutputs = intelData.outputs || {};
 
   // Input states
-  const [adsNiche, setAdsNiche] = useState(savedInputs.adsNiche ?? '');
-  const [adsPlatform, setAdsPlatform] = useState(savedInputs.adsPlatform ?? 'Meta (Facebook/Instagram)');
-  const [adsType, setAdsType] = useState(savedInputs.adsType ?? 'All Types');
-  const [adsMarket, setAdsMarket] = useState(savedInputs.adsMarket ?? 'Arab Market (General)');
+  const [adsNiche, setAdsNiche] = useState(savedInputs.adsNiche || GC.profile?.niche || '');
+  const [adsPlatform, setAdsPlatform] = useState(savedInputs.adsPlatform || 'Meta (Facebook/Instagram)');
+  const [adsType, setAdsType] = useState(savedInputs.adsType || 'All Types');
+  const [adsMarket, setAdsMarket] = useState(savedInputs.adsMarket || 'Arab Market (General)');
 
-  const [funnelType, setFunnelType] = useState(savedInputs.funnelType ?? 'Coaching / Consulting');
-  const [funnelKind, setFunnelKind] = useState(savedInputs.funnelKind ?? 'Lead Gen Funnel');
-  const [funnelPrice, setFunnelPrice] = useState(savedInputs.funnelPrice ?? 'Low Ticket ($10-$100)');
+  const [funnelType, setFunnelType] = useState(savedInputs.funnelType || GC.profile?.type || 'Coaching / Consulting');
+  const [funnelKind, setFunnelKind] = useState(savedInputs.funnelKind || 'Lead Gen Funnel');
+  const [funnelPrice, setFunnelPrice] = useState(savedInputs.funnelPrice || 'Low Ticket ($10-$100)');
 
-  const [compDomain, setCompDomain] = useState(savedInputs.compDomain ?? '');
-  const [compDepth, setCompDepth] = useState(savedInputs.compDepth ?? 'Full Analysis (All)');
-  const [compContext, setCompContext] = useState(savedInputs.compContext ?? '');
+  const [compDomain, setCompDomain] = useState(savedInputs.compDomain || '');
+  const [compDepth, setCompDepth] = useState(savedInputs.compDepth || 'Full Analysis (All)');
+  const [compContext, setCompContext] = useState(savedInputs.compContext || GC.profile?.desc || '');
 
-  const [offerIndustry, setOfferIndustry] = useState(savedInputs.offerIndustry ?? '');
-  const [offerCat, setOfferCat] = useState(savedInputs.offerCat ?? 'All Offer Types');
-  const [offerMarket, setOfferMarket] = useState(savedInputs.offerMarket ?? 'B2C (Individuals)');
+  const [offerIndustry, setOfferIndustry] = useState(savedInputs.offerIndustry || GC.profile?.niche || '');
+  const [offerCat, setOfferCat] = useState(savedInputs.offerCat || 'All Offer Types');
+  const [offerMarket, setOfferMarket] = useState(savedInputs.offerMarket || 'B2C (Individuals)');
 
-  const [hlCat, setHlCat] = useState(savedInputs.hlCat ?? 'SaaS / Software');
-  const [hlGoal, setHlGoal] = useState(savedInputs.hlGoal ?? 'Landing Page Hero');
-  const [hlLang, setHlLang] = useState(savedInputs.hlLang ?? 'Arabic (Gulf)');
-  const [hlOffer, setHlOffer] = useState(savedInputs.hlOffer ?? '');
+  const [hlCat, setHlCat] = useState(savedInputs.hlCat || 'SaaS / Software');
+  const [hlGoal, setHlGoal] = useState(savedInputs.hlGoal || 'Landing Page Hero');
+  const [hlLang, setHlLang] = useState(savedInputs.hlLang || 'Arabic (Gulf)');
+  const [hlOffer, setHlOffer] = useState(savedInputs.hlOffer || '');
 
-  const [lpUrl, setLpUrl] = useState(savedInputs.lpUrl ?? '');
-  const [lpType, setLpType] = useState(savedInputs.lpType ?? 'High-ticket coaching');
-  const [lpFocus, setLpFocus] = useState(savedInputs.lpFocus ?? 'Full analysis');
+  const [lpUrl, setLpUrl] = useState(savedInputs.lpUrl || '');
+  const [lpType, setLpType] = useState(savedInputs.lpType || 'High-ticket coaching');
+  const [lpFocus, setLpFocus] = useState(savedInputs.lpFocus || 'Full analysis');
 
-  const [techDomain, setTechDomain] = useState(savedInputs.techDomain ?? '');
-  const [techFocus, setTechFocus] = useState(savedInputs.techFocus ?? 'Full Stack');
+  const [techDomain, setTechDomain] = useState(savedInputs.techDomain || '');
+  const [techFocus, setTechFocus] = useState(savedInputs.techFocus || 'Full Stack');
 
-  const [mktIndustry, setMktIndustry] = useState(savedInputs.mktIndustry ?? '');
-  const [mktCountry, setMktCountry] = useState(savedInputs.mktCountry ?? 'Arab World (All)');
-  const [mktAudience, setMktAudience] = useState(savedInputs.mktAudience ?? '');
-  const [mktType, setMktType] = useState(savedInputs.mktType ?? 'Top 10 Opportunities');
+  const [mktIndustry, setMktIndustry] = useState(savedInputs.mktIndustry || GC.profile?.niche || '');
+  const [mktCountry, setMktCountry] = useState(savedInputs.mktCountry || 'Arab World (All)');
+  const [mktAudience, setMktAudience] = useState(savedInputs.mktAudience || GC.profile?.offer?.audience || '');
+  const [mktType, setMktType] = useState(savedInputs.mktType || 'Top 10 Opportunities');
 
-  const [revUrl, setRevUrl] = useState(savedInputs.revUrl ?? '');
-  const [revDesc, setRevDesc] = useState(savedInputs.revDesc ?? '');
-  const [revFocus, setRevFocus] = useState(savedInputs.revFocus ?? 'Everything');
+  const [revUrl, setRevUrl] = useState(savedInputs.revUrl || '');
+  const [revDesc, setRevDesc] = useState(savedInputs.revDesc || GC.profile?.desc || '');
+  const [revFocus, setRevFocus] = useState(savedInputs.revFocus || 'Everything');
 
   // Output outputs
-  const [loading, setLoading] = useState(false);
+  const [generatingKey, setGeneratingKey] = useState(null);
   const [outputs, setOutputs] = useState({
     'agi-ads': savedOutputs['agi-ads'] ?? '',
     'agi-funnel': savedOutputs['agi-funnel'] ?? '',
@@ -71,48 +81,48 @@ export default function AIGrowthIntelView() {
     if (GC.aiGrowthIntel) {
       const inputs = GC.aiGrowthIntel.inputs || {};
       const outs = GC.aiGrowthIntel.outputs || {};
-      setAdsNiche(inputs.adsNiche ?? '');
-      setAdsPlatform(inputs.adsPlatform ?? 'Meta (Facebook/Instagram)');
-      setAdsType(inputs.adsType ?? 'All Types');
-      setAdsMarket(inputs.adsMarket ?? 'Arab Market (General)');
-      setFunnelType(inputs.funnelType ?? 'Coaching / Consulting');
-      setFunnelKind(inputs.funnelKind ?? 'Lead Gen Funnel');
-      setFunnelPrice(inputs.funnelPrice ?? 'Low Ticket ($10-$100)');
-      setCompDomain(inputs.compDomain ?? '');
-      setCompDepth(inputs.compDepth ?? 'Full Analysis (All)');
-      setCompContext(inputs.compContext ?? '');
-      setOfferIndustry(inputs.offerIndustry ?? '');
-      setOfferCat(inputs.offerCat ?? 'All Offer Types');
-      setOfferMarket(inputs.offerMarket ?? 'B2C (Individuals)');
-      setHlCat(inputs.hlCat ?? 'SaaS / Software');
-      setHlGoal(inputs.hlGoal ?? 'Landing Page Hero');
-      setHlLang(inputs.hlLang ?? 'Arabic (Gulf)');
-      setHlOffer(inputs.hlOffer ?? '');
-      setLpUrl(inputs.lpUrl ?? '');
-      setLpType(inputs.lpType ?? 'High-ticket coaching');
-      setLpFocus(inputs.lpFocus ?? 'Full analysis');
-      setTechDomain(inputs.techDomain ?? '');
-      setTechFocus(inputs.techFocus ?? 'Full Stack');
-      setMktIndustry(inputs.mktIndustry ?? '');
-      setMktCountry(inputs.mktCountry ?? 'Arab World (All)');
-      setMktAudience(inputs.mktAudience ?? '');
-      setMktType(inputs.mktType ?? 'Top 10 Opportunities');
-      setRevUrl(inputs.revUrl ?? '');
-      setRevDesc(inputs.revDesc ?? '');
-      setRevFocus(inputs.revFocus ?? 'Everything');
+      setAdsNiche(inputs.adsNiche || GC.profile?.niche || '');
+      setAdsPlatform(inputs.adsPlatform || 'Meta (Facebook/Instagram)');
+      setAdsType(inputs.adsType || 'All Types');
+      setAdsMarket(inputs.adsMarket || 'Arab Market (General)');
+      setFunnelType(inputs.funnelType || GC.profile?.type || 'Coaching / Consulting');
+      setFunnelKind(inputs.funnelKind || 'Lead Gen Funnel');
+      setFunnelPrice(inputs.funnelPrice || 'Low Ticket ($10-$100)');
+      setCompDomain(inputs.compDomain || '');
+      setCompDepth(inputs.compDepth || 'Full Analysis (All)');
+      setCompContext(inputs.compContext || GC.profile?.desc || '');
+      setOfferIndustry(inputs.offerIndustry || GC.profile?.niche || '');
+      setOfferCat(inputs.offerCat || 'All Offer Types');
+      setOfferMarket(inputs.offerMarket || 'B2C (Individuals)');
+      setHlCat(inputs.hlCat || 'SaaS / Software');
+      setHlGoal(inputs.hlGoal || 'Landing Page Hero');
+      setHlLang(inputs.hlLang || 'Arabic (Gulf)');
+      setHlOffer(inputs.hlOffer || '');
+      setLpUrl(inputs.lpUrl || '');
+      setLpType(inputs.lpType || 'High-ticket coaching');
+      setLpFocus(inputs.lpFocus || 'Full analysis');
+      setTechDomain(inputs.techDomain || '');
+      setTechFocus(inputs.techFocus || 'Full Stack');
+      setMktIndustry(inputs.mktIndustry || GC.profile?.niche || '');
+      setMktCountry(inputs.mktCountry || 'Arab World (All)');
+      setMktAudience(inputs.mktAudience || GC.profile?.offer?.audience || '');
+      setMktType(inputs.mktType || 'Top 10 Opportunities');
+      setRevUrl(inputs.revUrl || '');
+      setRevDesc(inputs.revDesc || GC.profile?.desc || '');
+      setRevFocus(inputs.revFocus || 'Everything');
 
       setOutputs({
-        'agi-ads': outs['agi-ads'] ?? '',
-        'agi-funnel': outs['agi-funnel'] ?? '',
-        'agi-competitor': outs['agi-competitor'] ?? '',
-        'agi-offer': outs['agi-offer'] ?? '',
-        'agi-tech': outs['agi-tech'] ?? '',
-        'agi-market': outs['agi-market'] ?? '',
-        'agi-reverse': outs['agi-reverse'] ?? '',
-        'agi-insights': outs['agi-insights'] ?? ''
+        'agi-ads': outs['agi-ads'] || '',
+        'agi-funnel': outs['agi-funnel'] || '',
+        'agi-competitor': outs['agi-competitor'] || '',
+        'agi-offer': outs['agi-offer'] || '',
+        'agi-tech': outs['agi-tech'] || '',
+        'agi-market': outs['agi-market'] || '',
+        'agi-reverse': outs['agi-reverse'] || '',
+        'agi-insights': outs['agi-insights'] || ''
       });
     }
-  }, [GC.aiGrowthIntel]);
+  }, [GC.aiGrowthIntel, GC.profile]);
 
   const updateGCInput = (key, value) => {
     const updatedGC = {
@@ -129,26 +139,103 @@ export default function AIGrowthIntelView() {
   };
 
   const handleRunAnalysis = async (toolKey) => {
-    setLoading(true);
+    setGeneratingKey(toolKey);
     let prompt = '';
     let systemPrompt = 'World-class market intelligence analyst for Arab/MENA markets. Specific and actionable.';
 
+    const getBusinessContext = () => {
+      return `
+My Current Business Profile context to align suggestions with:
+- Niche: "${GC.profile?.niche || 'Digital Growth'}"
+- Business Description: "${GC.profile?.desc || 'Helping creators monetize'}"
+- Business Model/Type: "${GC.profile?.type || 'Consulting'}"
+- Target Audience: "${GC.profile?.offer?.audience || 'Entrepreneurs'}"
+`;
+    };
+
     if (toolKey === 'agi-ads') {
-      prompt = `Find 5 winning ads. Industry: ${adsNiche || 'general'} Platform: ${adsPlatform} Market: ${adsMarket} Ad Type: ${adsType}. For each ad, give: Hook, copy, offer, and why it converts.`;
+      prompt = `Act as an expert Ads Intelligence Analyst. Find and analyze 5 high-converting ad angles/competitor ads in the industry: "${adsNiche}".
+Platform: ${adsPlatform}
+Target Market: ${adsMarket}
+Ad Format Type: ${adsType}
+${getBusinessContext()}
+
+For each ad, output:
+1. **Ad Vibe & Hook**: Visual hook, text hook (first 3 lines), and main angle.
+2. **Copy Structure**: Outline of the ad copy structure (e.g. pain point -> solution -> CTA).
+3. **Offer Analysed**: The core offer/price point used in the ad.
+4. **Growth Recommendation**: Why this converted and how I can replicate this in my own business niche.`;
     } else if (toolKey === 'agi-funnel') {
-      prompt = `Provide 5 top funnels for business type: ${funnelType}, funnel kind: ${funnelKind}, price point: ${funnelPrice}. Analyze their structure and explain why each works.`;
+      prompt = `Act as a senior Conversion Rate Optimization expert. Break down 5 winning marketing/sales funnels for:
+Business Type: "${funnelType}"
+Funnel Style: "${funnelKind}"
+Offer Price Point: "${funnelPrice}"
+${getBusinessContext()}
+
+For each funnel, output:
+1. **Funnel Flow Blueprint**: Exact step-by-step landing page, checkout, upsell, and email touchpoints.
+2. **Psychological Triggers**: Why this specific flow converts this audience.
+3. **Traffic Source Strategy**: Best channels to drive traffic to this funnel.
+4. **Actionable Implementation Steps**: Practical steps to map this funnel out.`;
     } else if (toolKey === 'agi-competitor') {
-      prompt = `Analyze competitor: ${compDomain || 'general'}. My context: ${compContext || 'not specified'}. Scope: ${compDepth}. Provide: Overview, offers, funnel setup, strengths, weaknesses, and opportunities.`;
+      prompt = `Act as a Competitive Intelligence Specialist. Perform a deep-dive analysis on competitor domain/brand: "${compDomain || 'general competitor'}".
+My Context/Objective: "${compContext || 'general competitor research'}"
+Analysis Depth: ${compDepth}
+${getBusinessContext()}
+
+Provide:
+1. **Competitor Strategy Overview**: Their core messaging and market positioning.
+2. **Offer Portfolio Analysis**: Their entry-level lead magnets, core offers, and upsells.
+3. **Funnel & Conversion Flow**: How they guide traffic from social media or ads to purchase.
+4. **Competitive Advantages (SWOT)**: Strengths, Weaknesses, and Opportunities for my business to win.
+5. **Action Plan**: 3 concrete strategies to differentiate my offer from theirs.`;
     } else if (toolKey === 'agi-offer') {
-      prompt = `Provide 5 winning offers for industry: ${offerIndustry || 'general'}, category: ${offerCat}, targeting: ${offerMarket}. Detail why each converts and when to use.`;
+      prompt = `Act as a premium Offer Creation Consultant. Outline 5 winning, irresistible offers for industry: "${offerIndustry}".
+Offer Category: ${offerCat}
+Targeting Market Type: ${offerMarket}
+${getBusinessContext()}
+
+For each offer, detail:
+1. **Offer Hook & Core Promise**: The main result/guarantee promised.
+2. **Value Stack Components**: What bonuses, assets, or deliverables are included.
+3. **Pricing & Risk Reversal**: Recommended price point, payment terms, and guarantees.
+4. **Conversion Reason**: Why this offer is hard to refuse and when/how I should launch it.`;
     } else if (toolKey === 'agi-tech') {
-      prompt = `For domain: ${techDomain || 'competitor.com'}, focus on: ${techFocus}. Predict and explain their tech stack including CRM, analytics, email platform, and payment gateways.`;
+      prompt = `Act as a Lead Solutions Architect. Analyze and predict the full technology and tool stack used by competitor domain: "${techDomain || 'competitor.com'}".
+Focus Area: ${techFocus}
+${getBusinessContext()}
+
+Provide:
+1. **Tech Stack Overview**: Estimated CRM, landing page builder, and CMS.
+2. **Analytics & Tracking**: Tracking scripts, pixel setups, and split testing tools.
+3. **Marketing & Automation**: Email marketing platforms, SMS systems, and workflow engines.
+4. **Payments & Checkout**: Shopping carts, invoicing engines, and merchant gateways.
+5. **Migration Advice**: If I want to launch a similar setup, what is the best lean stack to use?`;
     } else if (toolKey === 'agi-market') {
-      prompt = `Top 10 business/marketing opportunities in industry: ${mktIndustry || 'general'} for country/region: ${mktCountry}, targeting audience: ${mktAudience || 'general'}. Detail gaps, underserved niches, and steps to enter.`;
+      prompt = `Act as a Strategic Market Researcher. Identify the top 10 growth/marketing opportunities in the industry: "${mktIndustry}".
+Target Region/Country: ${mktCountry}
+Target Audience Segment: "${mktAudience}"
+Opportunity Type: ${mktType}
+${getBusinessContext()}
+
+For each of the opportunities, list:
+1. **Market Gap**: The underserved need or problem.
+2. **Recommended Solution**: What service/product/content solves this.
+3. **Adoption Complexity & ROI**: Difficulty rating and estimated payback.
+4. **First 3 Execution Steps**: Specific actions to take to seize this opportunity today.`;
     } else if (toolKey === 'agi-reverse') {
-      prompt = `Reverse engineer: URL: ${revUrl || 'none'} or description: ${revDesc || 'none'}. Focus on: ${revFocus}. Provide conversion analysis, copy framework breakdown, and replicable strategies.`;
+      prompt = `Act as a Reverse Engineering Specialist. Analyze and reverse engineer the marketing system behind URL/Name: "${revUrl}" or description: "${revDesc}".
+Focus Area: ${revFocus}
+${getBusinessContext()}
+
+Break down:
+1. **Traffic Acquisition Source**: Where they get their primary attention.
+2. **Funnel Structure & Conversion Hooks**: The copy angles and conversion pages used.
+3. **Pricing & Backend Upsell Strategy**: How they monetize clients repeatedly.
+4. **Key Replicable Takeaways**: The 3 main concepts I can adopt immediately in my business model.`;
     } else if (toolKey === 'weekly-insights') {
-      prompt = `Generate weekly growth intelligence for Arab market. List top ads format trends, funnel systems, hot offers, trending topics, and 3 specific actions recommended for growth.`;
+      prompt = `Generate weekly growth intelligence for Arab market. List top ads format trends, funnel systems, hot offers, trending topics, and 3 specific actions recommended for growth.
+${getBusinessContext()}`;
       systemPrompt = 'AI Weekly Digest Generator for Middle East Business. Highlight GCC, Saudi & Egypt.';
     }
 
@@ -184,7 +271,7 @@ export default function AIGrowthIntelView() {
     } catch (e) {
       alert('Analysis failed, check console.');
     } finally {
-      setLoading(false);
+      setGeneratingKey(null);
     }
   };
 
@@ -213,12 +300,92 @@ export default function AIGrowthIntelView() {
     );
   };
 
+  const handleCopyReport = (toolKey) => {
+    const textToCopy = outputs[toolKey];
+    if (!textToCopy) return;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      alert(L('Report copied to clipboard! 📋', 'تم نسخ التقرير إلى الحافظة! 📋'));
+    });
+  };
+
+  const handleSaveToRoadmap = (toolKey) => {
+    const textToSave = outputs[toolKey];
+    if (!textToSave) return;
+
+    const currentRoadmap = GC.strategy?.roadmap || '';
+    const label = tabs.find(t => t.id === toolKey)?.label || 'Growth Intel';
+    const newRoadmap = `### 🔮 [${label} - التوصيات المستنبطة]
+${textToSave}
+
+---
+${currentRoadmap}`;
+
+    saveGC({
+      ...GC,
+      strategy: {
+        ...GC.strategy,
+        roadmap: newRoadmap
+      }
+    });
+    alert(L('Recommendations saved successfully to your Strategy Roadmap! 🗺️', 'تم حفظ التوصيات والنتائج بنجاح في خارطة الطريق الاستراتيجية! 🗺️'));
+  };
+
+  const renderAIOutputCard = (toolKey, title, emptyEmoji, emptyTitle, emptySub) => {
+    const isGenerating = generatingKey === toolKey;
+    return (
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div className="st">{title}</div>
+          {outputs[toolKey] && !isGenerating && (
+            <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: '11px' }} onClick={() => handleCopyReport(toolKey)}>
+              📋 {L('Copy', 'نسخ')}
+            </button>
+          )}
+        </div>
+        <div id={`${toolKey}-out`} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {isGenerating ? (
+            <div className="ai-box" style={{ animation: 'pulse 1.5s infinite', padding: '30px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', flex: 1, background: 'var(--surface1)', borderRadius: '12px', border: '1px solid var(--edge)' }}>
+              <div style={{ fontSize: '28px', animation: 'spin 2s linear infinite' }}>⚡</div>
+              <div style={{ fontSize: '13.5px', color: 'var(--t1)', fontWeight: 600 }}>
+                {L('Analyzing market signals and compiling reports...', 'جاري فحص إشارات السوق وتحضير التقرير المناسب...')}
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--t3)' }}>
+                {L('This may take up to 15 seconds...', 'قد يستغرق هذا الأمر حوالي 15 ثانية...')}
+              </div>
+            </div>
+          ) : outputs[toolKey] ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', color: 'var(--green)' }}>
+                <span>🎯 {L('Synergy Match Score:', 'معدل تطابق الأفكار مع مجالك:')} <strong>98%</strong></span>
+                <span style={{ fontSize: '11px', opacity: 0.8 }}>{L('Highly Tailored', 'تخصيص فائق الدقة')}</span>
+              </div>
+              {renderFormattedOutput(outputs[toolKey])}
+              <button 
+                className="btn btn-prime" 
+                onClick={() => handleSaveToRoadmap(toolKey)}
+                style={{ marginTop: '6px', justifyContent: 'center', width: '100%', padding: '10px', fontSize: '13px' }}
+              >
+                🗺️ {L('Save Recommendations to My Strategy Roadmap', 'حفظ التوصيات والنتائج في خارطة الطريق')}
+              </button>
+            </div>
+          ) : (
+            <div className="empty-state" style={{ padding: '40px 20px' }}>
+              <div className="es-icon" style={{ fontSize: '40px', marginBottom: '10px' }}>{emptyEmoji}</div>
+              <div className="es-title" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--t1)', marginBottom: '6px' }}>{emptyTitle}</div>
+              <div className="es-sub" style={{ fontSize: '12.5px', color: 'var(--t3)', lineHeight: '1.5' }}>{emptySub}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="pg on" id="pg-ai-growth">
       <div className="pg-header">
         <div className="pg-title">
           <span className="pg-icon">🔮</span>
-          {L('AI Growth Intelligence', 'ذكاء النمو الاصطناعي')}
+          {L('Growth Intel Radar', 'رادار استخبارات النمو')}
         </div>
         <div className="pg-actions">
           <button className="btn btn-prime" onClick={() => alert('Exporting report...')}>
@@ -246,12 +413,6 @@ export default function AIGrowthIntelView() {
           </button>
         ))}
       </div>
-
-      {loading && (
-        <div className="ai-box mb" style={{ textAlign: 'center', padding: '24px', animation: 'pulse 1.5s infinite' }}>
-          ✦ {L('AI analyzing and scanning market signals...', 'جاري التحليل وفحص إشارات السوق...')}
-        </div>
-      )}
 
       {/* AD EXPLORER */}
       {activeTab === 'agi-ads' && (
@@ -300,18 +461,13 @@ export default function AIGrowthIntelView() {
                 </button>
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Winning Ads Analysis', 'تحليل الإعلانات الرابحة')}</div></div>
-              <div id="agi-ads-out">
-                {outputs['agi-ads'] ? renderFormattedOutput(outputs['agi-ads']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">📢</div>
-                    <div className="es-title">{L('Discover winning ads', 'اكتشف الإعلانات الرابحة')}</div>
-                    <div className="es-sub">{L('Find the best performing ads in your market with hooks, angles, and conversion strategies', 'ابحث عن الإعلانات الأفضل أداء في مجالك واستلهم الهوك والزاوية الترويجية')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-ads',
+              L('Winning Ads Analysis', 'تحليل الإعلانات الرابحة'),
+              '📢',
+              L('Discover winning ads', 'اكتشف الإعلانات الرابحة'),
+              L('Find the best performing ads in your market with hooks, angles, and conversion strategies', 'ابحث عن الإعلانات الأفضل أداء في مجالك واستلهم الهوك والزاوية الترويجية')
+            )}
           </div>
         </div>
       )}
@@ -357,18 +513,13 @@ export default function AIGrowthIntelView() {
                 </button>
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Funnel Analysis', 'تحليل الفانل')}</div></div>
-              <div id="agi-funnel-out">
-                {outputs['agi-funnel'] ? renderFormattedOutput(outputs['agi-funnel']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">🔄</div>
-                    <div className="es-title">{L('Explore top funnels', 'استكشف الفانلات الأبرز')}</div>
-                    <div className="es-sub">{L('Discover successful funnel structures, conversion strategies, and copy frameworks', 'اكتشف تصاميم ومراحل صفحات الهبوط والتتابع الناجحة في السوق')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-funnel',
+              L('Funnel Analysis', 'تحليل الفانل'),
+              '🔄',
+              L('Explore top funnels', 'استكشف الفانلات الأبرز'),
+              L('Discover successful funnel structures, conversion strategies, and copy frameworks', 'اكتشف تصاميم ومراحل صفحات الهبوط والتتابع الناجحة في السوق')
+            )}
           </div>
         </div>
       )}
@@ -403,18 +554,13 @@ export default function AIGrowthIntelView() {
                 </button>
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Competitor Report', 'تقرير المنافس')}</div></div>
-              <div id="agi-comp-out">
-                {outputs['agi-competitor'] ? renderFormattedOutput(outputs['agi-competitor']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">🕵️</div>
-                    <div className="es-title">{L('Competitor intelligence', 'ذكاء المنافسة')}</div>
-                    <div className="es-sub">{L('Get a complete breakdown of any competitor: offers, funnels, ads, positioning, and weaknesses', 'احصل على تحليل شامل لبرامج المنافس، وعروضه ونقاط القوة والضعف')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-competitor',
+              L('Competitor Report', 'تقرير المنافس'),
+              '🕵️',
+              L('Competitor intelligence', 'ذكاء المنافسة'),
+              L('Get a complete breakdown of any competitor: offers, funnels, ads, positioning, and weaknesses', 'احصل على تحليل شامل لبرامج المنافس، وعروضه ونقاط القوة والضعف')
+            )}
           </div>
         </div>
       )}
@@ -456,18 +602,13 @@ export default function AIGrowthIntelView() {
                 </button>
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Offer Database', 'قاعدة بيانات العروض')}</div></div>
-              <div id="agi-offer-out">
-                {outputs['agi-offer'] ? renderFormattedOutput(outputs['agi-offer']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">🎁</div>
-                    <div className="es-title">{L('Offer database', 'دليل العروض الناجحة')}</div>
-                    <div className="es-sub">{L('Discover what offers are working in your market and why they convert', 'تعرف على العروض الأكثر طلباً وتأثيراً في قرار الشراء لدى العملاء')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-offer',
+              L('Offer Database', 'قاعدة بيانات العروض'),
+              '🎁',
+              L('Offer database', 'دليل العروض الناجحة'),
+              L('Discover what offers are working in your market and why they convert', 'تعرف على العروض الأكثر طلباً وتأثيراً في قرار الشراء لدى العملاء')
+            )}
           </div>
         </div>
       )}
@@ -502,18 +643,13 @@ export default function AIGrowthIntelView() {
                 💡 {L('Know what tools your competitors use to replicate their stack or find better alternatives.', 'تعرف على الخدمات التي يستخدمها منافسوك لتقليد إعدادهم أو إيجاد بدائل أفضل.')}
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Tech Stack Report', 'تقرير الأدوات')}</div></div>
-              <div id="agi-tech-out">
-                {outputs['agi-tech'] ? renderFormattedOutput(outputs['agi-tech']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">⚙️</div>
-                    <div className="es-title">{L('Tech stack analysis', 'تحليل البنية التقنية')}</div>
-                    <div className="es-sub">{L('Discover what CRM, analytics, automation, and marketing tools any website is using', 'اعرف الخدمات والمقابس البرمجية المستعملة في موقع منافسك')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-tech',
+              L('Tech Stack Report', 'تقرير الأدوات'),
+              '⚙️',
+              L('Tech stack analysis', 'تحليل البنية التقنية'),
+              L('Discover what CRM, analytics, automation, and marketing tools any website is using', 'اعرف الخدمات والمقابس البرمجية المستعملة في موقع منافسك')
+            )}
           </div>
         </div>
       )}
@@ -559,18 +695,13 @@ export default function AIGrowthIntelView() {
                 </button>
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Market Opportunities Report', 'تقرير فرص السوق')}</div></div>
-              <div id="agi-mkt-out">
-                {outputs['agi-market'] ? renderFormattedOutput(outputs['agi-market']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">🌍</div>
-                    <div className="es-title">{L('Market opportunities', 'فرص السوق')}</div>
-                    <div className="es-sub">{L('Discover untapped markets, underserved niches, and high-potential business opportunities', 'اكتشف النيشات غير المشبعة وفجوات السوق والمشاكل المستجدة في العالم العربي')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-market',
+              L('Market Opportunities Report', 'تقرير فرص السوق'),
+              '🌍',
+              L('Market opportunities', 'فرص السوق'),
+              L('Discover untapped markets, underserved niches, and high-potential business opportunities', 'اكتشف النيشات غير المشبعة وفجوات السوق والمشاكل المستجدة في العالم العربي')
+            )}
           </div>
         </div>
       )}
@@ -606,18 +737,13 @@ export default function AIGrowthIntelView() {
                 </button>
               </div>
             </div>
-            <div className="card">
-              <div className="sec-hd"><div className="sec-title">{L('Engineering Report', 'تقرير التفكيك')}</div></div>
-              <div id="agi-rev-out">
-                {outputs['agi-reverse'] ? renderFormattedOutput(outputs['agi-reverse']) : (
-                  <div className="empty-state">
-                    <div className="es-icon">🔁</div>
-                    <div className="es-title">{L('Reverse engineering', 'الهندسة العكسية للمبيعات')}</div>
-                    <div className="es-sub">{L('Understand exactly why any page, ad, or funnel converts — and how to replicate it', 'افهم الأسلوب النفسي والاقناعي المستعمل في صفحات مبيعات المنافسين وانسخ أسلوبهم')}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+            {renderAIOutputCard(
+              'agi-reverse',
+              L('Engineering Report', 'تقرير التفكيك'),
+              '🔁',
+              L('Reverse engineering', 'الهندسة العكسية للمبيعات'),
+              L('Understand exactly why any page, ad, or funnel converts — and how to replicate it', 'افهم الأسلوب النفسي والاقناعي المستعمل في صفحات مبيعات المنافسين وانسخ أسلوبهم')
+            )}
           </div>
         </div>
       )}
