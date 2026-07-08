@@ -667,7 +667,7 @@ export default function BioLinkView() {
                 {/* Theme Selector */}
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Theme Palette', 'مظهر الألوان')}</label>
-                  <div className="bio-theme-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                  <div className="bio-theme-grid tabs-bar" style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: '8px', paddingBottom: '8px' }}>
                     {[
                       { key: 'dark', color: '#08080f', name: L('Dark', 'داكن') },
                       { key: 'purple', color: 'linear-gradient(135deg,#6C35FF,#a855f7)', name: L('Purple', 'بنفسجي') },
@@ -686,6 +686,8 @@ export default function BioLinkView() {
                         title={theme.name}
                         style={{ 
                           height: '42px', 
+                          minWidth: '55px',
+                          flex: '0 0 55px',
                           borderRadius: '8px', 
                           background: theme.color, 
                           border: bioTheme === theme.key ? '3px solid var(--orange)' : '2px solid var(--edge)', 

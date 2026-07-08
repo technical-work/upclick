@@ -41,10 +41,12 @@ export default function Topbar() {
 
   const [currOpen, setCurrOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
   const [currSearch, setCurrSearch] = useState('');
 
   const currRef = useRef(null);
   const themeRef = useRef(null);
+  const mobileSettingsRef = useRef(null);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -54,6 +56,9 @@ export default function Topbar() {
       }
       if (themeRef.current && !themeRef.current.contains(event.target)) {
         setThemeOpen(false);
+      }
+      if (mobileSettingsRef.current && !mobileSettingsRef.current.contains(event.target)) {
+        setMobileSettingsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -279,6 +284,130 @@ export default function Topbar() {
         >
           ✦
         </button>
+      </div>
+
+      {/* MOBILE SETTINGS POPUP */}
+      <div className="tb-mobile-actions" ref={mobileSettingsRef} style={{ position: 'relative' }}>
+        <button 
+          className="btn btn-ghost" 
+          onClick={() => setMobileSettingsOpen(!mobileSettingsOpen)}
+          style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+        >
+          ⚙️ {lang === 'ar' ? 'الإعدادات العامة' : 'General Settings'}
+        </button>
+
+        {mobileSettingsOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            [lang === 'ar' ? 'left' : 'right']: 0,
+            marginTop: '8px',
+            background: 'var(--surface)',
+            border: '1px solid var(--edge)',
+            borderRadius: '12px',
+            padding: '16px',
+            width: '280px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            zIndex: 100
+          }}>
+            {/* EGP Rate Box */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(255,107,53,0.04), rgba(108,53,255,0.04))',
+              border: '1px solid var(--edge)',
+              borderRadius: '8px',
+              padding: '8px 10px',
+              fontSize: '11px',
+              color: 'var(--t1)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              textAlign: lang === 'ar' ? 'right' : 'left'
+            }}>
+              <span style={{ fontWeight: 'bold' }}>🇪🇬 {lang === 'ar' ? 'صرف الجنيه:' : 'EGP Exchange:'}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span>💵 $1 = {(rates?.EGP || 48.50).toFixed(2)} ج.م</span>
+                <span>💶 €1 = {(rates?.EGP && rates?.EUR ? (rates.EGP / rates.EUR) : 52.30).toFixed(2)} ج.م</span>
+              </div>
+            </div>
+
+            {/* Language & Theme Selectors inline */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', textAlign: lang === 'ar' ? 'right' : 'left' }}>
+              {/* Language Switcher */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'bold' }}>{lang === 'ar' ? '🌐 اللغة:' : '🌐 Language:'}</label>
+                <div className="lang-sw" style={{ width: '100%', display: 'flex' }}>
+                  <button
+                    className={`lang-btn ${lang === 'en' ? 'on' : ''}`}
+                    onClick={() => setLang('en')}
+                    style={{ flex: 1, padding: '5px 0', fontSize: '11px' }}
+                  >
+                    EN
+                  </button>
+                  <button
+                    className={`lang-btn ${lang === 'ar' ? 'on' : ''}`}
+                    onClick={() => setLang('ar')}
+                    style={{ flex: 1, padding: '5px 0', fontSize: '11px' }}
+                  >
+                    AR
+                  </button>
+                </div>
+              </div>
+
+              {/* Theme Switcher */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'bold' }}>{lang === 'ar' ? '🎨 المظهر:' : '🎨 Theme:'}</label>
+                <div className="lang-sw" style={{ width: '100%', display: 'flex' }}>
+                  <button
+                    className={`lang-btn ${theme === 'dark' ? 'on' : ''}`}
+                    onClick={() => setTheme('dark')}
+                    style={{ flex: 1, padding: '5px 0', fontSize: '11px' }}
+                  >
+                    {lang === 'ar' ? 'داكن' : 'Dark'}
+                  </button>
+                  <button
+                    className={`lang-btn ${theme === 'light' ? 'on' : ''}`}
+                    onClick={() => setTheme('light')}
+                    style={{ flex: 1, padding: '5px 0', fontSize: '11px' }}
+                  >
+                    {lang === 'ar' ? 'فاتح' : 'Light'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Currency Selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: lang === 'ar' ? 'right' : 'left' }}>
+              <label style={{ fontSize: '10.5px', color: 'var(--t3)', fontWeight: 'bold' }}>{lang === 'ar' ? '💵 العملة:' : '💵 Currency:'}</label>
+              <select
+                className="inp"
+                style={{
+                  padding: '6px 8px',
+                  fontSize: '11.5px',
+                  borderRadius: '6px',
+                  background: 'var(--surface2)',
+                  border: '1px solid var(--edge)',
+                  color: 'var(--t2)',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+                value={currency?.code || 'USD'}
+                onChange={(e) => {
+                  setCurrency(e.target.value);
+                }}
+              >
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code} style={{ background: 'var(--surface)', color: 'var(--t1)' }}>
+                    {c.flag} {c.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

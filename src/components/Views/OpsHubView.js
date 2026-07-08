@@ -318,13 +318,13 @@ export default function OpsHubView() {
         </div>
       </div>
 
-      <div className="g2 stagger mb">
-        <div className="stat-card">
+      <div className="g2 mobile-scroll-row stagger mb">
+        <div className="stat-card" style={{ minWidth: '140px' }}>
           <div className="stat-lbl">📋 {L('SOPs Created', 'أدلة العمل SOPs')}</div>
           <div className="stat-val">{dateFilteredSops.length}</div>
           <div className="stat-ch ch-nu">{L('documents', 'ملفات موثقة')}</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ minWidth: '140px' }}>
           <div className="stat-lbl">👥 {L('Team Members', 'أعضاء الفريق')}</div>
           <div className="stat-val">{teamList.length}</div>
           <div className="stat-ch ch-nu">{L('active', 'نشطين')}</div>

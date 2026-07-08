@@ -1138,7 +1138,7 @@ export default function AutomationHubView() {
                   </div>
                 </div>
               </div>
-              <div style={{ overflow: 'visible', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--edge)' }}>
+              <div style={{ overflowX: 'auto', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--edge)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: lang === 'ar' ? 'right' : 'left' }}>
                   <thead>
                     <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)', color: 'var(--t2)', fontSize: '13px' }}>

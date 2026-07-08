@@ -663,7 +663,7 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
           <span className="pg-icon">👥</span>
           {L('Team Collaboration Hub', 'مركز إدارة وتفاعل الفريق')}
         </div>
-        <div className="pg-actions" style={{ display: 'flex', gap: '8px' }}>
+        <div className="pg-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {activeTab === 'members' && (
             <button className="btn btn-prime" onClick={() => setIsAddMemberOpen(true)}>
               ➕ {L('Invite Member', 'إضافة عضو جديد')}
@@ -688,15 +688,17 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
       </div>
 
       {/* Tabs list */}
-      <div style={{ 
+      <div className="tabs-bar" style={{ 
         marginBottom: '20px', 
         display: 'flex', 
-        flexWrap: 'wrap', 
+        flexWrap: 'nowrap', 
+        overflowX: 'auto',
         gap: '8px', 
         background: 'var(--surface2)', 
         padding: '6px', 
         borderRadius: '12px', 
-        border: '1px solid var(--edge2)' 
+        border: '1px solid var(--edge2)',
+        paddingBottom: '8px'
       }}>
         {[
           { key: 'chat', label: L('Team Chat', 'دردشة الفريق'), icon: '💬' },
@@ -736,7 +738,7 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
 
         {/* 1. CHAT TAB */}
         {activeTab === 'chat' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px', height: '65vh' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px' }}>
             {/* Chat Sidebar: Channels & Members statuses */}
             <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--surface2)', border: '1px solid var(--edge2)' }}>
               
@@ -772,7 +774,7 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid var(--edge2)', paddingTop: '12px', flex: 1, overflowY: 'auto' }}>
+              <div style={{ borderTop: '1px solid var(--edge2)', paddingTop: '12px', flex: 1, overflowY: 'auto', minHeight: '200px' }}>
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--t3)', textTransform: 'uppercase', marginBottom: '8px' }}>
                   🟢 {L('Members Active', 'نشاط الفريق')}
                 </div>
@@ -795,7 +797,7 @@ Generate a concise summary of discussions, key decisions made, and a bulleted ac
             </div>
 
             {/* Chat Body */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '65vh', minHeight: '500px' }}>
               {aiSummary && (
                 <div className="card" style={{ background: 'rgba(255, 107, 53, 0.04)', border: '1px dashed var(--orange)', padding: '14px', fontSize: '12px', color: 'var(--t1)', flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', borderBottom: '1px dashed rgba(255,107,53,0.15)', paddingBottom: '4px' }}>

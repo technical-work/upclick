@@ -283,7 +283,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
           cursor: 'pointer'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           {/* Complete Checkbox */}
           <input 
             type="checkbox" 
@@ -414,20 +414,20 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
       </div>
 
       {/* Stats Cards Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px' }}>
+      <div className="mobile-scroll-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px', minWidth: '140px' }}>
           <div className="stat-lbl" style={{ color: 'var(--t3)', fontSize: '11px', fontWeight: 600 }}>📋 {L('Total Tasks', 'إجمالي المهام')}</div>
           <div className="stat-val" style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>{totalTasks}</div>
         </div>
-        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px' }}>
+        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px', minWidth: '140px' }}>
           <div className="stat-lbl" style={{ color: 'var(--t3)', fontSize: '11px', fontWeight: 600 }}>🔥 {L('High Priority', 'عاجلة')}</div>
           <div className="stat-val" style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: 'var(--red)' }}>{highPriority}</div>
         </div>
-        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px' }}>
+        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px', minWidth: '140px' }}>
           <div className="stat-lbl" style={{ color: 'var(--t3)', fontSize: '11px', fontWeight: 600 }}>✅ {L('Completed', 'مكتملة')}</div>
           <div className="stat-val" style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: 'var(--green)' }}>{completedToday}</div>
         </div>
-        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px' }}>
+        <div className="stat-card" style={{ background: 'var(--surface2)', border: '1px solid var(--edge2)', borderRadius: '12px', padding: '16px', minWidth: '140px' }}>
           <div className="stat-lbl" style={{ color: 'var(--t3)', fontSize: '11px', fontWeight: 600 }}>⏰ {L('Overdue', 'متأخرة')}</div>
           <div className="stat-val" style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px', color: overdueTasks > 0 ? 'var(--red)' : 'var(--t1)' }}>{overdueTasks}</div>
         </div>
@@ -630,7 +630,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
 
       {/* KANBAN BOARD BOARD */}
       {activeTab === 'kanban' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px', alignItems: 'start' }}>
+        <div className="mobile-scroll-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px', alignItems: 'start' }}>
           {kanbanColumns.map(col => {
             const colTasks = items.filter(col.filter);
             return (
@@ -643,7 +643,8 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
                   borderRadius: '12px', 
                   padding: '14px',
                   transition: 'background-color 0.2s, border-color 0.2s',
-                  minHeight: '450px'
+                  minHeight: '450px',
+                  minWidth: '260px'
                 }}
                 onDragOver={(e) => handleDragOver(e, col.key)}
                 onDragLeave={handleDragLeave}
@@ -717,7 +718,7 @@ Give me the top 3 critical tasks I must focus on today to make immediate progres
                         </div>
 
                         {/* Footer details row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--edge2)', paddingTop: '8px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--edge2)', paddingTop: '8px', marginTop: '4px', gap: '6px' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             {task.assignee && (
                               <span style={{ fontSize: '10px', color: 'var(--t2)' }}>

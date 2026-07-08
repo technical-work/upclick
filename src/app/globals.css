@@ -1039,9 +1039,35 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
     overflow-x: auto !important;
     justify-content: flex-start !important;
     -webkit-overflow-scrolling: touch;
+    max-width: 100% !important; /* Prevent tabs from stretching parent */
   }
   .tabs-bar .tab-btn, .tabs-bar .tbb, .tool-tabs .tab-btn, .tool-tabs .tbb {
     flex-shrink: 0 !important;
+  }
+
+  /* Force grids into horizontally scrollable rows on mobile only */
+  .mobile-scroll-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px !important;
+    scroll-snap-type: x mandatory;
+  }
+  .mobile-scroll-row > div {
+    flex-shrink: 0 !important;
+    scroll-snap-align: center;
+  }
+
+  /* Kanban mobile layout */
+  .kanban-col {
+    min-width: 85vw !important;
+    max-width: 85vw !important;
+  }
+
+  /* Prevent grid items from overflowing their columns due to wide content */
+  .g2 > div, .g3 > div, .g4 > div, .g21 > div, .g31 > div, .g12 > div {
+    min-width: 0 !important;
   }
   
   /* Telegram Hub Inbox layout stacking */
@@ -1211,9 +1237,14 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
     padding: 10px 12px !important;
   }
 
-  /* ── BIO LINK / CV PAGE MOBILE FIXES ── */
-  /* Prevent horizontal overflow on the bio page */
-  #pg-bio {
+  /* ── BIO LINK, MARKETING OS, AUTOMATION, COMMUNITY & TASKS MOBILE FIXES ── */
+  /* Prevent horizontal overflow on these pages */
+  #pg-bio,
+  #pg-marketing,
+  #pg-automation,
+  #pg-community-hub,
+  #pg-tasks,
+  #pg-team-hub {
     overflow-x: hidden !important;
     max-width: 100% !important;
   }
@@ -1223,18 +1254,38 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
     position: static !important;
   }
 
-  /* Force all inputs/textareas/selects inside bio editor to respect parent width */
+  /* Force all inputs/textareas/selects inside editors to respect parent width */
   #pg-bio .inp,
   #pg-bio textarea,
   #pg-bio select,
-  #pg-bio input {
+  #pg-bio input,
+  #pg-marketing .inp,
+  #pg-marketing textarea,
+  #pg-marketing select,
+  #pg-marketing input,
+  #pg-community-hub .inp,
+  #pg-community-hub textarea,
+  #pg-community-hub select,
+  #pg-community-hub input,
+  #pg-tasks .inp,
+  #pg-tasks textarea,
+  #pg-tasks select,
+  #pg-tasks input,
+  #pg-team-hub .inp,
+  #pg-team-hub textarea,
+  #pg-team-hub select,
+  #pg-team-hub input {
     min-width: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
-  /* Bio page cards: tighter padding on mobile */
-  #pg-bio .card {
+  /* Editor cards: tighter padding on mobile */
+  #pg-bio .card,
+  #pg-marketing .card,
+  #pg-community-hub .card,
+  #pg-tasks .card,
+  #pg-team-hub .card {
     padding: 12px !important;
   }
 
@@ -1242,6 +1293,30 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
   #pg-bio .bio-theme-grid {
     grid-template-columns: repeat(5, 1fr) !important;
   }
+
+  /* Force any remaining inline grids to single column on mobile */
+  #pg-bio div[style*="gridTemplateColumns"],
+  #pg-bio div[style*="grid-template-columns"],
+  #pg-marketing div[style*="gridTemplateColumns"],
+  #pg-marketing div[style*="grid-template-columns"],
+  #pg-community-hub div[style*="gridTemplateColumns"],
+  #pg-community-hub div[style*="grid-template-columns"],
+  #pg-tasks div[style*="gridTemplateColumns"],
+  #pg-tasks div[style*="grid-template-columns"],
+  #pg-team-hub div[style*="gridTemplateColumns"],
+  #pg-team-hub div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Mobile Topbar Actions (General Settings Popup) */
+  .tb-mobile-actions {
+    display: flex !important;
+  }
+}
+
+/* Hide mobile actions on desktop */
+.tb-mobile-actions {
+  display: none;
 }
 
 

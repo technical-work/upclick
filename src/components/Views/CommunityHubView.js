@@ -623,7 +623,7 @@ export default function CommunityHubView() {
       </div>
 
       {/* TOP COMMUNITY SPACES BAR */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+      <div className="mobile-scroll-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '12px', marginBottom: '20px' }}>
         {spaces.map((space) => {
           const isActive = activeSpaceId === space.id;
           return (
@@ -640,7 +640,8 @@ export default function CommunityHubView() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                boxShadow: isActive ? '0 4px 12px rgba(249, 115, 22, 0.15)' : 'none'
+                boxShadow: isActive ? '0 4px 12px rgba(249, 115, 22, 0.15)' : 'none',
+                minWidth: '240px'
               }}
             >
               <div style={{ minWidth: 0 }}>
