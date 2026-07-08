@@ -318,7 +318,13 @@ My Niche: "${inputs.resNiche}"
 Context (ICP / Target Client): "${icpData}"
 Growth Roadmap Context: "${roadmapData}"
 
-Identify 3-4 competitor brands or similar businesses in this space. Provide their pricing, positioning, and highlight the market gaps we can exploit.`;
+CRITICAL INSTRUCTION: Do NOT summarize or repeat my own business idea, ICP, or roadmap. I already know this.
+Instead, use the context above to understand my market, and then Identify 3-4 ACTUAL competitor brands, influencers, or similar businesses in this specific niche/industry. 
+For each competitor, provide:
+1. Their brand name
+2. Their estimated pricing/offer
+3. Their positioning (what makes them unique)
+4. The market gaps we can exploit to beat them.`;
     const compSystem = `You are an expert market analyst. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     
     setOutputs(prev => ({ ...prev, 'comp-out': '', 'comp-ads-out': '', 'direction-out': '' }));

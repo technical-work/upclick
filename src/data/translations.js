@@ -441,7 +441,7 @@ export const Tr = {
     't-nb-capture': 'Capture',
     't-nb-saved': 'Saved Notes',
     't-nb-empty': 'No saved notes yet',
-    
+
     // xTr English additions
     't-n-script': 'Video Script Writer',
     't-n-trendvid': 'Trending Videos AI',
@@ -524,7 +524,7 @@ export const Tr = {
     'landing-final-title': 'Ready to run your business like a CEO?',
     'landing-final-sub': 'Join 2,400+ Arab entrepreneurs already using UpKlick.',
     'landing-footer-tagline': 'The AI Operating System for Arab creators, coaches, and entrepreneurs. Build, grow, and manage everything from one dashboard.',
-    
+
     // Landing Page Tools
     'landing-tool-name-0': 'Smart CRM',
     'landing-tool-desc-0': 'Pipeline + lead tracking + AI follow-ups',
@@ -989,7 +989,7 @@ export const Tr = {
     't-nb-capture': 'تسجيل',
     't-nb-saved': 'ملاحظات محفوظة',
     't-nb-empty': 'لا توجد ملاحظات محفوظة بعد',
-    
+
     // xTr Arabic additions
     't-n-script': 'كاتب سكريبت الفيديو',
     't-n-trendvid': 'AI فيديوهات الترند',
@@ -1045,7 +1045,7 @@ export const Tr = {
     't-tv-refresh': 'تحديث الفيد',
 
     // Landing Page Overrides
-    'landing-hero-badge': '✦ نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
+    'landing-hero-badge': '✦ نظام تشغيل الذكاء الاصطناعي لروادالأعمال ',
     'landing-hero-title': 'أدر بزنسك كاملاً من لوحة واحدة',
     'landing-hero-sub': 'CRM، تسويق، محتوى، مالية، تليجرام — مدعومون بالذكاء الاصطناعي للمبدعين العرب.',
     'landing-hero-cta-trial': '🚀 ابدأ التجربة المجانية',
@@ -1071,7 +1071,7 @@ export const Tr = {
     'landing-roadmap-sub': 'نحن نبني في العلن. صوّت للميزات التي تهمك.',
     'landing-final-title': 'جاهز لإدارة عملك كمدير تنفيذي؟',
     'landing-final-sub': 'انضم إلى أكثر من 2,400 رائد أعمال عربي يستخدمون UpKlick بالفعل.',
-    'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز ورواد الأعمال العرب. ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.',
+    'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز وروادالأعمال . ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.',
 
     // Landing Page Tools
     'landing-tool-name-0': 'إدارة العملاء الذكية',

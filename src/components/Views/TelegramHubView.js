@@ -139,16 +139,8 @@ export default function TelegramHubView() {
   const fileInputRef = useRef(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
-  const [templates, setTemplates] = useState(tg.templates || [
-    { id: '1', name: 'Welcome Message', content: 'السلام عليكم {{name}}! 👋 أهلاً بك في ...', status: 'Active' },
-    { id: '2', name: 'Follow Up #1', content: 'مرحباً {{name}}، لاحظت إنك مهتم بـ...', status: 'Draft' }
-  ]);
-  const [templateHistory, setTemplateHistory] = useState(tg.templateHistory || [
-    { id: 'h1', templateName: 'Welcome Message', sentAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString(), successCount: 18, totalTargets: 20, readCount: 16, replyCount: 10, status: 'Sent' },
-    { id: 'h2', templateName: 'Follow Up #1', sentAt: new Date(Date.now() - 3600000 * 24 * 2).toISOString(), successCount: 15, totalTargets: 15, readCount: 12, replyCount: 6, status: 'Sent' },
-    { id: 'h3', templateName: 'Welcome Message', sentAt: new Date(Date.now() - 3600000 * 24 * 1).toISOString(), successCount: 22, totalTargets: 25, readCount: 20, replyCount: 14, status: 'Sent' },
-    { id: 'h4', templateName: 'Discount Offer', sentAt: new Date(Date.now() - 3600000 * 5).toISOString(), successCount: 9, totalTargets: 10, readCount: 9, replyCount: 3, status: 'Sent' }
-  ]);
+  const [templates, setTemplates] = useState(tg.templates || []);
+  const [templateHistory, setTemplateHistory] = useState(tg.templateHistory || []);
   const [showCreateTmplModal, setShowCreateTmplModal] = useState(false);
   const [newTmplName, setNewTmplName] = useState('');
   const [newTmplContent, setNewTmplContent] = useState('');

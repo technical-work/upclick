@@ -442,6 +442,77 @@ function generateSmartFallback(prompt, lang, context) {
 • النشر وبدء حملة الترويج عبر منصاتك المفضلة`;
   }
 
+  // 18. Tech Stack Analyzer fallback
+  if (normalized.includes('tech stack') || normalized.includes('lead solutions architect')) {
+    const d = extract(pStr, 'competitor domain:', 'the competitor');
+    return isAR 
+      ? `### ⚙️ تقرير البنية التقنية والأدوات (محاكاة ذكية)
+الموقع المستهدف: **${d}**
+
+بناءً على معايير السوق الحالية في مجال ${localizedNiche}، إليك تحليل مقدر للأدوات المستخدمة:
+1. **المنصات وبناء الصفحات:** غالباً يعتمد على (WordPress / ClickFunnels / Shopify) حسب طبيعة العروض.
+2. **إدارة علاقات العملاء (CRM):** أداة مثل (HubSpot / GoHighLevel / ActiveCampaign) لأتمتة المتابعة.
+3. **التتبع والتحليلات:** Meta Pixel الأساسي، و Google Analytics (GA4) لقياس التحويلات.
+4. **الدفع والمبيعات:** بوابة دفع عالمية (Stripe / PayPal) أو محلية (Paymob / Tap) مع أداة مثل ThriveCart.
+
+*نصيحة تقنية:* يمكنك بناء نظام مشابه وبأقل تكلفة باستخدام منصة متكاملة (All-in-one) لتقليل تشتت الأدوات واشتراكاتها.`
+      : `### ⚙️ Tech Stack Report (Smart Estimation)
+Target Domain: **${d}**
+
+Based on industry standards in ${localizedNiche}, here is an estimated tech stack:
+1. **CMS/Landing Pages:** Likely using (WordPress / ClickFunnels / Shopify).
+2. **CRM & Email:** Tools like (HubSpot / GoHighLevel / ActiveCampaign).
+3. **Tracking:** Meta Pixel and Google Analytics (GA4).
+4. **Payments:** (Stripe / PayPal) or localized gateways via ThriveCart.
+
+*Tech Tip:* Build a similar automated system using an all-in-one platform to reduce subscription bloat.`;
+  }
+
+  // 19. Reverse Engineer fallback
+  if (normalized.includes('reverse engineer') || normalized.includes('marketing system behind')) {
+    const r = extract(pStr, 'URL/Name:', 'the target funnel');
+    return isAR
+      ? `### 🔁 تقرير الهندسة العكسية للمبيعات (محاكاة ذكية)
+الهدف المستهدف: **${r}**
+
+بناءً على مبادئ التسويق وعلم نفس المستهلك في مجال ${localizedNiche}:
+1. **مصدر الزيارات (Traffic):** التركيز الأكبر يكون على المحتوى العضوي (Organic) في المنصات السريعة لدعم الإعلانات الممولة وإعادة الاستهداف.
+2. **هيكل مسار التحويل (Funnel):** الصفحة تعتمد على (Hook) قوي يجذب الانتباه لمشكلة شائعة، ثم تقدم (Lead Magnet) مجاني أو عرض منخفض التكلفة لكسر حاجز الشراء.
+3. **استراتيجية التسعير وما بعد البيع:** يعتمدون على نموذج (Upsell) متدرج؛ حيث يرتفع السعر في الخدمات المتقدمة (Backend Offer) لزيادة متوسط قيمة العميل (LTV).
+4. **عوامل الإقناع الرئيسية:** الإثبات الاجتماعي (Social Proof)، الندرة (Scarcity)، وتخفيف المخاطر بضمان واضح.
+
+*كيف تطبق ذلك؟* ابدأ بصناعة "طُعم" مجاني يجذب فئتك المستهدفة، ثم اعرض منتجك الأساسي فور تسجيلهم.`
+      : `### 🔁 Reverse Engineering Report (Smart Estimation)
+Target: **${r}**
+
+Based on conversion psychology in ${localizedNiche}:
+1. **Traffic Source:** Heavy reliance on short-form organic content coupled with retargeting ads.
+2. **Funnel Structure:** Uses a strong emotional hook, leading to a low-friction entry offer or free lead magnet.
+3. **Backend Strategy:** Monetization happens primarily through high-ticket upsells to maximize LTV.
+4. **Conversion Triggers:** Strong social proof, artificial or real scarcity, and risk-reversing guarantees.
+
+*Takeaway:* Build a frictionless front-end offer to build trust before pitching your core service.`;
+  }
+
+  // 20. Funnel Explorer fallback
+  if (normalized.includes('sales funnels for') || normalized.includes('funnel explorer')) {
+    return isAR
+      ? `### 🔄 مستكشف مسارات التحويل (محاكاة ذكية)
+مسار تحويل مقترح لمجالك (${localizedNiche}):
+
+1. **الخطوة الأولى (الجذب):** محتوى تعليمي قصير يحل مشكلة بسيطة، مع دعوة لتحميل دليل مجاني.
+2. **الخطوة الثانية (التقاط البيانات):** صفحة هبوط (Squeeze Page) تطلب البريد والاسم مقابل الدليل المجاني.
+3. **الخطوة الثالثة (العرض المبدئي):** صفحة شكر تحتوي على عرض سريع بسعر منخفض (Tripwire) لاسترداد تكاليف الإعلانات.
+4. **الخطوة الرابعة (الرعاية):** سلسلة رسائل بريد إلكتروني/تليجرام تبني الثقة وتقدم العرض الأساسي (${price}).`
+      : `### 🔄 Funnel Explorer (Smart Estimation)
+Recommended Funnel for ${localizedNiche}:
+
+1. **Top of Funnel (Attract):** Short-form content solving a micro-problem, driving to a lead magnet.
+2. **Middle of Funnel (Capture):** Squeeze page offering the free asset in exchange for an email.
+3. **Tripwire Offer:** Thank you page with a highly discounted entry offer to liquidate ad spend.
+4. **Core Offer Pitch:** An automated email sequence nurturing the lead and pitching your core offer (${price}).`;
+  }
+
   // Generic Catch-all / custom chat assistant panel questions
   return generateCustomChatResponse(isAR, pStr, context, name, localizedNiche, localizedStage, price, localizedPain, localizedDemo, localizedChannel, goals);
 }

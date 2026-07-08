@@ -8,7 +8,7 @@ export default function AIGrowthIntelView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
 
   const tabs = [
-    { id: 'agi-ads', label: L('Ad Explorer', 'مستكشف الإعلانات'), emoji: '📢' },
+    { id: 'agi-ads', label: L('AI Ad Angles', 'محلل زوايا الإعلانات'), emoji: '📢' },
     { id: 'agi-funnel', label: L('Funnel Explorer', 'مستكشف الفانل'), emoji: '🔄' },
     { id: 'agi-competitor', label: L('Competitor Intel', 'تحليل المنافسين'), emoji: '🕵️' },
     { id: 'agi-offer', label: L('Offer Explorer', 'مستكشف العروض'), emoji: '🎁' },
@@ -154,25 +154,27 @@ My Current Business Profile context to align suggestions with:
     };
 
     if (toolKey === 'agi-ads') {
-      prompt = `Act as an expert Ads Intelligence Analyst. Find and analyze 5 high-converting ad angles/competitor ads in the industry: "${adsNiche}".
+      prompt = `Act as an expert Ads Intelligence Analyst. Since you cannot browse the live internet, generate 5 highly realistic, historically successful, or simulated ad angles based on what works best right now for competitors in the industry: "${adsNiche}".
 Platform: ${adsPlatform}
 Target Market: ${adsMarket}
 Ad Format Type: ${adsType}
-${getBusinessContext()}
 
-For each ad, output:
+IMPORTANT: Do not just write ads for my specific business. I want to EXPLORE what successful competitors in this industry are doing.
+
+For each ad angle, output:
 1. **Ad Vibe & Hook**: Visual hook, text hook (first 3 lines), and main angle.
 2. **Copy Structure**: Outline of the ad copy structure (e.g. pain point -> solution -> CTA).
 3. **Offer Analysed**: The core offer/price point used in the ad.
 4. **Growth Recommendation**: Why this converted and how I can replicate this in my own business niche.`;
     } else if (toolKey === 'agi-funnel') {
-      prompt = `Act as a senior Conversion Rate Optimization expert. Break down 5 winning marketing/sales funnels for:
+      prompt = `Act as a senior Conversion Rate Optimization expert. Find and break down 5 REAL-WORLD or highly realistic successful marketing/sales funnels used by top competitors for:
 Business Type: "${funnelType}"
 Funnel Style: "${funnelKind}"
 Offer Price Point: "${funnelPrice}"
-${getBusinessContext()}
 
-For each funnel, output:
+IMPORTANT: Do NOT just generate a funnel idea for my own business. I want to EXPLORE what OTHER successful businesses are doing in this industry.
+
+For each competitor funnel, output:
 1. **Funnel Flow Blueprint**: Exact step-by-step landing page, checkout, upsell, and email touchpoints.
 2. **Psychological Triggers**: Why this specific flow converts this audience.
 3. **Traffic Source Strategy**: Best channels to drive traffic to this funnel.
@@ -294,7 +296,7 @@ ${getBusinessContext()}`;
     return (
       <div 
         className="ai-formatted-result"
-        style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', fontSize: '15px', color: 'var(--t1)', background: 'var(--surface2)', padding: '20px', borderRadius: '12px', border: '1px solid var(--edge)' }}
+        style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowX: 'auto', lineHeight: '1.8', fontSize: '15px', color: 'var(--t1)', background: 'var(--surface2)', padding: '20px', borderRadius: '12px', border: '1px solid var(--edge)' }}
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
@@ -396,7 +398,7 @@ ${currentRoadmap}`;
 
       <div className="tabs-bar" id="agi-tabs" style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
         {[
-          { id: 'agi-ads', label: L('Ad Explorer', 'مستكشف الإعلانات'), emoji: '📢' },
+          { id: 'agi-ads', label: L('AI Ad Angles', 'محلل زوايا الإعلانات'), emoji: '📢' },
           { id: 'agi-funnel', label: L('Funnel Explorer', 'مستكشف الفانل'), emoji: '🔄' },
           { id: 'agi-competitor', label: L('Competitor Intel', 'تحليل المنافسين'), emoji: '🕵️' },
           { id: 'agi-offer', label: L('Offer Explorer', 'مستكشف العروض'), emoji: '🎁' },
@@ -419,7 +421,7 @@ ${currentRoadmap}`;
         <div className="tab-panel on" id="agi-ads">
           <div className="g2">
             <div className="card">
-              <div className="sec-hd"><div className="sec-title">📢 {L('Ad Explorer', 'مستكشف الإعلانات')}</div></div>
+              <div className="sec-hd"><div className="sec-title">📢 {L('AI Ad Angles Analyzer', 'محلل زوايا الإعلانات (AI)')}</div></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Industry / Niche', 'المجال / النيش')}</label>
@@ -457,16 +459,16 @@ ${currentRoadmap}`;
                   </select>
                 </div>
                 <button className="btn btn-prime" onClick={() => handleRunAnalysis('agi-ads')} style={{ width: '100%', justifyContent: 'center' }}>
-                  🔍 {L('Find Winning Ads', 'ابحث عن الإعلانات الناجحة')}
+                  🔍 {L('Generate AI Ad Angles', 'حلل واستنتج زوايا الإعلانات بالذكاء الاصطناعي')}
                 </button>
               </div>
             </div>
             {renderAIOutputCard(
               'agi-ads',
-              L('Winning Ads Analysis', 'تحليل الإعلانات الرابحة'),
+              L('AI Ad Angles Analysis', 'تحليل زوايا الإعلانات بالذكاء الاصطناعي'),
               '📢',
-              L('Discover winning ads', 'اكتشف الإعلانات الرابحة'),
-              L('Find the best performing ads in your market with hooks, angles, and conversion strategies', 'ابحث عن الإعلانات الأفضل أداء في مجالك واستلهم الهوك والزاوية الترويجية')
+              L('Generate AI Ad Angles', 'استنتج زوايا إعلانية'),
+              L('Let AI generate the best performing ad hooks and angles based on deep market analysis', 'دع الذكاء الاصطناعي يستنتج أفضل الزوايا والهوكات الإعلانية بناءً على تحليل السوق')
             )}
           </div>
         </div>

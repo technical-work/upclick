@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { DB } from '../../data/mockData';
 import { callClaudeAPI } from '../../utils/ai';
+import { parseMarkdown } from '../../utils/markdown';
 import CustomSelect from '../CustomSelect';
 
 const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
@@ -1535,7 +1536,7 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                     <div className="ai" style={{ padding: '10px', background: 'var(--orange-dim)', borderRadius: '8px', border: '1px solid var(--orange-d)' }}>
                       <strong>{L('AI Recommendation', 'توصية الذكاء الاصطناعي')}:</strong>
                       <br /><br />
-                      {negResult.rec}
+                      <div className="ai-box" style={{ padding: 0, background: 'transparent', border: 'none', marginBottom: '12px', fontSize: '13px' }} dangerouslySetInnerHTML={{ __html: parseMarkdown(negResult.rec) }} />
                       <button
                         className="btn btn-prime"
                         style={{ marginTop: '12px', width: '100%', justifyContent: 'center', padding: '6px' }}

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { DB } from '../../data/mockData';
+import { parseMarkdown } from '../../utils/markdown';
 
 export default function SocialAccountsView() {
   const [filterPeriod, setFilterPeriod] = useState('all');
@@ -316,9 +317,11 @@ export default function SocialAccountsView() {
               {analyzing ? (
                 <div className="ai-box" style={{ animation: 'pulse 1.5s infinite' }}>{L('⚡ Running reach check...', '⚡ جاري التحقق من الوصول...')}</div>
               ) : aiAnalysisText ? (
-                <div className="ai" style={{ whiteSpace: 'pre-line', lineHeight: '1.6', fontSize: '13px' }}>
-                  {aiAnalysisText}
-                </div>
+                <div 
+                  className="ai-box" 
+                  style={{ lineHeight: '1.6', fontSize: '13px', background: 'transparent', border: 'none', padding: '0' }}
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(aiAnalysisText) }}
+                />
               ) : (
                 <div style={{ fontSize: '12px', color: 'var(--t3)', textAlign: 'center', padding: '20px' }} id="t-social-empty">
                   {L('Connect accounts and click Analyze All', 'اربط حساباتك واضغط على تحليل الكل')}

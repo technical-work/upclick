@@ -62,6 +62,54 @@
       font-family: var(--fa) !important
     }
 
+    /* RTL Header Layout Fix */
+    html[dir=rtl] .hdr-inner {
+      flex-direction: row-reverse
+    }
+
+    html[dir=rtl] .hdr-btns {
+      flex-direction: row-reverse
+    }
+
+    html[dir=rtl] .hero-trust-avatars span {
+      margin-left: 0;
+      margin-right: -8px
+    }
+
+    html[dir=rtl] .hero-trust-avatars span:first-child {
+      margin-right: 0
+    }
+
+    html[dir=rtl] .tool-arrow {
+      margin-left: 0;
+      margin-right: auto;
+      transform: scaleX(-1)
+    }
+
+    html[dir=rtl] .tool-item:hover,
+    html[dir=rtl] .tool-item.on {
+      transform: translateX(-4px)
+    }
+
+    html[dir=rtl] .screen-label {
+      margin-left: 0;
+      margin-right: auto
+    }
+
+    html[dir=rtl] #chat-btn {
+      right: auto;
+      left: 24px
+    }
+
+    html[dir=rtl] #chat-panel {
+      right: auto;
+      left: 24px
+    }
+
+    html[dir=rtl] .footer-bottom {
+      flex-direction: row-reverse
+    }
+
     /* AMBIENT */
     .amb {
       position: fixed;
@@ -1633,7 +1681,9 @@
 
     .footer-lang {
       display: flex;
-      gap: 8px
+      gap: 8px;
+      position: relative;
+      z-index: 201
     }
 
     .lang-btn {
@@ -2328,7 +2378,8 @@
   <!-- ══════════════ HEADER ══════════════ -->
   <header id="hdr">
     <div class="hdr-inner">
-      <a href="#" class="logo" style="height:58px;width:180px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;">
+      <a href="#" class="logo"
+        style="height:58px;width:180px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;">
         <img src="/new-logo.png" alt="UpKlick" style="height:230px;width:auto;object-fit:contain;margin-top:-8px;">
       </a>
       <nav class="nav">
@@ -2379,7 +2430,9 @@
           built for Arab creators, coaches, and entrepreneurs.</p>
         <!-- Dynamic Trial Badge -->
         <div id="hero-trial-badge" style="display: none; margin-bottom: 20px;">
-          <div style="background: rgba(255, 107, 53, 0.12); border: 1.5px solid var(--or); color: var(--or); font-size: 13.5px; font-weight: 700; padding: 7px 16px; border-radius: 30px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(255,107,53,0.12); cursor: pointer;" onclick="document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })">
+          <div
+            style="background: rgba(255, 107, 53, 0.12); border: 1.5px solid var(--or); color: var(--or); font-size: 13.5px; font-weight: 700; padding: 7px 16px; border-radius: 30px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(255,107,53,0.12); cursor: pointer;"
+            onclick="document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' })">
             <span id="hero-trial-badge-text"></span>
           </div>
         </div>
@@ -2402,7 +2455,8 @@
               <div class="dash-dot" style="background:#ff5f57"></div>
               <div class="dash-dot" style="background:#febc2e"></div>
               <div class="dash-dot" style="background:#28c840"></div>
-              <span style="font-size:11px;color:var(--t3);margin-left:8px" data-t="landing-hero-db-title">UpKlick Dashboard</span>
+              <span style="font-size:11px;color:var(--t3);margin-left:8px" data-t="landing-hero-db-title">UpKlick
+                Dashboard</span>
             </div>
             <div class="dash-inner">
               <div class="dash-card">
@@ -2432,9 +2486,11 @@
                 </div>
               </div>
               <div class="dash-card" style="grid-column:span 2">
-                <div class="dash-card-lbl" style="margin-bottom:8px" data-t="landing-hero-db-brief-title">✦ AI Daily Brief</div>
+                <div class="dash-card-lbl" style="margin-bottom:8px" data-t="landing-hero-db-brief-title">✦ AI Daily
+                  Brief</div>
                 <div
-                  style="font-size:12px;color:var(--t1);line-height:1.6;background:var(--or-d);border-radius:8px;padding:10px;border:1px solid rgba(255,107,53,.2)" data-t="landing-hero-db-brief-body">
+                  style="font-size:12px;color:var(--t1);line-height:1.6;background:var(--or-d);border-radius:8px;padding:10px;border:1px solid rgba(255,107,53,.2)"
+                  data-t="landing-hero-db-brief-body">
                   Your conversion rate is up 18% this week. Focus on following up with 3 warm leads — Mohamed, Sarah,
                   and Ahmed — who opened your proposal but haven't replied.</div>
               </div>
@@ -2786,7 +2842,8 @@
         </div>
         <div class="ss-main">
           <div class="ss-sidebar">
-            <div style="padding:4px 6px;margin-bottom:4px;height:20px;width:60px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+            <div
+              style="padding:4px 6px;margin-bottom:4px;height:20px;width:60px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
               <img src="/new-logo.png" alt="UpKlick" style="height:80px;width:auto;object-fit:contain;margin-top:-2px;">
             </div>
             <div class="ss-sb-item on" data-t="landing-ss-sb-dashboard">⌂ Dashboard</div>
@@ -2819,8 +2876,10 @@
               <div class="ss-stat-n">284K</div>
             </div>
             <div class="ss-stat ss-wide">
-              <div class="ss-stat-l" style="margin-bottom:8px" data-t="landing-ss-stat-brief-title">✦ AI Daily Brief</div>
-              <div class="ss-ai-box" data-t="landing-ss-stat-brief-body">Your conversion rate is up 18% this week. Focus on following up with 3 warm leads
+              <div class="ss-stat-l" style="margin-bottom:8px" data-t="landing-ss-stat-brief-title">✦ AI Daily Brief
+              </div>
+              <div class="ss-ai-box" data-t="landing-ss-stat-brief-body">Your conversion rate is up 18% this week. Focus
+                on following up with 3 warm leads
                 who opened your proposal. Revenue target: 67% complete — you need $2,600 more to hit your goal.</div>
             </div>
             <div class="ss-stat ss-wide">
@@ -2852,7 +2911,8 @@
         <div class="review-card review-featured">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
           <p class="review-text">"لأول مرة في حياتي بشتغل من داشبورد واحد بس. كنت أستخدم 8 أدوات مختلفة — Notion وTrello
-            وExcel ومجموعة تليجرام. UpKlick جمعهم كلهم في مكان واحد والـ AI بيعطيني توصيات يومية حقيقية. وفّر عليّ ساعتين
+            وExcel ومجموعة تليجرام. UpKlick جمعهم كلهم في مكان واحد والـ AI بيعطيني توصيات يومية حقيقية. وفّر عليّ
+            ساعتين
             يومياً."</p>
           <div class="reviewer">
             <div class="reviewer-av">م</div>
@@ -2864,7 +2924,8 @@
         </div>
         <div class="review-card">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-          <p class="review-text" data-t="landing-review-text-2">"The AI Growth Intelligence module alone is worth it. I found 3 competitor gaps in my
+          <p class="review-text" data-t="landing-review-text-2">"The AI Growth Intelligence module alone is worth it. I
+            found 3 competitor gaps in my
             market I didn't know existed. Launched a new digital product from that insight — made $2,400 in the first
             week."</p>
           <div class="reviewer">
@@ -2889,7 +2950,8 @@
         </div>
         <div class="review-card">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-          <p class="review-text" data-t="landing-review-text-4">"Digital Products Hub is insane. I went from zero idea to a live Notion template on
+          <p class="review-text" data-t="landing-review-text-4">"Digital Products Hub is insane. I went from zero idea
+            to a live Notion template on
             Gumroad in 3 days following the AI execution plan. Made $890 in the first month with zero ads."</p>
           <div class="reviewer">
             <div class="reviewer-av">L</div>
@@ -2913,7 +2975,8 @@
         </div>
         <div class="review-card">
           <div class="review-stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>☆</span></div>
-          <p class="review-text" data-t="landing-review-text-6">"The Telegram bot integration is genuinely useful — I get daily reports on my phone
+          <p class="review-text" data-t="landing-review-text-6">"The Telegram bot integration is genuinely useful — I
+            get daily reports on my phone
             without opening the dashboard. Small detail but saves me 20 minutes a day."</p>
           <div class="reviewer">
             <div class="reviewer-av">N</div>
@@ -3004,46 +3067,55 @@
       </div>
       <div id="faq-list">
         <div class="faq-item open">
-          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-1">Is UpKlick really free to start?<div class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-1">Is UpKlick really free to start?<div
+              class="faq-icon">+</div>
           </div>
-          <div class="faq-a" data-t="landing-faq-a-1">Yes — the Starter plan is free forever with no credit card required. You get full dashboard
+          <div class="faq-a" data-t="landing-faq-a-1">Yes — the Starter plan is free forever with no credit card
+            required. You get full dashboard
             access, AI assistant (50 msgs/mo), CRM, content tools, and more. Upgrade to Pro when you want unlimited AI
             and marketing tools.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-2">Is it available in Arabic?<div class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-2">Is it available in Arabic?<div
+              class="faq-icon">+</div>
           </div>
-          <div class="faq-a" data-t="landing-faq-a-2">نعم بالكامل. UpKlick يدعم العربية بالكامل — الواجهة، الـ AI، والمحتوى. يمكنك التبديل بين
+          <div class="faq-a" data-t="landing-faq-a-2">نعم بالكامل. UpKlick يدعم العربية بالكامل — الواجهة، الـ AI،
+            والمحتوى. يمكنك التبديل بين
             العربية والإنجليزية في أي وقت من الإعدادات. الـ AI مدرب خصيصاً للسوق العربي.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-3">Can I replace tools like Notion, Trello, and Mailchimp?<div
-              class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-3">Can I replace tools like Notion, Trello,
+            and Mailchimp?<div class="faq-icon">+</div>
           </div>
-          <div class="faq-a" data-t="landing-faq-a-3">Most people who use UpKlick cancel 4-7 other subscriptions. It covers CRM (replaces
+          <div class="faq-a" data-t="landing-faq-a-3">Most people who use UpKlick cancel 4-7 other subscriptions. It
+            covers CRM (replaces
             HubSpot), task management (replaces Trello/Notion), basic email marketing (replaces Mailchimp for simple
             campaigns), content planning, and financial tracking. We integrate with tools you want to keep.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-4">Which payment methods work for Arab markets?<div
-              class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-4">Which payment methods work for Arab
+            markets?<div class="faq-icon">+</div>
           </div>
-          <div class="faq-a" data-t="landing-faq-a-4">We accept Visa, Mastercard, Tap Payments (MADA, KNET, STC Pay), PayPal, and bank transfer.
+          <div class="faq-a" data-t="landing-faq-a-4">We accept Visa, Mastercard, Tap Payments (MADA, KNET, STC Pay),
+            PayPal, and bank transfer.
             Invoices available in AED, SAR, KWD, EGP, and USD.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-5">How is this different from other all-in-one tools?<div
-              class="faq-icon">+</div>
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-5">How is this different from other
+            all-in-one tools?<div class="faq-icon">+</div>
           </div>
-          <div class="faq-a" data-t="landing-faq-a-5">UpKlick is the only platform built specifically for Arab entrepreneurs and creators — with
+          <div class="faq-a" data-t="landing-faq-a-5">UpKlick is the only platform built specifically for Arab
+            entrepreneurs and creators — with
             Arabic-first AI, Arab market data (Telegram-centric sales, Arab e-commerce integrations), and cultural
             context baked in. It's not a translated Western tool.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-6">What happens when my free trial ends?<div class="faq-icon">+
+          <div class="faq-q" onclick="toggleFaq(this)" data-t="landing-faq-q-6">What happens when my free trial ends?
+            <div class="faq-icon">+
             </div>
           </div>
-          <div class="faq-a" data-t="landing-faq-a-6">You automatically drop to the free Starter plan — your data is safe and you keep access to
+          <div class="faq-a" data-t="landing-faq-a-6">You automatically drop to the free Starter plan — your data is
+            safe and you keep access to
             core features. No surprise charges. Upgrade anytime to restore Pro features.</div>
         </div>
       </div>
@@ -3065,10 +3137,12 @@
           <div class="rm-body">
             <div class="rm-phase" data-t="landing-rm-phase-1">Live Now</div>
             <div class="rm-title" data-t="landing-rm-title-1">UpKlick Dashboard v1</div>
-            <div class="rm-desc" data-t="landing-rm-desc-1">32 tools, AI assistant, CRM, marketing, finance, Telegram hub, digital products, and
+            <div class="rm-desc" data-t="landing-rm-desc-1">32 tools, AI assistant, CRM, marketing, finance, Telegram
+              hub, digital products, and
               full Arabic support.</div>
-            <div class="rm-tags"><span class="rm-tag live" data-t="landing-rm-tag-1-1">✅ Live</span><span class="rm-tag live" data-t="landing-rm-tag-1-2">Arabic</span><span
-                class="rm-tag live" data-t="landing-rm-tag-1-3">AI</span></div>
+            <div class="rm-tags"><span class="rm-tag live" data-t="landing-rm-tag-1-1">✅ Live</span><span
+                class="rm-tag live" data-t="landing-rm-tag-1-2">Arabic</span><span class="rm-tag live"
+                data-t="landing-rm-tag-1-3">AI</span></div>
           </div>
         </div>
         <div class="rm-item">
@@ -3076,7 +3150,8 @@
           <div class="rm-body">
             <div class="rm-phase" data-t="landing-rm-phase-2">Live Now</div>
             <div class="rm-title" data-t="landing-rm-title-2">Telegram Bot Control</div>
-            <div class="rm-desc" data-t="landing-rm-desc-2">Control your entire dashboard from Telegram. Ask AI, check leads, get reports — all via
+            <div class="rm-desc" data-t="landing-rm-desc-2">Control your entire dashboard from Telegram. Ask AI, check
+              leads, get reports — all via
               /commands.</div>
             <div class="rm-tags"><span class="rm-tag live" data-t="landing-rm-tag-2-1">✅ Live</span></div>
           </div>
@@ -3086,9 +3161,11 @@
           <div class="rm-body">
             <div class="rm-phase" data-t="landing-rm-phase-3">Q3 2025</div>
             <div class="rm-title" data-t="landing-rm-title-3">Mobile App (iOS & Android)</div>
-            <div class="rm-desc" data-t="landing-rm-desc-3">Native mobile app with push notifications for new leads, daily AI brief, and quick task
+            <div class="rm-desc" data-t="landing-rm-desc-3">Native mobile app with push notifications for new leads,
+              daily AI brief, and quick task
               management.</div>
-            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-3-1">📱 Mobile</span><span class="rm-tag" data-t="landing-rm-tag-3-2">Push Notifications</span>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-3-1">📱 Mobile</span><span class="rm-tag"
+                data-t="landing-rm-tag-3-2">Push Notifications</span>
             </div>
           </div>
         </div>
@@ -3097,7 +3174,8 @@
           <div class="rm-body">
             <div class="rm-phase" data-t="landing-rm-phase-4">Q3 2025</div>
             <div class="rm-title" data-t="landing-rm-title-4">UpKlick Academy</div>
-            <div class="rm-desc" data-t="landing-rm-desc-4">Built-in learning paths: how to close with Telegram, how to launch digital products,
+            <div class="rm-desc" data-t="landing-rm-desc-4">Built-in learning paths: how to close with Telegram, how to
+              launch digital products,
               how to use AI for content — in Arabic.</div>
             <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-4-1">🎓 Arabic Courses</span></div>
           </div>
@@ -3107,9 +3185,11 @@
           <div class="rm-body">
             <div class="rm-phase" data-t="landing-rm-phase-5">Q4 2025</div>
             <div class="rm-title" data-t="landing-rm-title-5">Marketplace Integration</div>
-            <div class="rm-desc" data-t="landing-rm-desc-5">Sell your digital products directly from UpKlick — without needing Gumroad or Payhip.
+            <div class="rm-desc" data-t="landing-rm-desc-5">Sell your digital products directly from UpKlick — without
+              needing Gumroad or Payhip.
               Arab payment methods included.</div>
-            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-5-1">🛒 Sell Direct</span><span class="rm-tag" data-t="landing-rm-tag-5-2">Arab Payments</span>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-5-1">🛒 Sell Direct</span><span
+                class="rm-tag" data-t="landing-rm-tag-5-2">Arab Payments</span>
             </div>
           </div>
         </div>
@@ -3118,9 +3198,11 @@
           <div class="rm-body">
             <div class="rm-phase" data-t="landing-rm-phase-6">2026</div>
             <div class="rm-title" data-t="landing-rm-title-6">UpKlick AI Agent (Autonomous)</div>
-            <div class="rm-desc" data-t="landing-rm-desc-6">An AI that doesn't just answer — it acts. Auto-follow-up leads, schedule content,
+            <div class="rm-desc" data-t="landing-rm-desc-6">An AI that doesn't just answer — it acts. Auto-follow-up
+              leads, schedule content,
               analyze competitors, and report daily without you asking.</div>
-            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-6-1">🤖 Autonomous AI</span><span class="rm-tag" data-t="landing-rm-tag-6-2">Game-changing</span>
+            <div class="rm-tags"><span class="rm-tag" data-t="landing-rm-tag-6-1">🤖 Autonomous AI</span><span
+                class="rm-tag" data-t="landing-rm-tag-6-2">Game-changing</span>
             </div>
           </div>
         </div>
@@ -3141,7 +3223,8 @@
           <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')"
             class="btn btn-ghost btn-xl" data-t="landing-final-cta-talk">💬 Talk to Us</a>
         </div>
-        <p class="cta-note" data-t="landing-final-note">✓ Free forever plan available &nbsp;&nbsp; ✓ No credit card &nbsp;&nbsp; ✓ Arabic & English
+        <p class="cta-note" data-t="landing-final-note">✓ Free forever plan available &nbsp;&nbsp; ✓ No credit card
+          &nbsp;&nbsp; ✓ Arabic & English
         </p>
       </div>
     </div>
@@ -3152,7 +3235,8 @@
     <div class="footer-wrap">
       <div class="footer-top">
         <div class="footer-brand">
-          <a href="#" class="logo" style="margin-bottom:12px;height:32px;width:110px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;">
+          <a href="#" class="logo"
+            style="margin-bottom:12px;height:32px;width:110px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;">
             <img src="/new-logo.png" alt="UpKlick" style="height:120px;width:auto;object-fit:contain;margin-top:-4px;">
           </a>
           <a href="#" class="logo">
@@ -3190,15 +3274,16 @@
           <a href="#" data-t="landing-footer-link-careers">Careers</a>
           <a href="#" data-t="landing-footer-link-privacy">Privacy Policy</a>
           <a href="#" data-t="landing-footer-link-terms">Terms of Service</a>
-          <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')" data-t="landing-footer-link-contact">Contact Us</a>
+          <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')"
+            data-t="landing-footer-link-contact">Contact Us</a>
         </div>
       </div>
       <div class="footer-bottom">
-        <span data-t="landing-footer-copyright">© 2026 UpKlick. Built for Arab entrepreneurs 🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦</span>
+        <span data-t="landing-footer-copyright">© 2026 UpKlick. Built for Arab entrepreneurs
+          🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦</span>
         <div class="footer-lang">
-          <button class="lang-btn" data-lang="en" id="lang-btn-en"
-            onclick="toggleLang('en')">EN</button><button class="lang-btn" data-lang="ar" id="lang-btn-ar"
-            onclick="toggleLang('ar')">AR</button>
+          <button class="lang-btn" data-lang="en" id="lang-btn-en" onclick="toggleLang('en')">EN</button><button
+            class="lang-btn" data-lang="ar" id="lang-btn-ar" onclick="toggleLang('ar')">AR</button>
         </div>
       </div>
     </div>
@@ -3490,7 +3575,7 @@
       'landing-ss-telegram-msg-out': 'Hello! Yes, happy to help 🎓',
 
       'landing-btn-lang': 'عربي',
-      
+
       // Hero Mock Dashboard Preview translations
       'landing-hero-db-revenue': 'Revenue',
       'landing-hero-db-revenue-ch': '↑ 24% this month',
@@ -3501,7 +3586,7 @@
       'landing-hero-db-badge-ai': '🤖 AI Analysis Ready',
       'landing-hero-db-badge-growth': '📈 +340% Growth',
       'landing-hero-db-title': 'UpKlick Dashboard',
-      
+
       // Live Dashboard Screenshot Section Preview translations
       'landing-ss-eyebrow': '🖥️ Inside UpKlick',
       'landing-ss-heading': 'Your entire business, <span class="grd">at a glance</span>',
@@ -3620,9 +3705,9 @@
       'landing-nav-roadmap': 'خارطة الطريق',
       'landing-nav-signin': 'تسجيل الدخول',
       'landing-nav-startfree': 'ابدأ مجاناً ←',
-      'landing-hero-badge': 'نظام تشغيل بالذكاء الاصطناعي لرواد الأعمال العرب',
+      'landing-hero-badge': 'نظام تشغيل بالذكاء الاصطناعي لروادالأعمال ',
       'landing-hero-title': 'تحكم في نشاطك التجاري بالكامل<br>من <span class="grd">منصة واحدة</span>',
-      'landing-hero-sub': 'نظام متكامل لإدارة العملاء (CRM)، التسويق، صناعة المحتوى، الحسابات، والتليجرام — مصمم خصيصاً بالذكاء الاصطناعي لصنّاع المحتوى، الكوتشز، ورواد الأعمال العرب.',
+      'landing-hero-sub': 'نظام متكامل لإدارة العملاء (CRM)، التسويق، صناعة المحتوى، الحسابات، والتليجرام — مصمم خصيصاً بالذكاء الاصطناعي لصنّاع المحتوى، الكوتشز، وروادالأعمال .',
       'landing-hero-cta-trial': '🚀 ابدأ تجربتك المجانية',
       'landing-hero-cta-preview': 'شاهد لوحة التحكم ←',
       'landing-trust-text': 'أكثر من 2,400 رائد أعمال عربي يثقون في UpKlick',
@@ -3646,7 +3731,7 @@
       'landing-roadmap-sub': 'نحن نبني في العلن. صوّت للميزات التي تهمك.',
       'landing-final-title': 'جاهز لإدارة عملك<br><span class="grd">كمدير تنفيذي؟</span>',
       'landing-final-sub': 'انضم إلى أكثر من 2,400 رائد أعمال عربي يستخدمون UpKlick بالفعل.<br>ابدأ مجاناً — بدون بطاقة، بدون التزامات.',
-      'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز ورواد الأعمال العرب. ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.',
+      'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز وروادالأعمال . ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.',
       'landing-ss-dashboard': 'لوحة التحكم',
       'landing-ss-crm': 'إدارة العملاء',
       'landing-ss-marketing': 'نظام التسويق',
@@ -3667,7 +3752,7 @@
       'landing-ss-telegram-msg-out': 'أهلاً! نعم، سعيد بمساعدتك 🎓',
 
       'landing-btn-lang': 'English',
-      
+
       // Hero Mock Dashboard Preview translations (Arabic)
       'landing-hero-db-revenue': 'الإيرادات',
       'landing-hero-db-revenue-ch': '↑ 24% هذا الشهر',
@@ -3678,8 +3763,8 @@
       'landing-hero-db-badge-ai': '🤖 تحليل الذكاء الاصطناعي جاهز',
       'landing-hero-db-badge-growth': '📈 نمو +340%',
       'landing-hero-db-title': 'لوحة تحكم UpKlick',
-      
-      
+
+
       // Live Dashboard Screenshot Section Preview translations (Arabic)
       'landing-ss-eyebrow': '🖥️ داخل منصة UpKlick',
       'landing-ss-heading': 'كل أعمالك، <span class="grd">في لمحة سريعة</span>',
@@ -3787,7 +3872,7 @@
       'landing-footer-link-privacy': 'سياسة الخصوصية',
       'landing-footer-link-terms': 'شروط الخدمة',
       'landing-footer-link-contact': 'اتصل بنا',
-      'landing-footer-copyright': '© 2026 UpKlick. تم التطوير لرواد الأعمال العرب 🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦'
+      'landing-footer-copyright': '© 2026 UpKlick. تم التطوير لروادالأعمال  🇸🇦🇦🇪🇪🇬🇰🇼🇶🇦🇲🇦'
     };
 
     var AR = {

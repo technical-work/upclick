@@ -119,8 +119,6 @@ export default function IntegrationsView() {
           { id: 'integ-payment', label: L('Payments', 'بوابات الدفع'), emoji: '💳' },
           { id: 'integ-ai', label: L('AI Platforms', 'نماذج الذكاء'), emoji: '🤖' },
           { id: 'integ-marketing', label: L('Marketing', 'التسويق'), emoji: '📣' },
-          { id: 'integ-ecommerce', label: L('E-commerce', 'التجارة الإلكترونية'), emoji: '🛒' },
-          { id: 'integ-crm', label: 'CRM', emoji: '🎯' },
           { id: 'integ-automation', label: L('Automations', 'الأتمتة والربط'), emoji: '⚡' }
         ].map(tab => (
           <button 
@@ -350,44 +348,6 @@ export default function IntegrationsView() {
             >
               {mailchimpConnected ? L('Disconnect', 'إلغاء الربط') : L('Connect Mailchimp API', 'ربط حساب Mailchimp')}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 4: E-COMMERCE ================= */}
-      {activeTab === 'integ-ecommerce' && (
-        <div className="tab-panel on" id="integ-ecommerce">
-          <div className="card">
-            <div className="sec-hd"><div className="sec-title">{L('Digital Products Store sync', 'مزامنة المتاجر الإلكترونية')}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {['Etsy Shop', 'Gumroad Store', 'Payhip Checkout'].map((platform, idx) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }} key={idx}>
-                  <div style={{ fontWeight: 600, fontSize: '13px', flex: 1 }}>{platform}</div>
-                  <button className="btn btn-ghost" style={{ fontSize: '11.5px', padding: '4px 10px' }} onClick={() => alert(`${platform} connection sync started.`)}>
-                    {L('Sync Connection', 'مزامنة الربط')}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= TAB 5: CRM ================= */}
-      {activeTab === 'integ-crm' && (
-        <div className="tab-panel on" id="integ-crm">
-          <div className="card">
-            <div className="sec-hd"><div className="sec-title">{L('CRM Integrations', 'تكاملات نظام المبيعات CRM')}</div></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {['Google Contacts', 'HubSpot Sync', 'Salesforce Link'].map((crmService, idx) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--surface2)', borderRadius: '8px' }} key={idx}>
-                  <div style={{ fontWeight: 600, fontSize: '13px', flex: 1 }}>{crmService}</div>
-                  <button className="btn btn-ghost" style={{ fontSize: '11.5px', padding: '4px 10px' }} onClick={() => alert(`${crmService} CRM integration toggled.`)}>
-                    {L('Integrate', 'ربط وتفعيل')}
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}

@@ -43,12 +43,12 @@ const DICTIONARY_GROUPS = [
   {
     id: 'nav_and_core',
     titleKey: 'التنقل واللوحة الرئيسية / Navigation & Main Dashboard',
-    keys: Object.keys(Tr?.en || {}).filter(k => 
-      (k.startsWith('t-n-') || 
-      k.startsWith('t-s') || 
-      k.startsWith('t-g') || 
-      k.startsWith('t-qa') || 
-      k.startsWith('t-pg')) &&
+    keys: Object.keys(Tr?.en || {}).filter(k =>
+      (k.startsWith('t-n-') ||
+        k.startsWith('t-s') ||
+        k.startsWith('t-g') ||
+        k.startsWith('t-qa') ||
+        k.startsWith('t-pg')) &&
       typeof LANG.ar[k] === 'string' &&
       typeof LANG.en[k] === 'string'
     )
@@ -56,13 +56,13 @@ const DICTIONARY_GROUPS = [
   {
     id: 'tools_and_views',
     titleKey: 'أدوات وصفحات المبدعين / Creator Tools & Pages',
-    keys: Object.keys(Tr?.en || {}).filter(k => 
-      !(k.startsWith('t-n-') || 
-      k.startsWith('t-s') || 
-      k.startsWith('t-g') || 
-      k.startsWith('t-qa') || 
-      k.startsWith('t-pg') ||
-      k.startsWith('landing-')) &&
+    keys: Object.keys(Tr?.en || {}).filter(k =>
+      !(k.startsWith('t-n-') ||
+        k.startsWith('t-s') ||
+        k.startsWith('t-g') ||
+        k.startsWith('t-qa') ||
+        k.startsWith('t-pg') ||
+        k.startsWith('landing-')) &&
       typeof LANG.ar[k] === 'string' &&
       typeof LANG.en[k] === 'string'
     )
@@ -70,7 +70,7 @@ const DICTIONARY_GROUPS = [
   {
     id: 'landing_page',
     titleKey: 'صفحة الهبوط / Landing Page Texts',
-    keys: Object.keys(Tr?.en || {}).filter(k => 
+    keys: Object.keys(Tr?.en || {}).filter(k =>
       k.startsWith('landing-') &&
       typeof LANG.ar[k] === 'string' &&
       typeof LANG.en[k] === 'string'
@@ -150,7 +150,7 @@ const DEFAULT_PLAN_ANNUAL = {
 const DEFAULTS = {
   appName: 'UpKlick',
   appNameEn: 'UpKlick',
-  tagline: 'نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
+  tagline: 'نظام تشغيل الذكاء الاصطناعي لروادالأعمال ',
   taglineEn: 'The AI OS for Arab Entrepreneurs',
   primaryColor: '#FF6B35',
   accentColor: '#6C35FF',
@@ -163,11 +163,11 @@ const DEFAULTS = {
   text2Color: '#9090b0',
   btnTextColor: '#ffffff',
   logoUrl: '',
-  footerText: '© 2026 UpKlick — مصنوع بـ ❤️ لرواد الأعمال العرب',
+  footerText: '© 2026 UpKlick — مصنوع بـ ❤️ لروادالأعمال ',
   footerTextEn: '© 2026 UpKlick — Made with ❤️ for Arab Entrepreneurs',
-  heroBadge: '✦ نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب',
+  heroBadge: '✦ نظام تشغيل الذكاء الاصطناعي لروادالأعمال ',
   heroBadgeEn: '✦ The AI OS for Arab Entrepreneurs',
-  heroSub: 'CRM، تسويق، محتوى، مالية، تليجرام — مدعومون بالذكاء الاصطناعي ومبني للمبدعين والكوتشز ورواد الأعمال العرب.',
+  heroSub: 'CRM، تسويق، محتوى، مالية، تليجرام — مدعومون بالذكاء الاصطناعي ومبني للمبدعين والكوتشز وروادالأعمال .',
   heroSubEn: 'CRM, Marketing, Content, Finance, Telegram — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
   domain: '',
   plan: DEFAULT_PLAN,
@@ -229,12 +229,12 @@ const BrandingSettings = () => {
         setConfig(prev => {
           // If the loaded data has old GigSniper features, pricing details, or application name, migrate them to UpKlick defaults
           const isOldGigSniperFeatures = (data.plan?.features || []).some(f => typeof f === 'string' && (f.includes('تأسيس ملفك الشخصي') || f.includes('المنصات'))) ||
-                                         (data.plan?.featuresEn || []).some(f => typeof f === 'string' && (f.includes('Profile Foundation') || f.includes('Platforms')));
+            (data.plan?.featuresEn || []).some(f => typeof f === 'string' && (f.includes('Profile Foundation') || f.includes('Platforms')));
           const isOldPlanDetails = data.plan?.price === '99' && (data.plan?.currency === 'ج.م' || data.plan?.currencyEn === 'EGP');
-          
+
           let planToUse = data.plan || {};
           let planAnnualToUse = data.planAnnual || {};
-          
+
           if (isOldGigSniperFeatures || isOldPlanDetails || data.appName === 'GigSniper Pro') {
             planToUse = { ...prev.plan, visible: data.plan?.visible ?? false };
             planAnnualToUse = { ...prev.planAnnual, visible: data.planAnnual?.visible ?? false };
@@ -694,7 +694,7 @@ const BrandingSettings = () => {
             <div>
               <label style={labelStyle}>{t('branding.planPrice')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="number" min="0" value={config.plan?.price || ''} onChange={e => handleChange('plan', { ...config.plan, price: e.target.value })} placeholder="99" style={{...inputStyle, height: '100%'}} />
+                <input type="number" min="0" value={config.plan?.price || ''} onChange={e => handleChange('plan', { ...config.plan, price: e.target.value })} placeholder="99" style={{ ...inputStyle, height: '100%' }} />
               </div>
             </div>
             <div>
@@ -833,7 +833,7 @@ const BrandingSettings = () => {
             <div>
               <label style={labelStyle}>{t('branding.planPrice')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="number" min="0" value={config.planAnnual?.price || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, price: e.target.value })} placeholder="999" style={{...inputStyle, height: '100%'}} />
+                <input type="number" min="0" value={config.planAnnual?.price || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, price: e.target.value })} placeholder="999" style={{ ...inputStyle, height: '100%' }} />
               </div>
             </div>
             <div>
@@ -942,11 +942,11 @@ const BrandingSettings = () => {
             <span>{isRTL ? 'تعديل جميع نصوص لوحة التحكم' : 'Dashboard Text Overrides'}</span>
           </div>
           <div style={{ fontSize: '12.5px', color: 'var(--text3)', marginBottom: '16px', lineHeight: '1.5' }}>
-            {isRTL 
-              ? 'يمكنك تعديل أي كلمة أو جملة تظهر للمستخدم في لوحة التحكم وتغييرها للعربية والإنجليزية.' 
+            {isRTL
+              ? 'يمكنك تعديل أي كلمة أو جملة تظهر للمستخدم في لوحة التحكم وتغييرها للعربية والإنجليزية.'
               : 'Edit any text or label visible to users in the dashboard in both Arabic and English.'}
           </div>
-          
+
           {/* Search Bar */}
           <div style={{ marginBottom: '16px' }}>
             <input
@@ -1038,8 +1038,8 @@ const BrandingSettings = () => {
                         })}
                         {group.keys.length > 100 && (
                           <div style={{ fontSize: '11px', color: 'var(--text3)', textAlign: 'center', paddingTop: '8px' }}>
-                            {isRTL 
-                              ? `تم عرض أول 100 نتيجة من أصل ${group.keys.length}. يرجى استخدام البحث لتحديد نصوص معينة.` 
+                            {isRTL
+                              ? `تم عرض أول 100 نتيجة من أصل ${group.keys.length}. يرجى استخدام البحث لتحديد نصوص معينة.`
                               : `Showing first 100 of ${group.keys.length} items. Use search to find specific items.`}
                           </div>
                         )}
