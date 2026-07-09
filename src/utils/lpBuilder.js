@@ -107,7 +107,7 @@ export function buildFullLP(name, niche, offer, tagline, c, isAR, variant, price
         isAR ? `اكتسب مهاراتك في ${niche} وابدأ نجاحك الحقيقي` : `Master ${niche} and start your real success journey`
       }</p>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:14px">
-      ${btn(isAR ? `🚀 ابدأ الآن — ${priceStr}` : `🚀 Start Now — ${priceStr}`, true)}
+      ${btn(isAR ? '🚀 ابدأ الآن' : '🚀 Start Now', true)}
       <button onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})" style="background:transparent;color:${c};border:2px solid ${c};padding:16px 32px;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;font-family:inherit">${
         isAR ? 'اعرف أكثر ▼' : 'Learn More ▼'
       }</button>

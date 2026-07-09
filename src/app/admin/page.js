@@ -254,7 +254,7 @@ const AdminSupportTab = ({ isRTL, t }) => {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minHeight: '65vh' }}>
+    <div className="grid-2" style={{ gap: '20px', minHeight: '65vh' }}>
       
       {/* Tickets List */}
       <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -265,15 +265,17 @@ const AdminSupportTab = ({ isRTL, t }) => {
         </div>
 
         {/* Filter controls */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+        <div className="flex-responsive" style={{ display: 'flex', gap: '10px' }}>
           <input 
             className="form-control"
+            style={{ flex: 2 }}
             placeholder={isRTL ? 'البحث عن مستخدم، إيميل أو موضوع...' : 'Search subject, user or email...'}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <select 
             className="form-control"
+            style={{ flex: 1, minWidth: '120px' }}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -2178,8 +2180,8 @@ const AdminDashboard = () => {
 
       {/* Edit User Modal */}
       {showEditModal && editingUser && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="card" style={{ width: '100%', maxWidth: '500px', margin: 0, animation: 'scaleUp 0.3s ease' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div className="card" style={{ width: '95%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', animation: 'scaleUp 0.3s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3>{t('admin.editUserTitle') || 'Edit User'}</h3>
               <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{editingUser.email}</div>
@@ -2356,8 +2358,8 @@ const AdminDashboard = () => {
 
       {/* Add User Modal */}
       {showAddModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="card" style={{ width: '100%', maxWidth: '500px', margin: 0, animation: 'scaleUp 0.3s ease' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div className="card" style={{ width: '95%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', animation: 'scaleUp 0.3s ease' }}>
             <h3 style={{ marginBottom: '20px' }}>{t('admin.addNewUserTitle') || 'Create New User'}</h3>
             {error && <div style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '15px' }}>{error}</div>}
             <form onSubmit={handleAddUser}>
@@ -2520,8 +2522,8 @@ const AdminDashboard = () => {
 
       {/* Add Sale Modal */}
       {showSalesModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="card" style={{ width: '100%', maxWidth: '400px', margin: 0, animation: 'scaleUp 0.3s ease' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div className="card" style={{ width: '95%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', animation: 'scaleUp 0.3s ease' }}>
             <h3 style={{ marginBottom: '20px' }}>{editingSale ? t('admin.editSaleTitle') : t('admin.addNewSaleTitle')}</h3>
             <form onSubmit={handleAddSale}>
               <div className="field" style={{ marginBottom: '15px', position: 'relative' }}>

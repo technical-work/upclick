@@ -428,38 +428,7 @@ export default function BillingView() {
                         />
                       </div>
 
-                      {/* Option B: Custom Stripe Payment Links (if configured by admin) */}
-                      {(paymentMethods.stripe?.paymentLink || paymentMethods.stripe?.paymentLinkAnnual) && (
-                        <div style={{ borderTop: '1px dashed var(--brd)', paddingTop: '16px', marginTop: '16px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--t3)', textTransform: 'uppercase', marginBottom: '12px', textAlign: 'center' }}>
-                            🔗 {L('Custom Checkout Links', 'روابط دفع مخصصة')}
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-                            {paymentMethods.stripe?.paymentLink && (
-                              <a
-                                href={paymentMethods.stripe.paymentLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-ghost"
-                                style={{ padding: '8px 16px', fontSize: '11px', textDecoration: 'none', borderColor: 'var(--brd)' }}
-                              >
-                                💳 {L('Monthly Checkout Link', 'رابط الدفع الشهري المباشر')}
-                              </a>
-                            )}
-                            {paymentMethods.stripe?.paymentLinkAnnual && (
-                              <a
-                                href={paymentMethods.stripe.paymentLinkAnnual}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-ghost"
-                                style={{ padding: '8px 16px', fontSize: '11px', textDecoration: 'none', borderColor: 'var(--brd)' }}
-                              >
-                                ⭐ {L('Annual Checkout Link', 'رابط الدفع السنوي المباشر')}
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      )}
+
                     </div>
                   )}
 

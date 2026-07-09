@@ -424,6 +424,24 @@ input, select, textarea { -webkit-appearance: none; appearance: none; font-famil
 .bc-sep { color:var(--t4); font-size:11px }
 .bc-page { font-family:var(--ff); font-size:13px; font-weight:600; color:var(--t1); white-space:nowrap }
 .tb-actions { display:flex; align-items:center; gap:5px; flex-shrink:0 }
+.trial-badge {
+  background: rgba(255, 107, 53, 0.1);
+  border: 1px solid var(--orange, #FF6B35);
+  color: var(--orange, #FF6B35);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 14px;
+  white-space: nowrap;
+}
+[dir=rtl] .trial-badge {
+  margin-left: 0;
+  margin-right: 14px;
+}
 .lang-sw { display:flex; background:var(--surface2); border:1px solid var(--edge); border-radius:7px; overflow:hidden }
 .lang-btn { padding:4px 10px; font-size:11.5px; font-weight:600; border:none; background:none; cursor:pointer; color:var(--t2); transition:all .12s }
 .lang-btn.on { background:linear-gradient(135deg,var(--orange),var(--purple)); color:#fff }
@@ -1110,6 +1128,18 @@ body,#sb,#mn,#tb,#ct,.card,.stat-card{transition:none;}
   }
   .tb-mobile-actions {
     margin-left: auto;
+  }
+  .trial-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+    margin-left: 6px;
+  }
+  [dir=rtl] .trial-badge {
+    margin-left: 0;
+    margin-right: 6px;
+  }
+  .trial-badge .tb-label {
+    display: none;
   }
 }
 

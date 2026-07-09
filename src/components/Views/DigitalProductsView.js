@@ -28,9 +28,8 @@ export default function DigitalProductsView() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [market, setMarket] = useState('arab');
   const [searchQuery, setSearchQuery] = useState('');
-  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState(GC.digitalProducts?.trendingProducts || []);
   const [loadingTrends, setLoadingTrends] = useState(false);
-  const [hasLoadedTrends, setHasLoadedTrends] = useState(false);
 
   // Niche Tab States
   const [selectedNiche, setSelectedNiche] = useState(null);
@@ -90,6 +89,13 @@ export default function DigitalProductsView() {
     }
   }, [GC.profile?.niche]);
 
+  // Auto-load trends on mount if not loaded yet
+  useEffect(() => {
+    if (!trendingProducts || trendingProducts.length === 0) {
+      loadDPTrends();
+    }
+  }, []);
+
   // Fallback trending data
   const getFallbackTrends = () => {
     return [
@@ -106,7 +112,6 @@ export default function DigitalProductsView() {
   const loadDPTrends = async () => {
     setLoadingTrends(true);
     setTrendingProducts([]);
-    setHasLoadedTrends(true);
 
     try {
       const promptText = `Generate 6 trending digital products currently selling on ${platform === 'all' ? 'Etsy, Gumroad, Payhip, Creative Market' : platform}.
@@ -142,27 +147,47 @@ DO NOT write any introduction, description, markdown explanation, or formatting 
 
       const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
       
+      let finalProducts = [];
       if (typeof rawText === 'string' && rawText.includes('❌')) {
-        setTrendingProducts(getFallbackTrends());
-        setLoadingTrends(false);
-        return;
+        finalProducts = getFallbackTrends();
+      } else {
+        let cleaned = (rawText || '[]').replace(/```json/g, '').replace(/```/g, '').trim();
+        if (cleaned.indexOf('[') > -1) {
+          cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);
+        }
+        const parsed = JSON.parse(cleaned);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          finalProducts = parsed;
+        } else {
+          finalProducts = getFallbackTrends();
+        }
       }
 
-      let cleaned = (rawText || '[]').replace(/```json/g, '').replace(/```/g, '').trim();
-      if (cleaned.indexOf('[') > -1) {
-        cleaned = cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1);
-      }
-      const parsed = JSON.parse(cleaned);
-      setTrendingProducts(parsed);
+      setTrendingProducts(finalProducts);
+      saveGC({
+        ...GC,
+        digitalProducts: {
+          ...GC.digitalProducts,
+          trendingProducts: finalProducts
+        }
+      });
     } catch (e) {
       console.warn("API failed in loadDPTrends, using fallback data:", e);
-      setTrendingProducts(getFallbackTrends());
+      const fallbacks = getFallbackTrends();
+      setTrendingProducts(fallbacks);
+      saveGC({
+        ...GC,
+        digitalProducts: {
+          ...GC.digitalProducts,
+          trendingProducts: fallbacks
+        }
+      });
     } finally {
       setLoadingTrends(false);
     }
   };
 
-  // Filter trends client side
+  // Filter trends client side with soft-fallback to avoid displaying empty screens
   const getFilteredTrends = () => {
     let list = trendingProducts;
 
@@ -180,13 +205,16 @@ DO NOT write any introduction, description, markdown explanation, or formatting 
     // 2. Platform Filter
     if (platform !== 'all') {
       const plat = platform.toLowerCase();
-      list = list.filter(p => (p.platform || '').toLowerCase().includes(plat));
+      const temp = list.filter(p => (p.platform || '').toLowerCase().includes(plat));
+      if (temp.length > 0) {
+        list = temp;
+      }
     }
 
     // 3. Type Filter
     if (typeFilter !== 'all') {
       const t = typeFilter.toLowerCase();
-      list = list.filter(p => {
+      const temp = list.filter(p => {
         const typeStr = (p.type || '').toLowerCase();
         if (t === 'notion') return typeStr.includes('notion');
         if (t === 'canva') return typeStr.includes('canva');
@@ -198,12 +226,15 @@ DO NOT write any introduction, description, markdown explanation, or formatting 
         if (t === 'toolkit') return typeStr.includes('toolkit') || typeStr.includes('bundle');
         return typeStr.includes(t);
       });
+      if (temp.length > 0) {
+        list = temp;
+      }
     }
 
     // 4. Niche Filter (🎯 حسب المجال)
     if (selectedNiche && selectedNiche !== 'all') {
       const nicheStr = selectedNiche.toLowerCase();
-      list = list.filter(p => {
+      const temp = list.filter(p => {
         const cat = (p.category || '').toLowerCase();
         const title = (p.title || '').toLowerCase();
         const desc = (p.description || '').toLowerCase();
@@ -218,6 +249,9 @@ DO NOT write any introduction, description, markdown explanation, or formatting 
         if (nicheStr === 'design') return cat.includes('design') || title.includes('design') || desc.includes('design') || cat.includes('art') || title.includes('art');
         return cat.includes(nicheStr) || title.includes(nicheStr) || desc.includes(nicheStr);
       });
+      if (temp.length > 0) {
+        list = temp;
+      }
     }
 
     return list;
@@ -1116,6 +1150,37 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
       {/* ================= TAB 4: MY PRODUCTS ================= */}
       {activeSubTab === 'myproducts' && (
         <div className="tab-panel on" id="dp-myproducts">
+          <style>{`
+            @media (max-width: 650px) {
+              .responsive-prod-card {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px !important;
+                padding: 14px !important;
+              }
+              .responsive-prod-card .prod-info-wrapper {
+                width: 100% !important;
+              }
+              .responsive-prod-card .prod-stats-row {
+                display: flex !important;
+                width: 100% !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                border-top: 1px solid var(--edge) !important;
+                padding-top: 10px !important;
+                margin-top: 4px !important;
+              }
+              .responsive-prod-card .prod-badge-delete {
+                display: flex !important;
+                width: 100% !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                margin-left: 0 !important;
+                margin-top: 4px !important;
+                width: 100% !important;
+              }
+            }
+          `}</style>
           <div className="sec-hd" style={{ marginBottom: '14px' }}>
             <div className="sec-title">📦 {L('My Digital Products', 'منتجاتي الرقمية')}</div>
             <button 
@@ -1147,7 +1212,7 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                 const statusBg = p.status === 'active' ? 'var(--green-d)' : 'var(--amber-d)';
                 return (
                   <div 
-                    className="fin-entry" 
+                    className="fin-entry responsive-prod-card" 
                     key={p.id} 
                     onClick={() => setSelectedManageProduct(p)}
                     style={{ 
@@ -1156,7 +1221,8 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                       gap: '12px', 
                       cursor: 'pointer',
                       transition: 'background 0.2s, transform 0.2s',
-                      borderRadius: '10px'
+                      borderRadius: '10px',
+                      padding: '12px'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = 'var(--surface3)';
@@ -1167,38 +1233,55 @@ Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic
                       e.currentTarget.style.transform = 'none';
                     }}
                   >
-                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                      📦
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px' }}>
-                        {p.name}
+                    {/* Top Row / Header Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }} className="prod-info-wrapper">
+                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--orange-d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+                        📦
                       </div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
-                        {p.type} · ${p.price} · {p.audience}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px', fontFamily: 'Tajawal, sans-serif' }}>
+                          {p.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--t2)', fontFamily: 'Tajawal, sans-serif' }}>
+                          {p.type} · {p.audience}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'center', minWidth: '70px' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--green)', fontFamily: 'var(--ff)' }}>
-                        ${p.revenue || 0}
+
+                    {/* Stats Row */}
+                    <div className="prod-stats-row" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <div style={{ textAlign: 'center', minWidth: '70px' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--green)', fontFamily: 'var(--ff)' }}>
+                          ${p.revenue || 0}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--t3)', fontFamily: 'Tajawal, sans-serif' }}>{L('revenue', 'أرباح')}</div>
                       </div>
-                      <div style={{ fontSize: '10px', color: 'var(--t3)' }}>{L('revenue', 'أرباح')}</div>
-                    </div>
-                    <div style={{ textAlign: 'center', minWidth: '50px' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--ff)' }}>
-                        {p.sales || 0}
+                      <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--t1)', fontFamily: 'var(--ff)' }}>
+                          {p.sales || 0}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--t3)', fontFamily: 'Tajawal, sans-serif' }}>{L('sales', 'مبيعات')}</div>
                       </div>
-                      <div style={{ fontSize: '10px', color: 'var(--t3)' }}>{L('sales', 'مبيعات')}</div>
+                      <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--orange)', fontFamily: 'var(--ff)' }}>
+                          ${p.price || 0}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--t3)', fontFamily: 'Tajawal, sans-serif' }}>{L('price', 'السعر')}</div>
+                      </div>
                     </div>
-                    <span className="badge" style={{ background: statusBg, color: statusColor }}>
-                      {p.status || 'draft'}
-                    </span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteProduct(p.id); }} 
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--t3)', padding: '4px' }}
-                    >
-                      ✕
-                    </button>
+
+                    {/* Badge & Delete */}
+                    <div className="prod-badge-delete" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
+                      <span className="badge" style={{ background: statusBg, color: statusColor, padding: '4px 8px', fontSize: '11px', fontFamily: 'Tajawal, sans-serif' }}>
+                        {p.status || 'draft'}
+                      </span>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteProduct(p.id); }} 
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: 'var(--t3)', padding: '4px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 );
               })

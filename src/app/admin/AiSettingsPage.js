@@ -47,6 +47,14 @@ const AiSettingsPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Pagination State for Logs
+  const [logPage, setLogPage] = useState(1);
+  const [logsPerPage, setLogsPerPage] = useState(25);
+
+  useEffect(() => {
+    setLogPage(1);
+  }, [searchTerm, filterTool, filterModel, timeRange, startDate, endDate]);
+
   // Refill Modal state
   const [refillModalUser, setRefillModalUser] = useState(null); // { userId, email, name, currentCredits }
   const [refillAmount, setRefillAmount] = useState('');
@@ -992,65 +1000,197 @@ const AiSettingsPage = () => {
               {isRTL ? 'لم يتم العثور على سجلات تطابق البحث.' : 'No matching transactions logs found.'}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', maxHeight: '550px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
-                    <th style={tableHeaderStyle}>{isRTL ? 'الأداة' : 'Feature / Tool'}</th>
-                    <th style={tableHeaderStyle}>{isRTL ? 'النموذج' : 'Model'}</th>
-                    <th style={tableHeaderStyle}>{isRTL ? 'التوكينز المستهلكة' : 'Tokens Consumed'}</th>
-                    <th style={tableHeaderStyle}>{isRTL ? 'التكلفة الإجمالية ($)' : 'Cost Incurred'}</th>
-                    <th style={tableHeaderStyle}>{isRTL ? 'الوقت والتاريخ' : 'Date & Time'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLogs.map((log) => {
-                    const ts = log.timestamp;
-                    const dateObj = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
-                    const formattedDate = dateObj.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    });
+            <div>
+              <div style={{ overflowX: 'auto', maxHeight: '550px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
+                      <th style={tableHeaderStyle}>{isRTL ? 'الأداة' : 'Feature / Tool'}</th>
+                      <th style={tableHeaderStyle}>{isRTL ? 'النموذج' : 'Model'}</th>
+                      <th style={tableHeaderStyle}>{isRTL ? 'التوكينز المستهلكة' : 'Tokens Consumed'}</th>
+                      <th style={tableHeaderStyle}>{isRTL ? 'التكلفة الإجمالية ($)' : 'Cost Incurred'}</th>
+                      <th style={tableHeaderStyle}>{isRTL ? 'الوقت والتاريخ' : 'Date & Time'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const indexOfLastLog = logPage * logsPerPage;
+                      const indexOfFirstLog = indexOfLastLog - logsPerPage;
+                      const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
+                      return currentLogs.map((log) => {
+                        const ts = log.timestamp;
+                        const dateObj = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
+                        const formattedDate = dateObj.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
+                        });
 
-                    return (
-                      <tr key={log.id} style={tableRowStyle}>
-                        <td style={tableCellStyle}>
-                          <div style={{ fontWeight: 'bold' }}>{log.userName || 'Anonymous'}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{log.userEmail}</div>
-                        </td>
-                        <td style={tableCellStyle}>
-                          <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', fontWeight: '600' }}>
-                            {log.tool || 'General'}
-                          </span>
-                        </td>
-                        <td style={tableCellStyle}>
-                          <code style={{ fontSize: '12px', color: 'var(--orange)' }}>{log.model}</code>
-                        </td>
-                        <td style={tableCellStyle}>
-                          <div style={{ fontSize: '12px' }}>
-                            📥 {log.inputTokens?.toLocaleString()} / 📤 {log.outputTokens?.toLocaleString()}
-                          </div>
-                          <div style={{ fontSize: '10px', color: 'var(--text3)' }}>
-                            {isRTL ? 'الإجمالي:' : 'Total:'} {((log.inputTokens || 0) + (log.outputTokens || 0)).toLocaleString()}
-                          </div>
-                        </td>
-                        <td style={tableCellStyle}>
-                          <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                            ${Number(log.cost || 0).toFixed(6)}
-                          </span>
-                        </td>
-                        <td style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
-                          {formattedDate}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        return (
+                          <tr key={log.id} style={tableRowStyle}>
+                            <td style={tableCellStyle}>
+                              <div style={{ fontWeight: 'bold' }}>{log.userName || 'Anonymous'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{log.userEmail}</div>
+                            </td>
+                            <td style={tableCellStyle}>
+                              <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', fontWeight: '600' }}>
+                                {log.tool || 'General'}
+                              </span>
+                            </td>
+                            <td style={tableCellStyle}>
+                              <code style={{ fontSize: '12px', color: 'var(--orange)' }}>{log.model}</code>
+                            </td>
+                            <td style={tableCellStyle}>
+                              <div style={{ fontSize: '12px' }}>
+                                📥 {log.inputTokens?.toLocaleString()} / 📤 {log.outputTokens?.toLocaleString()}
+                              </div>
+                              <div style={{ fontSize: '10px', color: 'var(--text3)' }}>
+                                {isRTL ? 'الإجمالي:' : 'Total:'} {((log.inputTokens || 0) + (log.outputTokens || 0)).toLocaleString()}
+                              </div>
+                            </td>
+                            <td style={tableCellStyle}>
+                              <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                ${Number(log.cost || 0).toFixed(6)}
+                              </span>
+                            </td>
+                            <td style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
+                              {formattedDate}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {filteredLogs.length > logsPerPage && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  padding: '16px 20px', 
+                  borderTop: '1px solid var(--line2)', 
+                  background: 'var(--bg3)',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  borderRadius: '0 0 10px 10px'
+                }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text3)', fontWeight: '600' }}>
+                    {isRTL 
+                      ? `عرض ${Math.min(filteredLogs.length, (logPage - 1) * logsPerPage + 1)}-${Math.min(filteredLogs.length, logPage * logsPerPage)} من أصل ${filteredLogs.length} سجل`
+                      : `Showing ${Math.min(filteredLogs.length, (logPage - 1) * logsPerPage + 1)}-${Math.min(filteredLogs.length, logPage * logsPerPage)} of ${filteredLogs.length} entries`
+                    }
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      onClick={() => setLogPage(prev => Math.max(prev - 1, 1))}
+                      disabled={logPage === 1}
+                      className="btn"
+                      style={{ 
+                        padding: '6px 12px', 
+                        fontSize: '12px', 
+                        background: logPage === 1 ? 'transparent' : 'var(--bg2)', 
+                        borderColor: 'var(--line2)',
+                        color: logPage === 1 ? 'var(--text3)' : 'var(--text)',
+                        cursor: logPage === 1 ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isRTL ? 'السابق' : 'Previous'}
+                    </button>
+                    {(() => {
+                      const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+                      const pageNumbers = [];
+                      const startPage = Math.max(1, logPage - 2);
+                      const endPage = Math.min(totalPages, logPage + 2);
+                      
+                      for (let i = startPage; i <= endPage; i++) {
+                        pageNumbers.push(i);
+                      }
+
+                      return (
+                        <>
+                          {startPage > 1 && (
+                            <>
+                              <button
+                                onClick={() => setLogPage(1)}
+                                className="btn"
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  background: logPage === 1 ? 'var(--orange)' : 'var(--bg2)',
+                                  borderColor: logPage === 1 ? 'var(--orange)' : 'var(--line2)',
+                                  color: logPage === 1 ? '#fff' : 'var(--text)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                1
+                              </button>
+                              {startPage > 2 && <span style={{ color: 'var(--text3)', padding: '0 4px' }}>...</span>}
+                            </>
+                          )}
+                          {pageNumbers.map(number => (
+                            <button
+                              key={number}
+                              onClick={() => setLogPage(number)}
+                              className="btn"
+                              style={{
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                background: logPage === number ? 'var(--orange)' : 'var(--bg2)',
+                                borderColor: logPage === number ? 'var(--orange)' : 'var(--line2)',
+                                color: logPage === number ? '#fff' : 'var(--text)',
+                                cursor: 'pointer',
+                                fontWeight: logPage === number ? 'bold' : 'normal'
+                              }}
+                            >
+                              {number}
+                            </button>
+                          ))}
+                          {endPage < totalPages && (
+                            <>
+                              {endPage < totalPages - 1 && <span style={{ color: 'var(--text3)', padding: '0 4px' }}>...</span>}
+                              <button
+                                onClick={() => setLogPage(totalPages)}
+                                className="btn"
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  background: logPage === totalPages ? 'var(--orange)' : 'var(--bg2)',
+                                  borderColor: logPage === totalPages ? 'var(--orange)' : 'var(--line2)',
+                                  color: logPage === totalPages ? '#fff' : 'var(--text)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {totalPages}
+                              </button>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <button
+                      onClick={() => setLogPage(prev => Math.min(prev + 1, Math.ceil(filteredLogs.length / logsPerPage)))}
+                      disabled={logPage === Math.ceil(filteredLogs.length / logsPerPage)}
+                      className="btn"
+                      style={{ 
+                        padding: '6px 12px', 
+                        fontSize: '12px', 
+                        background: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'transparent' : 'var(--bg2)', 
+                        borderColor: 'var(--line2)',
+                        color: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'var(--text3)' : 'var(--text)',
+                        cursor: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isRTL ? 'التالي' : 'Next'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1224,8 +1364,10 @@ const AiSettingsPage = () => {
           padding: '16px'
         }}>
           <div className="card" style={{
-            width: '100%',
+            width: '95%',
             maxWidth: '420px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
             background: 'var(--panelColor, #101018)',
             border: '1px solid var(--line, var(--edge))',
             borderRadius: '16px',

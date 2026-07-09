@@ -521,35 +521,21 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                     placeholder="Style Masterclass"
                   />
                 </div>
-                <div className="lp-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px' }}>
-                  <div>
-                    <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                      {L('Price ($)', 'السعر ($)')}
-                    </label>
-                    <input
-                      className="inp"
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(parseInt(e.target.value) || 0)}
-                      onBlur={(e) => saveLPData({ price: parseInt(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                      {L('Template Style', 'نمط القالب')}
-                    </label>
-                    <CustomSelect
-                      className="inp"
-                      value={template}
-                      onChange={(e) => { setTemplate(e.target.value); saveLPData({ template: e.target.value }); }}
-                    >
-                      {templates.map((t) => (
-                        <option key={t.key} value={t.key}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </CustomSelect>
-                  </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Template Style', 'نمط القالب')}
+                  </label>
+                  <CustomSelect
+                    className="inp"
+                    value={template}
+                    onChange={(e) => { setTemplate(e.target.value); saveLPData({ template: e.target.value }); }}
+                  >
+                    {templates.map((t) => (
+                      <option key={t.key} value={t.key}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </CustomSelect>
                 </div>
                 <div>
                   <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '8px' }}>
@@ -572,20 +558,45 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
                         title={c.name}
                       />
                     ))}
-                    <input
-                      type="color"
-                      value={color}
-                      onChange={(e) => { setColor(e.target.value); saveLPData({ color: e.target.value }); }}
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        border: 'none',
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        background: 'none',
-                        padding: '0'
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '6px', padding: '2px 8px', marginLeft: '4px' }}>
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => { setColor(e.target.value); saveLPData({ color: e.target.value }); }}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          border: 'none',
+                          borderRadius: '50%',
+                          cursor: 'pointer',
+                          background: 'none',
+                          padding: '0'
+                        }}
+                        title={L('Color Picker', 'منتقي الألوان')}
+                      />
+                      <input
+                        type="text"
+                        value={color}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setColor(val);
+                          if (/^#[0-9A-F]{6}$/i.test(val)) {
+                            saveLPData({ color: val });
+                          }
+                        }}
+                        placeholder="#ffffff"
+                        style={{
+                          width: '75px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--t1)',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          outline: 'none',
+                          padding: '2px 0'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

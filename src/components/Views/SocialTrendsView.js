@@ -54,6 +54,48 @@ const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
   }
 };
 
+const getTrendCoverUrl = (trend) => {
+  if (trend.cover_url) return trend.cover_url;
+  
+  const title = (trend.title || '').toLowerCase();
+  const tags = (trend.hashtags || []).map(t => typeof t === 'object' ? (t.name || '') : String(t)).join(' ').toLowerCase();
+  const searchStr = `${title} ${tags}`;
+  
+  if (searchStr.includes('digital') || searchStr.includes('product') || searchStr.includes('متجر') || searchStr.includes('رقمي') || searchStr.includes('بيع')) {
+    return 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&auto=format&fit=crop&q=60';
+  }
+  if (searchStr.includes('morning') || searchStr.includes('routine') || searchStr.includes('5:00') || searchStr.includes('روتين') || searchStr.includes('الصباح') || searchStr.includes('قهوة')) {
+    return 'https://images.unsplash.com/photo-1507133750040-4a8f57021571?w=400&auto=format&fit=crop&q=60';
+  }
+  if (searchStr.includes('notion') || searchStr.includes('tracker') || searchStr.includes('data') || searchStr.includes('نوتشن') || searchStr.includes('بيانات') || searchStr.includes('تنظيم')) {
+    return 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&auto=format&fit=crop&q=60';
+  }
+  if (searchStr.includes('code') || searchStr.includes('developer') || searchStr.includes('برمجة') || searchStr.includes('مطور')) {
+    return 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&auto=format&fit=crop&q=60';
+  }
+  if (searchStr.includes('ai') || searchStr.includes('artificial') || searchStr.includes('ذكاء')) {
+    return 'https://images.unsplash.com/photo-1677442136019-21780efad99a?w=400&auto=format&fit=crop&q=60';
+  }
+  if (searchStr.includes('money') || searchStr.includes('finance') || searchStr.includes('ربح') || searchStr.includes('مال')) {
+    return 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&auto=format&fit=crop&q=60';
+  }
+  
+  const images = [
+    'https://images.unsplash.com/photo-1542744094-3a31f103e35f?w=400&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&auto=format&fit=crop&q=60'
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % images.length;
+  return images[idx];
+};
+
 export default function SocialTrendsView() {
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -718,7 +760,7 @@ export default function SocialTrendsView() {
               className="trend-thumbnail-container"
               style={{ 
                 height: '130px', 
-                background: v.cover_url ? `url(${v.cover_url}) center/cover no-repeat` : 'linear-gradient(135deg, var(--surface2), var(--surface3))', 
+                background: `url(${getTrendCoverUrl(v)}) center/cover no-repeat`, 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
@@ -731,7 +773,6 @@ export default function SocialTrendsView() {
                 }
               }}
             >
-              {!v.cover_url && <div className="trend-music-icon" style={{ fontSize: '36px' }}>🎵</div>}
               {v.video_url && (
                 <div className="hover-play-btn">
                   <span style={{ fontSize: '36px', color: '#fff' }}>▶️</span>

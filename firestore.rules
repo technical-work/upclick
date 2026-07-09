@@ -25,19 +25,19 @@ service cloud.firestore {
       // Allow users to create their own document, their team members, or admins to create any user document
       allow create: if request.auth != null && 
         (request.auth.uid == userId || 
-         request.resource.data.adminId == request.auth.uid || 
+         ('adminId' in request.resource.data && request.resource.data.adminId == request.auth.uid) || 
          isAdmin());
       
       // Allow updates by the user themselves, by their admin, or by platform admins
       allow update: if request.auth != null && 
         (isAdmin() || 
-         resource.data.adminId == request.auth.uid ||
+         ('adminId' in resource.data && resource.data.adminId == request.auth.uid) ||
          (request.auth.uid == userId && 
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'adminId']))));
           
       // Allow deletion by their admin or platform admins/super_admins
       allow delete: if request.auth != null && 
-        (isAdmin() || resource.data.adminId == request.auth.uid);
+        (isAdmin() || ('adminId' in resource.data && resource.data.adminId == request.auth.uid));
     }
 
     // Bio Links Collection (CV profiles)

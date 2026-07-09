@@ -126,11 +126,7 @@ export default function RevenueView() {
 
   const allLeads = [];
   selectedWorkspaces.forEach(ws => {
-    const dealsList = ws.deals || [
-      { id: `101_${ws.id}`, name: 'Pepsi Co', value: 800, stage: ws.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
-      { id: `102_${ws.id}`, name: 'Salla App', value: 1500, stage: ws.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
-      { id: `103_${ws.id}`, name: 'Huawei Arabia', value: 2400, stage: ws.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
-    ];
+    const dealsList = ws.deals || [];
     dealsList.forEach(d => {
       allLeads.push({
         ...d,
@@ -248,12 +244,17 @@ export default function RevenueView() {
     return sum + (price * (m.s || 0));
   }, 0);
 
-  const totalRevenue = crmClosedRevenue + productsRevenue + coursesRevenue;
+  const financeIncomes = (GC.finance?.entries || [])
+    .filter(entry => entry.type === 'income' && filterByDateRange(entry.date, filterPeriod, customStartDate, customEndDate))
+    .reduce((sum, entry) => sum + (parseFloat(entry.amount) || 0), 0);
+
+  const totalRevenue = crmClosedRevenue + productsRevenue + coursesRevenue + financeIncomes;
 
   const streams = [
     { name: L('Sponsorships', 'الرعايات'), val: crmClosedRevenue, c: 'var(--a)' },
     { name: L('Digital Products', 'المنتجات الرقمية'), val: productsRevenue, c: 'var(--a2)' },
-    { name: L('Courses', 'الكورسات'), val: coursesRevenue, c: 'var(--a3)' }
+    { name: L('Courses', 'الكورسات'), val: coursesRevenue, c: 'var(--a3)' },
+    { name: L('Services & Other', 'الخدمات والاستشارات'), val: financeIncomes, c: 'var(--go)' }
   ];
 
   const sortedStreams = [...streams].sort((a, b) => b.val - a.val);
@@ -337,11 +338,7 @@ export default function RevenueView() {
             notes: type
           };
 
-          const currentDeals = activeWs.deals || [
-            { id: 101, name: 'Pepsi Co', value: 800, stage: activeWs.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
-            { id: 102, name: 'Salla App', value: 1500, stage: activeWs.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
-            { id: 103, name: 'Huawei Arabia', value: 2400, stage: activeWs.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
-          ];
+          const currentDeals = activeWs.deals || [];
 
           const updatedWs = { ...activeWs, deals: [...currentDeals, newLead] };
           saveGC({
@@ -383,11 +380,7 @@ export default function RevenueView() {
       (choice) => {
         if (!choice) return;
 
-        const currentDeals = ws.deals || [
-          { id: `101_${ws.id}`, name: 'Pepsi Co', value: 800, stage: ws.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
-          { id: `102_${ws.id}`, name: 'Salla App', value: 1500, stage: ws.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
-          { id: `103_${ws.id}`, name: 'Huawei Arabia', value: 2400, stage: ws.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
-        ];
+        const currentDeals = ws.deals || [];
 
         const deleteChoiceKey = String(options.length + 1);
         if (choice === deleteChoiceKey) {
@@ -432,11 +425,7 @@ export default function RevenueView() {
     let foundWs = null;
     let foundLead = null;
     for (let ws of wsList) {
-      const currentDeals = ws.deals || [
-        { id: `101_${ws.id}`, name: 'Pepsi Co', value: 800, stage: ws.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
-        { id: `102_${ws.id}`, name: 'Salla App', value: 1500, stage: ws.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
-        { id: `103_${ws.id}`, name: 'Huawei Arabia', value: 2400, stage: ws.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
-      ];
+      const currentDeals = ws.deals || [];
       const lead = currentDeals.find(l => String(l.id) === String(leadId));
       if (lead) {
         foundWs = ws;
@@ -446,11 +435,7 @@ export default function RevenueView() {
     }
     if (!foundWs || !foundLead) return;
 
-    const currentDeals = foundWs.deals || [
-      { id: `101_${foundWs.id}`, name: 'Pepsi Co', value: 800, stage: foundWs.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
-      { id: `102_${foundWs.id}`, name: 'Salla App', value: 1500, stage: foundWs.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
-      { id: `103_${foundWs.id}`, name: 'Huawei Arabia', value: 2400, stage: foundWs.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
-    ];
+    const currentDeals = foundWs.deals || [];
 
     const updatedWs = {
       ...foundWs,
@@ -554,11 +539,7 @@ export default function RevenueView() {
         const updatedStages = (activeWs.stages || []).filter(s => s.key !== stage.key);
 
         // Move deals belonging to the deleted stage
-        const currentDeals = activeWs.deals || [
-          { id: `101_${activeWs.id}`, name: 'Pepsi Co', value: 800, stage: activeWs.stages?.[0]?.key || 'new', created: new Date().toISOString(), notes: '1x Reel post' },
-          { id: `102_${activeWs.id}`, name: 'Salla App', value: 1500, stage: activeWs.stages?.[1]?.key || 'contacted', created: new Date().toISOString(), notes: '2x TikTok video' },
-          { id: `103_${activeWs.id}`, name: 'Huawei Arabia', value: 2400, stage: activeWs.stages?.[3]?.key || 'proposal', created: new Date().toISOString(), notes: 'Sponsorship package' }
-        ];
+        const currentDeals = activeWs.deals || [];
 
         const updatedDeals = currentDeals.map(d => 
           d.stage === stage.key ? { ...d, stage: firstStageKey } : d
@@ -1291,9 +1272,9 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
             </div>
           </div>
           <div className="card mb">
-            <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div className="st">{L('Deals Pipeline (Drag & Drop or Click card to Manage)', 'مراحل صفقات المبيعات (اسحب وأسقط أو اضغط لإدارة الصفقة)')}</div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div className="st" style={{ minWidth: '220px' }}>{L('Deals Pipeline (Drag & Drop or Click card to Manage)', 'مراحل صفقات المبيعات (اسحب وأسقط أو اضغط لإدارة الصفقة)')}</div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={handleCreateWorkspace}>
                   💼 {L('+ Add Business/Workspace', '+ إضافة مساحة عمل')}
                 </button>
@@ -1311,6 +1292,7 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                 display: 'flex', 
                 gap: '12px', 
                 overflowX: 'auto', 
+                WebkitOverflowScrolling: 'touch',
                 paddingBottom: '12px', 
                 minHeight: '380px', 
                 alignItems: 'stretch' 
@@ -1331,8 +1313,8 @@ You MUST output your response as a valid JSON object ONLY. Do not include markdo
                       background: 'var(--surface2)', 
                       padding: '12px', 
                       borderRadius: '12px', 
-                      minWidth: '220px', 
-                      flex: 1, 
+                      minWidth: '260px', 
+                      flex: '0 0 260px', 
                       display: 'flex', 
                       flexDirection: 'column' 
                     }}

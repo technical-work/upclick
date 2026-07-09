@@ -37,10 +37,15 @@ export default function DesignStudioView() {
   const [socialSize, setSocialSize] = useState(savedSocial.socialSize || '1080x1080');
   const [socialHeadline, setSocialHeadline] = useState(savedSocial.headline || '');
   const [socialSubtitle, setSocialSubtitle] = useState(savedSocial.subtitle || '');
+  const [socialIdea, setSocialIdea] = useState(savedSocial.idea || '');
   const [socialStyle, setSocialStyle] = useState(savedSocial.socialStyle || 'gradient-dark');
 
   // Cover fields
   const [coverType, setCoverType] = useState(savedCover.coverType || 'linkedin');
+  const [coverTextMode, setCoverTextMode] = useState(savedCover.textMode || 'ai');
+  const [coverHeadline, setCoverHeadline] = useState(savedCover.headline || '');
+  const [coverSubtitle, setCoverSubtitle] = useState(savedCover.subtitle || '');
+  const [coverIdea, setCoverIdea] = useState(savedCover.idea || '');
 
   // Card fields
   const [cardFullName, setCardFullName] = useState(savedCard.fullName || '');
@@ -51,6 +56,47 @@ export default function DesignStudioView() {
   const [savedDesigns, setSavedDesigns] = useState(designData.savedDesigns || []);
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [refImageBase64, setRefImageBase64] = useState('');
+
+  const handleRefImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 200;
+        const MAX_HEIGHT = 200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const base64Url = canvas.toDataURL('image/jpeg', 0.6);
+        setRefImageBase64(base64Url);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // Reset input
+  };
 
   // Sync state if GC updates
   useEffect(() => {
@@ -70,9 +116,14 @@ export default function DesignStudioView() {
       setSocialSize(social.socialSize || '1080x1080');
       setSocialHeadline(social.headline || '');
       setSocialSubtitle(social.subtitle || '');
+      setSocialIdea(social.idea || '');
       setSocialStyle(social.socialStyle || 'gradient-dark');
 
       setCoverType(cover.coverType || 'linkedin');
+      setCoverTextMode(cover.textMode || 'ai');
+      setCoverHeadline(cover.headline || '');
+      setCoverSubtitle(cover.subtitle || '');
+      setCoverIdea(cover.idea || '');
 
       setCardFullName(card.fullName || '');
       setCardTitle(card.title || '');
@@ -112,11 +163,14 @@ export default function DesignStudioView() {
       return `A high-quality, professional logo design for a brand named "${logoBrandName}". ${logoTagline ? `With tagline "${logoTagline}".` : ''} Logo style is ${logoStyle}. Logo type is ${logoType}. The color scheme is ${logoColor}. The industry is ${logoIndustry}. Modern, clean, vectors, centered, no background, high resolution.`;
     }
     if (tab === 'social') {
-      return `A premium, professionally designed social media graphic post. Main headline: "${socialHeadline}". Subtitle: "${socialSubtitle}". Size aspect ratio matches ${socialSize}. Design style is ${socialStyle}. Vibrant, modern graphic design, high contrast, clean typography.`;
+      return `A premium, professionally designed social media graphic post. Main headline: "${socialHeadline}". Subtitle: "${socialSubtitle}". Size aspect ratio matches ${socialSize}. Design style is ${socialStyle}.${socialIdea ? ` The design should feature the following idea: ${socialIdea}.` : ''} Vibrant, modern graphic design, high contrast, clean typography.`;
     }
     if (tab === 'cover') {
       const coverNames = { linkedin: 'LinkedIn banner', youtube: 'YouTube Channel Art banner', twitter: 'X/Twitter header banner' };
-      return `A high-quality, professional digital banner for ${coverNames[coverType] || 'LinkedIn'}. Suitable for ${logoIndustry} industry. Elegant, abstract, modern corporate style, high resolution, suitable for a horizontal profile banner.`;
+      const textPrompt = coverTextMode === 'custom' 
+        ? `featuring the main headline text "${coverHeadline}" and tagline text "${coverSubtitle}"`
+        : `featuring an AI-generated professional headline and tagline suitable for a creator name "${logoBrandName || GC.profile.name || ''}"`;
+      return `A high-quality, professional digital banner for ${coverNames[coverType] || 'LinkedIn'}. Suitable for ${logoIndustry} industry. ${textPrompt}.${coverIdea ? ` The banner design should be based on the following idea: ${coverIdea}.` : ''} Elegant, abstract, modern corporate style, high resolution, suitable for a horizontal profile banner.`;
     }
     if (tab === 'card') {
       return `A premium modern business card design. Showcases name: "${cardFullName}" and title/role: "${cardTitle}". Sophisticated, elegant, minimal layout, high-end professional corporate style, centered.`;
@@ -125,10 +179,53 @@ export default function DesignStudioView() {
   };
 
   const handleGenerate = async () => {
-    const prompt = getPromptForTab(activeTab);
+    let prompt = getPromptForTab(activeTab);
     if (!prompt) return;
 
     setIsGenerating(true);
+
+    // Vision analysis of reference image (if provided) to guide image generation
+    let styleDescription = '';
+    if (refImageBase64) {
+      try {
+        const systemPrompt = "You are a professional design analyst. Describe the uploaded image's logo layout, visual style, colors, and graphics in 1 detailed sentence to serve as inspiration for image generation. Do not include markdown or extra text.";
+        const visionPrompt = "Describe the style and layout of this design reference for image generation:";
+
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: user?.uid,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { 
+                role: 'user', 
+                content: [
+                  { type: 'text', text: visionPrompt },
+                  { type: 'image_url', image_url: { url: refImageBase64 } }
+                ]
+              }
+            ]
+          })
+        });
+
+        if (res.ok) {
+          const text = await res.text();
+          if (text && !text.includes('❌')) {
+            styleDescription = text.trim();
+          }
+        }
+      } catch (err) {
+        console.warn("Reference image analysis failed:", err);
+      }
+    }
+
+    if (styleDescription) {
+      prompt = `${prompt} The design style should be inspired by: ${styleDescription}.`;
+    }
+
     try {
       const res = await fetch('/api/ai/image', {
         method: 'POST',
@@ -377,6 +474,60 @@ export default function DesignStudioView() {
                 </CustomSelect>
               </div>
 
+              {/* Reference Image */}
+              <div className="card" style={{ fontFamily: 'Tajawal, sans-serif' }}>
+                <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="sec-title">🖼️ {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
+                  {refImageBase64 && (
+                    <button 
+                      onClick={() => setRefImageBase64('')}
+                      style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      {L('Remove', 'إزالة')}
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
+                  {refImageBase64 ? (
+                    <img 
+                      src={refImageBase64} 
+                      alt="Reference" 
+                      style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--edge)' }} 
+                    />
+                  ) : (
+                    <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
+                      📷
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <label 
+                      style={{ 
+                        display: 'inline-block', 
+                        padding: '6px 12px', 
+                        background: 'var(--surface2)', 
+                        border: '1px solid var(--edge)', 
+                        borderRadius: '6px', 
+                        fontSize: '12px', 
+                        fontWeight: 600, 
+                        color: 'var(--t1)', 
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      {L('Choose Image', 'اختر صورة')}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleRefImageUpload} 
+                        style={{ display: 'none' }} 
+                      />
+                    </label>
+                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px' }}>
+                      {L('Upload reference logo for inspiration', 'ارفع شعارًا أو تصميمًا مرجعيًا ليكون مصدر إلهام')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
                 ✦ {L('Generate Logo', 'توليد الشعار')}
               </button>
@@ -465,13 +616,24 @@ export default function DesignStudioView() {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Subtitle (optional)', 'عنوان فرعي')}</label>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Subtitle (optional)', 'عنوان فرعي (اختياري)')}</label>
                     <input 
                       className="inp" 
                       value={socialSubtitle} 
                       onChange={(e) => setSocialSubtitle(e.target.value)} 
                       onBlur={(e) => saveDesignStudioData('social', { subtitle: e.target.value })} 
                       placeholder="e.g. Arabic Creator Edition 🔥" 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Design Idea / Description (optional)', 'فكرة التصميم (اختياري)')}</label>
+                    <textarea 
+                      className="inp" 
+                      value={socialIdea} 
+                      onChange={(e) => setSocialIdea(e.target.value)} 
+                      onBlur={(e) => saveDesignStudioData('social', { idea: e.target.value })} 
+                      placeholder={L('e.g., A minimalist design showing a lightbulb with growth charts...', 'مثال: تصميم بسيط يظهر مصباحاً كهربائياً مع رسوم بيانية للنمو...')} 
+                      style={{ height: '60px', resize: 'none', padding: '8px', fontSize: '12px', fontFamily: 'Tajawal, sans-serif' }}
                     />
                   </div>
                 </div>
@@ -534,9 +696,11 @@ export default function DesignStudioView() {
 
       {/* ═══ COVER & BANNER ═══ */}
       {activeTab === 'cover' && (
-        <div className="tab-panel on">
+        <div className="tab-panel on" style={{ fontFamily: 'Tajawal, sans-serif' }}>
           <div className="g2" style={{ alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              {/* Type */}
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">📐 {L('Banner Type', 'نوع الغلاف')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
@@ -559,6 +723,119 @@ export default function DesignStudioView() {
                   ))}
                 </div>
               </div>
+
+              {/* Text / Copy Configuration */}
+              <div className="card">
+                <div className="sec-hd"><div className="sec-title">✍️ {L('Banner Text / Copy', 'الكتابة والنصوص على الغلاف')}</div></div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <button 
+                    onClick={() => { setCoverTextMode('ai'); saveDesignStudioData('cover', { textMode: 'ai' }); }}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: coverTextMode === 'ai' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverTextMode === 'ai' ? 'var(--or-d)' : 'var(--surface2)', color: coverTextMode === 'ai' ? 'var(--orange)' : 'var(--t2)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    🤖 {L('AI Auto Text', 'توليد بالـ AI')}
+                  </button>
+                  <button 
+                    onClick={() => { setCoverTextMode('custom'); saveDesignStudioData('cover', { textMode: 'custom' }); }}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: coverTextMode === 'custom' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverTextMode === 'custom' ? 'var(--or-d)' : 'var(--surface2)', color: coverTextMode === 'custom' ? 'var(--orange)' : 'var(--t2)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                  >
+                    ✏️ {L('Write Custom Text', 'أكتب النص بنفسي')}
+                  </button>
+                </div>
+                {coverTextMode === 'custom' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Headline', 'العنوان الرئيسي')}</label>
+                      <input 
+                        className="inp" 
+                        value={coverHeadline} 
+                        onChange={(e) => setCoverHeadline(e.target.value)} 
+                        onBlur={(e) => saveDesignStudioData('cover', { headline: e.target.value })} 
+                        placeholder={L('e.g., Build & Scale Your Brand', 'مثال: ابنِ وطوّر علامتك التجارية')}
+                        style={{ fontSize: '12.5px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Tagline / Subtitle', 'العنوان الفرعي')}</label>
+                      <input 
+                        className="inp" 
+                        value={coverSubtitle} 
+                        onChange={(e) => setCoverSubtitle(e.target.value)} 
+                        onBlur={(e) => saveDesignStudioData('cover', { subtitle: e.target.value })} 
+                        placeholder={L('e.g., Growth Marketing for Creators', 'مثال: تسويق النمو للمنشئين')}
+                        style={{ fontSize: '12.5px' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cover Idea Description */}
+              <div className="card">
+                <div className="sec-hd"><div className="sec-title">💡 {L('Banner Idea (optional)', 'وصف فكرة الغلاف (اختياري)')}</div></div>
+                <textarea 
+                  className="inp" 
+                  value={coverIdea} 
+                  onChange={(e) => setCoverIdea(e.target.value)} 
+                  onBlur={(e) => saveDesignStudioData('cover', { idea: e.target.value })} 
+                  placeholder={L('e.g., Abstract tech background with neon circuits...', 'مثال: خلفية تقنية مجردة مع دوائر إلكترونية نيون...')} 
+                  style={{ height: '60px', resize: 'none', padding: '8px', fontSize: '12px', fontFamily: 'Tajawal, sans-serif' }}
+                />
+              </div>
+
+              {/* Reference Image */}
+              <div className="card">
+                <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="sec-title">🖼️ {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
+                  {refImageBase64 && (
+                    <button 
+                      onClick={() => setRefImageBase64('')}
+                      style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      {L('Remove', 'إزالة')}
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
+                  {refImageBase64 ? (
+                    <img 
+                      src={refImageBase64} 
+                      alt="Reference" 
+                      style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--edge)' }} 
+                    />
+                  ) : (
+                    <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
+                      📷
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <label 
+                      style={{ 
+                        display: 'inline-block', 
+                        padding: '6px 12px', 
+                        background: 'var(--surface2)', 
+                        border: '1px solid var(--edge)', 
+                        borderRadius: '6px', 
+                        fontSize: '12px', 
+                        fontWeight: 600, 
+                        color: 'var(--t1)', 
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      {L('Choose Image', 'اختر صورة')}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleRefImageUpload} 
+                        style={{ display: 'none' }} 
+                      />
+                    </label>
+                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px' }}>
+                      {L('Upload reference banner for style inspiration', 'ارفع غلافاً أو لافتة مرجعية ليكون مصدر إلهام')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
                 ✦ {L('Generate Banner', 'توليد الغلاف')}
               </button>

@@ -3,8 +3,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
-import { db } from '../lib/firebase';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc, increment } from 'firebase/firestore';
 
 const mapPageToSection = (page) => {
   if (['marketing', 'landing', 'upclick', 'niche', 'design'].includes(page)) return 'marketing';
@@ -23,7 +23,7 @@ export default function ActiveSessionTracker() {
   const currentPageRef = useRef(currentPage);
 
   const flushTime = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !auth.currentUser) return;
 
     const secondsToFlush = { ...activeSecondsRef.current };
     // Reset local cache immediately to prevent duplicate increments
@@ -45,7 +45,7 @@ export default function ActiveSessionTracker() {
         }
       });
 
-      await updateDoc(userRef, updates);
+      await setDoc(userRef, updates, { merge: true });
     } catch (err) {
       console.error('Error writing usage logs to Firestore:', err);
     }

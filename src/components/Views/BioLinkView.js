@@ -39,6 +39,8 @@ export default function BioLinkView() {
   const [bioTagline, setBioTagline] = useState(bioData.bioTagline || '');
   const [username, setUsername] = useState(bioData.username || '');
   const [bioTheme, setBioTheme] = useState(bioData.bioTheme || 'dark');
+  const [customColor, setCustomColor] = useState(bioData.customColor || '#a855f7');
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [layout, setLayout] = useState(bioData.layout || 'classic');
   const [font, setFont] = useState(bioData.font || 'Tajawal');
   const [avatarUrl, setAvatarUrl] = useState(bioData.avatarUrl || '');
@@ -67,13 +69,14 @@ export default function BioLinkView() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Sync state if GC updates
+  // Sync state if GC updates (only once on load to prevent overwriting user edits during live DB syncs)
   useEffect(() => {
-    if (GC.bioLink) {
+    if (GC.bioLink && !hasInitialized) {
       setDisplayName(GC.bioLink.displayName || '');
       setBioTagline(GC.bioLink.bioTagline || '');
       setUsername(GC.bioLink.username || '');
       setBioTheme(GC.bioLink.bioTheme || 'dark');
+      setCustomColor(GC.bioLink.customColor || '#a855f7');
       setLayout(GC.bioLink.layout || 'classic');
       setFont(GC.bioLink.font || 'Tajawal');
       setAvatarUrl(GC.bioLink.avatarUrl || '');
@@ -91,8 +94,10 @@ export default function BioLinkView() {
       setLanguages(GC.bioLink.cvSections?.languages || []);
       setCertifications(GC.bioLink.cvSections?.certifications || []);
       setProjects(GC.bioLink.cvSections?.projects || []);
+      
+      setHasInitialized(true);
     }
-  }, [GC.bioLink]);
+  }, [GC.bioLink, hasInitialized]);
 
   const addLink = () => {
     setLinks(prev => [...prev, { title: 'New Link', url: 'https://', icon: '🔗', description: '', highlighted: false }]);
@@ -188,6 +193,7 @@ export default function BioLinkView() {
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    e.target.value = ''; // Reset input value so onChange will trigger next time even for the same file!
 
     setUploadingAvatar(true);
     setUploadProgress(20);
@@ -267,6 +273,7 @@ export default function BioLinkView() {
         bioTagline,
         username: cleanUsername,
         bioTheme,
+        customColor,
         layout,
         font,
         avatarUrl,
@@ -322,6 +329,9 @@ export default function BioLinkView() {
 
   // Theme style mapping for live preview
   const getThemeStyle = () => {
+    if (bioTheme === 'custom') {
+      return { background: `linear-gradient(135deg, ${customColor}22, #020205)`, color: '#fff', border: `1px solid ${customColor}` };
+    }
     switch (bioTheme) {
       case 'purple':
         return { background: 'linear-gradient(135deg,#1e0b36,#0c0214)', color: '#fff' };
@@ -348,6 +358,7 @@ export default function BioLinkView() {
   };
 
   const getThemeTextMutedColor = () => {
+    if (bioTheme === 'custom') return `${customColor}cc`;
     if (bioTheme === 'white') return '#5c527a';
     if (bioTheme === 'lavender') return '#7c3aed';
     if (bioTheme === 'cyberpunk') return '#39ff14';
@@ -361,6 +372,7 @@ export default function BioLinkView() {
   };
 
   const getThemeAccentColor = () => {
+    if (bioTheme === 'custom') return customColor;
     if (bioTheme === 'white' || bioTheme === 'orange') return '#FF6B35';
     if (bioTheme === 'purple') return '#a855f7';
     if (bioTheme === 'green') return '#10b981';
@@ -665,42 +677,81 @@ export default function BioLinkView() {
                 </div>
 
                 {/* Theme Selector */}
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Theme Palette', 'مظهر الألوان')}</label>
-                  <div className="bio-theme-grid tabs-bar" style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: '8px', paddingBottom: '8px' }}>
-                    {[
-                      { key: 'dark', color: '#08080f', name: L('Dark', 'داكن') },
-                      { key: 'purple', color: 'linear-gradient(135deg,#6C35FF,#a855f7)', name: L('Purple', 'بنفسجي') },
-                      { key: 'orange', color: 'linear-gradient(135deg,#FF6B35,#f59e0b)', name: L('Orange', 'برتقالي') },
-                      { key: 'white', color: '#ffffff', name: L('Light', 'فاتح') },
-                      { key: 'green', color: 'linear-gradient(135deg,#059669,#10b981)', name: L('Green', 'أخضر') },
-                      { key: 'cosmic', color: 'linear-gradient(135deg,#090514,#ff007f)', name: L('Cosmic', 'كوني') },
-                      { key: 'lavender', color: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', name: L('Lavender', 'خزامى') },
-                      { key: 'emerald', color: 'linear-gradient(135deg,#022c22,#064e3b)', name: L('Emerald', 'زمردي') },
-                      { key: 'midnight', color: 'radial-gradient(circle,#0f172a,#020617)', name: L('Midnight', 'فضائي') },
-                      { key: 'cyberpunk', color: 'linear-gradient(135deg,#02000a,#00f0ff)', name: L('Cyber', 'سايبر') }
-                    ].map(theme => (
-                      <div 
-                        key={theme.key}
-                        onClick={() => setBioTheme(theme.key)}
-                        title={theme.name}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>{L('Theme Palette', 'مظهر الألوان')}</label>
+                    <div className="bio-theme-grid tabs-bar" style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: '8px', paddingBottom: '8px' }}>
+                      {[
+                        { key: 'dark', color: '#08080f', name: L('Dark', 'داكن') },
+                        { key: 'purple', color: 'linear-gradient(135deg,#6C35FF,#a855f7)', name: L('Purple', 'بنفسجي') },
+                        { key: 'orange', color: 'linear-gradient(135deg,#FF6B35,#f59e0b)', name: L('Orange', 'برتقالي') },
+                        { key: 'white', color: '#ffffff', name: L('Light', 'فاتح') },
+                        { key: 'green', color: 'linear-gradient(135deg,#059669,#10b981)', name: L('Green', 'أخضر') },
+                        { key: 'cosmic', color: 'linear-gradient(135deg,#090514,#ff007f)', name: L('Cosmic', 'كوني') },
+                        { key: 'lavender', color: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', name: L('Lavender', 'خزامى') },
+                        { key: 'emerald', color: 'linear-gradient(135deg,#022c22,#064e3b)', name: L('Emerald', 'زمردي') },
+                        { key: 'midnight', color: 'radial-gradient(circle,#0f172a,#020617)', name: L('Midnight', 'فضائي') },
+                        { key: 'cyberpunk', color: 'linear-gradient(135deg,#02000a,#00f0ff)', name: L('Cyber', 'سايبر') }
+                      ].map(theme => (
+                        <div 
+                          key={theme.key}
+                          onClick={() => setBioTheme(theme.key)}
+                          title={theme.name}
+                          style={{ 
+                            height: '42px', 
+                            minWidth: '55px',
+                            flex: '0 0 55px',
+                            borderRadius: '8px', 
+                            background: theme.color, 
+                            border: bioTheme === theme.key ? '3px solid var(--orange)' : '2px solid var(--edge)', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          {bioTheme === theme.key && <span style={{ color: theme.key === 'white' ? '#000' : '#fff', fontSize: '12px' }}>✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dedicated Custom Color Picker Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface2)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--edge)', marginTop: '4px' }}>
+                    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <input 
+                        type="color" 
+                        value={customColor} 
+                        onChange={(e) => {
+                          setCustomColor(e.target.value);
+                          setBioTheme('custom');
+                        }}
                         style={{ 
+                          width: '42px', 
                           height: '42px', 
-                          minWidth: '55px',
-                          flex: '0 0 55px',
-                          borderRadius: '8px', 
-                          background: theme.color, 
-                          border: bioTheme === theme.key ? '3px solid var(--orange)' : '2px solid var(--edge)', 
+                          border: bioTheme === 'custom' ? '3px solid var(--orange)' : '2px solid var(--edge)', 
+                          borderRadius: '50%', 
                           cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          background: 'none',
+                          padding: 0,
+                          outline: 'none',
                           boxSizing: 'border-box'
                         }}
-                      >
-                        {bioTheme === theme.key && <span style={{ color: theme.key === 'white' ? '#000' : '#fff', fontSize: '12px' }}>✓</span>}
+                        title={L('Choose custom color', 'اختر لون مخصص')}
+                      />
+                      {bioTheme === 'custom' && (
+                        <span style={{ position: 'absolute', color: '#fff', fontSize: '14px', pointerEvents: 'none', fontWeight: 'bold' }}>✓</span>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--t1)' }}>
+                        {L('Custom Color Wheel', 'عجلة الألوان المخصصة')}
                       </div>
-                    ))}
+                      <div style={{ fontSize: '10.5px', color: 'var(--t3)', marginTop: '2px' }}>
+                        {L('Click the circle to pick your own custom brand color', 'اضغط على الدائرة لاختيار لون علامتك التجارية الخاص')}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

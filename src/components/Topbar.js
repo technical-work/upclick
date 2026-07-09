@@ -99,22 +99,9 @@ export default function Topbar() {
         </span>
 
         {userData?.isTrial && getTrialDaysLeft() > 0 && (
-          <div style={{
-            background: 'rgba(255, 107, 53, 0.1)',
-            border: '1px solid var(--orange, #FF6B35)',
-            color: 'var(--orange, #FF6B35)',
-            fontSize: '11px',
-            fontWeight: '800',
-            padding: '4px 10px',
-            borderRadius: '20px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            marginLeft: lang === 'ar' ? '0' : '14px',
-            marginRight: lang === 'ar' ? '14px' : '0',
-            direction: 'rtl'
-          }}>
-            <span>🔥 {lang === 'ar' ? 'فترة تجريبية' : 'Trial Period'}: {getTrialDaysLeft()} {lang === 'ar' ? 'أيام متبقية' : 'days left'}</span>
+          <div className="trial-badge" style={{ direction: 'rtl' }}>
+            <span className="tb-label">{lang === 'ar' ? 'فترة تجريبية' : 'Trial Period'}: </span>
+            <span>🔥 {getTrialDaysLeft()} {lang === 'ar' ? 'أيام متبقية' : 'days left'}</span>
           </div>
         )}
       </div>

@@ -121,6 +121,66 @@ export default function AnalyticsView() {
     }
   };
 
+  const handleExport = () => {
+    let csvContent = '\uFEFF'; // Add BOM for Excel UTF-8 Arabic support!
+    
+    // Section 1: Summary Stats
+    csvContent += `Summary Statistics,الاحصائيات العامة\n`;
+    csvContent += `Attribute,Value,الصفة,القيمة\n`;
+    csvContent += `Filter Period,${filterPeriod},فترة الفلترة,${filterPeriod}\n`;
+    csvContent += `Total Revenue,$${totalRevenueThisMonth},إجمالي الإيرادات,${totalRevenueThisMonth} $\n`;
+    csvContent += `Total CRM Leads,${totalLeads},إجمالي العملاء المحتملين,${totalLeads}\n`;
+    csvContent += `Completed Tasks,${completedTasks},المهام المكتملة,${completedTasks}\n`;
+    csvContent += `Growth Score,84%,معدل النمو,84%\n\n`;
+
+    // Section 2: Finance Entries
+    csvContent += `Finance Entries,حركات المالية\n`;
+    csvContent += `Date,Title,Type,Category,Amount,التاريخ,العنوان,النوع,التصنيف,المبلغ\n`;
+    dateFilteredFinance.forEach(entry => {
+      const date = entry.date || '';
+      const title = (entry.title || '').replace(/"/g, '""');
+      const type = entry.type || '';
+      const category = (entry.category || '').replace(/"/g, '""');
+      const amount = entry.amount || 0;
+      csvContent += `"${date}","${title}","${type}","${category}",${amount},"${date}","${title}","${type}","${category}",${amount}\n`;
+    });
+    csvContent += `\n`;
+
+    // Section 3: CRM Leads
+    csvContent += `CRM Leads,العملاء المحتملين\n`;
+    csvContent += `Name,Email,Stage,Date,الاسم,البريد الإلكتروني,المرحلة,التاريخ\n`;
+    dateFilteredLeads.forEach(lead => {
+      const name = (lead.name || '').replace(/"/g, '""');
+      const email = (lead.email || '').replace(/"/g, '""');
+      const stage = (lead.stage || '').replace(/"/g, '""');
+      const date = lead.created || lead.id || '';
+      csvContent += `"${name}","${email}","${stage}","${date}","${name}","${email}","${stage}","${date}"\n`;
+    });
+    csvContent += `\n`;
+
+    // Section 4: Tasks
+    csvContent += `Tasks,المهام\n`;
+    csvContent += `Task,Status,Source,المهمة,الحالة,المصدر\n`;
+    dateFilteredTasks.forEach(task => {
+      const title = (task.title || '').replace(/"/g, '""');
+      const status = task.done || task.status === 'completed' ? 'Completed' : 'Pending';
+      const statusAr = task.done || task.status === 'completed' ? 'مكتملة' : 'قيد الانتظار';
+      const source = task.source || 'Manual';
+      const sourceAr = task.source === 'team' ? 'فريق العمل' : 'شخصي';
+      csvContent += `"${title}","${status}","${source}","${title}","${statusAr}","${sourceAr}"\n`;
+    });
+
+    // Create Download Link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `upklick_analytics_${filterPeriod}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="pg on" id="pg-analytics">
       <div className="pg-header">
@@ -171,7 +231,7 @@ export default function AnalyticsView() {
           <button className="btn-ai" onClick={handleAIAnalysis}>
             ✦ {L('AI Analysis', 'تحليل الذكاء')}
           </button>
-          <button className="btn btn-ghost" onClick={() => alert('Exporting analytics...')}>
+          <button className="btn btn-ghost" onClick={handleExport}>
             📥 {L('Export', 'تصدير')}
           </button>
         </div>

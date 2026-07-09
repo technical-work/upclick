@@ -282,18 +282,41 @@ Provide ONLY the 6 generated names in a clean list, with one name per line, no n
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '5px', fontWeight: 600 }}>🎨 {L('Name Style', 'أسلوب الاسم')}</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>🎨 {L('Name Style', 'أسلوب الاسم')}</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     {[
-                      { id: 'catchy', label: 'Catchy / Viral' },
-                      { id: 'professional', label: 'Professional' },
-                      { id: 'premium', label: 'Premium / Luxury' },
-                      { id: 'minimal', label: 'Minimal / Modern' },
-                      { id: 'arabic-feel', label: 'Arabic Heritage' },
-                      { id: 'futuristic', label: 'Futuristic / Tech' }
+                      { id: 'catchy', label: L('Catchy / Viral', 'رنان وجذاب'), desc: L('e.g., UpClick, Buzzify', 'مثال: أب كليك، بزفاي') },
+                      { id: 'professional', label: L('Professional', 'احترافي ورسمي'), desc: L('e.g., Apex Advisors', 'مثال: المستشار المالي') },
+                      { id: 'premium', label: L('Premium / Luxury', 'فاخر ونخبة'), desc: L('e.g., Aura, Elite', 'مثال: أورا، النخبة') },
+                      { id: 'minimal', label: L('Minimal / Modern', 'بسيط وعصري'), desc: L('e.g., Noon, Loft', 'مثال: نون، مساحة لوفت') },
+                      { id: 'arabic-feel', label: L('Arabic Heritage', 'تراث وأصالة عربية'), desc: L('e.g., Masar, Sindbad', 'مثال: مسار، سندباد') },
+                      { id: 'futuristic', label: L('Futuristic / Tech', 'تقني ومستقبلي'), desc: L('e.g., CyberX, SmartAI', 'مثال: سايبر إكس، ذكاء') }
                     ].map(style => (
-                      <label key={style.id} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 10px', background: 'var(--surface2)', borderRadius: '8px', border: '1px solid var(--edge)', cursor: 'pointer', fontSize: '12.5px', color: 'var(--t1)' }}>
-                        <input type="checkbox" checked={styles.includes(style.id)} onChange={() => toggleStyle(style.id)} style={{ accentColor: 'var(--orange)', width: '14px', height: '14px' }} /> {style.label}
+                      <label 
+                        key={style.id} 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'flex-start', 
+                          gap: '8px', 
+                          padding: '10px 12px', 
+                          background: styles.includes(style.id) ? 'var(--or-d)' : 'var(--surface2)', 
+                          borderRadius: '8px', 
+                          border: styles.includes(style.id) ? '2px solid var(--orange)' : '1px solid var(--edge)', 
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={styles.includes(style.id)} 
+                          onChange={() => toggleStyle(style.id)} 
+                          style={{ accentColor: 'var(--orange)', width: '15px', height: '15px', marginTop: '2px', cursor: 'pointer' }} 
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--t1)', lineHeight: '1.2', fontFamily: 'Tajawal, sans-serif' }}>{style.label}</div>
+                          <div style={{ fontSize: '10.5px', color: 'var(--t3)', marginTop: '4px', fontWeight: 500, fontFamily: 'Tajawal, sans-serif' }}>{style.desc}</div>
+                        </div>
                       </label>
                     ))}
                   </div>
