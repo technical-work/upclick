@@ -1132,7 +1132,8 @@ const AdminDashboard = () => {
       getDoc(doc(db, 'tenants', 'global')).then(snap => {
         if (snap.exists()) {
           if (snap.data().freeTrial) setTenantFreeTrial(snap.data().freeTrial);
-          if (snap.data().defaultUserCredit !== undefined) setGlobalDefaultCredits(Number(snap.data().defaultUserCredit));
+          const cpd = snap.data().creditsPerDollar !== undefined ? Number(snap.data().creditsPerDollar) : 100;
+          if (snap.data().defaultUserCredit !== undefined) setGlobalDefaultCredits(Number(snap.data().defaultUserCredit) * cpd);
         }
       }).catch(() => {});
     }
@@ -1775,10 +1776,10 @@ const AdminDashboard = () => {
                                   <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold' }}>
-                                      🤖 ${(() => {
+                                      🤖 {(() => {
                                         const val = user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits;
-                                        return val > 0 && val < 0.01 ? val.toFixed(4) : val.toFixed(2);
-                                      })()}
+                                        return Math.round(val);
+                                      })()} cr
                                     </span>
                                     <span style={{
                                       fontSize: '9px',
@@ -1953,10 +1954,10 @@ const AdminDashboard = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--text3)' }}>{isRTL ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'}</span>
                             <span style={{ color: 'var(--accent)', fontWeight: '700' }}>
-                              🤖 ${(() => {
+                              🤖 {(() => {
                                 const val = user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits;
-                                return val > 0 && val < 0.01 ? val.toFixed(4) : val.toFixed(2);
-                              })()}
+                                return Math.round(val);
+                              })()} cr
                             </span>
                           </div>
 

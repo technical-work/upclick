@@ -4,19 +4,64 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import { db, libStorage } from '../../lib/firebase';
-import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import StripePaymentButton from '../Stripe/StripePaymentButton';
-
 
 export default function BillingView() {
   const { lang, L, t, tenantConfig, showToast } = useBusiness();
   const { currentUser, userData } = useAuth();
-  
-  const monthlyPrice = parseFloat(tenantConfig?.plan?.price) || 99;
-  const annualPrice = parseFloat(tenantConfig?.planAnnual?.price) || 999;
-  const currencySymbol = tenantConfig?.plan?.currency || 'EGP';
 
+  const isRTL = lang === 'ar';
+
+  // Dynamic values from tenantConfig or defaults
+  const planStarterName = tenantConfig?.planStarterName || 'Starter';
+  const planStarterPrice = tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 499;
+  const planStarterCredits = tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 200;
+
+  const planGrowthName = tenantConfig?.planGrowthName || 'Growth';
+  const planGrowthPrice = tenantConfig?.planGrowthPrice !== undefined ? Number(tenantConfig.planGrowthPrice) : 799;
+  const planGrowthCredits = tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 600;
+
+  const planProName = tenantConfig?.planProName || 'Pro';
+  const planProPrice = tenantConfig?.planProPrice !== undefined ? Number(tenantConfig.planProPrice) : 1497;
+  const planProCredits = tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 2000;
+
+  const recharge1Credits = tenantConfig?.recharge1Credits !== undefined ? Number(tenantConfig.recharge1Credits) : 100;
+  const recharge1Price = tenantConfig?.recharge1Price !== undefined ? Number(tenantConfig.recharge1Price) : 299;
+
+  const recharge2Credits = tenantConfig?.recharge2Credits !== undefined ? Number(tenantConfig.recharge2Credits) : 250;
+  const recharge2Price = tenantConfig?.recharge2Price !== undefined ? Number(tenantConfig.recharge2Price) : 599;
+
+  const recharge3Credits = tenantConfig?.recharge3Credits !== undefined ? Number(tenantConfig.recharge3Credits) : 500;
+  const recharge3Price = tenantConfig?.recharge3Price !== undefined ? Number(tenantConfig.recharge3Price) : 999;
+
+  const currencySymbol = tenantConfig?.currency || 'EGP';
+
+  // User details
+  const currentPlanName = userData?.plan || 'Starter';
+  const userCredits = userData?.aiCredits !== undefined ? Number(userData.aiCredits) : planStarterCredits;
+
+  const formatBalance = (val) => {
+    const num = Number(val || 0);
+    return num % 1 === 0 ? String(Math.round(num)) : num.toFixed(2);
+  };
+
+  // Find max credits of user's active plan
+  let totalPlanCredits = planStarterCredits;
+  let planPriceLabel = `${planStarterPrice} ${currencySymbol} / ${isRTL ? 'شهر' : 'Month'}`;
+  if (currentPlanName.toLowerCase().includes('growth')) {
+    totalPlanCredits = planGrowthCredits;
+    planPriceLabel = `${planGrowthPrice} ${currencySymbol} / ${isRTL ? 'شهر' : 'Month'}`;
+  } else if (currentPlanName.toLowerCase().includes('pro') || currentPlanName.toLowerCase().includes('lifetime')) {
+    totalPlanCredits = planProCredits;
+    planPriceLabel = `${planProPrice} ${currencySymbol} / ${isRTL ? 'شهر' : 'Month'}`;
+  }
+
+  // Active sub-tab under Billing & Credits page
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'credit-history', 'manual-transfer'
+  
+  // Manual transfer state
   const [selectedMethod, setSelectedMethod] = useState('');
   const [amount, setAmount] = useState('');
   const [duration, setDuration] = useState('monthly');
@@ -25,39 +70,24 @@ export default function BillingView() {
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  
+  // Real-time collections
   const [recentPayments, setRecentPayments] = useState([]);
+  const [creditLogs, setCreditLogs] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [loadingCredits, setLoadingCredits] = useState(true);
 
-  const getMs = (val) => {
-    if (!val) return 0;
-    if (typeof val === 'string') return new Date(val).getTime();
-    if (typeof val === 'number') return val;
-    if (val.toDate) return val.toDate().getTime();
-    if (val.seconds) return val.seconds * 1000;
-    return 0;
-  };
-
-  // Determine active payment methods configured by tenant admin
-  const paymentMethods = tenantConfig?.paymentMethods || {};
-  const activeMethods = Object.keys(paymentMethods).filter(k => paymentMethods[k]?.enabled);
-
-  // Set default method once active methods are loaded
-  useEffect(() => {
-    if (activeMethods.length > 0 && !selectedMethod) {
-      setSelectedMethod(activeMethods[0]);
-    }
-  }, [activeMethods, selectedMethod]);
-
-  // Real-time listener for the user's submitted payments
+  // Sync manual payments & credit history
   useEffect(() => {
     if (!currentUser?.uid) return;
-    const q = query(
+
+    // Payments listener
+    const qPayments = query(
       collection(db, 'payments'),
       where('userId', '==', currentUser.uid)
     );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const unsubPay = onSnapshot(qPayments, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       data.sort((a, b) => {
         const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
         const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
@@ -70,15 +100,45 @@ export default function BillingView() {
       setLoadingHistory(false);
     });
 
-    return () => unsub();
+    // Credit Logs listener
+    const qLogs = query(
+      collection(db, 'ai_logs'),
+      where('userId', '==', currentUser.uid)
+    );
+    const unsubLogs = onSnapshot(qLogs, (snap) => {
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a, b) => {
+        const timeA = a.timestamp?.toDate ? a.timestamp.toDate().getTime() : (a.timestamp?.seconds ? a.timestamp.seconds * 1000 : 0);
+        const timeB = b.timestamp?.toDate ? b.timestamp.toDate().getTime() : (b.timestamp?.seconds ? b.timestamp.seconds * 1000 : 0);
+        return timeB - timeA;
+      });
+      setCreditLogs(data);
+      setLoadingCredits(false);
+    }, (err) => {
+      console.error("Error fetching credit logs:", err);
+      setLoadingCredits(false);
+    });
+
+    return () => {
+      unsubPay();
+      unsubLogs();
+    };
   }, [currentUser]);
 
-  // Expiration Status Details
+  // Expiration / Renewal calculation
   const isTrial = userData?.isTrial || false;
   let statusBadgeColor = 'var(--green)';
   let statusText = L('Active Subscription', 'اشتراك نشط');
   let expiryDateString = '—';
-  let daysRemaining = null;
+
+  const getMs = (val) => {
+    if (!val) return 0;
+    if (typeof val === 'string') return new Date(val).getTime();
+    if (typeof val === 'number') return val;
+    if (val.toDate) return val.toDate().getTime();
+    if (val.seconds) return val.seconds * 1000;
+    return 0;
+  };
 
   if (userData?.expiresAt) {
     const expiresMs = getMs(userData.expiresAt);
@@ -87,23 +147,18 @@ export default function BillingView() {
       month: 'long',
       day: 'numeric'
     });
-    daysRemaining = Math.ceil((expiresMs - Date.now()) / 86400000);
-    
     if (expiresMs < Date.now()) {
       statusText = L('Expired', 'منتهي الصلاحية');
       statusBadgeColor = 'var(--red)';
     }
   } else if (userData?.trialStartedAt) {
     const trialDays = tenantConfig?.freeTrial?.days || 7;
-    const startMs = getMs(userData.trialStartedAt);
-    const expiresMs = startMs + (trialDays * 86400000);
+    const expiresMs = getMs(userData.trialStartedAt) + (trialDays * 86400000);
     expiryDateString = new Date(expiresMs).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
-    daysRemaining = Math.ceil((expiresMs - Date.now()) / 86400000);
-    
     if (expiresMs < Date.now()) {
       statusText = L('Trial Expired', 'انتهت التجربة');
       statusBadgeColor = 'var(--red)';
@@ -111,7 +166,119 @@ export default function BillingView() {
       statusText = L('Free Trial', 'تجربة مجانية');
       statusBadgeColor = 'var(--accent)';
     }
+  } else {
+    // Default fallback
+    const defaultRenewal = new Date();
+    defaultRenewal.setDate(defaultRenewal.getDate() + 30);
+    expiryDateString = defaultRenewal.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   }
+
+  // Calculate usage analytics
+  const thisMonthCreditsUsed = creditLogs
+    .filter(log => {
+      const ts = log.timestamp;
+      const logDate = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      return logDate >= monthStart;
+    })
+    .reduce((sum, log) => sum + (Number(log.creditsDeducted || log.cost || 0)), 0);
+
+  // Find most used tool
+  const toolCounts = {};
+  creditLogs.forEach(log => {
+    const tool = log.tool || 'General';
+    toolCounts[tool] = (toolCounts[tool] || 0) + 1;
+  });
+  let mostUsedTool = '—';
+  let maxCount = 0;
+  Object.keys(toolCounts).forEach(tool => {
+    if (toolCounts[tool] > maxCount) {
+      maxCount = toolCounts[tool];
+      mostUsedTool = tool;
+    }
+  });
+
+  // Suggest plan based on usage
+  let suggestedPlan = planStarterName;
+  if (thisMonthCreditsUsed > planStarterCredits && thisMonthCreditsUsed <= planGrowthCredits) {
+    suggestedPlan = planGrowthName;
+  } else if (thisMonthCreditsUsed > planGrowthCredits) {
+    suggestedPlan = planProName;
+  }
+
+  // Plan recommendation logic based on current plan & usage
+  let recommendedPlan = planStarterName;
+  let recommendedPrice = planStarterPrice;
+  let recommendedCredits = planStarterCredits;
+  let recommendationText = '';
+  let showRecommendButton = true;
+
+  const planLower = currentPlanName.toLowerCase();
+
+  if (planLower.includes('starter') || (!planLower.includes('growth') && !planLower.includes('pro') && !planLower.includes('lifetime'))) {
+    // Current is Starter
+    if (thisMonthCreditsUsed > planStarterCredits) {
+      if (thisMonthCreditsUsed > planGrowthCredits) {
+        recommendedPlan = planProName;
+        recommendedPrice = planProPrice;
+        recommendedCredits = planProCredits;
+      } else {
+        recommendedPlan = planGrowthName;
+        recommendedPrice = planGrowthPrice;
+        recommendedCredits = planGrowthCredits;
+      }
+      recommendationText = isRTL 
+        ? `بناءً على استهلاكك، فإن باقة (${recommendedPlan}) هي الأنسب لتغطية احتياجاتك التشغيلية وتوفير تكاليف الشحن الإضافي.`
+        : `Based on your usage, the (${recommendedPlan}) plan represents the best value for your operational needs.`;
+    } else {
+      // Recommend next plan (Growth) for upgrade, but say current (Starter) is best fit
+      recommendedPlan = planGrowthName;
+      recommendedPrice = planGrowthPrice;
+      recommendedCredits = planGrowthCredits;
+      recommendationText = isRTL
+        ? `بناءً على استهلاكك، فإن باقة (Starter) هي الأنسب لتغطية احتياجاتك التشغيلية وتوفير تكاليف الشحن الإضافي.`
+        : `Based on your usage, the (Starter) plan represents the best value for your operational needs.`;
+    }
+  } else if (planLower.includes('growth')) {
+    // Current is Growth
+    if (thisMonthCreditsUsed > planGrowthCredits) {
+      recommendedPlan = planProName;
+      recommendedPrice = planProPrice;
+      recommendedCredits = planProCredits;
+      recommendationText = isRTL
+        ? `بناءً على استهلاكك، فإن باقة (${recommendedPlan}) هي الأنسب لتغطية احتياجاتك التشغيلية وتوفير تكاليف الشحن الإضافي.`
+        : `Based on your usage, the (${recommendedPlan}) plan represents the best value for your operational needs.`;
+    } else {
+      // Recommend next plan (Pro) for upgrade, but say current (Growth) is best fit
+      recommendedPlan = planProName;
+      recommendedPrice = planProPrice;
+      recommendedCredits = planProCredits;
+      recommendationText = isRTL
+        ? `بناءً على استهلاكك، فإن باقة (Growth) هي الأنسب لتغطية احتياجاتك التشغيلية وتوفير تكاليف الشحن الإضافي.`
+        : `Based on your usage, the (Growth) plan represents the best value for your operational needs.`;
+    }
+  } else {
+    // Current is Pro/Lifetime (Max plan)
+    showRecommendButton = false;
+    recommendationText = isRTL
+      ? `أنت مشترك بالفعل في الباقة الأعلى (Pro). استهلاكك مغطى بالكامل!`
+      : `You are already on the highest tier (Pro) plan. Your usage is fully covered!`;
+  }
+
+  // Payment Methods from settings
+  const paymentMethods = tenantConfig?.paymentMethods || {};
+  const activeMethods = Object.keys(paymentMethods).filter(k => paymentMethods[k]?.enabled);
+
+  useEffect(() => {
+    if (activeMethods.length > 0 && !selectedMethod) {
+      setSelectedMethod(activeMethods[0]);
+    }
+  }, [activeMethods, selectedMethod]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
@@ -124,7 +291,7 @@ export default function BillingView() {
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmitManual = async (e) => {
     e.preventDefault();
     if (!selectedMethod) {
       setError(L('Please select a payment method', 'يرجى تحديد طريقة الدفع'));
@@ -190,7 +357,6 @@ export default function BillingView() {
     }
   };
 
-  // If user is a team member, managed by owner
   const isTeamMember = userData?.role === 'team_member';
   if (isTeamMember) {
     return (
@@ -198,7 +364,7 @@ export default function BillingView() {
         <div className="pg-header">
           <div className="pg-title">
             <span className="pg-icon">💳</span>
-            {L('Billing & Subscription', 'الاشتراكات والفواتير')}
+            {L('Billing & Credits', 'الاشتراكات والكريديت')}
           </div>
         </div>
         <div className="card" style={{ padding: '30px', textAlign: 'center' }}>
@@ -215,72 +381,514 @@ export default function BillingView() {
     );
   }
 
+  const creditProgress = Math.min(100, Math.max(0, (userCredits / totalPlanCredits) * 100));
+
   return (
-    <div className="pg on" id="pg-billing">
-      {/* Header */}
+    <div className="pg on" id="pg-billing" style={{ maxWidth: '1080px', margin: '0 auto' }}>
+      <style>{`
+        .billing-grid {
+          display: grid;
+          grid-template-columns: 2fr 1.2fr;
+          gap: 20px;
+        }
+        .billing-nav {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 20px;
+          border-bottom: 1px solid var(--edge);
+          padding-bottom: 10px;
+        }
+        .billing-nav button {
+          font-weight: 700;
+          font-size: 13px;
+          padding: 8px 16px;
+        }
+        .credit-bar-container {
+          background: var(--surface2);
+          border-radius: 10px;
+          height: 12px;
+          width: 100%;
+          overflow: hidden;
+          margin: 10px 0;
+          border: 1px solid var(--brd);
+        }
+        .credit-bar-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--orange) 0%, var(--purple) 100%);
+          border-radius: 10px;
+          transition: width 0.3s ease;
+        }
+        .recharge-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 12px;
+          margin-top: 14px;
+        }
+        .recharge-card {
+          border: 1px solid var(--brd);
+          background: var(--surface2);
+          padding: 16px;
+          border-radius: 12px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          transition: transform 0.2s, border-color 0.2s;
+        }
+        .recharge-card:hover {
+          transform: translateY(-2px);
+          border-color: var(--orange);
+        }
+        .card-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 10px 0;
+          border-bottom: 1px dashed var(--brd);
+          font-size: 13px;
+        }
+        .card-row:last-child {
+          border-bottom: none;
+        }
+        @media (max-width: 768px) {
+          .billing-grid {
+            grid-template-columns: 1fr;
+          }
+          .billing-nav {
+            flex-wrap: wrap;
+          }
+          .billing-nav button {
+            flex: 1 1 calc(50% - 8px);
+            text-align: center;
+          }
+        }
+      `}</style>
+
+      {/* Page Header */}
       <div className="pg-header">
         <div className="pg-title">
           <span className="pg-icon">💳</span>
-          {L('Billing & Subscription', 'الاشتراكات والفواتير')}
+          {L('Billing & Credits', 'الاشتراكات والكريديت')}
         </div>
       </div>
 
-      <div className="g21">
-        {/* Left Column: Expiry Card and Renewal Action */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {/* Card 1: Current Status */}
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">📊 {L('Subscription Details', 'تفاصيل الاشتراك')}</div>
-            </div>
+      {/* Tabs Menu */}
+      <div className="billing-nav">
+        <button 
+          onClick={() => setActiveTab('overview')}
+          className={`btn ${activeTab === 'overview' ? 'btn-prime' : 'btn-ghost'}`}
+        >
+          💳 {L('Overview & Recharge', 'لوحة التحكم والشحن')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('credit-history')}
+          className={`btn ${activeTab === 'credit-history' ? 'btn-prime' : 'btn-ghost'}`}
+        >
+          🕒 {L('Credit Deductions Log', 'سجل استهلاك الكريديت')}
+        </button>
+        <button 
+          onClick={() => setActiveTab('manual-transfer')}
+          className={`btn ${activeTab === 'manual-transfer' ? 'btn-prime' : 'btn-ghost'}`}
+        >
+          📱 {L('Bank & Cash Transfer', 'التحويل البنكي والكاش')}
+        </button>
+      </div>
+
+      {activeTab === 'overview' && (
+        <div className="billing-grid">
+          {/* Left Column: Credits and Packages */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid var(--brd)' }}>
-              <span style={{ fontSize: '13px', color: 'var(--t2)' }}>{L('Status', 'حالة الاشتراك')}</span>
-              <span style={{
-                background: `${statusBadgeColor}15`,
-                color: statusBadgeColor,
-                border: `1px solid ${statusBadgeColor}30`,
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '11.5px',
-                fontWeight: '700'
-              }}>
-                ● {statusText}
-              </span>
+            {/* Credits Usage Progress */}
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '800' }}>⚡ {L('Remaining Credits', 'الرصيد المتبقي للعمليات')}</h3>
+                <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--orange)' }}>
+                  {formatBalance(userCredits)} <span style={{ fontSize: '11px', color: 'var(--t3)' }}>/ {totalPlanCredits} cr</span>
+                </span>
+              </div>
+              <div className="credit-bar-container">
+                <div className="credit-bar-fill" style={{ width: `${creditProgress}%` }}></div>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--t3)', margin: '4px 0 0 0' }}>
+                {isRTL 
+                  ? 'يتم الخصم فقط عند اكتمال العمليات بنجاح. إذا فشل النظام، لن يتم خصم أي رصيد.' 
+                  : 'Credits are only deducted after successful operations. No charge if the operation fails.'}
+              </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--brd)' }}>
-              <span style={{ fontSize: '13px', color: 'var(--t2)' }}>{L('Expiry Date', 'تاريخ الانتهاء')}</span>
-              <span style={{ fontFamily: 'var(--ff)', fontWeight: '700', color: 'var(--t1)' }}>{expiryDateString}</span>
+            {/* Subscription Plans */}
+            <div className="card">
+              <div className="sec-hd">
+                <div className="sec-title">⭐ {L('Upgrade or Renew Your Plan', 'ترقية أو تجديد باقة الاشتراك')}</div>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '14px' }}>
+                {isRTL 
+                  ? 'اختر باقة الاشتراك الشهرية المناسبة لأعمالك. ستحصل على رصيد كريديت فوري متجدد شهرياً.' 
+                  : 'Choose the subscription plan that fits your business needs. Credits renew every month.'}
+              </p>
+
+              <div className="recharge-grid">
+                {/* Starter Plan */}
+                <div className="recharge-card" style={currentPlanName.toLowerCase().includes('starter') ? { borderColor: 'var(--accent)' } : {}}>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>🌱</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{planStarterName}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planStarterCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planStarterPrice} {currencySymbol}</div>
+                  <StripePaymentButton
+                    amount={planStarterPrice}
+                    currency={currencySymbol}
+                    planName={planStarterName}
+                    planDuration="monthly"
+                    creditsToAdd={planStarterCredits}
+                    userId={currentUser?.uid}
+                    adminId={userData?.adminId}
+                    buttonText={currentPlanName.toLowerCase().includes('starter') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'اشتراك' : 'Subscribe')}
+                    disabled={currentPlanName.toLowerCase().includes('starter')}
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                  />
+                </div>
+
+                {/* Growth Plan */}
+                <div className="recharge-card" style={currentPlanName.toLowerCase().includes('growth') ? { borderColor: 'var(--accent)' } : {}}>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>📈</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{planGrowthName}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planGrowthCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planGrowthPrice} {currencySymbol}</div>
+                  <StripePaymentButton
+                    amount={planGrowthPrice}
+                    currency={currencySymbol}
+                    planName={planGrowthName}
+                    planDuration="monthly"
+                    creditsToAdd={planGrowthCredits}
+                    userId={currentUser?.uid}
+                    adminId={userData?.adminId}
+                    buttonText={currentPlanName.toLowerCase().includes('growth') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'ترقية' : 'Subscribe')}
+                    disabled={currentPlanName.toLowerCase().includes('growth')}
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                  />
+                </div>
+
+                {/* Pro Plan */}
+                <div className="recharge-card" style={currentPlanName.toLowerCase().includes('pro') ? { borderColor: 'var(--accent)' } : {}}>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>👑</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{planProName}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planProCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planProPrice} {currencySymbol}</div>
+                  <StripePaymentButton
+                    amount={planProPrice}
+                    currency={currencySymbol}
+                    planName={planProName}
+                    planDuration="monthly"
+                    creditsToAdd={planProCredits}
+                    userId={currentUser?.uid}
+                    adminId={userData?.adminId}
+                    buttonText={currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'ترقية' : 'Subscribe')}
+                    disabled={currentPlanName.toLowerCase().includes('pro')}
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--t2)' }}>{L('Time Remaining', 'الوقت المتبقي')}</span>
-              <span style={{ fontFamily: 'var(--ff)', fontWeight: '700', color: daysRemaining !== null && daysRemaining <= 0 ? 'var(--red)' : 'var(--a)' }}>
-                {daysRemaining !== null 
-                  ? (daysRemaining <= 0 
-                      ? L('Expired', 'منتهي') 
-                      : `${daysRemaining} ${L('days', 'أيام')}`)
-                  : '—'}
-              </span>
+            {/* Pricing Packages & Recharge Credits */}
+            <div className="card">
+              <div className="sec-hd">
+                <div className="sec-title">🚀 {L('Recharge Credits instantly', 'شحن رصيد إضافي فوري')}</div>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '14px' }}>
+                {isRTL 
+                  ? 'اختر باقة الشحن المناسبة لك لإضافة رصيد لحسابك مباشرة والدفع بشكل آمن.' 
+                  : 'Choose a recharge option to add credits directly to your balance.'}
+              </p>
+
+              <div className="recharge-grid">
+                <div className="recharge-card">
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎁</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{recharge1Credits} Credits</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{recharge1Price} {currencySymbol}</div>
+                  <StripePaymentButton
+                    amount={recharge1Price}
+                    currency={currencySymbol}
+                    planName={`${recharge1Credits} Credits Pack`}
+                    planDuration="recharge"
+                    creditsToAdd={recharge1Credits}
+                    userId={currentUser?.uid}
+                    adminId={userData?.adminId}
+                    buttonText={isRTL ? 'شراء' : 'Buy Now'}
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                  />
+                </div>
+
+                <div className="recharge-card" style={{ borderColor: 'var(--orange)' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔥</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{recharge2Credits} Credits</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{recharge2Price} {currencySymbol}</div>
+                  <StripePaymentButton
+                    amount={recharge2Price}
+                    currency={currencySymbol}
+                    planName={`${recharge2Credits} Credits Pack`}
+                    planDuration="recharge"
+                    creditsToAdd={recharge2Credits}
+                    userId={currentUser?.uid}
+                    adminId={userData?.adminId}
+                    buttonText={isRTL ? 'شراء' : 'Buy Now'}
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                  />
+                </div>
+
+                <div className="recharge-card">
+                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>💎</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{recharge3Credits} Credits</div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{recharge3Price} {currencySymbol}</div>
+                  <StripePaymentButton
+                    amount={recharge3Price}
+                    currency={currencySymbol}
+                    planName={`${recharge3Credits} Credits Pack`}
+                    planDuration="recharge"
+                    creditsToAdd={recharge3Credits}
+                    userId={currentUser?.uid}
+                    adminId={userData?.adminId}
+                    buttonText={isRTL ? 'شراء' : 'Buy Now'}
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                  />
+                </div>
+              </div>
             </div>
+
+            {/* Payments Log */}
+            <div className="card">
+              <div className="sec-hd">
+                <div className="sec-title">🕒 {L('Billing & Payments History', 'سجل الفواتير والدفع')}</div>
+              </div>
+              
+              {loadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>{L('Loading history...', 'جاري التحميل...')}</div>
+              ) : recentPayments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)', fontSize: '12.5px' }}>
+                  {L('No billing payments history found.', 'لا يوجد سجل فواتير دفع متوفر حالياً.')}
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--brd)', opacity: 0.8 }}>
+                        <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Plan / Type', 'الخطة / النوع')}</th>
+                        <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Amount', 'المبلغ')}</th>
+                        <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Status', 'الحالة')}</th>
+                        <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Date', 'التاريخ')}</th>
+                        <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Invoice', 'الفاتورة')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentPayments.map((pay) => {
+                        let statusColor = 'var(--amber)';
+                        let statusLbl = L('Pending', 'معلق');
+                        if (pay.status === 'approved') { statusColor = 'var(--green)'; statusLbl = L('Paid', 'تم الدفع'); }
+                        if (pay.status === 'rejected') { statusColor = 'var(--red)'; statusLbl = L('Rejected', 'مرفوض'); }
+
+                        const payDate = pay.createdAt?.toDate 
+                          ? pay.createdAt.toDate().toLocaleDateString(isRTL ? 'ar-EG' : 'en-US') 
+                          : '—';
+
+                        return (
+                          <tr key={pay.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                            <td style={{ padding: '10px 6px', fontWeight: '600', color: 'var(--t1)' }}>
+                              {pay.planDuration === 'recharge' 
+                                ? L('Credits Recharge', 'شحن رصيد كريديت') 
+                                : L(pay.planDuration, pay.planDuration === 'annual' ? 'خطة سنوية' : 'خطة شهرية')
+                              }
+                            </td>
+                            <td style={{ padding: '10px 6px', fontWeight: '700', color: 'var(--t1)' }}>
+                              {Number(pay.amount || 0).toFixed(2)} {pay.currency}
+                            </td>
+                            <td style={{ padding: '10px 6px' }}>
+                              <span style={{ color: statusColor, background: `${statusColor}10`, padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: '700' }}>
+                                {statusLbl}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 6px', color: 'var(--t3)', fontSize: '11.5px' }}>{payDate}</td>
+                            <td style={{ padding: '10px 6px' }}>
+                              {pay.receiptUrl ? (
+                                <a href={pay.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--orange)', textDecoration: 'underline' }}>
+                                  PDF 📥
+                                </a>
+                              ) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Card 2: Renewal Form */}
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">⚡ {L('Renew or Upgrade', 'تجديد أو ترقية الاشتراك')}</div>
+          {/* Right Column: Plan Card & Card Info & Usage Analytics */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Plan Info Card */}
+            <div className="card" style={{ borderTop: '4px solid var(--orange)' }}>
+              <div className="sec-hd" style={{ marginBottom: '8px' }}>
+                <div className="sec-title">⭐ {L('Current Subscription', 'الاشتراك الحالي')}</div>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.01)', padding: '12px', borderRadius: '10px', border: '1px solid var(--brd)' }}>
+                <div className="card-row">
+                  <span style={{ color: 'var(--t2)' }}>{L('Subscription Plan', 'خطة الاشتراك')}</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--orange)' }}>{currentPlanName}</span>
+                </div>
+                <div className="card-row">
+                  <span style={{ color: 'var(--t2)' }}>{L('Price', 'سعر الاشتراك')}</span>
+                  <span>{planPriceLabel}</span>
+                </div>
+                <div className="card-row">
+                  <span style={{ color: 'var(--t2)' }}>{L('Next Renewal', 'التجديد القادم')}</span>
+                  <span>{expiryDateString}</span>
+                </div>
+                <div className="card-row">
+                  <span style={{ color: 'var(--t2)' }}>{L('Status', 'الحالة')}</span>
+                  <span style={{ color: statusBadgeColor, fontWeight: '700' }}>● {statusText}</span>
+                </div>
+              </div>
             </div>
 
+            {/* Payment Method Details */}
+            <div className="card">
+              <h3 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '8px' }}>💳 {L('Payment Method', 'طريقة الدفع المسجلة')}</h3>
+              <div style={{ background: 'var(--surface2)', padding: '14px', borderRadius: '10px', border: '1px solid var(--brd)', fontSize: '13px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--t3)' }}>
+                  <span>💳</span>
+                  <span>{L('No card on file – payments via Stripe checkout', 'لا توجد بطاقة محفوظة – الدفع عبر بوابة Stripe')}</span>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--t3)', marginTop: '8px', lineHeight: '1.5' }}>
+                  {L(
+                    'Your card details are securely managed by Stripe. You will be prompted to enter payment details when purchasing a plan or recharging credits.',
+                    'يتم إدارة بيانات بطاقتك بشكل آمن عبر Stripe. سيُطلب منك إدخال بيانات الدفع عند شراء باقة أو شحن رصيد.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Usage Summary Analytics Box (Upsell) */}
+            <div className="card" style={{ borderLeft: '4px solid var(--purple)' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '800', marginBottom: '10px' }}>📈 {L('Usage Summary', 'ملخص الاستخدام الشهري')}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--t2)' }}>{L('Credits Used This Month', 'رصيد مستهلك هذا الشهر')}</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--t1)' }}>{thisMonthCreditsUsed.toFixed(2)} Credits</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--t2)' }}>{L('Most Used Tool', 'الأداة الأكثر استخداماً')}</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--orange)' }}>{mostUsedTool}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--t2)' }}>{L('Remaining Balance', 'الرصيد المتبقي')}</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--green)' }}>{formatBalance(userCredits)} Credits</span>
+                </div>
+
+                <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(108,53,255,0.08)', borderRadius: '8px', border: '1px solid rgba(108,53,255,0.15)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--t2)', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                    {recommendationText}
+                  </p>
+                  {showRecommendButton && (
+                    <StripePaymentButton
+                      amount={recommendedPrice}
+                      currency={currencySymbol}
+                      planName={recommendedPlan}
+                      planDuration="monthly"
+                      creditsToAdd={recommendedCredits}
+                      userId={currentUser?.uid}
+                      adminId={userData?.adminId}
+                      buttonText={isRTL ? `ترقية إلى ${recommendedPlan}` : `Upgrade to ${recommendedPlan}`}
+                      disabled={currentPlanName.toLowerCase() === recommendedPlan.toLowerCase()}
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'credit-history' && (
+        <div className="card">
+          <div className="sec-hd">
+            <div className="sec-title">🕒 {L('Detailed Credit History log', 'سجل تفاصيل استهلاك الرصيد')}</div>
+          </div>
+          
+          {loadingCredits ? (
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{L('Loading credit history...', 'جاري التحميل...')}</div>
+          ) : creditLogs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '35px', color: 'var(--t3)' }}>
+              {L('No credit deduction transactions logged yet.', 'لا يوجد سجل استهلاك كريديت حالياً.')}
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--brd)', opacity: 0.8 }}>
+                    <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Date & Time', 'الوقت والتاريخ')}</th>
+                    <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('AI Tool Used', 'الأداة المستخدمة')}</th>
+                    <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Model', 'نموذج الذكاء الاصطناعي')}</th>
+                    <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Credits Used', 'رصيد مستهلك')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {creditLogs.map((log) => {
+                    const ts = log.timestamp;
+                    const logDate = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
+                    const formatted = logDate.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+
+                    // Deduct credit indicator
+                    const consumedCredits = Number(log.creditsDeducted || log.cost || 0);
+
+                    return (
+                      <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                        <td style={{ padding: '12px 8px', color: 'var(--t3)', fontSize: '12px' }}>{formatted}</td>
+                        <td style={{ padding: '12px 8px', fontWeight: '600', color: 'var(--t1)' }}>
+                          <span style={{ background: 'var(--surface2)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--brd)', fontSize: '11.5px' }}>
+                            {log.tool || 'General AI Query'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <code style={{ color: 'var(--orange)', fontSize: '11px' }}>{log.model || 'gpt-4o-mini'}</code>
+                        </td>
+                        <td style={{ padding: '12px 8px', fontWeight: '800', color: 'var(--red)', fontFamily: 'var(--mono)' }}>
+                          -{consumedCredits.toFixed(2)} Credits
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'manual-transfer' && (
+        <div className="g21">
+          {/* Form */}
+          <div className="card">
+            <div className="sec-hd">
+              <div className="sec-title">📱 {L('Manual Wallet or Bank Transfer', 'إثبات تحويل بنكي / محفظة كاش')}</div>
+            </div>
+            
             {activeMethods.length === 0 ? (
               <p style={{ color: 'var(--t3)', fontSize: '12.5px', textAlign: 'center', padding: '15px' }}>
                 {L('No payment methods configured by administrator. Please contact support.', 'لم يقم مسؤول النظام بتكوين أي طرق دفع بعد. يرجى التواصل مع الدعم.')}
               </p>
             ) : (
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                
-                {/* Gateway Tabs */}
+              <form onSubmit={handleSubmitManual} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
                   <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>
                     {L('Choose Payment Gateway', 'اختر طريقة الدفع')}
@@ -292,8 +900,9 @@ export default function BillingView() {
                       let icon = '';
                       if (method === 'instapay') { label = L('Instapay', 'انستاباي'); icon = '⚡'; }
                       if (method === 'vodafoneCash') { label = L('Vodafone Cash', 'فودافون كاش'); icon = '📱'; }
-                      if (method === 'stripe') { label = L('Credit Card', 'بطاقة ائتمان'); icon = '💳'; }
                       if (method === 'paypal') { label = L('PayPal', 'بايبال'); icon = '🌐'; }
+
+                      if (method === 'stripe') return null; // credit card handled by Stripe button directly
 
                       return (
                         <button
@@ -320,33 +929,13 @@ export default function BillingView() {
                   </div>
                 </div>
 
-                {/* Gateway Instructions Display */}
-                <div style={{
-                  background: 'var(--surface2)',
-                  border: '1px solid var(--brd)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  fontSize: '12.5px',
-                  lineHeight: '1.6',
-                  color: 'var(--t1)'
-                }}>
+                {/* Gateway Transfer instruction details */}
+                <div style={{ background: 'var(--surface2)', border: '1px solid var(--brd)', borderRadius: '12px', padding: '14px', fontSize: '12.5px', color: 'var(--t1)' }}>
                   {selectedMethod === 'instapay' && (
-                    <div style={{ textAlign: 'start' }}>
+                    <div>
                       <div style={{ fontWeight: '700', color: 'var(--a)', marginBottom: '4px' }}>⚡ {L('Instapay Transfer Details', 'تفاصيل التحويل عبر انستاباي')}</div>
                       <div>{L('Please transfer the amount to the address below:', 'يرجى تحويل قيمة الاشتراك إلى العنوان التالي:')}</div>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        fontFamily: 'monospace',
-                        fontSize: '13px',
-                        fontWeight: '700',
-                        marginTop: '8px',
-                        border: '1px dashed var(--brd)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>{paymentMethods.instapay?.address}</span>
                         <button
                           type="button"
@@ -354,7 +943,7 @@ export default function BillingView() {
                             navigator.clipboard.writeText(paymentMethods.instapay?.address);
                             showToast(L('Address copied!', 'تم نسخ العنوان!'));
                           }}
-                          style={{ background: 'none', border: 'none', color: 'var(--a)', cursor: 'pointer', fontSize: '11px' }}
+                          style={{ background: 'none', border: 'none', color: 'var(--a)', cursor: 'pointer' }}
                         >
                           📋
                         </button>
@@ -363,22 +952,10 @@ export default function BillingView() {
                   )}
 
                   {selectedMethod === 'vodafoneCash' && (
-                    <div style={{ textAlign: 'start' }}>
+                    <div>
                       <div style={{ fontWeight: '700', color: '#EF4444', marginBottom: '4px' }}>📱 {L('Vodafone Cash Transfer Details', 'تفاصيل التحويل عبر فودافون كاش')}</div>
                       <div>{L('Please transfer the amount to the wallet number below:', 'يرجى تحويل قيمة الاشتراك إلى رقم المحفظة التالي:')}</div>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        fontFamily: 'monospace',
-                        fontSize: '13px',
-                        fontWeight: '700',
-                        marginTop: '8px',
-                        border: '1px dashed var(--brd)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>{paymentMethods.vodafoneCash?.number}</span>
                         <button
                           type="button"
@@ -386,7 +963,7 @@ export default function BillingView() {
                             navigator.clipboard.writeText(paymentMethods.vodafoneCash?.number);
                             showToast(L('Number copied!', 'تم نسخ الرقم!'));
                           }}
-                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '11px' }}
+                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
                         >
                           📋
                         </button>
@@ -394,61 +971,11 @@ export default function BillingView() {
                     </div>
                   )}
 
-                  {selectedMethod === 'stripe' && (
-                    <div style={{ textAlign: 'center', padding: '10px 0' }}>
-                      <div style={{ fontWeight: '700', color: 'var(--a)', marginBottom: '8px' }}>💳 {L('Stripe Global Payments', 'الدفع العالمي الآمن عبر كارت الائتمان')}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '14px' }}>
-                        {L('Choose one of the options below to pay securely via Stripe:', 'اختر أحد الخيارات بالأسفل للدفع الآمن عبر Stripe:')}
-                      </div>
-                      
-                      {/* Option A: Automated Direct Checkout */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px', margin: '0 auto', marginBottom: '16px' }}>
-                        <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--t3)', textTransform: 'uppercase', marginBottom: '4px', textAlign: 'center' }}>
-                          ⚡ {L('Automated Instant Activation', 'تفعيل تلقائي وفوري')}
-                        </div>
-                        <StripePaymentButton
-                          amount={monthlyPrice}
-                          currency={currencySymbol}
-                          planName={L('Pro Plan Monthly', 'الاشتراك الشهري المميز')}
-                          planDuration="monthly"
-                          userId={currentUser?.uid}
-                          adminId={userData?.adminId}
-                          buttonText={L(`Subscribe Monthly (${monthlyPrice} ${currencySymbol})`, `اشترك شهرياً (${monthlyPrice} ${currencySymbol})`)}
-                        />
-                        <StripePaymentButton
-                          amount={annualPrice}
-                          currency={currencySymbol}
-                          planName={L('Pro Plan Annual', 'الاشتراك السنوي المميز')}
-                          planDuration="annual"
-                          userId={currentUser?.uid}
-                          adminId={userData?.adminId}
-                          buttonText={L(`Subscribe Annually (${annualPrice} ${currencySymbol})`, `اشترك سنوياً (${annualPrice} ${currencySymbol})`)}
-                          className="btn btn-ghost"
-                          style={{ borderColor: 'var(--a)', color: 'var(--t1)' }}
-                        />
-                      </div>
-
-
-                    </div>
-                  )}
-
                   {selectedMethod === 'paypal' && (
-                    <div style={{ textAlign: 'start' }}>
-                      <div style={{ fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>🌐 {L('PayPal Transfer Details', 'تفاصيل إرسال الدفعة عبر بايبال')}</div>
+                    <div>
+                      <div style={{ fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>🌐 {L('PayPal Transfer Details', 'تفاصيل التحويل عبر بايبال')}</div>
                       <div>{L('Please send payment to the PayPal address below:', 'يرجى إرسال الدفع إلى عنوان بايبال التالي:')}</div>
-                      <div style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        fontFamily: 'monospace',
-                        fontSize: '13px',
-                        fontWeight: '700',
-                        marginTop: '8px',
-                        border: '1px dashed var(--brd)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>{paymentMethods.paypal?.email}</span>
                         <button
                           type="button"
@@ -456,7 +983,7 @@ export default function BillingView() {
                             navigator.clipboard.writeText(paymentMethods.paypal?.email);
                             showToast(L('Email copied!', 'تم نسخ الإيميل!'));
                           }}
-                          style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '11px' }}
+                          style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer' }}
                         >
                           📋
                         </button>
@@ -465,201 +992,91 @@ export default function BillingView() {
                   )}
                 </div>
 
-                {/* Amount and Duration Fields */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Paid Amount', 'المبلغ المدفوع')}</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="inp"
-                        type="number"
-                        placeholder="0.00"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        required
-                        style={{ paddingRight: lang === 'ar' ? '12px' : '45px', paddingLeft: lang === 'ar' ? '45px' : '12px' }}
-                      />
-                      <span style={{
-                        position: 'absolute',
-                        [lang === 'ar' ? 'left' : 'right']: '12px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        color: 'var(--t3)',
-                        fontSize: '11.5px',
-                        fontWeight: '600'
-                      }}>
-                        {tenantConfig?.currency || 'EGP'}
-                      </span>
-                    </div>
+                    <input
+                      className="inp"
+                      type="number"
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      required
+                    />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Subscription Plan', 'خطة الاشتراك')}</label>
+                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Plan Duration / Type', 'الخطة / النوع')}</label>
                     <select className="inp" value={duration} onChange={(e) => setDuration(e.target.value)}>
-                      <option value="monthly">{L('Monthly', 'شهري')}</option>
-                      <option value="annual">{L('Annual', 'سنوي')}</option>
-                      <option value="one-time">{L('One-Time / Life', 'لمرة واحدة / مدى الحياة')}</option>
+                      <option value="monthly">{L('Monthly Plan Renewal', 'تجديد خطة شهرية')}</option>
+                      <option value="annual">{L('Annual Plan Renewal', 'تجديد خطة سنوية')}</option>
+                      <option value="recharge">{L('Credits Recharge', 'شحن رصيد كريديت إضافي')}</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Screenshot Upload Field */}
                 <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                    {L('Proof of Payment Screenshot', 'إرفاق صورة إثبات الدفع / التحويل')}
-                  </label>
-                  <div style={{
-                    border: '1px dashed var(--brd)',
-                    borderRadius: '10px',
-                    padding: '14px',
-                    textAlign: 'center',
-                    background: 'rgba(255,255,255,0.01)',
-                    position: 'relative',
-                    cursor: 'pointer'
-                  }}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        opacity: 0,
-                        cursor: 'pointer',
-                        width: '100%',
-                        height: '100%'
-                      }}
-                    />
-                    <div style={{ fontSize: '20px', marginBottom: '6px' }}>📷</div>
+                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Screenshot Proof of Payment', 'إرفاق لقطة شاشة لإثبات التحويل')}</label>
+                  <div style={{ border: '1px dashed var(--brd)', borderRadius: '10px', padding: '14px', textAlign: 'center', position: 'relative', cursor: 'pointer' }}>
+                    <input type="file" accept="image/*" onChange={handleFileChange} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+                    <div style={{ fontSize: '20px', marginBottom: '4px' }}>📷</div>
                     <div style={{ fontSize: '12px', color: 'var(--t1)', fontWeight: '600' }}>
-                      {file ? file.name : L('Click to choose screenshot image', 'اضغط هنا لاختيار صورة إثبات التحويل')}
-                    </div>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '3px' }}>
-                      {L('Formats: PNG, JPG, JPEG (Max 5MB)', 'الصيغ المدعومة: PNG, JPG, JPEG (بحد أقصى 5 ميجابايت)')}
+                      {file ? file.name : L('Choose transfer receipt screenshot', 'اضغط هنا لرفع إيصال التحويل')}
                     </div>
                   </div>
                 </div>
 
-                {/* Progress Bar */}
                 {uploading && (
-                  <div style={{ width: '100%', background: 'var(--surface2)', borderRadius: '10px', height: '6px', overflow: 'hidden', marginTop: '4px' }}>
-                    <div style={{
-                      width: `${uploadProgress}%`,
-                      background: 'var(--a)',
-                      height: '100%',
-                      transition: 'width 0.2s ease-in-out'
-                    }} />
+                  <div style={{ width: '100%', background: 'var(--surface2)', borderRadius: '10px', height: '6px', overflow: 'hidden' }}>
+                    <div style={{ width: `${uploadProgress}%`, background: 'var(--a)', height: '100%', transition: 'width 0.2s' }}></div>
                   </div>
                 )}
 
-                {/* Status Messages */}
-                {error && (
-                  <div style={{ color: 'var(--red)', fontSize: '12px', background: 'rgba(239, 68, 68, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.15)', textAlign: 'start' }}>
-                    ⚠️ {error}
-                  </div>
-                )}
+                {error && <div style={{ color: 'var(--red)', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' }}>⚠️ {error}</div>}
+                {submitted && <div style={{ color: 'var(--green)', fontSize: '12px', background: 'rgba(16,185,129,0.1)', padding: '8px 12px', borderRadius: '8px', textAlign: 'center' }}>✓ {L('Receipt uploaded successfully. Awaiting admin review.', 'تم إرسال إثبات الدفع! بانتظار مراجعة الإدارة.')}</div>}
 
-                {submitted && (
-                  <div style={{ color: 'var(--green)', fontSize: '12px', background: 'rgba(16, 185, 129, 0.1)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.15)', textAlign: 'center' }}>
-                    ✓ {L('Proof submitted successfully! Awaiting admin review.', 'تم إرسال إثبات الدفع بنجاح! في انتظار مراجعة الآدمن.')}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="btn btn-prime"
-                  style={{ width: '100%', marginTop: '4px', padding: '12px', fontWeight: '700' }}
-                >
-                  {uploading ? `${L('Uploading proof', 'جاري إرسال الإثبات')} (${uploadProgress}%)` : L('Submit Payment Receipt', 'تأكيد وإرسال إثبات الدفع')}
+                <button type="submit" disabled={uploading} className="btn btn-prime" style={{ width: '100%', padding: '12px', fontWeight: 'bold' }}>
+                  {uploading ? `${L('Uploading proof', 'جاري الإرسال')} (${uploadProgress}%)` : L('Submit Payment Receipt', 'تأكيد وإرسال إثبات الدفع')}
                 </button>
-
               </form>
             )}
           </div>
-        </div>
 
-        {/* Right Column: Recent Payments Log */}
-        <div>
-          <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {/* Table history */}
+          <div className="card">
             <div className="sec-hd">
-              <div className="sec-title">🕒 {L('Recent Payment Log', 'سجل الدفعات الأخير')}</div>
+              <div className="sec-title">🕒 {L('Manual Payment Receipts Log', 'سجل إيصالات الدفع اليدوي')}</div>
             </div>
-
-            {loadingHistory ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--t3)' }}>
-                {L('Loading history...', 'جاري تحميل سجل الدفعات...')}
-              </div>
-            ) : recentPayments.length === 0 ? (
-              <div style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '40px 20px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '10px' }}>🧾</div>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--t2)' }}>
-                  {L('No receipts uploaded yet', 'لا توجد إيصالات مرفوعة بعد')}
-                </div>
-                <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '4px', maxWidth: '280px' }}>
-                  {L('Any payment receipts you submit for validation will appear here.', 'أي إيصال دفع ستقوم بإرفاقه وتأكيده للمراجعة سيظهر هنا.')}
-                </div>
+            {recentPayments.filter(p => p.paymentMethod !== 'stripe').length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)', fontSize: '12.5px' }}>
+                {L('No manual receipts uploaded yet.', 'لا توجد إيصالات تحويل يدوية مرفوعة بعد.')}
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', flex: 1 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: lang === 'ar' ? 'right' : 'left', fontSize: '12.5px' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--brd)', opacity: 0.8 }}>
-                      <th style={{ padding: '10px 6px', fontWeight: '700', color: 'var(--t2)' }}>{L('Method', 'الطريقة')}</th>
-                      <th style={{ padding: '10px 6px', fontWeight: '700', color: 'var(--t2)' }}>{L('Amount', 'المبلغ')}</th>
-                      <th style={{ padding: '10px 6px', fontWeight: '700', color: 'var(--t2)' }}>{L('Status', 'الحالة')}</th>
-                      <th style={{ padding: '10px 6px', fontWeight: '700', color: 'var(--t2)' }}>{L('Date', 'التاريخ')}</th>
+                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Method', 'الطريقة')}</th>
+                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Amount', 'المبلغ')}</th>
+                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Status', 'الحالة')}</th>
+                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Receipt', 'الإيصال')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentPayments.map((pay) => {
-                      let statusColor = 'var(--amber)';
-                      let statusLbl = L('Pending', 'قيد المراجعة');
-                      if (pay.status === 'approved') { statusColor = 'var(--green)'; statusLbl = L('Approved', 'مقبول'); }
-                      if (pay.status === 'rejected') { statusColor = 'var(--red)'; statusLbl = L('Rejected', 'مرفوض'); }
-
-                      const payDate = pay.createdAt?.toDate 
-                        ? pay.createdAt.toDate().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') 
-                        : pay.createdAt 
-                          ? new Date(pay.createdAt.seconds * 1000).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')
-                          : '—';
+                    {recentPayments.filter(p => p.paymentMethod !== 'stripe').map((pay) => {
+                      let col = 'var(--amber)';
+                      let lbl = L('Pending', 'قيد المراجعة');
+                      if (pay.status === 'approved') { col = 'var(--green)'; lbl = L('Approved', 'مقبول'); }
+                      if (pay.status === 'rejected') { col = 'var(--red)'; lbl = L('Rejected', 'مرفوض'); }
 
                       return (
-                        <tr key={pay.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                          <td style={{ padding: '12px 6px', fontWeight: '600', color: 'var(--t1)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              {pay.paymentMethod === 'stripe' && '💳 Stripe'}
-                              {pay.paymentMethod === 'instapay' && '⚡ Instapay'}
-                              {pay.paymentMethod === 'vodafoneCash' && '📱 Cash'}
-                              {pay.paymentMethod === 'paypal' && '🌐 PayPal'}
-                            </span>
+                        <tr key={pay.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                          <td style={{ padding: '10px 6px', fontWeight: '600', color: 'var(--t1)' }}>{pay.paymentMethod === 'instapay' ? 'Instapay' : 'Vodafone Cash'}</td>
+                          <td style={{ padding: '10px 6px', fontWeight: '700' }}>{pay.amount} {pay.currency}</td>
+                          <td style={{ padding: '10px 6px' }}>
+                            <span style={{ color: col, background: `${col}10`, padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px' }}>{lbl}</span>
                           </td>
-                          <td style={{ padding: '12px 6px', fontFamily: 'var(--mono)', fontWeight: '700', color: 'var(--t1)' }}>
-                            {pay.amount} {pay.currency}
-                          </td>
-                          <td style={{ padding: '12px 6px' }}>
-                            <span style={{
-                              color: statusColor,
-                              background: `${statusColor}10`,
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontSize: '10.5px',
-                              fontWeight: '700',
-                              border: `1px solid ${statusColor}18`,
-                              display: 'inline-block'
-                            }}>
-                              {statusLbl}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 6px', fontSize: '11px', color: 'var(--t3)' }}>
-                            {payDate}
+                          <td style={{ padding: '10px 6px' }}>
+                            <a href={pay.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--orange)', textDecoration: 'underline' }}>{L('View Image', 'عرض الإيصال')}</a>
                           </td>
                         </tr>
                       );
@@ -670,7 +1087,7 @@ export default function BillingView() {
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

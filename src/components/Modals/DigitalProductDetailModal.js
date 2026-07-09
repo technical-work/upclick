@@ -15,7 +15,9 @@ export default function DigitalProductDetailModal() {
     GC,
     saveGC,
     confirmAction,
-    promptAction
+    promptAction,
+    checkCredits,
+    tenantConfig
   } = useBusiness();
 
   const [isTailoring, setIsTailoring] = useState(false);
@@ -54,6 +56,8 @@ export default function DigitalProductDetailModal() {
   );
 
   const handleTailorProduct = async () => {
+    const cost = tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5;
+    if (!checkCredits(cost)) return;
     setIsTailoring(true);
     setTailoredResult(null);
     setError(null);
@@ -88,7 +92,7 @@ Generate a tailored replica that I can sell. Return a valid JSON object ONLY, wi
     const systemText = `You are a digital product marketing expert. Respond ONLY with a valid JSON object. No markdown tags, no backticks, no comments, no explanation.`;
 
     try {
-      const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
+      const rawText = await callClaudeAPI(promptText, systemText, lang, GC, 'Digital Product Adaptation', null, cost);
       let cleaned = (rawText || '{}').replace(/```json/g, '').replace(/```/g, '').trim();
       if (cleaned.indexOf('{') > -1) {
         cleaned = cleaned.slice(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);

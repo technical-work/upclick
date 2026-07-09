@@ -239,6 +239,7 @@ export function BusinessProvider({ children }) {
   const [guideFlowKey, setGuideFlowKey] = useState('');
   const [guideStepIdx, setGuideStepIdx] = useState(0);
   const [tenantConfig, setTenantConfig] = useState(null);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
   
   const [supportOpen, setSupportOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
@@ -989,6 +990,57 @@ export function BusinessProvider({ children }) {
     }
   };
 
+  const checkCredits = (cost) => {
+    const cpd = tenantConfig?.creditsPerDollar !== undefined ? Number(tenantConfig.creditsPerDollar) : 100;
+    const defCredits = (tenantConfig?.defaultUserCredit !== undefined ? Number(tenantConfig.defaultUserCredit) : 5.00) * cpd;
+    const userCredits = Math.round(userData?.aiCredits !== undefined ? Number(userData.aiCredits) : defCredits);
+    if (userCredits < cost) {
+      setShowCreditsModal(true);
+      return false;
+    }
+
+    // Check threshold warnings
+    const nextCredits = userCredits - cost;
+    if (nextCredits <= 10 && userCredits > 10) {
+      showToast(L('⚠️ Warning: Only 10 credits left!', '⚠️ تنبيه: متبقي لديك 10 كريديت فقط!'), 'warning');
+    } else if (nextCredits <= 20 && userCredits > 20) {
+      showToast(L('⚠️ Warning: Only 20 credits left!', '⚠️ تنبيه: متبقي لديك 20 كريديت فقط!'), 'warning');
+    } else if (nextCredits <= 50 && userCredits > 50) {
+      showToast(L('⚠️ Warning: Only 50 credits left!', '⚠️ تنبيه: متبقي لديك 50 كريديت فقط!'), 'warning');
+    }
+
+    return true;
+  };
+
+  const processedTenantConfig = {
+    ...tenantConfig,
+    planStarterName: tenantConfig?.planStarterName || 'Starter',
+    planStarterPrice: tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 499,
+    planStarterCredits: tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 200,
+    planGrowthName: tenantConfig?.planGrowthName || 'Growth',
+    planGrowthPrice: tenantConfig?.planGrowthPrice !== undefined ? Number(tenantConfig.planGrowthPrice) : 799,
+    planGrowthCredits: tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 600,
+    planProName: tenantConfig?.planProName || 'Pro',
+    planProPrice: tenantConfig?.planProPrice !== undefined ? Number(tenantConfig.planProPrice) : 1497,
+    planProCredits: tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 2000,
+    
+    recharge1Credits: tenantConfig?.recharge1Credits !== undefined ? Number(tenantConfig.recharge1Credits) : 100,
+    recharge1Price: tenantConfig?.recharge1Price !== undefined ? Number(tenantConfig.recharge1Price) : 299,
+    recharge2Credits: tenantConfig?.recharge2Credits !== undefined ? Number(tenantConfig.recharge2Credits) : 250,
+    recharge2Price: tenantConfig?.recharge2Price !== undefined ? Number(tenantConfig.recharge2Price) : 599,
+    recharge3Credits: tenantConfig?.recharge3Credits !== undefined ? Number(tenantConfig.recharge3Credits) : 500,
+    recharge3Price: tenantConfig?.recharge3Price !== undefined ? Number(tenantConfig.recharge3Price) : 999,
+
+    creditsPerDollar: tenantConfig?.creditsPerDollar !== undefined ? Number(tenantConfig.creditsPerDollar) : 100,
+    defaultUserCredit: tenantConfig?.defaultUserCredit !== undefined ? Number(tenantConfig.defaultUserCredit) : 5.00,
+
+    costGenerateScript: tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5,
+    costGenerateLogo: tenantConfig?.costGenerateLogo !== undefined ? Number(tenantConfig.costGenerateLogo) : 40,
+    costSwotAnalysis: tenantConfig?.costSwotAnalysis !== undefined ? Number(tenantConfig.costSwotAnalysis) : 15,
+    costCompetitorAnalysis: tenantConfig?.costCompetitorAnalysis !== undefined ? Number(tenantConfig.costCompetitorAnalysis) : 30,
+    costStrategyBuilder: tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 50,
+  };
+
   return (
     <BusinessContext.Provider
       value={{
@@ -1069,14 +1121,85 @@ export function BusinessProvider({ children }) {
         setDpDetailIndex,
         socialConnectModalOpen,
         setSocialConnectModalOpen,
-        tenantConfig,
+        tenantConfig: processedTenantConfig,
         isTeamMember,
         confirmAction,
         promptAction,
-        rates
+        rates,
+        checkCredits
       }}
     >
       {children}
+      {showCreditsModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(8, 8, 15, 0.85)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            width: '95%',
+            maxWidth: '420px',
+            background: 'var(--panelColor, #101018)',
+            border: '1px solid var(--line, var(--edge))',
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚀</div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text)', marginBottom: '10px' }}>
+              {L('Out of Credits', 'لقد انتهى رصيدك')}
+            </h3>
+            <p style={{ fontSize: '13.5px', color: 'var(--text2)', marginBottom: '24px', lineHeight: '1.5' }}>
+              {L(
+                'You do not have enough credits to complete this operation. You can upgrade your plan or recharge your balance now.',
+                'ليس لديك رصيد كافٍ لإتمام هذه العملية. يمكنك ترقية باقتك أو إعادة شحن رصيدك الآن.'
+              )}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={() => {
+                  setShowCreditsModal(false);
+                  setCurrentPage('billing');
+                }}
+                className="btn btn-prime"
+                style={{ justifyContent: 'center', padding: '12px' }}
+              >
+                🚀 {L('Upgrade Plan', 'ترقية الباقة')}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreditsModal(false);
+                  setCurrentPage('billing');
+                }}
+                className="btn"
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line2)',
+                  color: 'var(--text2)',
+                  justifyContent: 'center',
+                  padding: '12px'
+                }}
+              >
+                ⚡ {L('Recharge Credits', 'شحن رصيد إضافي')}
+              </button>
+              <button
+                onClick={() => setShowCreditsModal(false)}
+                className="btn btn-ghost"
+                style={{ justifyContent: 'center', padding: '10px', fontSize: '12px' }}
+              >
+                {L('Later', 'لاحقاً')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {globalAlert && (
         <div className="modal-overlay" style={{ backdropFilter: 'blur(4px)', animation: 'fadeIn 0.2s ease-out', zIndex: 999999, position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <style>{`

@@ -35,7 +35,7 @@ export default function NicheStudioView() {
     return Math.max(0, Math.round(baseVal * mult));
   };
 
-  const { t, L, setAiPanelOpen, GC, saveGC } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC, checkCredits, tenantConfig } = useBusiness();
   const [activeTab, setActiveTab] = useState('names'); // 'names', 'explorer'
   
   const studioData = GC.nicheStudio || {};
@@ -95,6 +95,8 @@ export default function NicheStudioView() {
   };
 
   const handleGenerate = async () => {
+    const cost = tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5;
+    if (!checkCredits(cost)) return;
     setIsGenerating(true);
     setGeneratedNames([]);
     
@@ -111,7 +113,7 @@ Provide ONLY the 6 generated names in a clean list, with one name per line, no n
     const system = `You are a professional brand namer and naming consultant. Output only a plain list of 6 names, one per line. Do not include markdown formatting or numbers.`;
 
     try {
-      const res = await callClaudeAPI(prompt, system, language, GC);
+      const res = await callClaudeAPI(prompt, system, language, GC, 'Brand Namer', null, cost);
       const names = res.split('\n')
         .map(n => n.replace(/^[-*•\d.\s]+/, '').trim())
         .filter(n => n.length > 0)

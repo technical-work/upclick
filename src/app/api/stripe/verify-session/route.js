@@ -53,7 +53,7 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Payment not completed' }, { status: 400 });
     }
 
-    const { userId, planDuration, amount, currency } = session.metadata;
+    const { userId, planDuration, amount, currency, creditsToAdd, planName } = session.metadata || {};
 
     // Fetch user details from Firestore
     const userRef = adminDb.collection('users').doc(userId);
@@ -81,40 +81,50 @@ export async function GET(req) {
       }
     }
 
+    let isRecharge = planDuration === 'recharge';
     let daysToAdd = 30;
     if (planDuration === 'annual') daysToAdd = 365;
     else if (planDuration === 'one-time') daysToAdd = 9999;
 
     const newExpiresDate = new Date(baseDate);
-    newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
-
-    // Fetch global settings to get the credit configuration for this plan
-    const globalDoc = await adminDb.collection('tenants').doc('global').get();
-    let creditToAdd = 0;
-    if (globalDoc.exists) {
-      const globalData = globalDoc.data();
-      if (planDuration === 'annual') {
-        creditToAdd = globalData.creditAnnualPlan !== undefined ? Number(globalData.creditAnnualPlan) : 120.00;
-      } else if (planDuration === 'one-time') {
-        creditToAdd = globalData.creditLifetimePlan !== undefined ? Number(globalData.creditLifetimePlan) : 500.00;
-      } else {
-        creditToAdd = globalData.creditMonthlyPlan !== undefined ? Number(globalData.creditMonthlyPlan) : 10.00;
-      }
-    } else {
-      // Fallback defaults
-      if (planDuration === 'annual') creditToAdd = 120.00;
-      else if (planDuration === 'one-time') creditToAdd = 500.00;
-      else creditToAdd = 10.00;
+    if (!isRecharge) {
+      newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
     }
 
-    const currentUserCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : 0;
+    let creditToAdd = 0;
+    if (creditsToAdd && Number(creditsToAdd) > 0) {
+      creditToAdd = Number(creditsToAdd);
+    } else {
+      // Fetch global settings to get the credit configuration for this plan
+      const globalDoc = await adminDb.collection('tenants').doc('global').get();
+      if (globalDoc.exists) {
+        const globalData = globalDoc.data();
+        if (planDuration === 'annual') {
+          creditToAdd = globalData.creditAnnualPlan !== undefined ? Number(globalData.creditAnnualPlan) : 120.00;
+        } else if (planDuration === 'one-time') {
+          creditToAdd = globalData.creditLifetimePlan !== undefined ? Number(globalData.creditLifetimePlan) : 500.00;
+        } else {
+          creditToAdd = globalData.creditMonthlyPlan !== undefined ? Number(globalData.creditMonthlyPlan) : 10.00;
+        }
+      } else {
+        // Fallback defaults
+        if (planDuration === 'annual') creditToAdd = 120.00;
+        else if (planDuration === 'one-time') creditToAdd = 500.00;
+        else creditToAdd = 10.00;
+      }
+    }
+
+    const userUpdates = {
+      aiCredits: FieldValue.increment(creditToAdd)
+    };
+    if (!isRecharge) {
+      userUpdates.expiresAt = newExpiresDate;
+      userUpdates.isTrial = false;
+      userUpdates.plan = planName || (planDuration === 'annual' ? 'Pro Annual' : (planDuration === 'one-time' ? 'Pro Lifetime' : 'Pro Monthly'));
+    }
 
     // Update user document to set expiresAt and turn isTrial to false
-    await userRef.set({
-      expiresAt: newExpiresDate,
-      isTrial: false,
-      aiCredits: currentUserCredits + creditToAdd
-    }, { merge: true });
+    await userRef.set(userUpdates, { merge: true });
 
     // Log the payment in the 'payments' collection
     await adminDb.collection('payments').add({

@@ -5,8 +5,10 @@ import { parseMarkdown } from '../../utils/markdown';
 import CustomSelect from '../CustomSelect';
 
 export default function StrategyView() {
-  const { lang, L, t, GC, saveGC } = useBusiness();
+  const { lang, L, t, GC, saveGC, checkCredits, tenantConfig } = useBusiness();
   const [activeTab, setActiveTab] = useState('idea');
+  const costSwotAnalysis = tenantConfig?.costSwotAnalysis !== undefined ? Number(tenantConfig.costSwotAnalysis) : 15;
+  const costStrategyBuilder = tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 50;
   const [loading, setLoading] = useState({});
   const [showExportModal, setShowExportModal] = useState(false);
   
@@ -43,6 +45,17 @@ export default function StrategyView() {
 
   // ── Trigger AIs with Streaming ──
   const triggerStrategyAI = async (key, promptText, systemText, saveCallback) => {
+    const cost = key === 'swot' 
+      ? costSwotAnalysis 
+      : key === 'roadmap'
+        ? costStrategyBuilder 
+        : costSwotAnalysis;
+
+    if (!checkCredits(cost)) {
+      setLoading(prev => ({ ...prev, [key]: false }));
+      return;
+    }
+
     setAiOutputs(prev => ({ ...prev, [key]: '' }));
     setLoading(prev => ({ ...prev, [key]: true }));
     let accumulated = '';
@@ -62,7 +75,8 @@ export default function StrategyView() {
           }
           accumulated += chunk;
           setAiOutputs(prev => ({ ...prev, [key]: accumulated }));
-        }
+        },
+        cost
       );
       
       const finalRes = response || accumulated;
@@ -325,7 +339,7 @@ You must cover:
             <div className="sec-hd">
               <div className="sec-title">{L('Idea & Offer Analysis', 'تحليل الفكرة والعرض')}</div>
               <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', minWidth: 'auto' }} onClick={runIdeaStrategy} disabled={loading.idea}>
-                ✦ {L('Generate / Update', 'توليد / تحديث')}
+                ✦ {L('Generate / Update', 'توليد / تحديث')} ({costSwotAnalysis} Credits)
               </button>
             </div>
             <div 
@@ -344,7 +358,7 @@ You must cover:
           <div className="sec-hd">
             <div className="sec-title">🎯 {L('Ideal Client Profile (ICP)', 'الملف المثالي للعميل')}</div>
             <button className="btn-ai" style={{ fontSize: '11.5px', padding: '5px 10px' }} onClick={runIcpStrategy} disabled={loading.icp}>
-              ✦ {L('Generate ICP', 'توليد الملف المثالي')}
+              ✦ {L('Generate ICP', 'توليد الملف المثالي')} ({costSwotAnalysis} Credits)
             </button>
           </div>
           <div 
@@ -362,7 +376,7 @@ You must cover:
           <div className="sec-hd">
             <div className="sec-title">⚔️ {L('SWOT Analysis', 'تحليل SWOT')}</div>
             <button className="btn-ai" style={{ fontSize: '11.5px', padding: '5px 10px' }} onClick={runSwotStrategy} disabled={loading.swot}>
-              ✦ {L('Generate SWOT', 'توليد تحليل SWOT')}
+              ✦ {L('Generate SWOT', 'توليد تحليل SWOT')} ({costSwotAnalysis} Credits)
             </button>
           </div>
           <div 
@@ -380,7 +394,7 @@ You must cover:
           <div className="sec-hd">
             <div className="sec-title">🗺️ {L('Growth Roadmap', 'خارطة طريق النمو')}</div>
             <button className="btn-ai" style={{ fontSize: '11.5px', padding: '5px 10px' }} onClick={runRoadmapStrategy} disabled={loading.roadmap}>
-              ✦ {L('Generate Roadmap', 'توليد خارطة الطريق')}
+              ✦ {L('Generate Roadmap', 'توليد خارطة الطريق')} ({costStrategyBuilder} Credits)
             </button>
           </div>
           <div 

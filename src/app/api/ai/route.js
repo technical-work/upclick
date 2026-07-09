@@ -52,7 +52,7 @@ const getModelRates = (modelName) => {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { userId, messages, tool, endpoint, apiKey, model } = body;
+    const { userId, messages, tool, endpoint, apiKey, model, creditsCost } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -73,7 +73,8 @@ export async function POST(request) {
     let targetEndpoint = endpoint || 'https://api.openai.com/v1/chat/completions';
     let configuredModel = model || globalData.openaiModel || 'gpt-4o-mini';
 
-    const defaultUserCredit = globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00;
+    const creditsPerDollar = globalData.creditsPerDollar !== undefined ? Number(globalData.creditsPerDollar) : 100;
+    const defaultUserCredit = (globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00) * creditsPerDollar;
     const aiEnabled = globalData.aiEnabled !== false;
     const totalAiSpend = globalData.totalAiSpend !== undefined ? Number(globalData.totalAiSpend) : 0;
     const aiMaxMonthlyBudget = globalData.aiMaxMonthlyBudget !== undefined ? Number(globalData.aiMaxMonthlyBudget) : 100.00;
@@ -106,10 +107,31 @@ export async function POST(request) {
     const userData = userDoc.data();
     const aiCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : defaultUserCredit;
 
+    // Determine credit unit cost
+    let finalCreditsDeduction = 0;
+    if (creditsCost !== undefined && creditsCost !== null) {
+      finalCreditsDeduction = Number(creditsCost);
+    } else {
+      const toolLower = String(tool || '').toLowerCase();
+      if (toolLower.includes('script')) {
+        finalCreditsDeduction = globalData.costGenerateScript !== undefined ? Number(globalData.costGenerateScript) : 5;
+      } else if (toolLower.includes('logo') || toolLower.includes('design') || toolLower.includes('banner')) {
+        finalCreditsDeduction = globalData.costGenerateLogo !== undefined ? Number(globalData.costGenerateLogo) : 40;
+      } else if (toolLower.includes('swot')) {
+        finalCreditsDeduction = globalData.costSwotAnalysis !== undefined ? Number(globalData.costSwotAnalysis) : 15;
+      } else if (toolLower.includes('competitor')) {
+        finalCreditsDeduction = globalData.costCompetitorAnalysis !== undefined ? Number(globalData.costCompetitorAnalysis) : 30;
+      } else if (toolLower.includes('strategy') || toolLower.includes('roadmap')) {
+        finalCreditsDeduction = globalData.costStrategyBuilder !== undefined ? Number(globalData.costStrategyBuilder) : 50;
+      } else {
+        finalCreditsDeduction = 0; // default catch-all: no deduction for unrecognized tools
+      }
+    }
+
     // 3. Insufficient credits check
-    if (aiCredits <= 0) {
+    if (aiCredits < finalCreditsDeduction) {
       return NextResponse.json({ 
-        error: 'حسابك لا يحتوي على رصيد كافٍ لاستخدام الذكاء الاصطناعي. يرجى التواصل مع الإدارة.' 
+        error: `حسابك لا يحتوي على رصيد كافٍ لإجراء هذه العملية. تحتاج إلى ${finalCreditsDeduction} كريديت على الأقل.` 
       }, { status: 403 });
     }
 
@@ -232,12 +254,9 @@ export async function POST(request) {
           if (promptTokens > 0 || completionTokens > 0) {
             const rates = getModelRates(configuredModel);
             const cost = (promptTokens * rates.input) + (completionTokens * rates.output);
-            const aiMarkupMultiplier = globalData.aiMarkupMultiplier !== undefined ? Number(globalData.aiMarkupMultiplier) : 1.0;
-            const userDeductionCost = cost * aiMarkupMultiplier;
-            const newCredits = Math.max(0, aiCredits - userDeductionCost);
 
             await userRef.update({
-              aiCredits: newCredits
+              aiCredits: FieldValue.increment(-finalCreditsDeduction)
             });
 
             await adminDb.collection('ai_logs').add({
@@ -248,6 +267,7 @@ export async function POST(request) {
               inputTokens: promptTokens,
               outputTokens: completionTokens,
               cost: cost,
+              creditsDeducted: finalCreditsDeduction,
               tool: tool || 'General',
               timestamp: new Date()
             });

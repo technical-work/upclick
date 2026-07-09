@@ -67,7 +67,9 @@ export default function LandingPageView() {
     saveGC,
     updateProfile,
     setLpPreviewOpen,
-    setLpPreviewHtml
+    setLpPreviewHtml,
+    checkCredits,
+    tenantConfig
   } = useBusiness();
 
   const lpData = GC.landingPage || {};
@@ -171,6 +173,8 @@ export default function LandingPageView() {
 
   const handleGenerate = async () => {
     if (isGenerating) return;
+    const cost = tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5;
+    if (!checkCredits(cost)) return;
     setIsGenerating(true);
 
     try {
@@ -183,14 +187,15 @@ Price: $${price}
 Return ONLY a raw JSON object with this exact structure (no markdown, no extra text):
 {
   "tagline": "A compelling 4-8 word subtitle",
-  "aboutText": "A persuasive 3-4 sentence 'About Me' bio building trust.",
+  "aboutTitle": "About Section Title in Arabic",
+  "aboutText": "Arabic professional bio text...",
   "features": [
-    { "title": "short feature title", "desc": "short benefit description", "icon": "emoji" },
+    { "icon": "emoji icon", "title": "Benefit Title in Arabic", "desc": "Arabic benefit description..." },
     ... exactly 6 features ...
   ],
   "testimonials": [
-    { "initial": "A", "name": "Fake Arabic Name", "loc": "City/Country", "stars": 5, "text": "Short amazing review" },
-    ... exactly 3 reviews ...
+    { "initial": "first letter of user name", "name": "Arabic User Name", "loc": "Arabic Country/Location", "stars": 5, "text": "Arabic testimonial testimonial content..." },
+    ... exactly 3 testimonials ...
   ],
   "faqs": [
     { "q": "Question?", "a": "Answer" },
@@ -207,7 +212,7 @@ The language MUST be entirely in ${lang === 'ar' ? 'Arabic' : 'English'}. Make i
 
       const systemText = "You are a professional conversion copywriter. You only output pure, valid JSON matching the exact requested structure.";
 
-      const res = await callClaudeAPI(promptText, systemText, lang, GC);
+      const res = await callClaudeAPI(promptText, systemText, lang, GC, 'Landing Page Copywriter', null, cost);
       
       if (typeof res === 'string' && res.includes('❌')) {
         alert(res);

@@ -19,7 +19,7 @@ function mapCurrency(currencyInput) {
 
 export async function POST(req) {
   try {
-    const { amount, currency, planName, planDuration, userId, adminId } = await req.json();
+    const { amount, currency, planName, planDuration, userId, adminId, creditsToAdd } = await req.json();
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -74,7 +74,9 @@ export async function POST(req) {
         adminId: adminId || '',
         amount: String(amount),
         currency: targetCurrency.toUpperCase(),
-        planDuration: planDuration || 'monthly'
+        planDuration: planDuration || 'monthly',
+        creditsToAdd: creditsToAdd ? String(creditsToAdd) : '0',
+        planName: planName || ''
       },
     });
 

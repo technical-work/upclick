@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 const DEFAULTS = {
   openaiApiKey: '',
   defaultUserCredit: 5.00,
+  creditsPerDollar: 100,
   openaiModel: 'gpt-4o-mini',
   aiEnabled: true,
   aiMarkupMultiplier: 1.0,
@@ -19,7 +20,30 @@ const DEFAULTS = {
   aiTemperature: 0.7,
   aiMaxTokens: 1000,
   aiSystemInstruction: '',
-  aiMaxMonthlyBudget: 100.00
+  aiMaxMonthlyBudget: 100.00,
+
+  planStarterName: 'Starter',
+  planStarterPrice: 499,
+  planStarterCredits: 200,
+  planGrowthName: 'Growth',
+  planGrowthPrice: 799,
+  planGrowthCredits: 600,
+  planProName: 'Pro',
+  planProPrice: 1497,
+  planProCredits: 2000,
+
+  recharge1Credits: 100,
+  recharge1Price: 299,
+  recharge2Credits: 250,
+  recharge2Price: 599,
+  recharge3Credits: 500,
+  recharge3Price: 999,
+
+  costGenerateScript: 5,
+  costGenerateLogo: 40,
+  costSwotAnalysis: 15,
+  costCompetitorAnalysis: 30,
+  costStrategyBuilder: 50
 };
 
 const AiSettingsPage = () => {
@@ -75,6 +99,7 @@ const AiSettingsPage = () => {
         setSettings({
           openaiApiKey: data.openaiApiKey || '',
           defaultUserCredit: data.defaultUserCredit !== undefined ? Number(data.defaultUserCredit) : 5.00,
+          creditsPerDollar: data.creditsPerDollar !== undefined ? Number(data.creditsPerDollar) : 100,
           openaiModel: data.openaiModel || 'gpt-4o-mini',
           aiEnabled: data.aiEnabled !== false,
           aiMarkupMultiplier: data.aiMarkupMultiplier !== undefined ? Number(data.aiMarkupMultiplier) : 1.0,
@@ -84,7 +109,30 @@ const AiSettingsPage = () => {
           aiTemperature: data.aiTemperature !== undefined ? Number(data.aiTemperature) : 0.7,
           aiMaxTokens: data.aiMaxTokens !== undefined ? Number(data.aiMaxTokens) : 1000,
           aiSystemInstruction: data.aiSystemInstruction || '',
-          aiMaxMonthlyBudget: data.aiMaxMonthlyBudget !== undefined ? Number(data.aiMaxMonthlyBudget) : 100.00
+          aiMaxMonthlyBudget: data.aiMaxMonthlyBudget !== undefined ? Number(data.aiMaxMonthlyBudget) : 100.00,
+
+          planStarterName: data.planStarterName || 'Starter',
+          planStarterPrice: data.planStarterPrice !== undefined ? Number(data.planStarterPrice) : 499,
+          planStarterCredits: data.planStarterCredits !== undefined ? Number(data.planStarterCredits) : 200,
+          planGrowthName: data.planGrowthName || 'Growth',
+          planGrowthPrice: data.planGrowthPrice !== undefined ? Number(data.planGrowthPrice) : 799,
+          planGrowthCredits: data.planGrowthCredits !== undefined ? Number(data.planGrowthCredits) : 600,
+          planProName: data.planProName || 'Pro',
+          planProPrice: data.planProPrice !== undefined ? Number(data.planProPrice) : 1497,
+          planProCredits: data.planProCredits !== undefined ? Number(data.planProCredits) : 2000,
+          
+          recharge1Credits: data.recharge1Credits !== undefined ? Number(data.recharge1Credits) : 100,
+          recharge1Price: data.recharge1Price !== undefined ? Number(data.recharge1Price) : 299,
+          recharge2Credits: data.recharge2Credits !== undefined ? Number(data.recharge2Credits) : 250,
+          recharge2Price: data.recharge2Price !== undefined ? Number(data.recharge2Price) : 599,
+          recharge3Credits: data.recharge3Credits !== undefined ? Number(data.recharge3Credits) : 500,
+          recharge3Price: data.recharge3Price !== undefined ? Number(data.recharge3Price) : 999,
+
+          costGenerateScript: data.costGenerateScript !== undefined ? Number(data.costGenerateScript) : 5,
+          costGenerateLogo: data.costGenerateLogo !== undefined ? Number(data.costGenerateLogo) : 40,
+          costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 15,
+          costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 30,
+          costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 50
         });
         setGlobalStats({
           totalAiSpend: data.totalAiSpend !== undefined ? Number(data.totalAiSpend) : 0,
@@ -129,19 +177,44 @@ const AiSettingsPage = () => {
     setSaving(true);
     try {
       await setDoc(doc(db, 'tenants', 'global'), {
-        openaiApiKey: settings.openaiApiKey,
-        defaultUserCredit: Number(settings.defaultUserCredit),
-        openaiModel: settings.openaiModel,
-        aiEnabled: settings.aiEnabled,
-        aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
-        creditMonthlyPlan: Number(settings.creditMonthlyPlan),
-        creditAnnualPlan: Number(settings.creditAnnualPlan),
-        creditLifetimePlan: Number(settings.creditLifetimePlan),
-        aiTemperature: Number(settings.aiTemperature),
-        aiMaxTokens: Number(settings.aiMaxTokens),
-        aiSystemInstruction: settings.aiSystemInstruction,
-        aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
-        updatedAt: serverTimestamp(),
+          openaiApiKey: settings.openaiApiKey,
+          defaultUserCredit: Number(settings.defaultUserCredit),
+          creditsPerDollar: Number(settings.creditsPerDollar || 100),
+          openaiModel: settings.openaiModel,
+          aiEnabled: settings.aiEnabled,
+          aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
+          creditMonthlyPlan: Number(settings.creditMonthlyPlan),
+          creditAnnualPlan: Number(settings.creditAnnualPlan),
+          creditLifetimePlan: Number(settings.creditLifetimePlan),
+          aiTemperature: Number(settings.aiTemperature),
+          aiMaxTokens: Number(settings.aiMaxTokens),
+          aiSystemInstruction: settings.aiSystemInstruction,
+          aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
+
+          planStarterName: settings.planStarterName,
+          planStarterPrice: Number(settings.planStarterPrice),
+          planStarterCredits: Number(settings.planStarterCredits),
+          planGrowthName: settings.planGrowthName,
+          planGrowthPrice: Number(settings.planGrowthPrice),
+          planGrowthCredits: Number(settings.planGrowthCredits),
+          planProName: settings.planProName,
+          planProPrice: Number(settings.planProPrice),
+          planProCredits: Number(settings.planProCredits),
+
+          recharge1Credits: Number(settings.recharge1Credits),
+          recharge1Price: Number(settings.recharge1Price),
+          recharge2Credits: Number(settings.recharge2Credits),
+          recharge2Price: Number(settings.recharge2Price),
+          recharge3Credits: Number(settings.recharge3Credits),
+          recharge3Price: Number(settings.recharge3Price),
+
+          costGenerateScript: Number(settings.costGenerateScript),
+          costGenerateLogo: Number(settings.costGenerateLogo),
+          costSwotAnalysis: Number(settings.costSwotAnalysis),
+          costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
+          costStrategyBuilder: Number(settings.costStrategyBuilder),
+
+          updatedAt: serverTimestamp(),
       }, { merge: true });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -232,17 +305,19 @@ const AiSettingsPage = () => {
       // User Aggregates
       const userKey = log.userEmail || log.userId || 'Unknown User';
       if (!userStats[userKey]) {
-        userStats[userKey] = { email: userKey, name: log.userName || '', cost: 0, calls: 0, userId: log.userId };
+        userStats[userKey] = { email: userKey, name: log.userName || '', cost: 0, credits: 0, calls: 0, userId: log.userId };
       }
       userStats[userKey].cost += (log.cost || 0);
+      userStats[userKey].credits += (log.creditsDeducted || 0);
       userStats[userKey].calls += 1;
 
       // Tool Aggregates
       const toolKey = log.tool || 'General';
       if (!toolStats[toolKey]) {
-        toolStats[toolKey] = { tool: toolKey, cost: 0, calls: 0 };
+        toolStats[toolKey] = { tool: toolKey, cost: 0, credits: 0, calls: 0 };
       }
       toolStats[toolKey].cost += (log.cost || 0);
+      toolStats[toolKey].credits += (log.creditsDeducted || 0);
       toolStats[toolKey].calls += 1;
     });
 
@@ -341,14 +416,14 @@ const AiSettingsPage = () => {
           userId,
           email,
           name,
-          currentCredits: data.aiCredits !== undefined ? Number(data.aiCredits).toFixed(2) : '5.00'
+          currentCredits: data.aiCredits !== undefined ? Math.round(Number(data.aiCredits)).toString() : '500'
         });
       } else {
-        setRefillModalUser(prev => ({ ...prev, currentCredits: '0.00' }));
+        setRefillModalUser(prev => ({ ...prev, currentCredits: '0' }));
       }
     } catch (e) {
       console.error(e);
-      setRefillModalUser(prev => ({ ...prev, currentCredits: '0.00' }));
+      setRefillModalUser(prev => ({ ...prev, currentCredits: '0' }));
     }
   };
 
@@ -365,7 +440,7 @@ const AiSettingsPage = () => {
         return;
       }
       const currentVal = refillModalUser.currentCredits === '...' ? 0 : Number(refillModalUser.currentCredits);
-      const newVal = Math.max(0, currentVal + amountToAdd);
+      const newVal = Math.round(Math.max(0, currentVal + amountToAdd));
       await updateDoc(userRef, {
         aiCredits: newVal
       });
@@ -431,7 +506,7 @@ const AiSettingsPage = () => {
   };
 
   return (
-    <div className="ai-settings-container" style={{ animation: 'fadeSlide 0.4s ease', maxWidth: activeSubTab === 'config' ? '600px' : '1000px', margin: '0 auto', transition: 'max-width 0.3s ease' }}>
+    <div className="ai-settings-container" style={{ animation: 'fadeSlide 0.4s ease', maxWidth: '1000px', margin: '0 auto', transition: 'max-width 0.3s ease' }}>
       <style>{`
         /* AI Settings Responsive Overrides */
         @media (max-width: 768px) {
@@ -719,7 +794,7 @@ const AiSettingsPage = () => {
               <span>{isRTL ? 'إعدادات مفتاح الذكاء الاصطناعي (OpenAI)' : 'OpenAI AI Integration Settings'}</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', zIndex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative', zIndex: 1 }}>
               {/* OpenAI API Key */}
               <div>
                 <label style={labelStyle}>
@@ -749,7 +824,8 @@ const AiSettingsPage = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     {testingKey ? (isRTL ? 'جاري التحقق...' : 'Testing...') : (isRTL ? 'تحقق من المفتاح' : 'Test Key')}
@@ -777,134 +853,281 @@ const AiSettingsPage = () => {
                 </div>
               </div>
 
-              {/* Default User Credit */}
-              <div>
-                <label style={labelStyle}>
-                  <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                  {isRTL ? 'الرصيد الافتراضي للمستخدمين الجدد ($)' : 'Default Starting Credits for New Users ($)'}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="5.00"
-                  value={settings.defaultUserCredit}
-                  onChange={e => handleFieldChange('defaultUserCredit', e.target.value)}
-                  style={inputStyle}
-                />
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                  {isRTL ? 'يُعطى هذا المبلغ تلقائياً ككريديت للمشترك الجديد عند إنشائه.' : 'This dollar credit will automatically be assigned to new accounts.'}
-                </div>
-              </div>
-
-              {/* Model Selection */}
-              <div>
-                <label style={labelStyle}>
-                  <Cpu size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                  {isRTL ? 'النموذج الافتراضي للذكاء الاصطناعي' : 'Default AI Model Selection'}
-                </label>
-                <select
-                  value={settings.openaiModel}
-                  onChange={e => handleFieldChange('openaiModel', e.target.value)}
-                  style={{ ...inputStyle, cursor: 'pointer' }}
-                >
-                  <option value="gpt-4o-mini">GPT-4o-Mini (Recommended/Cost-efficient)</option>
-                  <option value="gpt-4o">GPT-4o (High intelligence / Standard rates)</option>
-                  <option value="o3-mini">o3-mini (Reasoning / Advanced tasks)</option>
-                  <option value="o1">o1 (Full Reasoning / Premium rates)</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5-Turbo (Legacy)</option>
-                </select>
-              </div>
-
-              {/* Global AI Switch (Master Enable/Disable) */}
-              <div>
-                <label style={labelStyle}>
-                  <Settings size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                  {isRTL ? 'حالة خدمات الذكاء الاصطناعي' : 'Global AI Status'}
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg3)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--line2)' }}>
-                  <input
-                    type="checkbox"
-                    id="aiEnabledSwitch"
-                    checked={settings.aiEnabled}
-                    onChange={e => handleFieldChange('aiEnabled', e.target.checked)}
-                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                  />
-                  <label htmlFor="aiEnabledSwitch" style={{ fontSize: '13px', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', fontWeight: 'bold' }}>
-                    {settings.aiEnabled 
-                      ? (isRTL ? '🟢 مفعّل بالكامل لجميع المستخدمين' : '🟢 Fully Enabled for all users')
-                      : (isRTL ? '🔴 معطّل وموقوف بالكامل للمنصة' : '🔴 Fully Disabled globally')
-                    }
+              {/* Grid: Financial & Conversion configurations */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {/* Default User Credit */}
+                <div>
+                  <label style={labelStyle}>
+                    <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                    {isRTL ? 'الرصيد الافتراضي للمستخدمين الجدد ($)' : 'Default Starting Balance for New Users ($)'}
                   </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="5.00"
+                    value={settings.defaultUserCredit}
+                    onChange={e => handleFieldChange('defaultUserCredit', e.target.value)}
+                    style={inputStyle}
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
+                    {isRTL ? 'قيمة الرصيد المالي الافتراضي الذي يحصل عليه المستخدم الجديد.' : 'The default starting dollar balance for new accounts.'}
+                  </div>
+                </div>
+
+                {/* Credits Per Dollar */}
+                <div>
+                  <label style={labelStyle}>
+                    <RefreshCw size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                    {isRTL ? 'عدد الكريديت مقابل الدولار الواحد' : 'Credits Per One Dollar ($1)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    placeholder="100"
+                    value={settings.creditsPerDollar || 100}
+                    onChange={e => handleFieldChange('creditsPerDollar', e.target.value)}
+                    style={inputStyle}
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
+                    {isRTL 
+                      ? `معدل التحويل: $1 دولار يساوي ${settings.creditsPerDollar || 100} كريديت.`
+                      : `Conversion rate: $1 equals ${settings.creditsPerDollar || 100} credits.`
+                    }
+                  </div>
+                </div>
+
+                {/* Pricing Markup Multiplier */}
+                <div>
+                  <label style={labelStyle}>
+                    <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                    {isRTL ? 'مضاعف تسعير الاستهلاك للمستخدمين' : 'Usage Markup Cost Multiplier'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    placeholder="1.0"
+                    value={settings.aiMarkupMultiplier}
+                    onChange={e => handleFieldChange('aiMarkupMultiplier', e.target.value)}
+                    style={inputStyle}
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
+                    {isRTL 
+                      ? 'يتم ضرب تكلفة الاستهلاك الحقيقية بهذا الرقم عند الخصم.'
+                      : 'Deducted credits are multiplied by this factor.'}
+                  </div>
                 </div>
               </div>
 
-              {/* Pricing Markup Multiplier */}
-              <div>
-                <label style={labelStyle}>
-                  <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                  {isRTL ? 'مضاعف تسعير الاستهلاك للمستخدمين (Markup Multiplier)' : 'Usage Markup Cost Multiplier'}
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  placeholder="1.0"
-                  value={settings.aiMarkupMultiplier}
-                  onChange={e => handleFieldChange('aiMarkupMultiplier', e.target.value)}
-                  style={inputStyle}
-                />
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                  {isRTL 
-                    ? 'يتم ضرب تكلفة الاستهلاك الحقيقية بهذا الرقم عند الخصم من رصيد العميل (مثال: 1.5 لربح 50%، أو 2.0 لربح 100%). التكلفة المذكورة في التقارير ستظل تكلفتك الفعلية لترى صافي أرباحك.'
-                    : 'Deducted credits from user balances are multiplied by this factor (e.g., 1.5 adds a 50% markup, 2.0 adds 100%). Platform logs will still show actual costs to display true profits.'}
+              {/* Grid: Execution & Status configurations */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                {/* Model Selection */}
+                <div>
+                  <label style={labelStyle}>
+                    <Cpu size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                    {isRTL ? 'النموذج الافتراضي للذكاء الاصطناعي' : 'Default AI Model Selection'}
+                  </label>
+                  <select
+                    value={settings.openaiModel}
+                    onChange={e => handleFieldChange('openaiModel', e.target.value)}
+                    style={{ ...inputStyle, cursor: 'pointer' }}
+                  >
+                    <option value="gpt-4o-mini">GPT-4o-Mini (Recommended/Cost-efficient)</option>
+                    <option value="gpt-4o">GPT-4o (High intelligence / Standard rates)</option>
+                    <option value="o3-mini">o3-mini (Reasoning / Advanced tasks)</option>
+                    <option value="o1">o1 (Full Reasoning / Premium rates)</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5-Turbo (Legacy)</option>
+                  </select>
+                </div>
+
+                {/* Global AI Switch (Master Enable/Disable) */}
+                <div>
+                  <label style={labelStyle}>
+                    <Settings size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
+                    {isRTL ? 'حالة خدمات الذكاء الاصطناعي' : 'Global AI Status'}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg3)', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--line2)', height: '44px' }}>
+                    <input
+                      type="checkbox"
+                      id="aiEnabledSwitch"
+                      checked={settings.aiEnabled}
+                      onChange={e => handleFieldChange('aiEnabled', e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="aiEnabledSwitch" style={{ fontSize: '13px', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', fontWeight: 'bold' }}>
+                      {settings.aiEnabled 
+                        ? (isRTL ? '🟢 مفعّل بالكامل لجميع المستخدمين' : '🟢 Fully Enabled for all users')
+                        : (isRTL ? '🔴 معطّل وموقوف بالكامل للمنصة' : '🔴 Fully Disabled globally')
+                      }
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              {/* Divider: Plan Credits */}
+              {/* Divider: Subscription Packages Settings */}
               <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px', marginTop: '8px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
-                  {isRTL ? 'ربط رصيد الذكاء الاصطناعي بخطط الاشتراك' : 'AI Credit Association with Subscription Plans'}
+                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
+                  {isRTL ? 'إعدادات باقات الاشتراك الأساسية (Subscription Plans)' : 'Subscription Plans Settings'}
                 </h4>
-                <div className="ai-settings-credits-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'الخطة الشهرية ($)' : 'Monthly Plan Credit ($)'}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={settings.creditMonthlyPlan}
-                      onChange={e => handleFieldChange('creditMonthlyPlan', e.target.value)}
-                      style={inputStyle}
-                    />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  {/* Starter Plan */}
+                  <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', fontSize: '13px' }}>
+                      Starter Plan
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
+                        <input type="text" value={settings.planStarterName || ''} onChange={e => handleFieldChange('planStarterName', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                          <input type="number" value={settings.planStarterPrice || 0} onChange={e => handleFieldChange('planStarterPrice', e.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                          <input type="number" value={settings.planStarterCredits || 0} onChange={e => handleFieldChange('planStarterCredits', e.target.value)} style={inputStyle} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'الخطة السنوية ($)' : 'Annual Plan Credit ($)'}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={settings.creditAnnualPlan}
-                      onChange={e => handleFieldChange('creditAnnualPlan', e.target.value)}
-                      style={inputStyle}
-                    />
+
+                  {/* Growth Plan */}
+                  <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', fontSize: '13px' }}>
+                      Growth Plan
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
+                        <input type="text" value={settings.planGrowthName || ''} onChange={e => handleFieldChange('planGrowthName', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                          <input type="number" value={settings.planGrowthPrice || 0} onChange={e => handleFieldChange('planGrowthPrice', e.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                          <input type="number" value={settings.planGrowthCredits || 0} onChange={e => handleFieldChange('planGrowthCredits', e.target.value)} style={inputStyle} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'خطة مدى الحياة ($)' : 'Lifetime Plan Credit ($)'}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={settings.creditLifetimePlan}
-                      onChange={e => handleFieldChange('creditLifetimePlan', e.target.value)}
-                      style={inputStyle}
-                    />
+
+                  {/* Pro Plan */}
+                  <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', fontSize: '13px' }}>
+                      Pro Plan
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
+                        <input type="text" value={settings.planProName || ''} onChange={e => handleFieldChange('planProName', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                          <input type="number" value={settings.planProPrice || 0} onChange={e => handleFieldChange('planProPrice', e.target.value)} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                          <input type="number" value={settings.planProCredits || 0} onChange={e => handleFieldChange('planProCredits', e.target.value)} style={inputStyle} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '6px' }}>
-                  {isRTL 
-                    ? 'سيتم منح هذا الرصيد تلقائياً للعميل عند ترقية أو تفعيل اشتراكه (سواء تمت الموافقة يدوياً من الآدمن أو تلقائياً عبر الدفع بـ Stripe).'
-                    : 'These credits will be added to user balances automatically upon plan activation (both manual admin approval & automatic Stripe checks).'}
+              </div>
+
+              {/* Divider: Recharge Packages Settings */}
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
+                  {isRTL ? 'إعدادات حزم شحن الرصيد الإضافية (Refill / Recharge Packages)' : 'Credits Recharge Packages Settings'}
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  {/* Package 1 */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)', fontSize: '12px' }}>
+                      Recharge Pack 1
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                        <input type="number" value={settings.recharge1Credits || 0} onChange={e => handleFieldChange('recharge1Credits', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                        <input type="number" value={settings.recharge1Price || 0} onChange={e => handleFieldChange('recharge1Price', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Package 2 */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)', fontSize: '12px' }}>
+                      Recharge Pack 2
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                        <input type="number" value={settings.recharge2Credits || 0} onChange={e => handleFieldChange('recharge2Credits', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                        <input type="number" value={settings.recharge2Price || 0} onChange={e => handleFieldChange('recharge2Price', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Package 3 */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)', fontSize: '12px' }}>
+                      Recharge Pack 3
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                        <input type="number" value={settings.recharge3Credits || 0} onChange={e => handleFieldChange('recharge3Credits', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                        <input type="number" value={settings.recharge3Price || 0} onChange={e => handleFieldChange('recharge3Price', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider: AI Tool Cost Settings */}
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
+                  {isRTL ? 'تسعير استهلاك أدوات الذكاء الاصطناعي بالكريديت' : 'AI Tools Credits Cost Settings'}
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'توليد السكربت (أفكار / محتوى)' : 'Generate Script'}</label>
+                    <input type="number" value={settings.costGenerateScript || 0} onChange={e => handleFieldChange('costGenerateScript', e.target.value)} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'تصميم اللوجو / البانر بالـ AI' : 'Generate Logo / Image'}</label>
+                    <input type="number" value={settings.costGenerateLogo || 0} onChange={e => handleFieldChange('costGenerateLogo', e.target.value)} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'تحليل SWOT الاستراتيجي' : 'SWOT Analysis Cost'}</label>
+                    <input type="number" value={settings.costSwotAnalysis || 0} onChange={e => handleFieldChange('costSwotAnalysis', e.target.value)} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'تحليل المنافسين والفجوات' : 'Competitor Analysis Cost'}</label>
+                    <input type="number" value={settings.costCompetitorAnalysis || 0} onChange={e => handleFieldChange('costCompetitorAnalysis', e.target.value)} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{isRTL ? 'بناء خطة الاستراتيجية الكاملة' : 'Strategy Builder Cost'}</label>
+                    <input type="number" value={settings.costStrategyBuilder || 0} onChange={e => handleFieldChange('costStrategyBuilder', e.target.value)} style={inputStyle} />
+                  </div>
                 </div>
               </div>
 
@@ -1176,9 +1399,14 @@ const AiSettingsPage = () => {
                               </div>
                             </td>
                             <td className="ai-settings-table-cell" style={tableCellStyle}>
-                              <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                                ${Number(log.cost || 0).toFixed(6)}
-                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                  ${Number(log.cost || 0).toFixed(6)}
+                                </span>
+                                <span style={{ fontSize: '10.5px', color: 'var(--text3)' }}>
+                                  {log.creditsDeducted || 0} Credits
+                                </span>
+                              </div>
                             </td>
                             <td className="ai-settings-table-cell" style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
                               {formattedDate}
@@ -1399,9 +1627,14 @@ const AiSettingsPage = () => {
                         <td style={tableCellStyle}>{user.calls}</td>
                         <td style={tableCellStyle}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                              ${user.cost.toFixed(5)}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                ${user.cost.toFixed(5)}
+                              </span>
+                              <span style={{ fontSize: '10.5px', color: 'var(--text3)' }}>
+                                {user.credits || 0} Credits
+                              </span>
+                            </div>
                             {user.userId && (
                               <button
                                 onClick={() => openRefillModal(user.userId, user.email, user.name)}
@@ -1511,13 +1744,13 @@ const AiSettingsPage = () => {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '10px' }}>
                 <span style={{ color: 'var(--text3)' }}>{isRTL ? 'الرصيد الحالي للمستخدم:' : 'User Current Balance:'}</span>
-                <span style={{ color: 'var(--orange)', fontWeight: 'bold' }}>${refillModalUser.currentCredits}</span>
+                <span style={{ color: 'var(--orange)', fontWeight: 'bold' }}>{refillModalUser.currentCredits} Credits</span>
               </div>
-              <label style={labelStyle}>{isRTL ? 'المبلغ المراد إضافته ($)' : 'Amount to Add ($)'}</label>
+              <label style={labelStyle}>{isRTL ? 'الرصيد المراد إضافته (Credits)' : 'Credits to Add'}</label>
               <input
                 type="number"
                 step="1"
-                placeholder={isRTL ? "مثال: 5.00 أو -5.00 لخصم الرصيد" : "e.g. 5.00 or -5.00 to deduct"}
+                placeholder={isRTL ? "مثال: 100 أو -50 لخصم الرصيد" : "e.g. 100 or -50 to deduct"}
                 value={refillAmount}
                 onChange={e => setRefillAmount(e.target.value)}
                 style={inputStyle}

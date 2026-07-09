@@ -8,7 +8,8 @@ import { parseMarkdown } from '../../utils/markdown';
 import CustomSelect from '../CustomSelect';
 
 export default function ContentView() {
-  const { lang, L, t, GC, saveGC } = useBusiness();
+  const { lang, L, t, GC, saveGC, checkCredits, tenantConfig } = useBusiness();
+  const costGenerateScript = tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5;
 
   // Tab state inside Content Hub
   const [activeSubTab, setActiveSubTab] = useState('ct-ideas'); // 'ct-ideas', etc.
@@ -92,6 +93,7 @@ export default function ContentView() {
   const savedIdeas = GC.contentHub?.savedIdeas || [];
  
   const handleGenIdeas = async () => {
+    if (!checkCredits(costGenerateScript)) return;
     setLoadingIdeas(true);
     const isArabic = lang === 'ar';
     const systemPrompt = isArabic
@@ -212,6 +214,7 @@ Return format (JSON Array):
   const [generatingCaptions, setGeneratingCaptions] = useState(false);
 
   const handleGenCaps = async () => {
+    if (!checkCredits(costGenerateScript)) return;
     if (!capInp.trim()) {
       alert(L('Please enter a description first', 'الرجاء كتابة وصف المنشور أولاً'));
       return;
@@ -294,7 +297,7 @@ Return format (JSON Array):
         } else {
           outputSetter(accumulated);
         }
-      });
+      }, costGenerateScript);
       const finalRes = response || accumulated;
       if (isArrayOutput) {
         const parts = finalRes.split(/(?=\d\.\s*)/g).filter(Boolean);
@@ -317,6 +320,7 @@ Return format (JSON Array):
   };
 
   const handleGenerateScript = async () => {
+    if (!checkCredits(costGenerateScript)) return;
     if (!scrTopic.trim()) {
       alert(L('Please enter a video topic first', 'من فضلك أدخل موضوع الفيديو أولاً'));
       return;
@@ -491,6 +495,7 @@ Return format (JSON Array):
   const [generatingQA, setGeneratingQA] = useState(false);
 
   const handleGenQA = async () => {
+    if (!checkCredits(costGenerateScript)) return;
     if (!qaInp.trim()) {
       alert(L('Please enter a question first', 'الرجاء إدخال السؤال أولاً'));
       return;
@@ -547,6 +552,7 @@ IMPORTANT: You MUST use rich Markdown styling to format the output.
 
   const handleImproveQA = async (instruction) => {
     if (!qaAnswer) return;
+    if (!checkCredits(costGenerateScript)) return;
     setGeneratingQA(true);
     
     const prompt = `Modify this generated response to follow this instruction: "${instruction}".
@@ -579,6 +585,7 @@ Make sure to keep/use rich Markdown formatting (headings, lists, and bold text f
   const [generatingSounds, setGeneratingSounds] = useState(false);
 
   const handleGenTrendingSounds = async () => {
+    if (!checkCredits(costGenerateScript)) return;
     setGeneratingSounds(true);
     const isArabic = lang === 'ar';
     const systemPrompt = `You are a social media trend analyst specializing in social media viral audio tracking.
@@ -945,7 +952,7 @@ Return strictly as a JSON array of objects:
                   </div>
                 </div>
                 <button className="btn btn-prime" onClick={handleGenerateScript} style={{ width: '100%', justifyContent: 'center' }}>
-                  {generatingScript ? L('Generating...', 'جاري الكتابة...') : L('🎬 Generate Full Script', '🎬 كتابة سكريبت كامل')}
+                  {generatingScript ? L('Generating...', 'جاري الكتابة...') : `${L('🎬 Generate Full Script', '🎬 كتابة سكريبت كامل')} (${costGenerateScript} Credits)`}
                 </button>
               </div>
             </div>

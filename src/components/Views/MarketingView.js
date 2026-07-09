@@ -10,8 +10,10 @@ import CustomSelect from '../CustomSelect';
 const generateReportId = () => 'rep_' + Date.now();
 
 export default function MarketingView() {
-  const { lang, L, t, GC, saveGC, formatMoney, confirmAction, currency } = useBusiness();
+  const { lang, L, t, GC, saveGC, formatMoney, confirmAction, currency, checkCredits, tenantConfig } = useBusiness();
   const [activeTab, setActiveTab] = useState('research');
+  const costCompetitorAnalysis = tenantConfig?.costCompetitorAnalysis !== undefined ? Number(tenantConfig.costCompetitorAnalysis) : 30;
+  const costStrategyBuilder = tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 50;
 
   const [competitorsCount, setCompetitorsCount] = useState(0);
   const [audienceCount, setAudienceCount] = useState(0);
@@ -249,7 +251,20 @@ export default function MarketingView() {
     );
   };
 
-  const triggerAI = async (toolKey, outputId, promptText, systemText, extraCounts = {}) => {
+  const triggerAI = async (toolKey, outputId, promptText, systemText, extraCounts = {}, isSubStep = false) => {
+    const cost = isSubStep 
+      ? 0 
+      : toolKey.includes('competitor') 
+        ? costCompetitorAnalysis 
+        : toolKey === 'strategy' || toolKey === 'strategy-feedback-opt'
+          ? costStrategyBuilder 
+          : 5; // default 5 for others
+
+    if (cost > 0 && !checkCredits(cost)) {
+      setLoading(prev => ({ ...prev, [outputId]: false }));
+      return null;
+    }
+
     setOutputs(prev => ({ ...prev, [outputId]: '' }));
     setLoading(prev => ({ ...prev, [outputId]: true }));
     let accumulated = '';
@@ -276,7 +291,8 @@ export default function MarketingView() {
           }
           accumulated += chunk;
           setOutputs(prev => ({ ...prev, [outputId]: accumulated }));
-        }
+        },
+        cost
       );
       
       const finalResponse = response || accumulated || L('Error generating report.', 'حدث خطأ أثناء التوليد.');
@@ -330,27 +346,25 @@ For each competitor, provide:
     setOutputs(prev => ({ ...prev, 'comp-out': '', 'comp-ads-out': '', 'direction-out': '' }));
     setLoading(prev => ({ ...prev, 'comp-out': true, 'comp-ads-out': true, 'direction-out': true }));
 
-    const compResult = await triggerAI('competitor-finder', 'comp-out', compPrompt, compSystem);
+    const compResult = await triggerAI('competitor-finder', 'comp-out', compPrompt, compSystem, {}, false);
 
     const adsPrompt = `My Niche: "${inputs.resNiche}"
-Our Business Description: "${GC.profile?.desc || ''}"
-Our Competitors: "${compResult || ''}"
+Context (ICP / Target Client): "${icpData}"
+Suggested Competitors:
+"${compResult || 'لا توجد تفاصيل منافسين مسجلة'}"
 
 Based on these specific competitors, outline winning competitor hooks, ad copy angles, creative formats (image/video style), and conversion strategies we should deploy. Do not invent other competitor names; build directly on top of the competitors listed above.`;
-    const adsSystem = `You are a PPC & Ad Intelligence specialist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    const adsResult = await triggerAI('competitor-ads', 'comp-ads-out', adsPrompt, adsSystem);
+    const adsSystem = `You are a creative ad director. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    const adsResult = await triggerAI('competitor-ads', 'comp-ads-out', adsPrompt, adsSystem, {}, true);
 
-    const dirPrompt = `Generate a Comprehensive Marketing Directions report:
-Website/Page: "${inputs.resWebsite}"
-Niche: "${inputs.resNiche}"
-Target Client (ICP): "${icpData}"
-Current Offer: "${GC.profile?.offer?.name || ''}" (${GC.profile?.offer?.price || ''})
-Competitors: "${compResult || ''}"
-Competitor Ad Angles: "${adsResult || ''}"
+    const dirPrompt = `My Niche: "${inputs.resNiche}"
+Context (ICP / Target Client): "${icpData}"
+Competitor Ad Breakdown:
+"${adsResult || 'لا توجد تفاصيل إعلانات منافسين مسجلة'}"
 
 Perform a combined analysis merging our service details, ideal client profile, and competitor ad strategies. Provide 3 highly targeted marketing directions/angles, highlighting specific client pain points to hook them, and explain how we can position our service as the ultimate solution compared to these competitors. Do NOT repeat or duplicate the competitor lists; focus strictly on our unique marketing angles and directions.`;
-    const dirSystem = `You are a master brand and marketing strategist. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
-    await triggerAI('marketing-directions', 'direction-out', dirPrompt, dirSystem);
+    const dirSystem = `You are a chief growth officer. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+    await triggerAI('marketing-directions', 'direction-out', dirPrompt, dirSystem, {}, true);
   };
 
   // ── 2. STRATEGY SUB-ACTIONS ──
@@ -936,7 +950,7 @@ Please compute a comprehensive Lead & Client Growth Forecast:
                   style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }}
                   disabled={loading['comp-out'] || loading['comp-ads-out'] || loading['direction-out']}
                 >
-                  {loading['comp-out'] ? L('Generating...', 'جاري التوليد...') : `🕵️ ${L('Generate Complete Research', 'بدء الأبحاث والتحليل')}`}
+                  {loading['comp-out'] ? L('Generating...', 'جاري التوليد...') : `🕵️ ${L('Generate Complete Research', 'بدء الأبحاث والتحليل')} (${costCompetitorAnalysis} Credits)`}
                 </button>
               </div>
             </div>
@@ -1009,7 +1023,7 @@ Please compute a comprehensive Lead & Client Growth Forecast:
                   onClick={runAutoMarketingPlan}
                   disabled={loading['strat-plan-out']}
                 >
-                  {loading['strat-plan-out'] ? L('Generating...', 'جاري التوليد...') : `✦ ${L('Generate Marketing Plan', 'إنشاء خطة التسويق')}`}
+                  {loading['strat-plan-out'] ? L('Generating...', 'جاري التوليد...') : `✦ ${L('Generate Marketing Plan', 'إنشاء خطة التسويق')} (${costStrategyBuilder} Credits)`}
                 </button>
               </div>
               <div 
@@ -1316,7 +1330,7 @@ Please compute a comprehensive Lead & Client Growth Forecast:
                   style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }} 
                   disabled={loading['strat-feedback-out']}
                 >
-                  {loading['strat-feedback-out'] ? L('Optimizing...', 'جاري التحسين...') : `🔄 ${L('Generate Next Month\'s Plan', 'توليد خطة الشهر القادم ✦')}`}
+                  {loading['strat-feedback-out'] ? L('Optimizing...', 'جاري التحسين...') : `🔄 ${L('Generate Next Month\'s Plan', 'توليد خطة الشهر القادم ✦')} (${costStrategyBuilder} Credits)`}
                 </button>
               </div>
 

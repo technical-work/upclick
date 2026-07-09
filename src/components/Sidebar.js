@@ -146,7 +146,7 @@ export default function Sidebar() {
       items: [
         { page: 'integrations', label: 'Integrations', icon: '⛓' },
         { page: 'analytics', label: 'Analytics', icon: '◈' },
-        { page: 'billing', label: 'Billing & Subscription', icon: '💳' },
+        { page: 'billing', label: 'Billing & Credits', icon: '💳' },
         { page: 'support', label: 'Technical Support', icon: '🛠' },
         { page: 'model-test', label: 'اختبار الموديل', icon: '⏱️' }
       ]
@@ -358,7 +358,7 @@ export default function Sidebar() {
             justifyContent: 'center',
             boxSizing: 'border-box'
           }}>
-            🤖 {isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} ${Number(userData.aiCredits) > 0 && Number(userData.aiCredits) < 0.01 ? Number(userData.aiCredits).toFixed(4) : Number(userData.aiCredits).toFixed(2)}
+            🤖 {isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} {Math.round(userData.aiCredits)} {isRtl ? 'كريديت' : 'cr'}
           </div>
         )}
 

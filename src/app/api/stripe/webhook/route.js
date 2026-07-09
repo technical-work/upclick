@@ -37,7 +37,7 @@ export async function POST(req) {
       const session = event.data.object;
 
       if (session.payment_status === 'paid') {
-        const { userId, planDuration, amount, currency, adminId } = session.metadata || {};
+        const { userId, planDuration, amount, currency, adminId, creditsToAdd, planName } = session.metadata || {};
 
         if (!userId) {
           console.error('❌ Webhook error: Missing userId in session metadata');
@@ -57,105 +57,134 @@ export async function POST(req) {
           }
         }
 
-        // Prevent double activations (check if payment record exists)
-        const alreadyVerifiedSnap = await adminDb.collection('payments')
-          .where('stripeSessionId', '==', session.id)
-          .get();
-
-        if (!alreadyVerifiedSnap.empty) {
-          console.log(`ℹ️ Session ${session.id} already verified. Skipping webhook activation.`);
-          return NextResponse.json({ success: true, message: 'Already processed' });
-        }
-
         // Fetch user details
         const userRef = adminDb.collection('users').doc(userId);
-        const userSnap = await userRef.get();
+        const webhookRef = adminDb.collection('processed_webhooks').doc(event.id || 'missing_event_id');
 
-        if (!userSnap.exists) {
-          console.error(`❌ Webhook error: User ${userId} not found`);
-          return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
+        try {
+          await adminDb.runTransaction(async (transaction) => {
+            // 1. Check if Stripe Webhook event was already processed
+            const webhookSnap = await transaction.get(webhookRef);
+            if (webhookSnap.exists) {
+              throw new Error('already_processed');
+            }
 
-        const userData = userSnap.data();
+            // 2. Fetch user details inside transaction
+            const userSnap = await transaction.get(userRef);
+            if (!userSnap.exists) {
+              throw new Error('user_not_found');
+            }
+            const userData = userSnap.data();
 
-        // Calculate new expiration date
-        let baseDate = Date.now();
-        let currentExpires = userData.expiresAt;
-        
-        if (currentExpires) {
-          const currentMs = currentExpires.toDate 
-            ? currentExpires.toDate().getTime() 
-            : (currentExpires.seconds 
-                ? currentExpires.seconds * 1000 
-                : new Date(currentExpires).getTime());
-                
-          if (currentMs > Date.now()) {
-            baseDate = currentMs;
+            // 3. Check if Stripe session payment has already been credited
+            // Since queries are not allowed in transaction reads directly without locks,
+            // the primary lock is done on the webhookRef event.id. We can do a final double-check here.
+            // Calculate new expiration date
+            let baseDate = Date.now();
+            let currentExpires = userData.expiresAt;
+            
+            if (currentExpires) {
+              const currentMs = currentExpires.toDate 
+                ? currentExpires.toDate().getTime() 
+                : (currentExpires.seconds 
+                    ? currentExpires.seconds * 1000 
+                    : new Date(currentExpires).getTime());
+                    
+              if (currentMs > Date.now()) {
+                baseDate = currentMs;
+              }
+            }
+
+            let isRecharge = planDuration === 'recharge';
+            let daysToAdd = 30;
+            if (planDuration === 'annual') daysToAdd = 365;
+            else if (planDuration === 'one-time') daysToAdd = 9999;
+
+            const newExpiresDate = new Date(baseDate);
+            if (!isRecharge) {
+              newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
+            }
+
+            let creditToAdd = 0;
+            if (creditsToAdd && Number(creditsToAdd) > 0) {
+              creditToAdd = Number(creditsToAdd);
+            } else {
+              // Fallback to global configurations
+              const globalDocRef = adminDb.collection('tenants').doc('global');
+              const globalSnap = await transaction.get(globalDocRef);
+              const globalData = globalSnap.exists ? globalSnap.data() : {};
+
+              if (planDuration === 'annual') {
+                creditToAdd = globalData.creditAnnualPlan !== undefined ? Number(globalData.creditAnnualPlan) : 120.00;
+              } else if (planDuration === 'one-time') {
+                creditToAdd = globalData.creditLifetimePlan !== undefined ? Number(globalData.creditLifetimePlan) : 500.00;
+              } else {
+                creditToAdd = globalData.creditMonthlyPlan !== undefined ? Number(globalData.creditMonthlyPlan) : 10.00;
+              }
+            }
+
+            const currentUserCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : 0;
+
+            const userUpdates = {
+              aiCredits: currentUserCredits + creditToAdd
+            };
+            if (!isRecharge) {
+              userUpdates.expiresAt = newExpiresDate;
+              userUpdates.isTrial = false;
+              userUpdates.plan = planName || (planDuration === 'annual' ? 'Pro Annual' : (planDuration === 'one-time' ? 'Pro Lifetime' : 'Pro Monthly'));
+            }
+
+            // Update user subscription state inside transaction
+            transaction.set(userRef, userUpdates, { merge: true });
+
+            // Record webhook event to processed_webhooks collection to ensure idempotency
+            transaction.set(webhookRef, {
+              processedAt: FieldValue.serverTimestamp(),
+              stripeSessionId: session.id,
+              userId: userId
+            });
+
+            // Add payment document to collection inside transaction
+            const paymentRef = adminDb.collection('payments').doc();
+            transaction.set(paymentRef, {
+              userId,
+              userName: userData.name || userData.email?.split('@')[0] || 'User',
+              userEmail: userData.email || '',
+              adminId: userData.adminId || null,
+              amount: parseFloat(amount || 0),
+              currency: currency || 'EGP',
+              paymentMethod: 'stripe',
+              planDuration: planDuration || 'monthly',
+              receiptUrl: session.invoice ? `https://billing.stripe.com/p/invoices/${session.invoice}` : '',
+              status: 'approved',
+              approvedAt: FieldValue.serverTimestamp(),
+              createdAt: FieldValue.serverTimestamp(),
+              stripeSessionId: session.id
+            });
+
+            // Add sale document to collection inside transaction
+            const salesRef = adminDb.collection('sales').doc();
+            transaction.set(salesRef, {
+              userId,
+              customerName: userData.name || userData.email?.split('@')[0] || 'User',
+              amount: parseFloat(amount || 0),
+              adminId: userData.adminId || null,
+              createdAt: FieldValue.serverTimestamp()
+            });
+          });
+
+          console.log(`✅ Webhook success: User ${userId} subscription activated successfully via Stripe.`);
+        } catch (txError) {
+          if (txError.message === 'already_processed') {
+            console.log(`ℹ️ Webhook event ${event.id} (Session ${session.id}) already processed. Skipping webhook activation.`);
+            return NextResponse.json({ success: true, message: 'Already processed' });
           }
-        }
-
-        let daysToAdd = 30;
-        if (planDuration === 'annual') daysToAdd = 365;
-        else if (planDuration === 'one-time') daysToAdd = 9999;
-
-        const newExpiresDate = new Date(baseDate);
-        newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
-
-        // Fetch global settings to get the credit configuration for this plan
-        const globalDoc = await adminDb.collection('tenants').doc('global').get();
-        let creditToAdd = 0;
-        if (globalDoc.exists) {
-          const globalData = globalDoc.data();
-          if (planDuration === 'annual') {
-            creditToAdd = globalData.creditAnnualPlan !== undefined ? Number(globalData.creditAnnualPlan) : 120.00;
-          } else if (planDuration === 'one-time') {
-            creditToAdd = globalData.creditLifetimePlan !== undefined ? Number(globalData.creditLifetimePlan) : 500.00;
-          } else {
-            creditToAdd = globalData.creditMonthlyPlan !== undefined ? Number(globalData.creditMonthlyPlan) : 10.00;
+          if (txError.message === 'user_not_found') {
+            console.error(`❌ Webhook error: User ${userId} not found`);
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
           }
-        } else {
-          // Fallback defaults
-          if (planDuration === 'annual') creditToAdd = 120.00;
-          else if (planDuration === 'one-time') creditToAdd = 500.00;
-          else creditToAdd = 10.00;
+          throw txError;
         }
-
-        const currentUserCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : 0;
-
-        // Update user subscription state
-        await userRef.set({
-          expiresAt: newExpiresDate,
-          isTrial: false,
-          aiCredits: currentUserCredits + creditToAdd
-        }, { merge: true });
-
-        // Add payment document to collection
-        await adminDb.collection('payments').add({
-          userId,
-          userName: userData.name || userData.email?.split('@')[0] || 'User',
-          userEmail: userData.email || '',
-          adminId: userData.adminId || null,
-          amount: parseFloat(amount || 0),
-          currency: currency || 'EGP',
-          paymentMethod: 'stripe',
-          planDuration: planDuration || 'monthly',
-          receiptUrl: session.invoice ? `https://billing.stripe.com/p/invoices/${session.invoice}` : '',
-          status: 'approved',
-          approvedAt: FieldValue.serverTimestamp(),
-          createdAt: FieldValue.serverTimestamp(),
-          stripeSessionId: session.id
-        });
-
-        // Add sale document to collection
-        await adminDb.collection('sales').add({
-          userId,
-          customerName: userData.name || userData.email?.split('@')[0] || 'User',
-          amount: parseFloat(amount || 0),
-          adminId: userData.adminId || null,
-          createdAt: FieldValue.serverTimestamp()
-        });
-
-        console.log(`✅ Webhook success: User ${userId} subscription activated successfully via Stripe.`);
       }
     }
 

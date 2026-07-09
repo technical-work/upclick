@@ -18,7 +18,7 @@ const MICRO_NICHES = {
 };
 
 export default function DigitalProductsView() {
-  const { lang, L, t, GC, saveGC, setDpDetailOpen, setDpDetailIndex, confirmAction, promptAction } = useBusiness();
+  const { lang, L, t, GC, saveGC, setDpDetailOpen, setDpDetailIndex, confirmAction, promptAction, checkCredits, tenantConfig } = useBusiness();
 
   // Tab state
   const [activeSubTab, setActiveSubTab] = useState('trending'); // 'trending', 'niche', 'builder', 'myproducts'
@@ -278,6 +278,8 @@ DO NOT write any introduction, description, markdown explanation, or formatting 
 
   // Load Micro Niche Products
   const handleLoadMicroNicheProducts = async (micro, mainNiche) => {
+    const cost = tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5;
+    if (!checkCredits(cost)) return;
     setSelectedMicroNiche(micro);
     setLoadingNicheProducts(true);
     setNicheProducts([]);
@@ -302,7 +304,7 @@ You MUST return a valid JSON array. Each object in the array must look exactly l
 DO NOT write any introduction, description, markdown explanation, or formatting outside of the JSON array. Start your response directly with [ and end with ].`;
       const systemText = 'Digital product researcher. Return ONLY JSON array.';
 
-      const rawText = await callClaudeAPI(promptText, systemText, lang, GC);
+      const rawText = await callClaudeAPI(promptText, systemText, lang, GC, 'Micro Niche Products', null, cost);
       
       if (typeof rawText === 'string' && rawText.includes('❌')) {
         setNicheProducts([
@@ -335,6 +337,8 @@ DO NOT write any introduction, description, markdown explanation, or formatting 
 
   // Generate execution plan
   const handleBuildDPPlan = async () => {
+    const cost = tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 50;
+    if (!checkCredits(cost)) return;
     if (!builderName.trim()) {
       alert(L('Enter a product name first', 'الرجاء إدخال اسم المنتج أولاً'));
       return;
@@ -408,7 +412,7 @@ Return ONLY valid JSON. Start directly with { and end with }.`;
 
       const systemText = 'You are a digital product launch strategist specializing in the Arab creator economy. Return ONLY a valid JSON object.';
 
-      const reply = await callClaudeAPI(promptText, systemText, lang, GC);
+      const reply = await callClaudeAPI(promptText, systemText, lang, GC, 'Digital Product Builder Plan', null, cost);
 
       let cleaned = (reply || '{}').replace(/```json/g, '').replace(/```/g, '').trim();
       if (cleaned.indexOf('{') > -1) {
@@ -501,6 +505,8 @@ Return ONLY valid JSON. Start directly with { and end with }.`;
 
   const handleGenerateOutline = async () => {
     if (!selectedManageProduct) return;
+    const cost = tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5;
+    if (!checkCredits(cost)) return;
     setGeneratingOutline(true);
     try {
       const promptText = `Generate a comprehensive outline/syllabus for this digital product:
@@ -511,7 +517,7 @@ Target Audience: ${selectedManageProduct.audience}
 Provide 4 detailed modules or sections, with 3 sub-items each, written in Arabic. Focus on practical deliverables.`;
       const systemText = 'You are a digital product creator. Return a clean markdown list outline.';
       
-      const res = await callClaudeAPI(promptText, systemText, lang, GC);
+      const res = await callClaudeAPI(promptText, systemText, lang, GC, 'Digital Product Outline', null, cost);
       const updated = {
         ...selectedManageProduct,
         outline: res || ''

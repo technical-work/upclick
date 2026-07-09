@@ -26,7 +26,9 @@ export default function StripePaymentButton({
   adminId,
   buttonText,
   className = 'btn btn-prime',
-  style = {}
+  style = {},
+  creditsToAdd = 0,
+  disabled = false
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,6 +55,7 @@ export default function StripePaymentButton({
           planDuration,
           userId,
           adminId,
+          creditsToAdd
         }),
       });
 
@@ -80,7 +83,7 @@ export default function StripePaymentButton({
       <button
         type="button"
         onClick={handleCheckout}
-        disabled={loading}
+        disabled={loading || disabled}
         className={className}
         style={{
           width: '100%',
@@ -88,8 +91,8 @@ export default function StripePaymentButton({
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          opacity: loading ? 0.7 : 1,
+          cursor: (loading || disabled) ? 'not-allowed' : 'pointer',
+          opacity: (loading || disabled) ? 0.7 : 1,
           ...style,
         }}
       >

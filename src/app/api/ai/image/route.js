@@ -29,7 +29,8 @@ export async function POST(request) {
     const globalData = globalDoc.data();
     let openaiApiKey = globalData.openaiApiKey;
     let imageEndpoint = 'https://api.openai.com/v1/images/generations';
-    const defaultUserCredit = globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00;
+    const creditsPerDollar = globalData.creditsPerDollar !== undefined ? Number(globalData.creditsPerDollar) : 100;
+    const defaultUserCredit = (globalData.defaultUserCredit !== undefined ? Number(globalData.defaultUserCredit) : 5.00) * creditsPerDollar;
     const aiEnabled = globalData.aiEnabled !== false;
 
     if (!aiEnabled) {
@@ -52,11 +53,12 @@ export async function POST(request) {
     const userData = userDoc.data();
     const aiCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : defaultUserCredit;
 
-      // 3. Insufficient credits check (minimum cost is DALL-E 2 which is $0.02)
-    const minCost = 0.02;
-    if (aiCredits < minCost) {
+    const finalCreditsDeduction = globalData.costGenerateLogo !== undefined ? Number(globalData.costGenerateLogo) : 40;
+
+    // 3. Insufficient credits check
+    if (aiCredits < finalCreditsDeduction) {
       return NextResponse.json({ 
-        error: 'حسابك لا يحتوي على رصيد كافٍ لتوليد صورة. الحد الأدنى لتوليد الصورة هو $0.02.' 
+        error: `حسابك لا يحتوي على رصيد كافٍ لتوليد صورة. تحتاج إلى ${finalCreditsDeduction} كريديت على الأقل.` 
       }, { status: 403 });
     }
 
@@ -130,11 +132,8 @@ export async function POST(request) {
     }
 
     // 5. Deduct credits & Log when image generation finishes successfully
-    const aiMarkupMultiplier = globalData.aiMarkupMultiplier !== undefined ? Number(globalData.aiMarkupMultiplier) : 1.0;
-    const userDeductionCost = cost * aiMarkupMultiplier;
-    const newCredits = Math.max(0, aiCredits - userDeductionCost);
     await userRef.update({
-      aiCredits: newCredits
+      aiCredits: FieldValue.increment(-finalCreditsDeduction)
     });
 
     await adminDb.collection('ai_logs').add({
@@ -145,6 +144,7 @@ export async function POST(request) {
       inputTokens: 0,
       outputTokens: 0,
       cost: cost,
+      creditsDeducted: finalCreditsDeduction,
       tool: 'Design Studio',
       timestamp: new Date()
     });

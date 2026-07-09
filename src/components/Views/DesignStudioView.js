@@ -8,8 +8,9 @@ import { storage } from '../../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function DesignStudioView() {
-  const { t, L, setAiPanelOpen, GC, saveGC, showToast } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC, showToast, checkCredits, tenantConfig } = useBusiness();
   const { user } = useAuth();
+  const costGenerateLogo = tenantConfig?.costGenerateLogo !== undefined ? Number(tenantConfig.costGenerateLogo) : 40;
   
   // Image URL states
   const [generatedLogoUrl, setGeneratedLogoUrl] = useState('');
@@ -179,6 +180,7 @@ export default function DesignStudioView() {
   };
 
   const handleGenerate = async () => {
+    if (!checkCredits(costGenerateLogo)) return;
     let prompt = getPromptForTab(activeTab);
     if (!prompt) return;
 
@@ -198,6 +200,8 @@ export default function DesignStudioView() {
           },
           body: JSON.stringify({
             userId: user?.uid,
+            tool: 'Design Studio - Vision Analysis',
+            creditsCost: 0,
             messages: [
               { role: 'system', content: systemPrompt },
               { 
@@ -529,7 +533,7 @@ export default function DesignStudioView() {
               </div>
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
-                ✦ {L('Generate Logo', 'توليد الشعار')}
+                ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Logo', 'توليد الشعار')} (${costGenerateLogo} Credits)`}
               </button>
             </div>
 
@@ -660,7 +664,7 @@ export default function DesignStudioView() {
               </div>
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
-                ✦ {L('Generate Design', 'توليد التصميم')}
+                ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Post Artwork', 'توليد المنشور')} (${costGenerateLogo} Credits)`}
               </button>
             </div>
 
@@ -837,7 +841,7 @@ export default function DesignStudioView() {
               </div>
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
-                ✦ {L('Generate Banner', 'توليد الغلاف')}
+                ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Profile Banner', 'توليد الغلاف')} (${costGenerateLogo} Credits)`}
               </button>
             </div>
             
@@ -902,7 +906,7 @@ export default function DesignStudioView() {
                 </div>
               </div>
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
-                ✦ {L('Generate Business Card', 'توليد بطاقة العمل')}
+                ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Card Design', 'توليد بطاقة العمل')} (${costGenerateLogo} Credits)`}
               </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'sticky', top: '14px' }}>
