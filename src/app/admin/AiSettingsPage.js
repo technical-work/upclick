@@ -431,12 +431,128 @@ const AiSettingsPage = () => {
   };
 
   return (
-    <div style={{ animation: 'fadeSlide 0.4s ease', maxWidth: activeSubTab === 'config' ? '600px' : '1000px', margin: '0 auto', transition: 'max-width 0.3s ease' }}>
+    <div className="ai-settings-container" style={{ animation: 'fadeSlide 0.4s ease', maxWidth: activeSubTab === 'config' ? '600px' : '1000px', margin: '0 auto', transition: 'max-width 0.3s ease' }}>
+      <style>{`
+        /* AI Settings Responsive Overrides */
+        @media (max-width: 768px) {
+          /* Container Padding */
+          .ai-settings-container {
+            padding: 10px 4px !important;
+          }
+          
+          /* Sub Tabs Navigation */
+          .ai-settings-subtabs {
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+            padding-bottom: 6px !important;
+          }
+          .ai-settings-tab-btn {
+            flex: 1 1 calc(50% - 6px) !important; /* Stack to 2 columns on mobile */
+            justify-content: center !important;
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+          }
+          @media (max-width: 480px) {
+            .ai-settings-tab-btn {
+              flex: 1 1 100% !important; /* Full width stacked on very small mobile */
+            }
+          }
+          
+          /* Filter and search bar */
+          .ai-settings-filter-bar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            padding: 12px 14px !important;
+          }
+          .ai-settings-filter-bar > div {
+            width: 100% !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 8px !important;
+          }
+          .ai-settings-filter-input {
+            width: 100% !important;
+          }
+          .ai-settings-filter-bar .btn {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .ai-settings-search-wrapper {
+            width: 100% !important; /* Search bar input occupies full width */
+          }
+
+          /* Configuration forms */
+          .ai-settings-config-card {
+            padding: 14px !important;
+          }
+          .ai-settings-credits-grid {
+            grid-template-columns: 1fr !important; /* Stack monthly/annual/lifetime credit fields */
+            gap: 10px !important;
+          }
+          .ai-settings-params-grid {
+            grid-template-columns: 1fr !important; /* Stack temperature/max tokens/safety budget */
+            gap: 10px !important;
+          }
+
+          /* Table responsiveness & Typography */
+          .ai-settings-logs-table {
+            min-width: 800px !important;
+          }
+          .ai-settings-table-header {
+            padding: 8px 6px !important;
+            font-size: 11px !important;
+            white-space: nowrap !important;
+          }
+          .ai-settings-table-cell {
+            padding: 8px 6px !important;
+            font-size: 11.5px !important;
+            white-space: nowrap !important;
+          }
+          .ai-settings-table-cell code, 
+          .ai-settings-table-cell span, 
+          .ai-settings-table-cell div {
+            font-size: 11px !important;
+            white-space: nowrap !important;
+            display: inline-block !important;
+          }
+          .ai-settings-table-cell div {
+            display: block !important;
+          }
+          
+          /* Pagination Bar wrapping */
+          .ai-settings-pagination {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 12px 10px !important;
+          }
+          
+          /* Stats Cards Grid (Analytics Dashboard) */
+          .ai-settings-stats-grid {
+            grid-template-columns: 1fr !important; /* Stacks 3 cards vertically */
+            gap: 10px !important;
+          }
+          .ai-settings-stats-card {
+            padding: 14px !important;
+          }
+          .ai-settings-stats-val {
+            font-size: 22px !important; /* Shrink text size of large currency values */
+          }
+
+          /* Detailed Tables Grid (Top Users & Features) */
+          .ai-settings-detailed-grid {
+            grid-template-columns: 1fr !important; /* Stacks Top Users and Top Features side-by-side grids vertically */
+            gap: 12px !important;
+          }
+        }
+      `}</style>
       
       {/* Sub Tabs Navigation */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '10px' }}>
+      <div className="ai-settings-subtabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '10px' }}>
         <button
           onClick={() => setActiveSubTab('config')}
+          className="ai-settings-tab-btn"
           style={{
             background: activeSubTab === 'config' ? 'rgba(255, 107, 53, 0.1)' : 'transparent',
             border: 'none',
@@ -457,6 +573,7 @@ const AiSettingsPage = () => {
         </button>
         <button
           onClick={() => setActiveSubTab('logs')}
+          className="ai-settings-tab-btn"
           style={{
             background: activeSubTab === 'logs' ? 'rgba(255, 107, 53, 0.1)' : 'transparent',
             border: 'none',
@@ -477,6 +594,7 @@ const AiSettingsPage = () => {
         </button>
         <button
           onClick={() => setActiveSubTab('analytics')}
+          className="ai-settings-tab-btn"
           style={{
             background: activeSubTab === 'analytics' ? 'rgba(255, 107, 53, 0.1)' : 'transparent',
             border: 'none',
@@ -498,7 +616,7 @@ const AiSettingsPage = () => {
       </div>
 
       {activeSubTab !== 'config' && (
-        <div className="card" style={{
+        <div className="card ai-settings-filter-bar" style={{
           ...cardStyle,
           marginBottom: '16px',
           padding: '12px 20px',
@@ -516,6 +634,7 @@ const AiSettingsPage = () => {
             <select
               value={timeRange}
               onChange={e => setTimeRange(e.target.value)}
+              className="ai-settings-filter-input"
               style={{
                 background: 'var(--bg3)',
                 border: '1px solid var(--line2)',
@@ -540,6 +659,7 @@ const AiSettingsPage = () => {
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
+                  className="ai-settings-filter-input"
                   style={{
                     background: 'var(--bg3)',
                     border: '1px solid var(--line2)',
@@ -555,6 +675,7 @@ const AiSettingsPage = () => {
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
+                  className="ai-settings-filter-input"
                   style={{
                     background: 'var(--bg3)',
                     border: '1px solid var(--line2)',
@@ -580,7 +701,7 @@ const AiSettingsPage = () => {
       {/* SUB TAB 1: CONFIGURATION */}
       {activeSubTab === 'config' && (
         <>
-          <div className="card" style={cardStyle}>
+          <div className="card ai-settings-config-card" style={cardStyle}>
             <div style={{
               position: 'absolute',
               top: '-100px',
@@ -745,7 +866,7 @@ const AiSettingsPage = () => {
                 <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
                   {isRTL ? 'ربط رصيد الذكاء الاصطناعي بخطط الاشتراك' : 'AI Credit Association with Subscription Plans'}
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+                <div className="ai-settings-credits-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
                   <div>
                     <label style={labelStyle}>{isRTL ? 'الخطة الشهرية ($)' : 'Monthly Plan Credit ($)'}</label>
                     <input
@@ -792,7 +913,7 @@ const AiSettingsPage = () => {
                 <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
                   {isRTL ? 'إعدادات التحكم في الأداء الإبداعي والحدود' : 'AI Performance & Usage Controls'}
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                <div className="ai-settings-params-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                   <div>
                     <label style={labelStyle}>{isRTL ? 'درجة الإبداع والحرارة (Temperature)' : 'Creativity & Temperature'}</label>
                     <input
@@ -911,11 +1032,12 @@ const AiSettingsPage = () => {
             </div>
             
             {/* Search, Filters & Export controls */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            <div className="ai-settings-filter-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
               {/* Tool Filter */}
               <select
                 value={filterTool}
                 onChange={e => setFilterTool(e.target.value)}
+                className="ai-settings-filter-input"
                 style={{
                   background: 'var(--bg3)',
                   border: '1px solid var(--line2)',
@@ -937,6 +1059,7 @@ const AiSettingsPage = () => {
               <select
                 value={filterModel}
                 onChange={e => setFilterModel(e.target.value)}
+                className="ai-settings-filter-input"
                 style={{
                   background: 'var(--bg3)',
                   border: '1px solid var(--line2)',
@@ -975,7 +1098,7 @@ const AiSettingsPage = () => {
               </button>
 
               {/* Search Box */}
-              <div style={{ position: 'relative', width: '220px' }}>
+              <div className="ai-settings-search-wrapper" style={{ position: 'relative', width: '220px' }}>
                 <span style={{ position: 'absolute', top: '10px', [isRTL ? 'right' : 'left']: '12px', color: 'var(--text3)' }}>
                   <Search size={14} />
                 </span>
@@ -984,6 +1107,7 @@ const AiSettingsPage = () => {
                   placeholder={isRTL ? 'ابحث بالمستخدم...' : 'Search user...'}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
+                  className="ai-settings-filter-input"
                   style={{ ...inputStyle, paddingLeft: isRTL ? '14px' : '34px', paddingRight: isRTL ? '34px' : '14px' }}
                 />
               </div>
@@ -1001,16 +1125,16 @@ const AiSettingsPage = () => {
             </div>
           ) : (
             <div>
-              <div style={{ overflowX: 'auto', maxHeight: '550px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="ai-settings-logs-table-container" style={{ overflowX: 'auto', maxHeight: '550px' }}>
+                <table className="ai-settings-logs-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الأداة' : 'Feature / Tool'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'النموذج' : 'Model'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'التوكينز المستهلكة' : 'Tokens Consumed'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'التكلفة الإجمالية ($)' : 'Cost Incurred'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الوقت والتاريخ' : 'Date & Time'}</th>
+                      <th className="ai-settings-table-header" style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
+                      <th className="ai-settings-table-header" style={tableHeaderStyle}>{isRTL ? 'الأداة' : 'Feature / Tool'}</th>
+                      <th className="ai-settings-table-header" style={tableHeaderStyle}>{isRTL ? 'النموذج' : 'Model'}</th>
+                      <th className="ai-settings-table-header" style={tableHeaderStyle}>{isRTL ? 'التوكينز المستهلكة' : 'Tokens Consumed'}</th>
+                      <th className="ai-settings-table-header" style={tableHeaderStyle}>{isRTL ? 'التكلفة الإجمالية ($)' : 'Cost Incurred'}</th>
+                      <th className="ai-settings-table-header" style={tableHeaderStyle}>{isRTL ? 'الوقت والتاريخ' : 'Date & Time'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1030,20 +1154,20 @@ const AiSettingsPage = () => {
                         });
 
                         return (
-                          <tr key={log.id} style={tableRowStyle}>
-                            <td style={tableCellStyle}>
+                          <tr key={log.id} className="ai-settings-table-row" style={tableRowStyle}>
+                            <td className="ai-settings-table-cell" style={tableCellStyle}>
                               <div style={{ fontWeight: 'bold' }}>{log.userName || 'Anonymous'}</div>
                               <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{log.userEmail}</div>
                             </td>
-                            <td style={tableCellStyle}>
+                            <td className="ai-settings-table-cell" style={tableCellStyle}>
                               <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', fontWeight: '600' }}>
                                 {log.tool || 'General'}
                               </span>
                             </td>
-                            <td style={tableCellStyle}>
+                            <td className="ai-settings-table-cell" style={tableCellStyle}>
                               <code style={{ fontSize: '12px', color: 'var(--orange)' }}>{log.model}</code>
                             </td>
-                            <td style={tableCellStyle}>
+                            <td className="ai-settings-table-cell" style={tableCellStyle}>
                               <div style={{ fontSize: '12px' }}>
                                 📥 {log.inputTokens?.toLocaleString()} / 📤 {log.outputTokens?.toLocaleString()}
                               </div>
@@ -1051,12 +1175,12 @@ const AiSettingsPage = () => {
                                 {isRTL ? 'الإجمالي:' : 'Total:'} {((log.inputTokens || 0) + (log.outputTokens || 0)).toLocaleString()}
                               </div>
                             </td>
-                            <td style={tableCellStyle}>
+                            <td className="ai-settings-table-cell" style={tableCellStyle}>
                               <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
                                 ${Number(log.cost || 0).toFixed(6)}
                               </span>
                             </td>
-                            <td style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
+                            <td className="ai-settings-table-cell" style={{ ...tableCellStyle, color: 'var(--text3)', fontSize: '12px' }}>
                               {formattedDate}
                             </td>
                           </tr>
@@ -1069,7 +1193,7 @@ const AiSettingsPage = () => {
 
               {/* Pagination Controls */}
               {filteredLogs.length > logsPerPage && (
-                <div style={{ 
+                <div className="ai-settings-pagination" style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'space-between', 
@@ -1201,13 +1325,13 @@ const AiSettingsPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* Global Aggregates Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          <div className="ai-settings-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {/* Spend Card */}
-            <div className="card" style={{ ...cardStyle, borderLeft: '4px solid var(--green)' }}>
+            <div className="card ai-settings-stats-card" style={{ ...cardStyle, borderLeft: '4px solid var(--green)' }}>
               <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: 'bold' }}>
                 💰 {isRTL ? 'إجمالي تكلفة المنصة بالدولار' : 'TOTAL PLATFORM SPEND ($)'}
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--green)', marginTop: '8px' }}>
+              <div className="ai-settings-stats-val" style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--green)', marginTop: '8px' }}>
                 ${periodStats.totalAiSpend.toFixed(4)}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '6px' }}>
@@ -1216,11 +1340,11 @@ const AiSettingsPage = () => {
             </div>
 
             {/* Tokens Card */}
-            <div className="card" style={{ ...cardStyle, borderLeft: '4px solid var(--orange)' }}>
+            <div className="card ai-settings-stats-card" style={{ ...cardStyle, borderLeft: '4px solid var(--orange)' }}>
               <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: 'bold' }}>
                 ⚡ {isRTL ? 'إجمالي التوكينز المستهلكة' : 'TOTAL TOKENS CONSUMED'}
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text)', marginTop: '8px' }}>
+              <div className="ai-settings-stats-val" style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text)', marginTop: '8px' }}>
                 {periodStats.totalAiTokens.toLocaleString()}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '6px' }}>
@@ -1229,11 +1353,11 @@ const AiSettingsPage = () => {
             </div>
 
             {/* API Calls Card */}
-            <div className="card" style={{ ...cardStyle, borderLeft: '4px solid var(--accent)' }}>
+            <div className="card ai-settings-stats-card" style={{ ...cardStyle, borderLeft: '4px solid var(--accent)' }}>
               <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: 'bold' }}>
                 🤖 {isRTL ? 'إجمالي طلبات الذكاء الاصطناعي' : 'TOTAL AI CALLS'}
               </div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--accent)', marginTop: '8px' }}>
+              <div className="ai-settings-stats-val" style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--accent)', marginTop: '8px' }}>
                 {periodStats.totalAiCalls.toLocaleString()}
               </div>
               <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '6px' }}>
@@ -1243,10 +1367,10 @@ const AiSettingsPage = () => {
           </div>
 
           {/* Detailed Analytics Tables */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
+          <div className="ai-settings-detailed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
             
             {/* Top Users Card */}
-            <div className="card" style={cardStyle}>
+            <div className="card ai-settings-table-card" style={cardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                 <DollarSign size={15} style={{ color: 'var(--green)' }} />
                 <span>{isRTL ? 'المستخدمين الأكثر استهلاكاً للرصيد' : 'Top 5 Most Active Users (Cost)'}</span>
@@ -1306,7 +1430,7 @@ const AiSettingsPage = () => {
             </div>
 
             {/* Top Features Card */}
-            <div className="card" style={cardStyle}>
+            <div className="card ai-settings-table-card" style={cardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                 <Cpu size={15} style={{ color: 'var(--orange)' }} />
                 <span>{isRTL ? 'الأدوات الأكثر استخداماً' : 'Top 5 Used AI Features (Calls)'}</span>
