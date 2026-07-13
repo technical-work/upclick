@@ -79,22 +79,22 @@ const LayoutContent = ({ children }) => {
     <div className="admin-dashboard-theme" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <div className={`sidebar-overlay ${isMobileMenuOpen ? 'show' : ''}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '15px 14px', borderBottom: '1px solid var(--edge)', height: '85px', gap: '4px' }}>
+        <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px 14px', borderBottom: '1px solid var(--edge)', height: '95px', gap: '4px' }}>
           <div style={{
-            height: '45px',
-            width: '140px',
+            height: '80px',
+            width: '200px',
             overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <img 
-              src="/new-logo.png" 
-              alt="UpKlick Admin" 
+            <img
+              src="/best_logo_dark.png"
+              alt="UpKlick Admin"
               style={{
-                height: '150px',
+                height: '280px',
                 objectFit: 'contain',
-                marginTop: '-5px'
+                marginTop: '10px'
               }}
             />
           </div>
