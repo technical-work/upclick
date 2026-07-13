@@ -67,15 +67,15 @@ function DashboardShell() {
     if (stripeStatus === 'success' && sessionId && user?.uid) {
       setVerifyingStripe(true);
       const adminId = userData?.adminId || '';
-      
+
       fetch(`/api/stripe/verify-session?session_id=${sessionId}&adminId=${adminId}`)
         .then(async (res) => {
           const data = await res.json();
           if (!res.ok) {
             throw new Error(data.error || 'Failed to verify session');
           }
-          alert(lang === 'ar' 
-            ? 'تم تفعيل الاشتراك بنجاح! شكراً لك.' 
+          alert(lang === 'ar'
+            ? 'تم تفعيل الاشتراك بنجاح! شكراً لك.'
             : 'Your subscription has been successfully activated! Thank you.'
           );
           window.location.href = '/dashboard';
@@ -138,6 +138,7 @@ function DashboardShell() {
           {lang === 'ar' ? 'يرجى عدم إغلاق أو تحديث هذه الصفحة.' : 'Please do not close or refresh this page.'}
         </p>
       </div>
+    );
   }
 
   // Email Verification Lock Screen
@@ -206,9 +207,9 @@ function DashboardShell() {
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <img 
-                    src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
-                    alt={tenantConfig?.appName || "UpKlick Logo"} 
+                  <img
+                    src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
+                    alt={tenantConfig?.appName || "UpKlick Logo"}
                     style={{
                       height: '120px',
                       objectFit: 'contain',
@@ -217,9 +218,9 @@ function DashboardShell() {
                   />
                 </div>
               ) : (
-                <img 
-                  src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
-                  alt={tenantConfig?.appName || "UpKlick Logo"} 
+                <img
+                  src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
+                  alt={tenantConfig?.appName || "UpKlick Logo"}
                   style={{ maxHeight: '30px', objectFit: 'contain' }}
                 />
               );
@@ -236,8 +237,8 @@ function DashboardShell() {
               {lang === 'ar' ? 'منتهي الصلاحية - وضع مقيد' : 'Expired - Restricted Mode'}
             </span>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => logout()}
             className="btn btn-ghost"
             style={{
@@ -269,21 +270,21 @@ function DashboardShell() {
             <span style={{ fontSize: '24px' }}>⚠️</span>
             <div style={{ textAlign: 'start' }}>
               <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '14px', fontWeight: '700' }}>
-                {isTrialExpired() 
-                  ? (lang === 'ar' ? 'انتهت فترة التجربة المجانية' : 'Free Trial Expired') 
+                {isTrialExpired()
+                  ? (lang === 'ar' ? 'انتهت فترة التجربة المجانية' : 'Free Trial Expired')
                   : (lang === 'ar' ? 'انتهت صلاحية اشتراكك' : 'Subscription Expired')
                 }
               </h4>
               <p style={{ margin: '4px 0 0', color: 'var(--t2)', fontSize: '12.5px', lineHeight: '1.5' }}>
                 {isTrialExpired()
-                  ? (lang === 'ar' 
-                      ? `انتهت فترة التجربة المجانية في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
-                      : `Your free trial in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please renew your subscription below and submit payment proof.`
-                    )
+                  ? (lang === 'ar'
+                    ? `انتهت فترة التجربة المجانية في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
+                    : `Your free trial in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please renew your subscription below and submit payment proof.`
+                  )
                   : (lang === 'ar'
-                      ? `انتهت صلاحية اشتراكك في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
-                      : `Your subscription in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please renew your subscription below and submit payment proof.`
-                    )
+                    ? `انتهت صلاحية اشتراكك في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
+                    : `Your subscription in ${tenantConfig?.appName || 'UpKlick'} has expired. To continue using the service, please renew your subscription below and submit payment proof.`
+                  )
                 }
               </p>
             </div>
@@ -382,7 +383,7 @@ function DashboardShell() {
       {mobileMenuOpen && (
         <div className="sb-overlay" onClick={() => setMobileMenuOpen(false)}></div>
       )}
-      
+
       <div id="mn">
         <Topbar />
         <div id="ct">
@@ -436,8 +437,8 @@ function EmailVerificationLock({ user, lang, logout }) {
         if (auth.currentUser.emailVerified) {
           window.location.reload();
         } else {
-          alert(lang === 'ar' 
-            ? 'لم يتم تفعيل الحساب بعد. يرجى الضغط على الرابط في البريد الإلكتروني.' 
+          alert(lang === 'ar'
+            ? 'لم يتم تفعيل الحساب بعد. يرجى الضغط على الرابط في البريد الإلكتروني.'
             : 'Email not verified yet. Please check your inbox and click the verification link.'
           );
         }
@@ -459,8 +460,8 @@ function EmailVerificationLock({ user, lang, logout }) {
       }
     } catch (err) {
       console.error(err);
-      setResendMessage(lang === 'ar' 
-        ? '❌ فشل إرسال الرابط. يرجى المحاولة لاحقاً.' 
+      setResendMessage(lang === 'ar'
+        ? '❌ فشل إرسال الرابط. يرجى المحاولة لاحقاً.'
         : '❌ Failed to send link. Please try again later.'
       );
     } finally {
@@ -502,7 +503,7 @@ function EmailVerificationLock({ user, lang, logout }) {
           background: rgba(255, 255, 255, 0.05) !important;
         }
       `}</style>
-      
+
       <div style={{
         maxWidth: '460px',
         width: '100%',
@@ -582,7 +583,7 @@ function EmailVerificationLock({ user, lang, logout }) {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button 
+          <button
             onClick={handleCheck}
             disabled={statusLoading}
             className="btn-glow-verify"
@@ -606,7 +607,7 @@ function EmailVerificationLock({ user, lang, logout }) {
             {statusLoading ? '...' : (isAr ? 'تم التفعيل؟ تحديث الحالة' : 'I Verified my Email')}
           </button>
 
-          <button 
+          <button
             onClick={handleResend}
             disabled={resendLoading}
             className="btn-verify-ghost"
@@ -626,7 +627,7 @@ function EmailVerificationLock({ user, lang, logout }) {
             {resendLoading ? '...' : (isAr ? 'إعادة إرسال رابط التفعيل' : 'Resend Verification Link')}
           </button>
 
-          <button 
+          <button
             onClick={logout}
             style={{
               width: '100%',
