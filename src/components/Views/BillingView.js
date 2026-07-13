@@ -14,6 +14,7 @@ export default function BillingView() {
 
   const isRTL = lang === 'ar';
 
+  
   // Dynamic values from tenantConfig or defaults
   const planStarterName = tenantConfig?.planStarterName || 'Starter';
   const planStarterPrice = tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 499;
