@@ -158,27 +158,36 @@
     /* HEADER */
     #hdr {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 1200px;
       z-index: 100;
-      padding: 0 5%;
-      transition: all .3s
+      background: rgba(8, 8, 15, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 0 24px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
     }
 
     #hdr.scrolled {
-      background: rgba(8, 8, 15, .85);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--edge)
+      top: 8px;
+      background: rgba(8, 8, 15, 0.85);
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
     }
 
     .hdr-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 64px;
-      max-width: 1200px;
-      margin: 0 auto
+      height: 60px;
+      width: 100%;
+      margin: 0 auto;
     }
 
     .hdr-brand-group {
@@ -191,17 +200,17 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 58px;
-      width: 180px;
+      height: 60px;
+      width: 220px;
       overflow: hidden;
       text-decoration: none
     }
 
     .logo img {
-      height: 230px;
+      height: 300px;
       width: auto;
       object-fit: contain;
-      margin-top: -8px;
+      margin-top: 16px;
       display: block
     }
 
@@ -231,24 +240,27 @@
     .nav {
       display: flex;
       align-items: center;
-      gap: 28px
+      gap: 12px
     }
 
     .nav a {
       color: var(--t2);
       text-decoration: none;
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 500;
-      transition: color .2s
+      padding: 6px 14px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
     }
 
     .nav a:hover {
-      color: var(--t1)
+      color: var(--t1);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .hdr-btns {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       align-items: center
     }
 
@@ -256,10 +268,10 @@
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      padding: 9px 20px;
-      border-radius: var(--r);
+      padding: 8px 16px;
+      border-radius: 12px;
       font-family: var(--ff);
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
       cursor: pointer;
       text-decoration: none;
@@ -269,24 +281,25 @@
 
     .btn-ghost {
       background: transparent;
-      border: 1px solid var(--edge2);
-      color: var(--t1)
+      border: none;
+      color: var(--t2)
     }
 
     .btn-ghost:hover {
-      border-color: var(--or);
-      color: var(--or)
+      color: var(--t1);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .btn-prime {
       background: linear-gradient(135deg, var(--or), var(--pu));
       color: #fff;
-      box-shadow: 0 4px 24px rgba(255, 107, 53, .35)
+      box-shadow: 0 4px 20px rgba(108, 53, 255, 0.35);
     }
 
     .btn-prime:hover {
       transform: translateY(-1px);
-      box-shadow: 0 8px 32px rgba(255, 107, 53, .45)
+      box-shadow: 0 8px 28px rgba(108, 53, 255, 0.45);
+      opacity: 0.95;
     }
 
     .btn-xl {
@@ -1952,6 +1965,112 @@
       display: none
     }
 
+    /* Large screens (>= 1200px) - scale up elements to prevent "far away" feel */
+    @media (min-width: 1200px) {
+      #hdr {
+        top: 20px !important;
+        width: 92% !important;
+      }
+
+      #hero {
+        padding-top: 60px !important;
+      }
+
+      .hdr-inner {
+        max-width: 1300px !important;
+        height: 64px !important;
+      }
+
+      .logo {
+        height: 72px !important;
+        width: 260px !important;
+      }
+
+      .logo img {
+        height: 360px !important;
+        margin-top: 20px !important;
+      }
+
+      .nav {
+        gap: 16px !important;
+      }
+
+      .nav a {
+        font-size: 14.5px !important;
+      }
+
+      .hdr-btns {
+        gap: 12px !important;
+      }
+
+      .hdr-btns .btn {
+        font-size: 14px !important;
+        padding: 8px 18px !important;
+      }
+
+      .hero-wrap {
+        max-width: 1300px !important;
+        gap: 48px !important;
+        padding: 20px 0 !important;
+      }
+
+      .hero-h1 {
+        font-size: clamp(38px, 4.4vw, 58px) !important;
+        margin-bottom: 12px !important;
+        line-height: 1.15 !important;
+      }
+
+      .hero-sub {
+        font-size: 16.5px !important;
+        max-width: 560px !important;
+        margin-bottom: 16px !important;
+      }
+
+      .hero-eyebrow {
+        font-size: 13px !important;
+        padding: 6px 16px 6px 10px !important;
+        margin-bottom: 12px !important;
+      }
+
+      .hero-eyebrow span:first-child {
+        width: 20px !important;
+        height: 20px !important;
+        font-size: 10px !important;
+      }
+
+      .hero-cta {
+        margin-bottom: 16px !important;
+      }
+
+      .hero-trust {
+        font-size: 14px !important;
+        margin-top: 12px !important;
+      }
+
+      .hero-trust-avatars span {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 12px !important;
+      }
+
+      .hero-visual {
+        transform: scale(1.05) !important;
+        transform-origin: center right !important;
+      }
+
+      .stats-inner {
+        max-width: 1300px !important;
+      }
+
+      .stat-num {
+        font-size: 34px !important;
+      }
+
+      .stat-lbl {
+        font-size: 14.5px !important;
+      }
+    }
+
     /* ═══ RESPONSIVE ═══ */
 
     /* Tablet (≤ 1024px) */
@@ -2002,14 +2121,17 @@
       }
 
       .logo {
-        height: 54px;
-        width: 120px;
-        margin-top: 6px;
+        height: 48px;
+        width: 160px;
+        margin-top: 0px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .logo img {
-        height: 215px;
-        margin-top: -7px;
+        height: 220px;
+        margin-top: 12px;
       }
 
       .hdr-btns {
@@ -2094,38 +2216,55 @@
 
       /* Hero */
       #hero {
-        padding-top: 0
+        min-height: auto !important;
+        padding-top: 76px !important;
+        padding-bottom: 20px !important;
       }
 
       .hero-wrap {
         grid-template-columns: 1fr;
         text-align: center;
-        padding: 30px 0;
-        gap: 20px
+        padding: 10px 0 !important;
+        gap: 16px !important;
+      }
+
+      .hero-eyebrow {
+        margin-bottom: 12px !important;
+      }
+
+      .hero-h1 {
+        font-size: clamp(22px, 7.5vw, 30px) !important;
+        margin-bottom: 12px !important;
+      }
+
+      .hero-sub {
+        font-size: 14px !important;
+        margin: 0 auto 16px !important;
       }
 
       .hero-cta {
         justify-content: center;
         flex-direction: column;
-        align-items: center
+        align-items: center;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
       }
 
       .hero-cta .btn-xl {
         width: 100%;
         max-width: 300px;
-        justify-content: center
+        justify-content: center;
+        padding: 11px 24px !important;
+        font-size: 15px !important;
       }
 
       .hero-trust {
-        justify-content: center
+        justify-content: center;
+        margin-top: 10px !important;
       }
 
       .hero-visual {
         display: none
-      }
-
-      .hero-sub {
-        margin: 0 auto 24px
       }
 
       /* Stats */
@@ -2338,14 +2477,14 @@
       }
 
       .logo {
-        height: 50px;
-        width: 100px;
+        height: 56px;
+        width: 180px;
         margin-top: 4px;
       }
 
       .logo img {
-        height: 195px;
-        margin-top: -6.5px;
+        height: 240px;
+        margin-top: 12px;
       }
 
       .pricing-grid {
@@ -2411,7 +2550,7 @@
         <button class="mob-menu-btn" onclick="document.getElementById('mob-nav').classList.toggle('open')"
           aria-label="Menu">☰</button>
         <a href="#" class="logo">
-          <img src="/new-logo.png" alt="UpKlick">
+          <img src="/best_logo_dark.png" alt="UpKlick">
         </a>
       </div>
       <nav class="nav">
@@ -2826,7 +2965,7 @@
     </div>
   </section>
 
-  <!-- ══════════════ 5. WHO IT'S FOR ══════════════ -->
+  <!-- ══════════════ 5. WHO IT'S FOR ═══ -->
   <section id="who">
     <div class="who-wrap reveal">
       <div class="who-head">
@@ -2863,7 +3002,7 @@
     </div>
   </section>
 
-  <!-- ══════════════ 6. LIVE DASHBOARD SCREENSHOT ══════════════ -->
+  <!-- ══════════════ 6. LIVE DASHBOARD SCREENSHOT ═══ -->
   <section id="screenshots">
     <div class="ss-wrap reveal">
       <div class="ss-head">
@@ -2936,7 +3075,7 @@
     </div>
   </section>
 
-  <!-- ══════════════ 7. REVIEWS ══════════════ -->
+  <!-- ══════════════ 7. REVIEWS ═══ -->
   <section id="reviews">
     <div class="reviews-wrap reveal">
       <div class="reviews-head">
@@ -3027,7 +3166,7 @@
     </div>
   </section>
 
-  <!-- ══════════════ 8. PRICING ══════════════ -->
+  <!-- ══════════════ 8. PRICING ═══ -->
   <section id="pricing">
     <div class="pricing-wrap reveal">
       <div class="pricing-head">
@@ -3095,7 +3234,7 @@
     </div>
   </section>
 
-  <!-- ══════════════ FAQ ══════════════ -->
+  <!-- ══════════════ FAQ ═══ -->
   <section id="faq" style="padding:80px 5%">
     <div class="faq-wrap reveal">
       <div class="faq-head">
@@ -3159,7 +3298,7 @@
     </div>
   </section>
 
-  <!-- ══════════════ ROADMAP ══════════════ -->
+  <!-- ══════════════ ROADMAP ═══ -->
   <section id="roadmap">
     <div class="rm-wrap reveal">
       <div class="rm-head">
@@ -3273,12 +3412,11 @@
       <div class="footer-top">
         <div class="footer-brand">
           <a href="#" class="logo"
-            style="margin-bottom:12px;height:32px;width:110px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;">
-            <img src="/new-logo.png" alt="UpKlick" style="height:120px;width:auto;object-fit:contain;margin-top:-4px;">
+            style="margin-bottom:12px;height:56px;width:200px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;">
+            <img src="/best_logo_dark.png" alt="UpKlick"
+              style="height:260px;width:auto;object-fit:contain;margin-top:14px;">
           </a>
-          <a href="#" class="logo">
-            <div class="logo-icon">✦</div><span class="logo-text">UpKlick</span>
-          </a>
+
           <p class="footer-tagline" data-t="landing-footer-tagline">The AI Operating System for Arab creators, coaches,
             and entrepreneurs. Build, grow, and manage everything from one dashboard.</p>
           <div class="footer-socials">
@@ -4011,13 +4149,14 @@
       var grid = document.querySelector('.pricing-grid');
       if (!grid) return;
 
-      var isPlanVisible = tenantConfig && tenantConfig.plan && tenantConfig.plan.visible;
-      var isPlanAnnualVisible = tenantConfig && tenantConfig.planAnnual && tenantConfig.planAnnual.visible;
+      var isStarterVisible = tenantConfig && tenantConfig.planStarter && tenantConfig.planStarter.visible;
+      var isGrowthVisible = tenantConfig && tenantConfig.planGrowth && tenantConfig.planGrowth.visible;
+      var isProVisible = tenantConfig && tenantConfig.planPro && tenantConfig.planPro.visible;
 
       var pricingSection = document.getElementById('pricing');
       var pricingNavLinks = document.querySelectorAll('a[href="#pricing"]');
 
-      if (tenantConfig && !isPlanVisible && !isPlanAnnualVisible) {
+      if (tenantConfig && !isStarterVisible && !isGrowthVisible && !isProVisible) {
         if (pricingSection) pricingSection.style.display = 'none';
         pricingNavLinks.forEach(function (el) { el.style.display = 'none'; });
         return;
@@ -4026,7 +4165,7 @@
         pricingNavLinks.forEach(function (el) { el.style.display = ''; });
       }
 
-      if (!isPlanVisible && !isPlanAnnualVisible) {
+      if (!isStarterVisible && !isGrowthVisible && !isProVisible) {
         // Fallback to static pricing layout (Default UpKlick plans)
         grid.style.gridTemplateColumns = '1fr 1.1fr 1fr';
         grid.style.maxWidth = '1100px';
@@ -4092,105 +4231,46 @@
       grid.innerHTML = '';
       var html = '';
 
-      // Monthly/Pro
-      if (isPlanVisible) {
-        var p = tenantConfig.plan;
-        var pName = _lang === 'ar' ? (p.name || 'الخطة الاحترافية') : (p.nameEn || p.name || 'Pro Plan');
-        var pBadge = _lang === 'ar' ? (p.badge || 'الأكثر شعبية') : (p.badgeEn || p.badge || 'Most Popular');
-        var pPrice = p.price || '29';
+      var renderCard = function (p, isFeatured) {
+        var pName = _lang === 'ar' ? (p.name || 'باقة') : (p.nameEn || p.name || 'Plan');
+        var pBadge = _lang === 'ar' ? (p.badge || '') : (p.badgeEn || p.badge || '');
+        var pPrice = p.price || '0';
         var pCurrency = _lang === 'ar' ? (p.currency || 'ج.م') : (p.currencyEn || p.currency || 'EGP');
         var pPeriod = _lang === 'ar' ? (p.period || 'شهرياً') : (p.periodEn || p.period || 'monthly');
         var pCta = _lang === 'ar' ? (p.ctaText || 'اشترك الآن') : (p.ctaTextEn || p.ctaText || 'Subscribe Now');
         var pFeatures = _lang === 'ar' ? (p.features || []) : (p.featuresEn || p.features || []);
 
-        if (tenantConfig.freeTrial && tenantConfig.freeTrial.enabled) {
-          var trialDays = tenantConfig.freeTrial.days || 14;
-          pCta = _lang === 'ar' ? ('ابدأ تجربة مجانية لمدة ' + trialDays + ' يوم') : ('Start ' + trialDays + '-Day Free Trial');
-        }
+        var isDollar = pCurrency === '$' || pCurrency === 'USD';
 
-        html += '<div class="price-card featured">';
+        var cardHtml = '<div class="price-card' + (isFeatured ? ' featured' : '') + '">';
         if (pBadge) {
-          html += '<div class="price-badge">' + pBadge + '</div>';
+          cardHtml += '<div class="price-badge">' + pBadge + '</div>';
         }
-        html += '<div class="price-name">' + pName + '</div>' +
-          '<div class="price-amount"><sup>' + (pCurrency === '$' ? '$' : '') + '</sup>' + pPrice + ' <span style="font-size:14px;color:var(--t2);font-weight:normal;margin-left:4px">' + (pCurrency !== '$' ? pCurrency : '') + '</span></div>' +
+        cardHtml += '<div class="price-name">' + pName + '</div>' +
+          '<div class="price-amount"><sup>' + (isDollar ? '$' : '') + '</sup>' + pPrice + ' <span style="font-size:14px;color:var(--t2);font-weight:normal;margin-left:4px">' + (!isDollar ? pCurrency : '') + '</span></div>' +
           '<div class="price-period">' + pPeriod + '</div>' +
           '<div class="price-divider"></div>' +
           '<div class="price-features">';
-        var monthlyCredit = tenantConfig.creditMonthlyPlan !== undefined ? Number(tenantConfig.creditMonthlyPlan) : 10.00;
+
         pFeatures.forEach(function (f) {
           if (f.trim()) {
-            var featureText = f;
-            if (featureText.indexOf('{ai_credits}') !== -1) {
-              featureText = featureText.replace('{ai_credits}', '<strong style="color:var(--or)">$' + monthlyCredit + '</strong>');
-            } else if (featureText.indexOf('مساعد الذكاء الاصطناعي') !== -1 && featureText.indexOf('رصيد') === -1) {
-              featureText = 'مساعد الذكاء الاصطناعي (<strong style="color:var(--or)">$' + monthlyCredit + ' رصيد شهرياً</strong>)';
-            } else if (featureText.toLowerCase().indexOf('ai assistant') !== -1 && featureText.toLowerCase().indexOf('credit') === -1) {
-              featureText = 'AI Assistant (<strong style="color:var(--or)">$' + monthlyCredit + ' monthly credit</strong>)';
-            }
-            html += '<div class="pf has"><span class="chk">✓</span> ' + featureText + '</div>';
+            cardHtml += '<div class="pf has"><span class="chk">✓</span> ' + f + '</div>';
           }
         });
-        html += '</div>' +
-          '<a href="/login" class="btn btn-prime" style="width:100%;justify-content:center">' + pCta + '</a>';
-        if (tenantConfig.freeTrial && tenantConfig.freeTrial.enabled) {
-          var note = _lang === 'ar' ? 'بدون حاجة لبطاقة ائتمان' : 'No credit card required';
-          html += '<div style="text-align:center;font-size:12px;color:var(--t3);margin-top:8px">' + note + '</div>';
-        }
-        html += '</div>';
+        cardHtml += '</div>' +
+          '<a href="/login" class="btn ' + (isFeatured ? 'btn-prime' : 'btn-ghost') + '" style="width:100%;justify-content:center">' + pCta + '</a>';
+        cardHtml += '</div>';
+        return cardHtml;
+      };
+
+      if (isStarterVisible) {
+        html += renderCard(tenantConfig.planStarter, false);
       }
-
-      // Annual
-      if (isPlanAnnualVisible) {
-        var ap = tenantConfig.planAnnual;
-        var apName = _lang === 'ar' ? (ap.name || 'الباقة السنوية') : (ap.nameEn || ap.name || 'Annual Plan');
-        var apBadge = _lang === 'ar' ? (ap.badge || 'أفضل قيمة') : (ap.badgeEn || ap.badge || 'Best Value');
-        var apPrice = ap.price || '999';
-        var apCurrency = _lang === 'ar' ? (ap.currency || 'ج.م') : (ap.currencyEn || ap.currency || 'EGP');
-        var apPeriod = _lang === 'ar' ? (ap.period || 'سنوياً') : (ap.periodEn || ap.period || 'yearly');
-        var apCta = _lang === 'ar' ? (ap.ctaText || 'اشترك الآن') : (ap.ctaTextEn || ap.ctaText || 'Subscribe Now');
-        var apFeatures = _lang === 'ar' ? (ap.features || []) : (ap.featuresEn || ap.features || []);
-
-        html += '<div class="price-card">';
-        if (apBadge) {
-          html += '<div class="price-badge">' + apBadge + '</div>';
-        }
-        html += '<div class="price-name">' + apName + '</div>' +
-          '<div class="price-amount"><sup>' + (apCurrency === '$' ? '$' : '') + '</sup>' + apPrice + ' <span style="font-size:14px;color:var(--t2);font-weight:normal;margin-left:4px">' + (apCurrency !== '$' ? apCurrency : '') + '</span></div>' +
-          '<div class="price-period">' + apPeriod + '</div>' +
-          '<div class="price-divider"></div>' +
-          '<div class="price-features">';
-        var annualCredit = tenantConfig.creditAnnualPlan !== undefined ? Number(tenantConfig.creditAnnualPlan) : 120.00;
-        var hasAiFeature = false;
-        apFeatures.forEach(function (f) {
-          if (f.indexOf('مساعد الذكاء الاصطناعي') !== -1 || f.toLowerCase().indexOf('ai assistant') !== -1) {
-            hasAiFeature = true;
-          }
-        });
-        var processedApFeatures = apFeatures.slice();
-        if (!hasAiFeature) {
-          if (_lang === 'ar') {
-            processedApFeatures.push('رصيد ذكاء اصطناعي بقيمة <strong style="color:var(--or)">$' + annualCredit + ' سنوياً</strong>');
-          } else {
-            processedApFeatures.push('<strong style="color:var(--or)">$' + annualCredit + ' annual AI credit</strong>');
-          }
-        }
-        processedApFeatures.forEach(function (f) {
-          if (f.trim()) {
-            var featureText = f;
-            if (featureText.indexOf('{ai_credits}') !== -1) {
-              featureText = featureText.replace('{ai_credits}', '<strong style="color:var(--or)">$' + annualCredit + '</strong>');
-            } else if (featureText.indexOf('مساعد الذكاء الاصطناعي') !== -1 && featureText.indexOf('رصيد') === -1) {
-              featureText = 'مساعد الذكاء الاصطناعي (<strong style="color:var(--or)">$' + annualCredit + ' رصيد سنوياً</strong>)';
-            } else if (featureText.toLowerCase().indexOf('ai assistant') !== -1 && featureText.toLowerCase().indexOf('credit') === -1) {
-              featureText = 'AI Assistant (<strong style="color:var(--or)">$' + annualCredit + ' annual credit</strong>)';
-            }
-            html += '<div class="pf has"><span class="chk">✓</span> ' + featureText + '</div>';
-          }
-        });
-        html += '</div>' +
-          '<a href="/login" class="btn btn-ghost" style="width:100%;justify-content:center">' + apCta + '</a>' +
-          '</div>';
+      if (isGrowthVisible) {
+        html += renderCard(tenantConfig.planGrowth, false);
+      }
+      if (isProVisible) {
+        html += renderCard(tenantConfig.planPro, true);
       }
 
       grid.innerHTML = html;
@@ -4358,6 +4438,15 @@
 
         tenantConfig = config;
         applyTenantConfig();
+      }
+    });
+
+    window.addEventListener('scroll', function () {
+      var header = document.getElementById('hdr');
+      if (window.scrollY > 30) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
       }
     });
   </script>
