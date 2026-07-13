@@ -83,16 +83,72 @@ const DICTIONARY_GROUPS = [
   }
 ];
 
-const DEFAULT_PLAN = {
-  visible: false,
+const DEFAULT_PLAN_STARTER = {
+  visible: true,
+  name: 'باقة المبتدئين',
+  price: '499',
+  currency: 'ج.م',
+  period: 'شهرياً',
+  badge: 'البداية السريعة',
+  ctaText: 'اشتراك',
+  features: [
+    '200 كريديت شهرياً',
+    'مساعد الذكاء الاصطناعي',
+    'بناء صفحة هبوط واحدة',
+    'عملاء ومبيعات محدودة (25 عميل)'
+  ],
+  nameEn: 'Starter Plan',
+  badgeEn: 'Quick Start',
+  currencyEn: 'EGP',
+  periodEn: 'monthly',
+  ctaTextEn: 'Subscribe',
+  featuresEn: [
+    '200 credits monthly',
+    'AI Assistant',
+    'Build 1 landing page',
+    'Limited CRM leads (25 leads)'
+  ]
+};
+
+const DEFAULT_PLAN_GROWTH = {
+  visible: true,
+  name: 'باقة النمو',
+  price: '799',
+  currency: 'ج.م',
+  period: 'شهرياً',
+  badge: 'ترقية',
+  ctaText: 'ترقية',
+  features: [
+    '600 كريديت شهرياً',
+    'مساعد الذكاء الاصطناعي (أسرع)',
+    'صفحات هبوط غير محدودة',
+    'عملاء ومبيعات غير محدودة',
+    'تكاملات أساسية'
+  ],
+  nameEn: 'Growth Plan',
+  badgeEn: 'Upgrade',
+  currencyEn: 'EGP',
+  periodEn: 'monthly',
+  ctaTextEn: 'Upgrade',
+  featuresEn: [
+    '600 credits monthly',
+    'AI Assistant (faster)',
+    'Unlimited landing pages',
+    'Unlimited CRM leads',
+    'Basic integrations'
+  ]
+};
+
+const DEFAULT_PLAN_PRO = {
+  visible: true,
   name: 'باقة المحترفين',
-  price: '29',
-  currency: '$',
+  price: '1497',
+  currency: 'ج.م',
   period: 'شهرياً',
   badge: 'الأكثر شعبية',
   ctaText: 'ابدأ تجربة مجانية لمدة 14 يوم',
   features: [
-    'كل شيء في الباقة المجانية',
+    'كل شيء في باقة النمو',
     'مساعد الذكاء الاصطناعي (غير محدود)',
     'عملاء ومبيعات غير محدودة',
     'نظام التسويق الذكي (8 أدوات)',
@@ -104,11 +160,11 @@ const DEFAULT_PLAN = {
   ],
   nameEn: 'Pro Plan',
   badgeEn: 'Most Popular',
-  currencyEn: 'USD',
+  currencyEn: 'EGP',
   periodEn: 'monthly',
   ctaTextEn: 'Start 14-Day Free Trial',
   featuresEn: [
-    'Everything in Starter',
+    'Everything in Growth',
     'AI Assistant (unlimited)',
     'Unlimited CRM leads',
     'Marketing OS (8 tools)',
@@ -117,33 +173,6 @@ const DEFAULT_PLAN = {
     'Digital Products Hub',
     'Telegram Bot Control',
     'All integrations'
-  ]
-};
-
-const DEFAULT_PLAN_ANNUAL = {
-  visible: false,
-  name: 'باقة المحترفين السنوية',
-  price: '290',
-  currency: '$',
-  period: 'سنوياً',
-  badge: 'أفضل قيمة',
-  ctaText: 'ابدأ تجربة سنوية',
-  features: [
-    'كل شيء في باقة المحترفين',
-    'توفير شهرين كاملين',
-    'دعم فني ذو أولوية',
-    'جميع الميزات اللامحدودة والتكاملات'
-  ],
-  nameEn: 'Annual Pro Plan',
-  badgeEn: 'Best Value',
-  currencyEn: 'USD',
-  periodEn: 'yearly',
-  ctaTextEn: 'Subscribe Annually',
-  featuresEn: [
-    'Everything in Pro Plan',
-    'Save 2 full months',
-    'Priority support',
-    'All unlimited features & integrations'
   ]
 };
 
@@ -170,8 +199,9 @@ const DEFAULTS = {
   heroSub: 'CRM، تسويق، محتوى، مالية، تليجرام — مدعومون بالذكاء الاصطناعي ومبني للمبدعين والكوتشز وروادالأعمال .',
   heroSubEn: 'CRM, Marketing, Content, Finance, Telegram — all powered by AI and built for Arab creators, coaches, and entrepreneurs.',
   domain: '',
-  plan: DEFAULT_PLAN,
-  planAnnual: DEFAULT_PLAN_ANNUAL,
+  planStarter: DEFAULT_PLAN_STARTER,
+  planGrowth: DEFAULT_PLAN_GROWTH,
+  planPro: DEFAULT_PLAN_PRO,
   telegramNumber: '',
   freeTrial: { enabled: false, days: 7 },
   i18nOverrides: { ar: {}, en: {} },
@@ -227,57 +257,37 @@ const BrandingSettings = () => {
           }
         } catch (_) { }
         setConfig(prev => {
-          // If the loaded data has old GigSniper features, pricing details, or application name, migrate them to UpKlick defaults
-          const isOldGigSniperFeatures = (data.plan?.features || []).some(f => typeof f === 'string' && (f.includes('تأسيس ملفك الشخصي') || f.includes('المنصات'))) ||
-            (data.plan?.featuresEn || []).some(f => typeof f === 'string' && (f.includes('Profile Foundation') || f.includes('Platforms')));
-          const isOldPlanDetails = data.plan?.price === '99' && (data.plan?.currency === 'ج.م' || data.plan?.currencyEn === 'EGP');
+          const planStarterToUse = data.planStarter || {};
+          const planGrowthToUse = data.planGrowth || {};
+          const planProToUse = data.planPro || {};
 
-          let planToUse = data.plan || {};
-          let planAnnualToUse = data.planAnnual || {};
-
-          if (isOldGigSniperFeatures || isOldPlanDetails || data.appName === 'GigSniper Pro') {
-            planToUse = { ...prev.plan, visible: data.plan?.visible ?? false };
-            planAnnualToUse = { ...prev.planAnnual, visible: data.planAnnual?.visible ?? false };
-            data.appName = prev.appName;
-            data.appNameEn = prev.appNameEn;
-            data.tagline = prev.tagline;
-            data.taglineEn = prev.taglineEn;
-            data.primaryColor = prev.primaryColor;
-            data.accentColor = prev.accentColor;
-            data.bgColor = prev.bgColor;
-            data.panelColor = prev.panelColor;
-            data.navBgColor = prev.navBgColor;
-            data.sidebarBgColor = prev.sidebarBgColor;
-            data.footerBgColor = prev.footerBgColor;
-            data.textColor = prev.textColor;
-            data.text2Color = prev.text2Color;
-            data.footerText = prev.footerText;
-            data.footerTextEn = prev.footerTextEn;
-            data.heroBadge = prev.heroBadge;
-            data.heroBadgeEn = prev.heroBadgeEn;
-            data.heroSub = prev.heroSub;
-            data.heroSubEn = prev.heroSubEn;
-          }
-
-          const mergedPlan = {
-            ...prev.plan,
-            ...planToUse,
+          const mergedPlanStarter = {
+            ...prev.planStarter,
+            ...planStarterToUse,
           };
-          if (!planToUse.featuresEn) mergedPlan.featuresEn = prev.plan.featuresEn;
-          if (!planToUse.features) mergedPlan.features = prev.plan.features;
+          if (!planStarterToUse.features) mergedPlanStarter.features = prev.planStarter.features;
+          if (!planStarterToUse.featuresEn) mergedPlanStarter.featuresEn = prev.planStarter.featuresEn;
 
-          const mergedPlanAnnual = {
-            ...prev.planAnnual,
-            ...planAnnualToUse,
+          const mergedPlanGrowth = {
+            ...prev.planGrowth,
+            ...planGrowthToUse,
           };
-          if (!planAnnualToUse.featuresEn) mergedPlanAnnual.featuresEn = prev.planAnnual.featuresEn;
-          if (!planAnnualToUse.features) mergedPlanAnnual.features = prev.planAnnual.features;
+          if (!planGrowthToUse.features) mergedPlanGrowth.features = prev.planGrowth.features;
+          if (!planGrowthToUse.featuresEn) mergedPlanGrowth.featuresEn = prev.planGrowth.featuresEn;
+
+          const mergedPlanPro = {
+            ...prev.planPro,
+            ...planProToUse,
+          };
+          if (!planProToUse.features) mergedPlanPro.features = prev.planPro.features;
+          if (!planProToUse.featuresEn) mergedPlanPro.featuresEn = prev.planPro.featuresEn;
 
           return {
             ...prev,
             ...data,
-            plan: mergedPlan,
-            planAnnual: mergedPlanAnnual,
+            planStarter: mergedPlanStarter,
+            planGrowth: mergedPlanGrowth,
+            planPro: mergedPlanPro,
             i18nOverrides: {
               ...prev.i18nOverrides,
               ...(data.i18nOverrides || {})
@@ -348,6 +358,149 @@ const BrandingSettings = () => {
     setConfig(DEFAULTS);
     pushToIframe(DEFAULTS);
     setSaved(false);
+  };
+
+  const renderPlanSection = (planKey, planLabel) => {
+    const plan = config[planKey] || {};
+    return (
+      <div className="card" style={{ marginBottom: '12px' }}>
+        <div style={sectionHeader}>
+          <CreditCard size={16} />
+          <span>{planLabel}</span>
+          <label style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)', fontWeight: '600' }}>
+            <input
+              type="checkbox"
+              checked={plan.visible || false}
+              onChange={e => handleChange(planKey, { ...plan, visible: e.target.checked })}
+              style={{ width: '14px', height: '14px', accentColor: 'var(--accent)', cursor: 'pointer' }}
+            />
+            {t('branding.showOnSite')}
+          </label>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <label style={labelStyle}>{t('branding.planName')}</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <input type="text" dir="rtl" value={plan.name || ''} onChange={e => handleChange(planKey, { ...plan, name: e.target.value })} placeholder={t('branding.placeholderPlanName')} style={inputStyle} />
+              <input type="text" dir="ltr" value={plan.nameEn || ''} onChange={e => handleChange(planKey, { ...plan, nameEn: e.target.value })} placeholder={t('branding.placeholderPlanName') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>{t('branding.planBadge')}</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <input type="text" dir="rtl" value={plan.badge || ''} onChange={e => handleChange(planKey, { ...plan, badge: e.target.value })} placeholder={t('branding.placeholderBadge')} style={inputStyle} />
+              <input type="text" dir="ltr" value={plan.badgeEn || ''} onChange={e => handleChange(planKey, { ...plan, badgeEn: e.target.value })} placeholder={t('branding.placeholderBadge') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <label style={labelStyle}>{t('branding.planPrice')}</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <input type="number" min="0" value={plan.price || ''} onChange={e => handleChange(planKey, { ...plan, price: e.target.value })} placeholder="99" style={{ ...inputStyle, height: '100%' }} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>{t('branding.planCurrency')}</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <select dir="rtl" value={plan.currency || 'ج.م'} onChange={e => handleChange(planKey, { ...plan, currency: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="ج.م">ج.م (EGP)</option>
+                <option value="$">$ (USD)</option>
+                <option value="ر.س">ر.س (SAR)</option>
+                <option value="د.إ">د.إ (AED)</option>
+                <option value="€">€ (EUR)</option>
+              </select>
+              <select dir="ltr" value={plan.currencyEn || 'EGP'} onChange={e => handleChange(planKey, { ...plan, currencyEn: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}>
+                <option value="EGP">EGP</option>
+                <option value="USD">USD</option>
+                <option value="SAR">SAR</option>
+                <option value="AED">AED</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>{t('branding.planPeriod')}</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <select dir="rtl" value={plan.period || 'شهرياً'} onChange={e => handleChange(planKey, { ...plan, period: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="شهرياً">{t('branding.monthly')}</option>
+                <option value="سنوياً">{t('branding.yearly')}</option>
+                <option value="مرة واحدة">{t('branding.onetime')}</option>
+              </select>
+              <select dir="ltr" value={plan.periodEn || 'monthly'} onChange={e => handleChange(planKey, { ...plan, periodEn: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}>
+                <option value="monthly">monthly</option>
+                <option value="yearly">yearly</option>
+                <option value="one-time">one-time</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>{t('branding.ctaText')}</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <input type="text" dir="rtl" value={plan.ctaText || ''} onChange={e => handleChange(planKey, { ...plan, ctaText: e.target.value })} placeholder={t('branding.placeholderCta')} style={inputStyle} />
+            <input type="text" dir="ltr" value={plan.ctaTextEn || ''} onChange={e => handleChange(planKey, { ...plan, ctaTextEn: e.target.value })} placeholder={t('branding.placeholderCta') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
+          </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t('branding.planFeatures')}</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
+            {(plan.features || []).map((feat, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={feat}
+                    onChange={e => {
+                      const next = [...(plan.features || [])];
+                      next[idx] = e.target.value;
+                      handleChange(planKey, { ...plan, features: next });
+                    }}
+                    style={{ ...inputStyle, padding: '8px 12px', fontSize: '12px' }}
+                    placeholder={t('branding.planFeatures')}
+                  />
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={(plan.featuresEn || [])[idx] || ''}
+                    onChange={e => {
+                      const nextEn = [...(plan.featuresEn || plan.features || [])];
+                      while (nextEn.length < plan.features.length) nextEn.push('');
+                      nextEn[idx] = e.target.value;
+                      handleChange(planKey, { ...plan, featuresEn: nextEn });
+                    }}
+                    style={{ ...inputStyle, padding: '8px 12px', fontSize: '12px', textAlign: 'left' }}
+                    placeholder={t('branding.planFeatures') + ' ' + t('branding.english')}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    const next = (plan.features || []).filter((_, i) => i !== idx);
+                    const nextEn = (plan.featuresEn || plan.features || []).filter((_, i) => i !== idx);
+                    handleChange(planKey, { ...plan, features: next, featuresEn: nextEn });
+                  }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: '4px', marginTop: '6px', flexShrink: 0 }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => handleChange(planKey, { ...plan, features: [...(plan.features || []), ''] })}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg3)', border: '1px dashed var(--line2)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'var(--text2)', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
+          >
+            <Plus size={14} />
+            {t('branding.addFeature')}
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const field = (label, fieldKey, type = 'text', placeholder = '') => (
@@ -657,283 +810,15 @@ const BrandingSettings = () => {
           </label>
         </div>
 
-        {/* Plan & Pricing */}
-        <div className="card" style={{ marginBottom: '12px' }}>
-          <div style={sectionHeader}>
-            <CreditCard size={16} />
-            <span>{t('branding.planPricing')}</span>
-            <label style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)', fontWeight: '600' }}>
-              <input
-                type="checkbox"
-                checked={config.plan?.visible || false}
-                onChange={e => handleChange('plan', { ...config.plan, visible: e.target.checked })}
-                style={{ width: '14px', height: '14px', accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
-              {t('branding.showOnSite')}
-            </label>
-          </div>
+        {/* Starter Plan & Pricing */}
+        {renderPlanSection('planStarter', isRTL ? 'إعدادات باقة المبتدئين (Starter Plan)' : 'Starter Plan Settings')}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-            <div>
-              <label style={labelStyle}>{t('branding.planName')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="text" dir="rtl" value={config.plan?.name || ''} onChange={e => handleChange('plan', { ...config.plan, name: e.target.value })} placeholder={t('branding.placeholderPlanName')} style={inputStyle} />
-                <input type="text" dir="ltr" value={config.plan?.nameEn || ''} onChange={e => handleChange('plan', { ...config.plan, nameEn: e.target.value })} placeholder={t('branding.placeholderPlanName') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{t('branding.planBadge')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="text" dir="rtl" value={config.plan?.badge || ''} onChange={e => handleChange('plan', { ...config.plan, badge: e.target.value })} placeholder={t('branding.placeholderBadge')} style={inputStyle} />
-                <input type="text" dir="ltr" value={config.plan?.badgeEn || ''} onChange={e => handleChange('plan', { ...config.plan, badgeEn: e.target.value })} placeholder={t('branding.placeholderBadge') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
-              </div>
-            </div>
-          </div>
+        {/* Growth Plan & Pricing */}
+        {renderPlanSection('planGrowth', isRTL ? 'إعدادات باقة النمو (Growth Plan)' : 'Growth Plan Settings')}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-            <div>
-              <label style={labelStyle}>{t('branding.planPrice')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="number" min="0" value={config.plan?.price || ''} onChange={e => handleChange('plan', { ...config.plan, price: e.target.value })} placeholder="99" style={{ ...inputStyle, height: '100%' }} />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{t('branding.planCurrency')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <select dir="rtl" value={config.plan?.currency || 'ج.م'} onChange={e => handleChange('plan', { ...config.plan, currency: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
-                  <option value="ج.م">ج.م (EGP)</option>
-                  <option value="$">$ (USD)</option>
-                  <option value="ر.س">ر.س (SAR)</option>
-                  <option value="د.إ">د.إ (AED)</option>
-                  <option value="€">€ (EUR)</option>
-                </select>
-                <select dir="ltr" value={config.plan?.currencyEn || 'EGP'} onChange={e => handleChange('plan', { ...config.plan, currencyEn: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}>
-                  <option value="EGP">EGP</option>
-                  <option value="USD">USD</option>
-                  <option value="SAR">SAR</option>
-                  <option value="AED">AED</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{t('branding.planPeriod')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <select dir="rtl" value={config.plan?.period || 'شهرياً'} onChange={e => handleChange('plan', { ...config.plan, period: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
-                  <option value="شهرياً">{t('branding.monthly')}</option>
-                  <option value="سنوياً">{t('branding.yearly')}</option>
-                  <option value="مرة واحدة">{t('branding.onetime')}</option>
-                </select>
-                <select dir="ltr" value={config.plan?.periodEn || 'monthly'} onChange={e => handleChange('plan', { ...config.plan, periodEn: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}>
-                  <option value="monthly">monthly</option>
-                  <option value="yearly">yearly</option>
-                  <option value="one-time">one-time</option>
-                </select>
-              </div>
-            </div>
-          </div>
+        {/* Pro Plan & Pricing */}
+        {renderPlanSection('planPro', isRTL ? 'إعدادات باقة المحترفين (Pro Plan)' : 'Pro Plan Settings')}
 
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>{t('branding.ctaText')}</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <input type="text" dir="rtl" value={config.plan?.ctaText || ''} onChange={e => handleChange('plan', { ...config.plan, ctaText: e.target.value })} placeholder={t('branding.placeholderCta')} style={inputStyle} />
-              <input type="text" dir="ltr" value={config.plan?.ctaTextEn || ''} onChange={e => handleChange('plan', { ...config.plan, ctaTextEn: e.target.value })} placeholder={t('branding.placeholderCta') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t('branding.planFeatures')}</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
-              {(config.plan?.features || []).map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <input
-                      type="text"
-                      dir="rtl"
-                      value={feat}
-                      onChange={e => {
-                        const next = [...(config.plan?.features || [])];
-                        next[idx] = e.target.value;
-                        handleChange('plan', { ...config.plan, features: next });
-                      }}
-                      style={{ ...inputStyle, padding: '8px 12px', fontSize: '12px' }}
-                      placeholder={t('branding.planFeatures')}
-                    />
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={(config.plan?.featuresEn || [])[idx] || ''}
-                      onChange={e => {
-                        const nextEn = [...(config.plan?.featuresEn || config.plan?.features || [])];
-                        while (nextEn.length < config.plan.features.length) nextEn.push('');
-                        nextEn[idx] = e.target.value;
-                        handleChange('plan', { ...config.plan, featuresEn: nextEn });
-                      }}
-                      style={{ ...inputStyle, padding: '8px 12px', fontSize: '12px', textAlign: 'left' }}
-                      placeholder={t('branding.planFeatures') + ' ' + t('branding.english')}
-                    />
-                  </div>
-                  <button
-                    onClick={() => {
-                      const next = (config.plan?.features || []).filter((_, i) => i !== idx);
-                      const nextEn = (config.plan?.featuresEn || config.plan?.features || []).filter((_, i) => i !== idx);
-                      handleChange('plan', { ...config.plan, features: next, featuresEn: nextEn });
-                    }}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: '4px', marginTop: '6px', flexShrink: 0 }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => handleChange('plan', { ...config.plan, features: [...(config.plan?.features || []), ''] })}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg3)', border: '1px dashed var(--line2)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'var(--text2)', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
-            >
-              <Plus size={14} />
-              {t('branding.addFeature')}
-            </button>
-          </div>
-        </div>
-
-        {/* Annual Plan & Pricing */}
-        <div className="card" style={{ marginBottom: '12px' }}>
-          <div style={sectionHeader}>
-            <CreditCard size={16} />
-            <span>{isRTL ? 'الباقة السنوية' : 'Annual Plan'}</span>
-            <label style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)', fontWeight: '600' }}>
-              <input
-                type="checkbox"
-                checked={config.planAnnual?.visible || false}
-                onChange={e => handleChange('planAnnual', { ...config.planAnnual, visible: e.target.checked })}
-                style={{ width: '14px', height: '14px', accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
-              {t('branding.showOnSite')}
-            </label>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-            <div>
-              <label style={labelStyle}>{t('branding.planName')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="text" dir="rtl" value={config.planAnnual?.name || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, name: e.target.value })} placeholder={t('branding.placeholderPlanName')} style={inputStyle} />
-                <input type="text" dir="ltr" value={config.planAnnual?.nameEn || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, nameEn: e.target.value })} placeholder={t('branding.placeholderPlanName') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{t('branding.planBadge')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="text" dir="rtl" value={config.planAnnual?.badge || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, badge: e.target.value })} placeholder={t('branding.placeholderBadge')} style={inputStyle} />
-                <input type="text" dir="ltr" value={config.planAnnual?.badgeEn || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, badgeEn: e.target.value })} placeholder={t('branding.placeholderBadge') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-            <div>
-              <label style={labelStyle}>{t('branding.planPrice')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <input type="number" min="0" value={config.planAnnual?.price || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, price: e.target.value })} placeholder="999" style={{ ...inputStyle, height: '100%' }} />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{t('branding.planCurrency')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <select dir="rtl" value={config.planAnnual?.currency || 'ج.م'} onChange={e => handleChange('planAnnual', { ...config.planAnnual, currency: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
-                  <option value="ج.م">ج.م (EGP)</option>
-                  <option value="$">$ (USD)</option>
-                  <option value="ر.س">ر.س (SAR)</option>
-                  <option value="د.إ">د.إ (AED)</option>
-                  <option value="€">€ (EUR)</option>
-                </select>
-                <select dir="ltr" value={config.planAnnual?.currencyEn || 'EGP'} onChange={e => handleChange('planAnnual', { ...config.planAnnual, currencyEn: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}>
-                  <option value="EGP">EGP</option>
-                  <option value="USD">USD</option>
-                  <option value="SAR">SAR</option>
-                  <option value="AED">AED</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>{t('branding.planPeriod')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <select dir="rtl" value={config.planAnnual?.period || 'سنوياً'} onChange={e => handleChange('planAnnual', { ...config.planAnnual, period: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
-                  <option value="شهرياً">{t('branding.monthly')}</option>
-                  <option value="سنوياً">{t('branding.yearly')}</option>
-                  <option value="مرة واحدة">{t('branding.onetime')}</option>
-                </select>
-                <select dir="ltr" value={config.planAnnual?.periodEn || 'yearly'} onChange={e => handleChange('planAnnual', { ...config.planAnnual, periodEn: e.target.value })} style={{ ...inputStyle, cursor: 'pointer', textAlign: 'left' }}>
-                  <option value="monthly">monthly</option>
-                  <option value="yearly">yearly</option>
-                  <option value="one-time">one-time</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>{t('branding.ctaText')}</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <input type="text" dir="rtl" value={config.planAnnual?.ctaText || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, ctaText: e.target.value })} placeholder={t('branding.placeholderCta')} style={inputStyle} />
-              <input type="text" dir="ltr" value={config.planAnnual?.ctaTextEn || ''} onChange={e => handleChange('planAnnual', { ...config.planAnnual, ctaTextEn: e.target.value })} placeholder={t('branding.placeholderCta') + ' ' + t('branding.english')} style={{ ...inputStyle, textAlign: 'left' }} />
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t('branding.planFeatures')}</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
-              {(config.planAnnual?.features || []).map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <input
-                      type="text"
-                      dir="rtl"
-                      value={feat}
-                      onChange={e => {
-                        const next = [...(config.planAnnual?.features || [])];
-                        next[idx] = e.target.value;
-                        handleChange('planAnnual', { ...config.planAnnual, features: next });
-                      }}
-                      style={{ ...inputStyle, padding: '8px 12px', fontSize: '12px' }}
-                      placeholder={t('branding.planFeatures')}
-                    />
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={(config.planAnnual?.featuresEn || [])[idx] || ''}
-                      onChange={e => {
-                        const nextEn = [...(config.planAnnual?.featuresEn || config.planAnnual?.features || [])];
-                        while (nextEn.length < config.planAnnual.features.length) nextEn.push('');
-                        nextEn[idx] = e.target.value;
-                        handleChange('planAnnual', { ...config.planAnnual, featuresEn: nextEn });
-                      }}
-                      style={{ ...inputStyle, padding: '8px 12px', fontSize: '12px', textAlign: 'left' }}
-                      placeholder={t('branding.planFeatures') + ' ' + t('branding.english')}
-                    />
-                  </div>
-                  <button
-                    onClick={() => {
-                      const next = (config.planAnnual?.features || []).filter((_, i) => i !== idx);
-                      const nextEn = (config.planAnnual?.featuresEn || config.planAnnual?.features || []).filter((_, i) => i !== idx);
-                      handleChange('planAnnual', { ...config.planAnnual, features: next, featuresEn: nextEn });
-                    }}
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--red)', padding: '4px', marginTop: '6px', flexShrink: 0 }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => handleChange('planAnnual', { ...config.planAnnual, features: [...(config.planAnnual?.features || []), ''] })}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg3)', border: '1px dashed var(--line2)', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', color: 'var(--text2)', cursor: 'pointer', width: '100%', justifyContent: 'center' }}
-            >
-              <Plus size={14} />
-              {t('branding.addFeature')}
-            </button>
-          </div>
-        </div>
 
         {/* Advanced Overrides */}
         <div className="card" style={{ marginBottom: '12px' }}>
