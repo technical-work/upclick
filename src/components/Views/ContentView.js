@@ -91,7 +91,7 @@ export default function ContentView() {
   const [todayIdeas, setTodayIdeas] = useState(GC.contentHub?.todayIdeas || []);
   const [loadingIdeas, setLoadingIdeas] = useState(false);
   const savedIdeas = GC.contentHub?.savedIdeas || [];
- 
+
   const handleGenIdeas = async () => {
     if (!checkCredits(costGenerateScript)) return;
     setLoadingIdeas(true);
@@ -239,7 +239,7 @@ Return format (JSON Array):
       const splitCaps = reply.split('\n\n').filter(Boolean).map(c => c.replace(/^\d+[\.\s]/, '').trim());
       const finalCaps = splitCaps.length > 0 ? splitCaps : [reply];
       setGeneratedCaptions(finalCaps);
-      
+
       saveGC({
         ...GC,
         contentHub: {
@@ -254,7 +254,7 @@ Return format (JSON Array):
       // Fallback captions
       const fallbacks = DB.capSets[lang] && DB.capSets[lang][selectedTone] || ['Generated caption fallback'];
       setGeneratedCaptions(fallbacks);
-      
+
       saveGC({
         ...GC,
         contentHub: {
@@ -554,7 +554,7 @@ IMPORTANT: You MUST use rich Markdown styling to format the output.
     if (!qaAnswer) return;
     if (!checkCredits(costGenerateScript)) return;
     setGeneratingQA(true);
-    
+
     const prompt = `Modify this generated response to follow this instruction: "${instruction}".
 Current response: "${qaAnswer}"
 Keep the reply format as selected: ${qaFormat}. Respond in same language: ${lang}.
@@ -727,7 +727,7 @@ Return strictly as a JSON array of objects:
           { key: 'ct-script', label: L('Script Writer', 'كاتب السكريبت'), emoji: '🎬' },
           { key: 'ct-trendvid', label: L('Trending Videos', 'الفيديوهات الرائجة'), emoji: '📹' },
           { key: 'ct-rep', label: L('Repurpose', 'إعادة الصياغة'), emoji: '♻️' },
-          { key: 'ct-trend', label: L('Radar', 'الرادار'), emoji: '🔥' },
+          { key: 'ct-trend', label: L('Radar', 'الترندات'), emoji: '🔥' },
           { key: 'ct-qa', label: L('Q&A', 'الأسئلة والأجوبة'), emoji: '💬' },
           { key: 'ct-burn', label: L('Burnout', 'حماية الإرهاق'), emoji: '💚' }
         ].map(tab => (
@@ -747,9 +747,9 @@ Return strictly as a JSON array of objects:
       {activeSubTab === 'ct-ideas' && (
         <div className="tool-panel on" id="ct-ideas">
           <div className="sh mb">
-            <button 
-              className="btn btn-prime" 
-              onClick={handleGenIdeas} 
+            <button
+              className="btn btn-prime"
+              onClick={handleGenIdeas}
               disabled={loadingIdeas}
             >
               {loadingIdeas ? L('Generating...', 'جاري التوليد...') : `✨ ${L('Generate Ideas', 'توليد أفكار')}`}
@@ -969,8 +969,8 @@ Return strictly as a JSON array of objects:
                     {L('Fill details and generate script', 'املأ التفاصيل واضغط لكتابة السكريبت')}
                   </div>
                 ) : (
-                  <div 
-                    className="ai-box" 
+                  <div
+                    className="ai-box"
                     style={{ background: 'var(--orange-dim)', padding: '16px', borderRadius: '10px', border: '1px solid var(--orange-d)', color: 'var(--t1)', fontSize: '13px', lineHeight: '1.8', maxHeight: '480px', overflowY: 'auto' }}
                     dangerouslySetInnerHTML={{ __html: parseMarkdown(generatedScript) }}
                   />
@@ -1065,10 +1065,10 @@ Return strictly as a JSON array of objects:
           <div className="card mb">
             <div className="sh" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div className="st">🎵 {L('Trending Sounds', 'أصوات ترند رائجة')}</div>
-              <button 
-                className="btn btn-ai" 
-                onClick={handleGenTrendingSounds} 
-                disabled={generatingSounds} 
+              <button
+                className="btn btn-ai"
+                onClick={handleGenTrendingSounds}
+                disabled={generatingSounds}
                 style={{ padding: '4px 10px', fontSize: '11px' }}
               >
                 {generatingSounds ? L('Generating...', 'جاري التوليد...') : L('🤖 Generate Custom Sounds', '🤖 توليد أصوات لمجالي')}
@@ -1077,9 +1077,9 @@ Return strictly as a JSON array of objects:
             <div id="trending-sounds-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {trendingSounds.map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: i < trendingSounds.length - 1 ? '1px solid var(--edge)' : 'none' }}>
-                  <button 
-                    className="btn btn-ghost" 
-                    style={{ padding: '0', minWidth: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px' }} 
+                  <button
+                    className="btn btn-ghost"
+                    style={{ padding: '0', minWidth: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px' }}
                     onClick={() => togglePlaySound(i, s.n)}
                   >
                     {playingIdx === i ? '⏹️' : '▶️'}
@@ -1090,11 +1090,11 @@ Return strictly as a JSON array of objects:
                   </div>
                   {s.h && <span className="badge b-red" style={{ flexShrink: 0 }}>🔥 {L('Hot', 'حار')}</span>}
                   <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
-                    <a 
+                    <a
                       href={`https://www.tiktok.com/search?q=${encodeURIComponent(s.n)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn btn-ghost" 
+                      className="btn btn-ghost"
                       style={{ padding: '4px 10px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     >
                       🎵 TikTok
@@ -1147,7 +1147,7 @@ Return strictly as a JSON array of objects:
                 ) : (
                   repOutputs.map((fText, i) => (
                     <div className="ai mb" key={i} style={{ background: 'var(--orange-dim)', padding: '15px', borderRadius: '10px', border: '1px solid var(--orange-d)', marginBottom: '10px' }}>
-                      <div 
+                      <div
                         style={{ fontSize: '13px', color: 'var(--t1)', lineHeight: '1.7' }}
                         dangerouslySetInnerHTML={{ __html: parseMarkdown(fText) }}
                       />
@@ -1303,22 +1303,22 @@ Return strictly as a JSON array of objects:
                       dangerouslySetInnerHTML={{ __html: parseMarkdown(qaAnswer) }}
                     />
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                      <button 
-                        className="btn btn-ghost" 
+                      <button
+                        className="btn btn-ghost"
                         style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '6px' }}
                         onClick={() => handleImproveQA('make it shorter')}
                       >
                         ⚡ {L('Shorter', 'تبسيط وتقصير')}
                       </button>
-                      <button 
-                        className="btn btn-ghost" 
+                      <button
+                        className="btn btn-ghost"
                         style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '6px' }}
                         onClick={() => handleImproveQA('add emojis')}
                       >
                         🔥 {L('Add Emojis', 'إضافة إيموجي')}
                       </button>
-                      <button 
-                        className="btn btn-ghost" 
+                      <button
+                        className="btn btn-ghost"
                         style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '6px' }}
                         onClick={() => handleImproveQA('add Call-to-Action')}
                       >

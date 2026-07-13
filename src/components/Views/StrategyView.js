@@ -23,6 +23,62 @@ export default function StrategyView() {
     roadmap: GC.strategy.roadmap || ''
   });
 
+  const wizardQuestions = [
+    {
+      qAr: 'ما هو اسم مشروعك أو علامتك التجارية، وما هو مجالك (النيش) الأساسي؟',
+      qEn: 'What is your business or brand name, and what is your primary niche?',
+      placeholderAr: 'مثال: أكاديمية سارة للكوتشينغ - كوتشينغ القيادة لمديري الشركات الناشئة',
+      placeholderEn: "e.g., Sara's Coaching Academy - Leadership coaching for startup managers",
+      key: 'name_niche'
+    },
+    {
+      qAr: 'صف جمهورك المستهدف. من هم، وما هي أكبر المشاكل التي يواجهونها أو رغباتهم الأساسية؟',
+      qEn: 'Describe your ideal customers. Who are they, and what are their biggest frustrations or desires?',
+      placeholderAr: 'مثال: مديرو الشركات الناشئة الذين يشعرون بالضغط في إدارة فرقهم ويبحثون عن أنظمة قيادية منظمة',
+      placeholderEn: 'e.g., Startup managers who feel overwhelmed by team management and want structured leadership systems',
+      key: 'audience'
+    },
+    {
+      qAr: 'ما هو اسم عرضك أو خدمتك الأساسية، وما هو التحول أو النتيجة الدقيقة التي تعدهم بتحقيقها؟',
+      qEn: 'What is the name of your main offer, and what is the exact transformation/result you promise them?',
+      placeholderAr: 'مثال: برنامج تسريع القيادة خلال 90 يوماً - تحكم بفريقك وضاعف إنتاجيتك خلال 3 أشهر',
+      placeholderEn: 'e.g., 90-Day Leadership Accelerator - Take control of your team and double your productivity in 3 months',
+      key: 'offer_transform'
+    },
+    {
+      qAr: 'ما هو سعر هذا العرض، مدة البرنامج، وما هي الخدمات الأساسية التي يحصل عليها العميل (جلسات، ملفات، إلخ)؟',
+      qEn: 'What is the price of this offer, the duration, and what key deliverables do they get?',
+      placeholderAr: 'مثال: 1500 دولار، لمدة 3 أشهر، تشمل 12 جلسة أسبوعية خاصة، دعم عبر واتساب، ونماذج جاهزة للاستخدام',
+      placeholderEn: 'e.g., $1,500, 3 months duration, includes 12 weekly 1-on-1 calls, WhatsApp support, and ready-to-use templates',
+      key: 'price_duration_deliverables'
+    },
+    {
+      qAr: 'من هم منافسوك الأساسيون (سواء بشكل مباشر أو غير مباشر)، وما هي ميزتك الفريدة التي تميزك عنهم؟',
+      qEn: 'Who are your main competitors (direct or indirect), and what is your unique advantage over them?',
+      placeholderAr: 'مثال: وكالات تدريب الشركات العامة؛ ميزتي هي المتابعة الفردية الأسبوعية المخصصة لثقافة الشركات العربية الناشئة',
+      placeholderEn: 'e.g., General corporate training agencies; my advantage is personalized 1-on-1 weekly sprints tailored to Arab startup culture',
+      key: 'competitors_advantage'
+    },
+    {
+      qAr: 'ما هي قنوات التسويق الأساسية التي تفضلها (لينكدإن، إنستجرام، إعلانات، تواصل بارد) وما هو الوقت أو الميزانية المتاحة للتسويق؟',
+      qEn: 'What are your primary marketing channels (LinkedIn, Instagram, Ads, cold outreach) and what is your monthly budget/time commitment?',
+      placeholderAr: 'مثال: محتوى عضوي على لينكدإن + تواصل بارد مع مؤسسي الشركات؛ أخصص ساعتين يومياً مع ميزانية إعلانات 0$',
+      placeholderEn: 'e.g., LinkedIn organic content + cold DM outreach to startup founders; spending 2 hours daily with $0 ad budget',
+      key: 'marketing_resources'
+    }
+  ];
+
+  const [wizardActive, setWizardActive] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardAnswers, setWizardAnswers] = useState({
+    name_niche: '',
+    audience: '',
+    offer_transform: '',
+    price_duration_deliverables: '',
+    competitors_advantage: '',
+    marketing_resources: ''
+  });
+
   // Combined Business Idea & Offer Inputs
   const [bizName, setBizName] = useState(GC.profile.name || '');
   const [bizDesc, setBizDesc] = useState(GC.profile.desc || '');
@@ -100,8 +156,13 @@ export default function StrategyView() {
     });
   };
 
-  const runIdeaStrategy = async () => {
+  const runIdeaStrategy = async (answersOverride) => {
     saveProfileFields();
+    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const questionnaireContext = qAnswers 
+      ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
+      : '';
+
     const ideaPrompt = `Analyze my business and offer: 
 Brand Name: "${bizName}"
 Business Description: "${bizDesc}"
@@ -112,6 +173,8 @@ Transformation/Final Result: "${offerTransform}"
 Price: "${offerPrice}"
 Duration: "${offerDuration}"
 Deliverables: "${offerDeliverables}"
+
+${questionnaireContext}
 
 Write a comprehensive, professional, and detailed "Business & Offer Analysis" master plan. You must cover:
 1. **Value Proposition Analysis**: A deep analysis of the transformation offered compared to the market.
@@ -129,13 +192,18 @@ Write a comprehensive, professional, and detailed "Business & Offer Analysis" ma
           name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
           offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
         },
-        strategy: { ...GC.strategy, idea_analysis: finalRes } 
+        strategy: { ...GC.strategy, idea_analysis: finalRes, questionnaire_answers: qAnswers } 
       });
     });
   };
 
-  const runIcpStrategy = async () => {
+  const runIcpStrategy = async (answersOverride) => {
     saveProfileFields();
+    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const questionnaireContext = qAnswers 
+      ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
+      : '';
+
     const icpPrompt = `Based on this Business and Offer:
 Brand Name: "${bizName}"
 Description: "${bizDesc}"
@@ -143,6 +211,8 @@ Niche: "${bizNiche}"
 Main Offer Name: "${offerName}"
 Transformation: "${offerTransform}"
 Price: "${offerPrice}"
+
+${questionnaireContext}
 
 Build a highly comprehensive "Ideal Client Profile (ICP)" analysis. You must cover:
 1. **Demographics & Detailed Psychographics**: Age group, role, income bracket, daily routine, core frustrations, inner hopes, and emotional triggers.
@@ -158,13 +228,18 @@ Build a highly comprehensive "Ideal Client Profile (ICP)" analysis. You must cov
           name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
           offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
         },
-        strategy: { ...GC.strategy, icp: finalRes } 
+        strategy: { ...GC.strategy, icp: finalRes, questionnaire_answers: qAnswers } 
       });
     });
   };
 
-  const runSwotStrategy = async () => {
+  const runSwotStrategy = async (answersOverride) => {
     saveProfileFields();
+    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const questionnaireContext = qAnswers 
+      ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
+      : '';
+
     const swotPrompt = `Based on this Business and Offer:
 Brand Name: "${bizName}"
 Description: "${bizDesc}"
@@ -172,19 +247,21 @@ Niche: "${bizNiche}"
 Business Stage: "${bizStage}"
 Main Offer Name: "${offerName}"
 
+${questionnaireContext}
+
 Perform a comprehensive, highly strategic, and localized "SWOT Analysis" and "Tactical Action Plan" specifically for this SaaS/software business. You must analyze the actual market, competitors (like ClickUp, Notion, custom spreadsheets, or WhatsApp workflows), and local business challenges (such as low trust in automation, data security concerns, migration friction, and pricing value perception).
 
 You must cover:
 1. **Strengths (S)**: 4 deep-dive, product-specific strengths. Do not list generic terms. Focus on localized value, personalization, all-in-one AI workflows, or specific onboarding support.
 2. **Weaknesses (W)**: 4 real internal bottlenecks. Focus on validation stage issues, developer capacity, trust establishment, and high customer friction in migrating data.
-3. **Opportunities (O)**: 4 actionable market trends. Focus on the rapid surge of AI adoption in small/medium businesses, demand for productivity consolidation, and the rise of remote team management.
-4. **Threats (T)**: 4 real market risks. Focus on fast competitors, high customer churn if they don't see immediate value, pricing pressure, and customer technical illiteracy.
+3. **Opportunities (O)**: 4 actionable market trends. Focus on the rapid surge of AI adoption in small/medium businesses, Consolidation demands, and the rise of remote team management.
+4. **Threats (T)**: 4 real market risks. Focus on fast competitors, high customer churn, pricing pressure, and customer technical illiteracy.
 5. **Tactical Action Matrix (The Strategic Brain - عقل يفكر)**: Propose deep, concrete action steps:
-   - SO Strategy: How to use your strengths (like localized setup) to capture opportunities (like the demand for AI productivity).
-   - WO Strategy: How to leverage opportunities (like the surge in AI interest) to overcome weaknesses (like validation stage or lack of trust) through beta test campaigns or educational workshops.
-   - ST Strategy: How to use your strengths (like tailored customization) to defend against threats (like competitors or copycats).
-   - WT Strategy: How to minimize internal bottlenecks and defend against threats (e.g., how to build an easy-onboarding program to prevent churn and overcome customer technical illiteracy).`;
-    const swotSystem = `You are an elite business advisor, startup strategist, and SaaS consultant specializing in AI applications and productivity platforms. You have deep knowledge of the competitive landscape (Notion, ClickUp, custom CRM solutions) and startup challenges. Write a highly analytical, critical, and strategic report. Avoid generic statements or textbook definitions. Speak like a real board advisor who understands startup mechanics, customer acquisition, and product-led growth. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+   - SO Strategy: How to use your strengths to capture opportunities.
+   - WO Strategy: How to leverage opportunities to overcome weaknesses.
+   - ST Strategy: How to use your strengths to defend against threats.
+   - WT Strategy: How to minimize internal bottlenecks and defend against threats.`;
+    const swotSystem = `You are an elite business advisor, startup strategist, and SaaS consultant specializing in AI applications and productivity platforms. Write a highly analytical, critical, and strategic report. Speak like a real board advisor who understands startup mechanics, customer acquisition, and product-led growth. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
     triggerStrategyAI('swot', swotPrompt, swotSystem, (finalRes) => {
       handleSaveGC({ 
@@ -193,13 +270,18 @@ You must cover:
           name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
           offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
         },
-        strategy: { ...GC.strategy, swot_analysis: finalRes } 
+        strategy: { ...GC.strategy, swot_analysis: finalRes, questionnaire_answers: qAnswers } 
       });
     });
   };
 
-  const runRoadmapStrategy = async () => {
+  const runRoadmapStrategy = async (answersOverride) => {
     saveProfileFields();
+    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const questionnaireContext = qAnswers 
+      ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
+      : '';
+
     const roadmapPrompt = `Based on this Business and Offer:
 Brand Name: "${bizName}"
 Niche: "${bizNiche}"
@@ -208,16 +290,18 @@ Main Offer Name: "${offerName}"
 Price: "${offerPrice}"
 Duration/Period: "${offerDuration}"
 
+${questionnaireContext}
+
 Build a highly comprehensive, week-by-week Growth Roadmap and Operational Blueprint designed specifically for the duration of "${offerDuration}". This roadmap is not just for marketing; it is a complete business execution plan.
 
 You must cover:
 1. **Strategic Timeline & Feedback Loop**: Emphasize that the user will follow this blueprint for "${offerDuration}". Clearly explain that as they log their leads, tasks, chats, and sales in their CRM, the AI will ingest this real-world performance data at the end of the "${offerDuration}" period to analyze conversion metrics, address weaknesses, and generate an even stronger, optimized strategy for the next phase.
-2. **Three Concurrent Action Tracks (Product, Marketing, Sales)**: For every single week in the duration of "${offerDuration}" (e.g., if duration is 1 month, write weeks 1 to 4; if 3 months, write weeks 1 to 12. List them individually, e.g. Week 1, Week 2, Week 3, etc.):
+2. **Three Concurrent Action Tracks (Product, Marketing, Sales)**: For every single week in the duration of "${offerDuration}":
    - **Product & Delivery Track**: Specific operational tasks, setup of tools, resource preparation, or beta onboarding.
    - **Marketing & Attraction Track**: Specific campaigns, lead magnets, social content topics, and automated outreach triggers.
    - **Sales & Closing Track**: Sales script adjustments, outreach follow-up schedule, payment links setup, and closing templates.
-3. **Actionable Weekly Metrics to Track**: List specific numbers (like connection requests, link clicks, sales calls booked, screenshots received) they must record in their system daily.`;
-    const roadmapSystem = `You are a world-class startup consultant, operations manager, and growth strategist. You write highly practical, comprehensive, week-by-week growth blueprints. Do not lump weeks together or give generic high-level marketing tips. For every single week of the specified duration, detail clear tasks for Product/Delivery, Marketing, and Sales. Establish a strong connection showing how logging data in the CRM feeds back into the AI for the next phase. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+3. **Actionable Weekly Metrics to Track**: List specific numbers daily.`;
+    const roadmapSystem = `You are a world-class startup consultant, operations manager, and growth strategist. Write highly practical, comprehensive, week-by-week growth blueprints. Detail clear tasks for Product/Delivery, Marketing, and Sales. Establish a strong connection showing how logging data in the CRM feeds back into the AI for the next phase. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
     triggerStrategyAI('roadmap', roadmapPrompt, roadmapSystem, (finalRes) => {
       handleSaveGC({ 
@@ -226,17 +310,152 @@ You must cover:
           name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
           offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
         },
-        strategy: { ...GC.strategy, roadmap: finalRes } 
+        strategy: { ...GC.strategy, roadmap: finalRes, questionnaire_answers: qAnswers } 
       });
     });
   };
 
-  const runCompleteStrategy = async () => {
-    runIdeaStrategy();
-    runIcpStrategy();
-    runSwotStrategy();
-    runRoadmapStrategy();
+  const runCompleteStrategy = async (answersOverride) => {
+    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    await runIdeaStrategy(qAnswers);
+    await runIcpStrategy(qAnswers);
+    await runSwotStrategy(qAnswers);
+    await runRoadmapStrategy(qAnswers);
   };
+
+  if (wizardActive) {
+    const currentQ = wizardQuestions[wizardStep];
+    const isLastStep = wizardStep === wizardQuestions.length - 1;
+    const progressPercent = ((wizardStep + 1) / wizardQuestions.length) * 100;
+    const isAr = lang === 'ar';
+
+    return (
+      <div className="pg on" id="pg-strategy" style={{ display: 'flex', flexDirection: 'column', minHeight: '80vh', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+        <div className="card" style={{
+          maxWidth: '650px',
+          width: '100%',
+          background: 'var(--surface)',
+          border: '1px solid var(--edge)',
+          borderRadius: '24px',
+          padding: '40px 32px',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+          position: 'relative'
+        }}>
+          {/* Close button */}
+          <button 
+            className="btn-close" 
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'var(--surface2)',
+              color: 'var(--t1)',
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: '1px solid var(--edge)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}
+            onClick={() => setWizardActive(false)}
+          >
+            ✕
+          </button>
+
+          {/* Wizard Header */}
+          <div style={{ marginBottom: '24px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              {isAr ? `السؤال ${wizardStep + 1} من ${wizardQuestions.length}` : `Question ${wizardStep + 1} of ${wizardQuestions.length}`}
+            </span>
+            <h3 style={{ margin: '8px 0', fontSize: '20px', fontWeight: '800', lineHeight: '1.4' }}>
+              {isAr ? currentQ.qAr : currentQ.qEn}
+            </h3>
+            
+            {/* Progress Bar */}
+            <div style={{ width: '100%', height: '6px', background: 'var(--edge)', borderRadius: '3px', marginTop: '12px', overflow: 'hidden' }}>
+              <div style={{ width: `${progressPercent}%`, height: '100%', background: 'linear-gradient(90deg, var(--orange), var(--purple))', transition: 'width 0.3s ease' }}></div>
+            </div>
+          </div>
+
+          {/* Answer Textarea */}
+          <div style={{ marginBottom: '32px' }}>
+            <textarea
+              className="inp"
+              rows="6"
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '12px',
+                background: 'var(--surface2)',
+                color: 'var(--t1)',
+                border: '1px solid var(--edge)',
+                fontSize: '14.5px',
+                lineHeight: '1.6',
+                resize: 'none'
+              }}
+              placeholder={isAr ? currentQ.placeholderAr : currentQ.placeholderEn}
+              value={wizardAnswers[currentQ.key] || ''}
+              onChange={(e) => setWizardAnswers({
+                ...wizardAnswers,
+                [currentQ.key]: e.target.value
+              })}
+            />
+          </div>
+
+          {/* Footer Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              className="btn btn-ghost"
+              disabled={wizardStep === 0}
+              onClick={() => setWizardStep(wizardStep - 1)}
+              style={{ padding: '12px 24px', opacity: wizardStep === 0 ? 0.3 : 1 }}
+            >
+              {isAr ? '← السابق' : '← Previous'}
+            </button>
+
+            {isLastStep ? (
+              <button
+                className="btn btn-prime"
+                onClick={async () => {
+                  setWizardActive(false);
+                  const compiled = `
+1. Brand & Niche: ${wizardAnswers.name_niche}
+2. Target Audience: ${wizardAnswers.audience}
+3. Main Offer & Transformation: ${wizardAnswers.offer_transform}
+4. Pricing, Duration & Deliverables: ${wizardAnswers.price_duration_deliverables}
+5. Competitors & Unique Advantage: ${wizardAnswers.competitors_advantage}
+6. Marketing Channels & Resources: ${wizardAnswers.marketing_resources}
+`;
+                  handleSaveGC({
+                    strategy: {
+                      ...GC.strategy,
+                      questionnaire_answers: compiled
+                    }
+                  });
+                  await runCompleteStrategy(compiled);
+                }}
+                style={{ padding: '12px 28px', background: 'linear-gradient(135deg, var(--orange), var(--purple))', border: 'none', fontWeight: 'bold' }}
+              >
+                {isAr ? 'توليد الخطة بالذكاء الاصطناعي ✨' : 'Generate Strategy with AI ✨'}
+              </button>
+            ) : (
+              <button
+                className="btn btn-prime"
+                onClick={() => setWizardStep(wizardStep + 1)}
+                style={{ padding: '12px 28px' }}
+              >
+                {isAr ? 'التالي →' : 'Next →'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pg on" id="pg-strategy">
@@ -262,7 +481,17 @@ You must cover:
           <span className="pg-icon">🧠</span>
           <span>{t('Strategy Lab')}</span>
         </div>
-        <div className="pg-actions">
+        <div className="pg-actions" style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            className="btn btn-prime" 
+            style={{ background: 'linear-gradient(135deg, var(--orange), var(--purple))', border: 'none' }} 
+            onClick={() => {
+              setWizardStep(0);
+              setWizardActive(true);
+            }}
+          >
+            🧭 {L('AI Interview Builder', 'المقابلة الذكية')}
+          </button>
           {activeTab === 'roadmap' && (
             <button className="btn btn-prime" onClick={() => setShowExportModal(true)}>
               📑 {L('Export Overview', 'تصدير النظرة العامة')}
@@ -282,6 +511,26 @@ You must cover:
       {/* ── TAB 1: BUSINESS IDEA & OFFER ── */}
       {activeTab === 'idea' && (
         <div className="g2">
+          {/* Interview Banner */}
+          <div className="card" style={{ gridColumn: 'span 2', background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(108, 53, 255, 0.08))', border: '1px solid rgba(108, 53, 255, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 'bold' }}>🧭 {L('Need a dynamic strategy? Try the AI Strategy Interview!', 'تبحث عن استراتيجية مخصصة؟ جرب المقابلة الذكية!')}</h4>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--t2)' }}>
+                {L('Answer a few questions about your project, target audience, and competitors, and let the AI compile a customized master plan.', 'أجب عن بضعة أسئلة حول مشروعك، جمهورك المستهدف، ومنافسيك، ودع الذكاء الاصطناعي يبني خطتك.')}
+              </p>
+            </div>
+            <button 
+              className="btn btn-prime" 
+              style={{ background: 'linear-gradient(135deg, var(--orange), var(--purple))', border: 'none', padding: '8px 16px', fontSize: '13px' }}
+              onClick={() => {
+                setWizardStep(0);
+                setWizardActive(true);
+              }}
+            >
+              {L('Start AI Interview', 'ابدأ المقابلة')}
+            </button>
+          </div>
+
           <div className="card">
             <div className="sec-hd"><div className="sec-title">💡 {L('Business & Offer Setup', 'إعداد البزنس والعرض')}</div></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
