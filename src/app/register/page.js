@@ -225,6 +225,14 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const [tenantConfig, setTenantConfig] = useState(null);
+  const [theme, setTheme] = useState('dark');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('upklick_theme');
+      if (savedTheme) setTheme(savedTheme);
+    }
+  }, []);
 
   useEffect(() => {
     getDoc(doc(db, 'tenants', 'global')).then((docSnap) => {
@@ -380,7 +388,7 @@ export default function RegisterPage() {
               marginBottom: '24px'
             }}>
               <img 
-                src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
                 alt={tenantConfig?.appName || "UpKlick"} 
                 style={{
                   height: '240px',
@@ -391,7 +399,7 @@ export default function RegisterPage() {
             </div>
           ) : (
             <img 
-              src={tenantConfig?.logoUrl || "/new-logo.png"} 
+              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
               alt={tenantConfig?.appName || "UpKlick"} 
               style={styles.logo} 
             />
