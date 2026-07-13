@@ -54,7 +54,7 @@ export default function CreateAdminPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <img src="/upklick-logo.png" alt="UpKlick" style={styles.logo} />
+        <img src="/best_logo_dark.png" alt="UpKlick" style={styles.logo} />
         <h1 style={styles.title}>تهيئة حساب مسؤول جديد</h1>
         <p style={styles.subtitle}>أدخل البريد الإلكتروني وكلمة المرور لإنشاء حساب إداري في Firestore</p>
 
