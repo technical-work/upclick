@@ -52,7 +52,7 @@ import ModelTestView from '@/components/Views/ModelTestView';
 import BillingView from '@/components/Views/BillingView';
 import SupportView from '@/components/Views/SupportView';
 function DashboardShell() {
-  const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang } = useBusiness();
+  const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,7 +199,7 @@ function DashboardShell() {
                   justifyContent: 'center'
                 }}>
                   <img 
-                    src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                    src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
                     alt={tenantConfig?.appName || "UpKlick Logo"} 
                     style={{
                       height: '120px',
@@ -210,7 +210,7 @@ function DashboardShell() {
                 </div>
               ) : (
                 <img 
-                  src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                  src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
                   alt={tenantConfig?.appName || "UpKlick Logo"} 
                   style={{ maxHeight: '30px', objectFit: 'contain' }}
                 />
