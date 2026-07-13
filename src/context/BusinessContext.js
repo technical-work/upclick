@@ -492,6 +492,28 @@ export function BusinessProvider({ children }) {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('upklick_theme', theme);
 
+    // Swap all default logo images on the page using JS
+    const swapLogos = () => {
+      const logos = document.querySelectorAll('img');
+      logos.forEach(img => {
+        const src = img.getAttribute('src');
+        if (src) {
+          if (theme === 'light') {
+            if (src.includes('best_logo_dark.png') || src.includes('new-logo.png') || src.includes('upklick-logo.png')) {
+              img.src = '/best_logo_light.png';
+            }
+          } else {
+            if (src.includes('best_logo_light.png') || src.includes('new-logo.png') || src.includes('upklick-logo.png')) {
+              img.src = '/best_logo_dark.png';
+            }
+          }
+        }
+      });
+    };
+    swapLogos();
+    setTimeout(swapLogos, 0);
+    setTimeout(swapLogos, 200);
+
     // Apply color accents
     const color = themeColors[theme] || '#FF6B35';
     document.documentElement.style.setProperty('--a', color);
