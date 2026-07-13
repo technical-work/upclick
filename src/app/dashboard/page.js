@@ -4,6 +4,8 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
+import { sendEmailVerification } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 // Core layout components
 import Sidebar from '@/components/Sidebar';
@@ -136,6 +138,12 @@ function DashboardShell() {
           {lang === 'ar' ? 'يرجى عدم إغلاق أو تحديث هذه الصفحة.' : 'Please do not close or refresh this page.'}
         </p>
       </div>
+  }
+
+  // Email Verification Lock Screen
+  if (user && !user.emailVerified) {
+    return (
+      <EmailVerificationLock user={user} lang={lang} logout={logout} />
     );
   }
 
@@ -412,5 +420,232 @@ export default function Home() {
         <DashboardShell />
       </Suspense>
     </BusinessProvider>
+  );
+}
+
+function EmailVerificationLock({ user, lang, logout }) {
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleCheck = async () => {
+    setStatusLoading(true);
+    try {
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        if (auth.currentUser.emailVerified) {
+          window.location.reload();
+        } else {
+          alert(lang === 'ar' 
+            ? 'لم يتم تفعيل الحساب بعد. يرجى الضغط على الرابط في البريد الإلكتروني.' 
+            : 'Email not verified yet. Please check your inbox and click the verification link.'
+          );
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    setResendMessage('');
+    try {
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        setResendMessage(lang === 'ar' ? '✅ تم إرسال الرابط بنجاح!' : '✅ Link sent successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+      setResendMessage(lang === 'ar' 
+        ? '❌ فشل إرسال الرابط. يرجى المحاولة لاحقاً.' 
+        : '❌ Failed to send link. Please try again later.'
+      );
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const isAr = lang === 'ar';
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      width: '100vw',
+      backgroundColor: '#08080f',
+      backgroundImage: 'radial-gradient(circle at top right, rgba(255, 107, 53, 0.07), transparent 45%), radial-gradient(circle at bottom left, rgba(108, 53, 255, 0.07), transparent 45%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: isAr ? '"IBM Plex Sans Arabic", sans-serif' : '"DM Sans", sans-serif',
+      padding: '24px',
+      boxSizing: 'border-box',
+      color: '#fff',
+      direction: isAr ? 'rtl' : 'ltr'
+    }}>
+      <style>{`
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.05); opacity: 1; }
+          100% { transform: scale(1); opacity: 0.8; }
+        }
+        .glowing-circle {
+          animation: pulse 3s infinite ease-in-out;
+        }
+        .btn-glow-verify:hover {
+          box-shadow: 0 0 20px rgba(108, 53, 255, 0.5) !important;
+          transform: translateY(-1px);
+        }
+        .btn-verify-ghost:hover {
+          background: rgba(255, 255, 255, 0.05) !important;
+        }
+      `}</style>
+      
+      <div style={{
+        maxWidth: '460px',
+        width: '100%',
+        background: 'rgba(15, 15, 25, 0.7)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '24px',
+        padding: '40px 32px',
+        textAlign: 'center',
+        boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5)'
+      }}>
+        {/* Glow Envelope Icon */}
+        <div className="glowing-circle" style={{
+          width: '72px',
+          height: '72px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(108, 53, 255, 0.15))',
+          border: '1px solid rgba(108, 53, 255, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          fontSize: '32px'
+        }}>
+          📧
+        </div>
+
+        {/* Title */}
+        <h2 style={{
+          fontSize: '22px',
+          fontWeight: '800',
+          marginBottom: '16px',
+          background: 'linear-gradient(90deg, #FF6B35, #6C35FF)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          color: '#fff'
+        }}>
+          {isAr ? 'تفعيل الحساب مطلوب' : 'Verify Your Email'}
+        </h2>
+
+        {/* Description */}
+        <p style={{
+          color: '#9090b0',
+          fontSize: '14px',
+          lineHeight: '1.7',
+          marginBottom: '28px'
+        }}>
+          {isAr ? (
+            <>
+              لقد أرسلنا رابط التحقق إلى بريدك الإلكتروني <strong>{user?.email}</strong>.
+              يرجى فحص صندوق الوارد (أو البريد المزعج/الرسائل الترويجية) والضغط على الرابط لتفعيل حسابك.
+            </>
+          ) : (
+            <>
+              We have sent a verification link to <strong>{user?.email}</strong>.
+              Please check your inbox (including spam/promotions folder) and click the link to verify your account.
+            </>
+          )}
+        </p>
+
+        {/* Response message */}
+        {resendMessage && (
+          <div style={{
+            fontSize: '13px',
+            fontWeight: '600',
+            color: resendMessage.includes('✅') ? '#00ff88' : '#ff4d4d',
+            backgroundColor: resendMessage.includes('✅') ? 'rgba(0, 255, 136, 0.08)' : 'rgba(255, 77, 77, 0.08)',
+            padding: '10px 14px',
+            borderRadius: '12px',
+            marginBottom: '20px',
+            border: `1px solid ${resendMessage.includes('✅') ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 77, 77, 0.15)'}`
+          }}>
+            {resendMessage}
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <button 
+            onClick={handleCheck}
+            disabled={statusLoading}
+            className="btn-glow-verify"
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #FF6B35, #6C35FF)',
+              color: '#fff',
+              fontWeight: '700',
+              fontSize: '14px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            {statusLoading ? '...' : (isAr ? 'تم التفعيل؟ تحديث الحالة' : 'I Verified my Email')}
+          </button>
+
+          <button 
+            onClick={handleResend}
+            disabled={resendLoading}
+            className="btn-verify-ghost"
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'transparent',
+              color: '#fff',
+              fontWeight: '600',
+              fontSize: '13.5px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {resendLoading ? '...' : (isAr ? 'إعادة إرسال رابط التفعيل' : 'Resend Verification Link')}
+          </button>
+
+          <button 
+            onClick={logout}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'transparent',
+              color: '#9090b0',
+              fontWeight: '600',
+              fontSize: '13px',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              marginTop: '8px'
+            }}
+          >
+            {isAr ? 'تسجيل الخروج والعودة' : 'Sign Out / Switch Account'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
