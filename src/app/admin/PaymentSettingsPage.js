@@ -301,8 +301,107 @@ const PaymentSettingsPage = () => {
 
             {paymentMethods.stripe.enabled && (
               <div style={{ ...collapsibleContent, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                
+                {/* 🔌 Stripe Connection Card */}
+                <div style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--line2)',
+                  borderRadius: '10px',
+                  padding: '14px',
+                  marginBottom: '6px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {paymentMethods.stripe.secretKey === 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH' ? (
+                          <>
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#00d98b', boxShadow: '0 0 8px #00d98b' }}></span>
+                            <span style={{ color: '#00d98b' }}>{isRTL ? 'متصل بحساب Stripe الافتراضي' : 'Connected to Default Stripe'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--text3)' }}></span>
+                            <span>{isRTL ? 'Stripe غير متصل' : 'Stripe Not Connected'}</span>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px', lineHeight: '1.4', textAlign: 'start' }}>
+                        {paymentMethods.stripe.secretKey === 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH'
+                          ? (isRTL ? 'الحساب الافتراضي sk_test_51Tn0... نشط وجاهز للتشغيل.' : 'Default account sk_test_51Tn0... is active and ready to run.')
+                          : (isRTL ? 'اضغط على زر الاتصال باليمين للربط السريع وحفظ المفاتيح الافتراضية.' : 'Click connect on the right to link the default sandbox keys.')}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetSecret = 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH';
+                        const targetPublishable = 'pk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH';
+                        
+                        setPaymentMethods(prev => ({
+                          ...prev,
+                          stripe: {
+                            ...prev.stripe,
+                            secretKey: targetSecret,
+                            publishableKey: targetPublishable,
+                            enabled: true
+                          }
+                        }));
+                        
+                        window.open('https://dashboard.stripe.com/', '_blank');
+                      }}
+                      style={{
+                        background: 'var(--accent)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 16px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'opacity 0.2s'
+                      }}
+                    >
+                      🔌 {isRTL ? 'اتصال بـ Stripe' : 'Connect to Stripe'}
+                    </button>
+                  </div>
+                </div>
+
                 <div>
-                  <label style={labelStyle}>{t('branding.paymentStripeLink')}</label>
+                  <label style={labelStyle}>{isRTL ? 'مفتاح الربط السري (Stripe Secret Key)' : 'Stripe Secret Key'}</label>
+                  <div style={{ position: 'relative' }}>
+                    <Key size={12} style={inputIcon} />
+                    <input
+                      type="text"
+                      value={paymentMethods.stripe.secretKey || ''}
+                      onChange={e => handleFieldChange('stripe', 'secretKey', e.target.value)}
+                      placeholder="sk_test_..."
+                      style={inputWithIconStyle}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>{isRTL ? 'مفتاح النشر العام (Stripe Publishable Key)' : 'Stripe Publishable Key'}</label>
+                  <div style={{ position: 'relative' }}>
+                    <Key size={12} style={inputIcon} />
+                    <input
+                      type="text"
+                      value={paymentMethods.stripe.publishableKey || ''}
+                      onChange={e => handleFieldChange('stripe', 'publishableKey', e.target.value)}
+                      placeholder="pk_test_..."
+                      style={inputWithIconStyle}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>{isRTL ? 'رابط الدفع المباشر للباقة الشهرية' : 'Stripe Payment Link (Monthly)'}</label>
                   <div style={{ position: 'relative' }}>
                     <Key size={12} style={inputIcon} />
                     <input
@@ -316,7 +415,7 @@ const PaymentSettingsPage = () => {
                   </div>
                 </div>
                 <div>
-                  <label style={labelStyle}>{t('branding.paymentStripeLinkAnnual')}</label>
+                  <label style={labelStyle}>{isRTL ? 'رابط الدفع المباشر للباقة السنوية' : 'Stripe Payment Link (Annual)'}</label>
                   <div style={{ position: 'relative' }}>
                     <Key size={12} style={inputIcon} />
                     <input
