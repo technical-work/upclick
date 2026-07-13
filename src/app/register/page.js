@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -289,6 +289,13 @@ export default function RegisterPage() {
       // 1. Create User in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
+
+      // Send Verification Email
+      try {
+        await sendEmailVerification(userCredential.user);
+      } catch (evErr) {
+        console.error("Error sending verification email during registration:", evErr);
+      }
 
       // Ensure uniqueness of username on register
       let baseUsername = name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
