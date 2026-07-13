@@ -985,10 +985,22 @@ Return strictly as a JSON array of objects:
       {activeSubTab === 'ct-trendvid' && (
         <div className="tool-panel on" id="ct-trendvid">
           <div className="g4 stagger mb">
-            <div className="stat"><div className="slbl">🔥 {L('Trending Now', 'الرائج الآن')}</div><div className="sval" style={{ color: 'var(--red)' }}>24</div></div>
-            <div className="stat"><div className="slbl">📈 {L('Viral Threshold', 'الحد الفيروسي')}</div><div className="sval">1M+</div></div>
-            <div className="stat"><div className="slbl">🎵 {L('Trending Sounds', 'أصوات رائجة')}</div><div className="sval" style={{ color: 'var(--green)' }}>8</div></div>
-            <div className="stat"><div className="slbl">🎯 {L('Niche Match', 'تطابق المجال')}</div><div className="sval">14</div></div>
+            <div className="stat-card">
+              <div className="stat-lbl">🔥 {L('Trending Now', 'الرائج الآن')}</div>
+              <div className="stat-val" style={{ color: 'var(--red)' }}>24</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-lbl">📈 {L('Viral Threshold', 'الحد الفيروسي')}</div>
+              <div className="stat-val">1M+</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-lbl">🎵 {L('Trending Sounds', 'أصوات رائجة')}</div>
+              <div className="stat-val" style={{ color: 'var(--green)' }}>8</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-lbl">🎯 {L('Niche Match', 'تطابق المجال')}</div>
+              <div className="stat-val">14</div>
+            </div>
           </div>
           <div className="g2">
             <div className="card mb">
@@ -1337,25 +1349,25 @@ Return strictly as a JSON array of objects:
       {activeSubTab === 'ct-burn' && (
         <div className="tool-panel on" id="ct-burn">
           <div className="g4 stagger mb">
-            <div className="stat">
-              <div className="slbl">🔋 {L('Energy', 'طاقة الإبداع')}</div>
-              <div className="sval" style={{ color: 'var(--green)' }}>{energyLevel}%</div>
-              <div className="sch up">{L('Good shape', 'حالة جيدة')}</div>
+            <div className="stat-card">
+              <div className="stat-lbl">🔋 {L('Energy', 'طاقة الإبداع')}</div>
+              <div className="stat-val" style={{ color: 'var(--green)' }}>{energyLevel}%</div>
+              <div className="stat-ch ch-up">{L('Good shape', 'حالة جيدة')}</div>
             </div>
-            <div className="stat">
-              <div className="slbl">📅 {L('Posts This Week', 'منشورات هذا الأسبوع')}</div>
-              <div className="sval">4</div>
-              <div className="sch nu">{L('Recommended: 5', 'الموصى به: ٥')}</div>
+            <div className="stat-card">
+              <div className="stat-lbl">📅 {L('Posts This Week', 'منشورات هذا الأسبوع')}</div>
+              <div className="stat-val">4</div>
+              <div className="stat-ch ch-nu">{L('Recommended: 5', 'الموصى به: ٥')}</div>
             </div>
-            <div className="stat">
-              <div className="slbl">⏱️ {L('Avg Creation Time', 'متوسط وقت التحضير')}</div>
-              <div className="sval">2.4h</div>
-              <div className="sch nu">{L('per post', 'لكل منشور')}</div>
+            <div className="stat-card">
+              <div className="stat-lbl">⏱️ {L('Avg Creation Time', 'متوسط وقت التحضير')}</div>
+              <div className="stat-val">2.4h</div>
+              <div className="stat-ch ch-nu">{L('per post', 'لكل منشور')}</div>
             </div>
-            <div className="stat">
-              <div className="slbl">😴 {L('Rest Days', 'أيام الراحة')}</div>
-              <div className="sval">6</div>
-              <div className="sch up">{L('On track', 'على المسار')}</div>
+            <div className="stat-card">
+              <div className="stat-lbl">😴 {L('Rest Days', 'أيام الراحة')}</div>
+              <div className="stat-val">6</div>
+              <div className="stat-ch ch-up">{L('On track', 'على المسار')}</div>
             </div>
           </div>
           <div className="g2">

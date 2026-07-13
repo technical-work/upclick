@@ -33,6 +33,7 @@ import FinanceView from '@/components/Views/FinanceView';
 import StrategyView from '@/components/Views/StrategyView';
 import DigitalProductsView from '@/components/Views/DigitalProductsView';
 import RevenueView from '@/components/Views/RevenueView';
+import CoursesView from '@/components/Views/CoursesView';
 import LaunchpadView from '@/components/Views/LaunchpadView';
 import AIGrowthIntelView from '@/components/Views/AIGrowthIntelView';
 import SocialTrendsView from '@/components/Views/SocialTrendsView';
@@ -300,7 +301,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing', 'support'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing', 'support', 'courses'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -324,6 +325,8 @@ function DashboardShell() {
         return <DigitalProductsView />;
       case 'revenue':
         return <RevenueView />;
+      case 'courses':
+        return <CoursesView />;
       case 'launchpad':
         return <LaunchpadView />;
       case 'ai-growth':

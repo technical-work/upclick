@@ -12,6 +12,7 @@ export default function Topbar() {
     theme,
     setTheme,
     currentPage,
+    setCurrentPage,
     currency,
     setCurrency,
     t,
@@ -38,6 +39,23 @@ export default function Topbar() {
     const diff = expiresMs - Date.now();
     return Math.max(0, Math.ceil(diff / 86400000));
   };
+
+  // Calculations for AI Credits progress
+  const planStarterCredits = tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 200;
+  const planGrowthCredits = tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 600;
+  const planProCredits = tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 2000;
+
+  const currentPlanName = userData?.plan || 'Starter';
+  const userCredits = userData?.aiCredits !== undefined ? Number(userData.aiCredits) : planStarterCredits;
+
+  let totalPlanCredits = planStarterCredits;
+  if (currentPlanName.toLowerCase().includes('growth')) {
+    totalPlanCredits = planGrowthCredits;
+  } else if (currentPlanName.toLowerCase().includes('pro') || currentPlanName.toLowerCase().includes('lifetime')) {
+    totalPlanCredits = planProCredits;
+  }
+
+  const creditProgress = Math.min(100, Math.max(0, (userCredits / totalPlanCredits) * 100));
 
   const [currOpen, setCurrOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -106,6 +124,81 @@ export default function Topbar() {
         )}
       </div>
 
+      <style>{`
+        .tb-credits-wrapper {
+          background: linear-gradient(135deg, rgba(108,53,255,0.06), rgba(255,107,53,0.06));
+          border: 1px solid var(--edge);
+          border-radius: 10px;
+          padding: 4px 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 11px;
+          color: var(--t1);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          cursor: pointer;
+          min-width: 300px;
+          flex-shrink: 0;
+          box-sizing: border-box;
+          transition: all 0.2s ease;
+          margin-left: ${lang === 'ar' ? '8px' : '0'};
+          margin-right: ${lang === 'ar' ? '0' : '8px'};
+        }
+        .tb-credits-wrapper:hover {
+          background: linear-gradient(135deg, rgba(108,53,255,0.1), rgba(255,107,53,0.1));
+          border-color: var(--orange);
+          transform: translateY(-1px);
+        }
+        .tb-credits-bar-container {
+          width: 100%; 
+          height: 4px; 
+          background: var(--surface2); 
+          border-radius: 3px; 
+          overflow: hidden; 
+          border: 1px solid var(--edge2);
+          margin-top: 2px;
+        }
+        @media (max-width: 768px) {
+          .tb-credits-wrapper {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            padding: 4px 12px;
+            font-size: 10.5px;
+            order: 3;
+            margin-top: 6px !important;
+          }
+        }
+      `}</style>
+
+      {/* Credit Progress Box (Always visible / responsive) */}
+      {userData && (
+        <div
+          onClick={() => setCurrentPage('billing')}
+          className="tb-credits-wrapper"
+          title={L('Click to view subscription details', 'اضغط لعرض تفاصيل الاشتراك')}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontWeight: 'bold' }}>⚡ {L('Credits:', 'الرصيد:')}</span>
+              <span style={{ fontWeight: '800', color: 'var(--orange)' }}>
+                {userCredits} / {totalPlanCredits} <span style={{ fontSize: '9px', opacity: 0.8 }}>cr</span>
+              </span>
+            </div>
+            <div className="tb-credits-bar-container">
+              <div style={{
+                width: `${creditProgress}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, var(--orange) 0%, var(--purple) 100%)',
+                borderRadius: '3px',
+                transition: 'width 0.3s ease'
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="tb-actions">
         {/* EGP Rate Box */}
         <div style={{
@@ -115,7 +208,7 @@ export default function Topbar() {
           padding: '4px 12px',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '8px',
           fontSize: '11.5px',
           color: 'var(--t1)',
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -124,22 +217,20 @@ export default function Topbar() {
         }}>
           <span style={{ fontWeight: 'bold' }}>🇪🇬 {L('EGP Exchange:', 'صرف الجنيه:')}</span>
           <span>💵 $1 = {(rates?.EGP || 48.50).toFixed(2)} ج.م</span>
-          <span style={{ color: 'var(--edge2)' }}>|</span>
-          <span>💶 €1 = {(rates?.EGP && rates?.EUR ? (rates.EGP / rates.EUR) : 52.30).toFixed(2)} ج.م</span>
         </div>
 
         {/* AI Model Selector */}
         {GC?.integrations?.bynaraConnected && (
           <div className="model-sel">
-            <select 
-              className="inp" 
-              style={{ 
-                padding: '0 8px', 
-                fontSize: '11px', 
-                height: '28px', 
-                borderRadius: '6px', 
-                background: 'transparent', 
-                border: '1px solid var(--edge)', 
+            <select
+              className="inp"
+              style={{
+                padding: '0 8px',
+                fontSize: '11px',
+                height: '28px',
+                borderRadius: '6px',
+                background: 'transparent',
+                border: '1px solid var(--edge)',
                 color: 'var(--t2)',
                 outline: 'none',
                 cursor: 'pointer',
@@ -203,8 +294,8 @@ export default function Topbar() {
             <span id="curr-label">{currency.code}</span> ▾
           </button>
           {currOpen && (
-            <div 
-              className="curr-menu open" 
+            <div
+              className="curr-menu open"
               id="curr-menu"
               style={lang === 'ar' ? { left: 0, right: 'auto' } : { right: 0, left: 'auto' }}
             >
@@ -257,8 +348,8 @@ export default function Topbar() {
         </div>
 
         {/* AI assistant toggle icon */}
-        <button 
-          className="tb-icon" 
+        <button
+          className="tb-icon"
           onClick={() => {
             if (guideActive && guideFlowKey) {
               setGuideActive(false);
@@ -275,8 +366,8 @@ export default function Topbar() {
 
       {/* MOBILE SETTINGS POPUP */}
       <div className="tb-mobile-actions" ref={mobileSettingsRef} style={{ position: 'relative' }}>
-        <button 
-          className="btn btn-ghost" 
+        <button
+          className="btn btn-ghost"
           onClick={() => setMobileSettingsOpen(!mobileSettingsOpen)}
           style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
         >
@@ -316,7 +407,6 @@ export default function Topbar() {
               <span style={{ fontWeight: 'bold' }}>🇪🇬 {lang === 'ar' ? 'صرف الجنيه:' : 'EGP Exchange:'}</span>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                 <span>💵 $1 = {(rates?.EGP || 48.50).toFixed(2)} ج.م</span>
-                <span>💶 €1 = {(rates?.EGP && rates?.EUR ? (rates.EGP / rates.EUR) : 52.30).toFixed(2)} ج.م</span>
               </div>
             </div>
 

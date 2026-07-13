@@ -862,7 +862,7 @@ export default function CommunityHubView() {
                 {/* Feed posts list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   {feed.map((post) => {
-                    const commentsOpen = !!expandedComments[post.id];
+                    const commentsOpen = expandedComments[post.id] !== false;
                     const hasImage = !!post.imageUrl;
                     const hasLink = !!post.linkUrl;
                     const hasPoll = !!post.poll;
@@ -1021,7 +1021,7 @@ export default function CommunityHubView() {
                           </div>
 
                           <button 
-                            onClick={() => setExpandedComments({ ...expandedComments, [post.id]: !commentsOpen })}
+                            onClick={() => setExpandedComments({ ...expandedComments, [post.id]: commentsOpen ? false : true })}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
                             💬 <span>{post.comments?.length || 0} {L('Comments', 'تعليقات')}</span>

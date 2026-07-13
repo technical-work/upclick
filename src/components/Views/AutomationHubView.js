@@ -59,6 +59,7 @@ export default function AutomationHubView() {
 
   const { t, L, setAiPanelOpen, GC, saveGC, lang } = useBusiness();
   const [activeTab, setActiveTab] = useState('all');
+  const [showSteps, setShowSteps] = useState(false);
 
   const authHub = GC.automationHub || {
     connectionUrl: '',
@@ -1041,8 +1042,22 @@ export default function AutomationHubView() {
             <div style={{ fontFamily: 'var(--ff)', fontSize: '15px', fontWeight: 800, color: 'var(--t1)', marginBottom: '4px' }}>
               {L('Connect your n8n instance', 'اربط حسابك في n8n')}
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--t2)' }}>
-              {L('Enter your n8n URL to deploy automations directly. Use n8n.cloud or self-hosted.', 'أدخل رابط n8n لنشر الأتمتة مباشرة.')}
+            <div style={{ fontSize: '13px', color: 'var(--t2)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span>{L('Enter your n8n URL to deploy automations directly.', 'أدخل رابط n8n لنشر الأتمتة مباشرة.')}</span>
+              <button 
+                onClick={() => setShowSteps(!showSteps)} 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--orange)', 
+                  cursor: 'pointer', 
+                  fontSize: '12px', 
+                  textDecoration: 'underline',
+                  padding: 0 
+                }}
+              >
+                {showSteps ? L('Hide Guide ✕', 'إخفاء خطوات الربط ✕') : L('Connection Guide 📖', 'عرض خطوات الربط 📖')}
+              </button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1073,6 +1088,43 @@ export default function AutomationHubView() {
           </div>
         </div>
       </div>
+
+      {showSteps && (
+        <div className="card mb" style={{ background: 'var(--surface2)', borderColor: 'var(--edge)', animation: 'fadeIn 0.25s ease', padding: '24px 20px' }}>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            📖 {L('How to Connect n8n (Step-by-Step Guide)', 'خطوات ربط منصة n8n (دليل إرشادي)')}
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '13px', lineHeight: '1.6' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <span style={{ background: 'var(--orange-dim)', color: 'var(--orange)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px', flexShrink: 0 }}>1</span>
+              <div>
+                <strong style={{ color: 'var(--t1)' }}>{L('Get API Key from n8n Settings:', 'الحصول على مفتاح الـ API من إعدادات n8n:')}</strong>
+                <span style={{ display: 'block', color: 'var(--t2)', fontSize: '12.5px', marginTop: '2px' }}>
+                  {L('Open n8n -> Go to Settings (bottom left) -> API Key -> Click "Create an API Key" -> Copy the generated key.', 'افتح منصة n8n -> انتقل إلى الإعدادات (Settings أسفل اليسار) -> مفتاح API -> انقر على "إنشاء مفتاح API" -> انسخ المفتاح المتولد.')}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <span style={{ background: 'var(--orange-dim)', color: 'var(--orange)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px', flexShrink: 0 }}>2</span>
+              <div>
+                <strong style={{ color: 'var(--t1)' }}>{L('Copy n8n Domain/URL:', 'نسخ رابط المنصة الخاص بك:')}</strong>
+                <span style={{ display: 'block', color: 'var(--t2)', fontSize: '12.5px', marginTop: '2px' }}>
+                  {L('Copy the main URL of your n8n workspace from your browser address bar (e.g. https://yourname.n8n.cloud or your custom self-hosted domain).', 'انسخ الرابط الرئيسي لواجهة n8n من شريط عنوان متصفحك (مثال: https://yourname.n8n.cloud أو الدومين الخاص بك في حال الاستضافة الذاتية).')}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+              <span style={{ background: 'var(--orange-dim)', color: 'var(--orange)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px', flexShrink: 0 }}>3</span>
+              <div>
+                <strong style={{ color: 'var(--t1)' }}>{L('Paste & Authenticate:', 'لصق البيانات وتفعيل الاتصال:')}</strong>
+                <span style={{ display: 'block', color: 'var(--t2)', fontSize: '12.5px', marginTop: '2px' }}>
+                  {L('Paste your n8n URL in the URL box and paste your API Key in the key input. Click Connect to load and manage your workflows.', 'قم بلصق رابط n8n في خانة الرابط ومفتاح API في خانة المفتاح. اضغط على توصيل ⚡ وسيتم تحميل مسارات العمل والأتمتة فوراً.')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Category Tabs */}
       <div className="tabs-bar" style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch', paddingBottom: '6px' }}>

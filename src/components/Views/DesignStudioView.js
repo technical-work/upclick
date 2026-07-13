@@ -18,6 +18,7 @@ export default function DesignStudioView() {
   const [generatedCoverUrl, setGeneratedCoverUrl] = useState('');
   const [generatedCardUrl, setGeneratedCardUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('logo'); // 'logo', 'social', 'cover', 'card', 'gallery'
   
   const designData = GC.designStudio || {};
@@ -32,14 +33,17 @@ export default function DesignStudioView() {
   const [logoStyle, setLogoStyle] = useState(savedLogo.logoStyle || 'modern');
   const [logoType, setLogoType] = useState(savedLogo.logoType || 'wordmark');
   const [logoColor, setLogoColor] = useState(savedLogo.logoColor || 'orange-purple');
+  const [customColorVal, setCustomColorVal] = useState(savedLogo.logoColor?.startsWith('#') ? savedLogo.logoColor : '#FF6B35');
   const [logoIndustry, setLogoIndustry] = useState(savedLogo.industry || 'coaching');
+  const [logoIdea, setLogoIdea] = useState(savedLogo.idea || '');
 
   // Social fields
   const [socialSize, setSocialSize] = useState(savedSocial.socialSize || '1080x1080');
   const [socialHeadline, setSocialHeadline] = useState(savedSocial.headline || '');
   const [socialSubtitle, setSocialSubtitle] = useState(savedSocial.subtitle || '');
   const [socialIdea, setSocialIdea] = useState(savedSocial.idea || '');
-  const [socialStyle, setSocialStyle] = useState(savedSocial.socialStyle || 'gradient-dark');
+  const [socialColor, setSocialColor] = useState(savedSocial.socialColor || 'gradient-dark');
+  const [customSocialColorVal, setCustomSocialColorVal] = useState(savedSocial.socialColor?.startsWith('#') ? savedSocial.socialColor : '#FF6B35');
 
   // Cover fields
   const [coverType, setCoverType] = useState(savedCover.coverType || 'linkedin');
@@ -47,11 +51,15 @@ export default function DesignStudioView() {
   const [coverHeadline, setCoverHeadline] = useState(savedCover.headline || '');
   const [coverSubtitle, setCoverSubtitle] = useState(savedCover.subtitle || '');
   const [coverIdea, setCoverIdea] = useState(savedCover.idea || '');
+  const [coverColor, setCoverColor] = useState(savedCover.coverColor || 'blue-white');
+  const [customCoverColorVal, setCustomCoverColorVal] = useState(savedCover.coverColor?.startsWith('#') ? savedCover.coverColor : '#FF6B35');
 
   // Card fields
   const [cardFullName, setCardFullName] = useState(savedCard.fullName || '');
   const [cardTitle, setCardTitle] = useState(savedCard.title || '');
-  const [cardStyle, setCardStyle] = useState(savedCard.cardStyle || 'dark-premium');
+  const [cardColor, setCardColor] = useState(savedCard.cardColor || 'black-gold');
+  const [customCardColorVal, setCustomCardColorVal] = useState(savedCard.cardColor?.startsWith('#') ? savedCard.cardColor : '#FF6B35');
+  const [cardIdea, setCardIdea] = useState(savedCard.idea || '');
 
   // Saved gallery
   const [savedDesigns, setSavedDesigns] = useState(designData.savedDesigns || []);
@@ -99,9 +107,9 @@ export default function DesignStudioView() {
     e.target.value = ''; // Reset input
   };
 
-  // Sync state if GC updates
+  // Sync state once when GC loads
   useEffect(() => {
-    if (GC.designStudio) {
+    if (GC.designStudio && !isInitialized) {
       const logo = GC.designStudio.logo || {};
       const social = GC.designStudio.social || {};
       const cover = GC.designStudio.cover || {};
@@ -112,27 +120,50 @@ export default function DesignStudioView() {
       setLogoStyle(logo.logoStyle || 'modern');
       setLogoType(logo.logoType || 'wordmark');
       setLogoColor(logo.logoColor || 'orange-purple');
+      if (logo.logoColor?.startsWith('#')) {
+        setCustomColorVal(logo.logoColor);
+      }
       setLogoIndustry(logo.industry || 'coaching');
+      setLogoIdea(logo.idea || '');
 
       setSocialSize(social.socialSize || '1080x1080');
       setSocialHeadline(social.headline || '');
       setSocialSubtitle(social.subtitle || '');
       setSocialIdea(social.idea || '');
-      setSocialStyle(social.socialStyle || 'gradient-dark');
+      setSocialColor(social.socialColor || 'gradient-dark');
+      if (social.socialColor?.startsWith('#')) {
+        setCustomSocialColorVal(social.socialColor);
+      }
 
       setCoverType(cover.coverType || 'linkedin');
       setCoverTextMode(cover.textMode || 'ai');
       setCoverHeadline(cover.headline || '');
       setCoverSubtitle(cover.subtitle || '');
       setCoverIdea(cover.idea || '');
+      setCoverColor(cover.coverColor || 'blue-white');
+      if (cover.coverColor?.startsWith('#')) {
+        setCustomCoverColorVal(cover.coverColor);
+      }
 
       setCardFullName(card.fullName || '');
       setCardTitle(card.title || '');
-      setCardStyle(card.cardStyle || 'dark-premium');
+      setCardColor(card.cardColor || 'black-gold');
+      if (card.cardColor?.startsWith('#')) {
+        setCustomCardColorVal(card.cardColor);
+      }
+      setCardIdea(card.idea || '');
 
       setSavedDesigns(GC.designStudio.savedDesigns || []);
+      setIsInitialized(true);
     }
-  }, [GC.designStudio]);
+  }, [GC.designStudio, isInitialized]);
+
+  // Sync gallery updates in real-time
+  useEffect(() => {
+    if (GC.designStudio?.savedDesigns) {
+      setSavedDesigns(GC.designStudio.savedDesigns);
+    }
+  }, [GC.designStudio?.savedDesigns]);
 
   const saveDesignStudioData = (section, updatedFields) => {
     const updatedGC = {
@@ -161,20 +192,24 @@ export default function DesignStudioView() {
 
   const getPromptForTab = (tab) => {
     if (tab === 'logo') {
-      return `A high-quality, professional logo design for a brand named "${logoBrandName}". ${logoTagline ? `With tagline "${logoTagline}".` : ''} Logo style is ${logoStyle}. Logo type is ${logoType}. The color scheme is ${logoColor}. The industry is ${logoIndustry}. Modern, clean, vectors, centered, no background, high resolution.`;
+      const colorDesc = logoColor.startsWith('#') ? `custom color hex ${logoColor}` : logoColor;
+      return `A high-quality, professional logo design for a brand named "${logoBrandName}". ${logoTagline ? `With tagline "${logoTagline}".` : ''} Logo style is ${logoStyle}. Logo type is ${logoType}. The color scheme is ${colorDesc}. The industry is ${logoIndustry}.${logoIdea ? ` The design style should feature this idea: ${logoIdea}.` : ''} Modern, clean, vectors, centered, no background, high resolution.`;
     }
     if (tab === 'social') {
-      return `A premium, professionally designed social media graphic post. Main headline: "${socialHeadline}". Subtitle: "${socialSubtitle}". Size aspect ratio matches ${socialSize}. Design style is ${socialStyle}.${socialIdea ? ` The design should feature the following idea: ${socialIdea}.` : ''} Vibrant, modern graphic design, high contrast, clean typography.`;
+      const colorDesc = socialColor.startsWith('#') ? `custom color hex ${socialColor}` : socialColor;
+      return `A premium, professionally designed social media graphic post. Main headline: "${socialHeadline}". Subtitle: "${socialSubtitle}". Size aspect ratio matches ${socialSize}. The color scheme is ${colorDesc}.${socialIdea ? ` The design should feature the following idea: ${socialIdea}.` : ''} Vibrant, modern graphic design, high contrast, clean typography.`;
     }
     if (tab === 'cover') {
       const coverNames = { linkedin: 'LinkedIn banner', youtube: 'YouTube Channel Art banner', twitter: 'X/Twitter header banner' };
       const textPrompt = coverTextMode === 'custom' 
         ? `featuring the main headline text "${coverHeadline}" and tagline text "${coverSubtitle}"`
         : `featuring an AI-generated professional headline and tagline suitable for a creator name "${logoBrandName || GC.profile.name || ''}"`;
-      return `A high-quality, professional digital banner for ${coverNames[coverType] || 'LinkedIn'}. Suitable for ${logoIndustry} industry. ${textPrompt}.${coverIdea ? ` The banner design should be based on the following idea: ${coverIdea}.` : ''} Elegant, abstract, modern corporate style, high resolution, suitable for a horizontal profile banner.`;
+      const colorDesc = coverColor.startsWith('#') ? `custom color hex ${coverColor}` : coverColor;
+      return `A high-quality, professional digital banner for ${coverNames[coverType] || 'LinkedIn'}. The color scheme is ${colorDesc}. Suitable for ${logoIndustry} industry. ${textPrompt}.${coverIdea ? ` The banner design should be based on the following idea: ${coverIdea}.` : ''} Elegant, abstract, modern corporate style, high resolution, suitable for a horizontal profile banner.`;
     }
     if (tab === 'card') {
-      return `A premium modern business card design. Showcases name: "${cardFullName}" and title/role: "${cardTitle}". Sophisticated, elegant, minimal layout, high-end professional corporate style, centered.`;
+      const colorDesc = cardColor.startsWith('#') ? `custom color hex ${cardColor}` : cardColor;
+      return `A premium modern business card design. Showcases name: "${cardFullName}" and title/role: "${cardTitle}". The color scheme is ${colorDesc}.${cardIdea ? ` The card layout should incorporate this idea: ${cardIdea}.` : ''} Sophisticated, elegant, minimal layout, high-end professional corporate style, centered.`;
     }
     return '';
   };
@@ -325,6 +360,156 @@ export default function DesignStudioView() {
     }
   };
 
+  const colorPresets = [
+    { id: 'orange-purple', gradient: 'linear-gradient(135deg,#FF6B35,#6C35FF)', name: L('Orange + Purple', 'برتقالي + بنفسجي') },
+    { id: 'black-gold', gradient: 'linear-gradient(135deg,#111,#FFD700)', name: L('Black + Gold', 'أسود + ذهبي') },
+    { id: 'blue-white', gradient: 'linear-gradient(135deg,#0088CC,#fff)', name: L('Blue + White', 'أزرق + أبيض') },
+    { id: 'green-white', gradient: 'linear-gradient(135deg,#00d98b,#fff)', name: L('Green + White', 'أخضر + أبيض') },
+    { id: 'red-white', gradient: 'linear-gradient(135deg,#ef4444,#fff)', name: L('Red + White', 'أحمر + أبيض') },
+    { id: 'monochrome', gradient: 'linear-gradient(135deg,#111,#888)', name: L('Monochrome', 'أحادية اللون (أبيض وأسود)') }
+  ];
+
+  const renderColorSchemeCard = (activeColor, customVal, onSelectColor, onSelectCustomColor, onSaveColor) => {
+    return (
+      <div className="card">
+        <div className="sec-hd"><div className="sec-title">🎨 {L('Color Scheme', 'الألوان')}</div></div>
+        <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+          {colorPresets.map(color => (
+            <div 
+              key={color.id}
+              onClick={() => {
+                onSelectColor(color.id);
+                onSaveColor(color.id);
+              }}
+              style={{ padding: '7px 12px', borderRadius: '8px', border: activeColor === color.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: activeColor === color.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: activeColor === color.id ? 'var(--orange)' : 'var(--t2)' }}
+            >
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: color.gradient, display: 'inline-block' }}></span>
+              {color.name}
+            </div>
+          ))}
+          
+          {/* Custom color wheel picker */}
+          <div 
+            onClick={() => {
+              onSelectColor(customVal);
+              onSaveColor(customVal);
+            }}
+            style={{ 
+              padding: '7px 12px', 
+              borderRadius: '8px', 
+              border: activeColor.startsWith('#') ? '2px solid var(--orange)' : '1px solid var(--edge)', 
+              background: activeColor.startsWith('#') ? 'var(--or-d)' : 'var(--surface2)', 
+              cursor: 'pointer', 
+              fontSize: '12px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              color: activeColor.startsWith('#') ? 'var(--orange)' : 'var(--t2)',
+              position: 'relative'
+            }}
+          >
+            <input 
+              type="color" 
+              value={customVal} 
+              onChange={(e) => {
+                onSelectCustomColor(e.target.value);
+                onSelectColor(e.target.value);
+              }}
+              onBlur={(e) => {
+                onSaveColor(e.target.value);
+              }}
+              style={{
+                width: '16px',
+                height: '16px',
+                border: '1px solid var(--edge)',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                background: 'none',
+                padding: 0,
+                outline: 'none',
+                verticalAlign: 'middle'
+              }}
+            />
+            <span>{L('Custom Color Wheel', 'عجلة ألوان مخصصة')} ({customVal})</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderReferenceDesignCard = () => {
+    return (
+      <div className="card" style={{ fontFamily: 'Tajawal, sans-serif' }}>
+        <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="sec-title">🖼️ {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
+          {refImageBase64 && (
+            <button 
+              onClick={() => setRefImageBase64('')}
+              style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
+            >
+              {L('Remove', 'إزالة')}
+            </button>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
+          {refImageBase64 ? (
+            <img 
+              src={refImageBase64} 
+              alt="Reference" 
+              style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--edge)' }} 
+            />
+          ) : (
+            <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
+              📷
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <label 
+              style={{ 
+                display: 'inline-block', 
+                padding: '6px 12px', 
+                background: 'var(--surface2)', 
+                border: '1px solid var(--edge)', 
+                borderRadius: '6px', 
+                fontSize: '12px', 
+                fontWeight: 600, 
+                color: 'var(--t1)', 
+                cursor: 'pointer' 
+              }}
+            >
+              {L('Choose Image', 'اختر صورة')}
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleRefImageUpload} 
+                style={{ display: 'none' }} 
+              />
+            </label>
+            <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px' }}>
+              {L('Upload reference design for style inspiration', 'ارفع تصميماً مرجعياً ليكون مصدر إلهام للتصميم')}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDesignIdeaCard = (value, onChange, onBlur) => {
+    return (
+      <div className="card">
+        <div className="sec-hd"><div className="sec-title">💡 {L('Design Idea (Optional)', 'فكرة التصميم (اختياري)')}</div></div>
+        <textarea 
+          className="inp" 
+          value={value} 
+          onChange={onChange} 
+          onBlur={onBlur} 
+          placeholder={L('e.g., A minimalist design showing a lightbulb with growth charts...', 'مثال: تصميم بسيط يظهر مصباحاً كهربائياً مع رسوم بيانية للنمو...')} 
+          style={{ height: '60px', resize: 'none', padding: '8px', fontSize: '12px', fontFamily: 'Tajawal, sans-serif' }}
+        />
+      </div>
+    );
+  };
+
   const tabs = [
     { id: 'logo', label: L('🏷 Logo Maker', '🏷 صانع الشعارات') },
     { id: 'social', label: L('📱 Social Media', '📱 السوشيال ميديا') },
@@ -402,12 +587,12 @@ export default function DesignStudioView() {
                 <div className="sec-hd"><div className="sec-title">🎨 {L('Logo Style', 'أسلوب الشعار')}</div></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {[
-                    { id: 'modern', icon: '✦', name: 'Modern / Minimal' },
-                    { id: 'bold', icon: '💪', name: 'Bold / Strong' },
-                    { id: 'luxury', icon: '💎', name: 'Luxury / Premium' },
-                    { id: 'playful', icon: '🎉', name: 'Playful / Fun' },
-                    { id: 'tech', icon: '🤖', name: 'Tech / AI' },
-                    { id: 'arabic', icon: '🕌', name: 'Arabic Heritage' }
+                    { id: 'modern', icon: '✦', name: L('Modern / Minimal', 'حديث / مبسط') },
+                    { id: 'bold', icon: '💪', name: L('Bold / Strong', 'قوي / بارز') },
+                    { id: 'luxury', icon: '💎', name: L('Luxury / Premium', 'فاخر / راقٍ') },
+                    { id: 'playful', icon: '🎉', name: L('Playful / Fun', 'مرح / ممتع') },
+                    { id: 'tech', icon: '🤖', name: L('Tech / AI', 'تقني / ذكاء اصطناعي') },
+                    { id: 'arabic', icon: '🕌', name: L('Arabic Heritage', 'تراث عربي أصيل') }
                   ].map(style => (
                     <div 
                       key={style.id}
@@ -426,11 +611,11 @@ export default function DesignStudioView() {
                 <div className="sec-hd"><div className="sec-title">🔤 {L('Logo Type', 'نوع الشعار')}</div></div>
                 <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
                   {[
-                    { id: 'wordmark', label: 'Wordmark' },
-                    { id: 'monogram', label: 'Monogram' },
-                    { id: 'icon+text', label: 'Icon + Text' },
-                    { id: 'abstract', label: 'Abstract Mark' },
-                    { id: 'badge', label: 'Badge / Emblem' }
+                    { id: 'wordmark', label: L('Wordmark', 'شعار نصي (كتابي)') },
+                    { id: 'monogram', label: L('Monogram', 'شعار حرفي (مونوغرام)') },
+                    { id: 'icon+text', label: L('Icon + Text', 'أيقونة + نص') },
+                    { id: 'abstract', label: L('Abstract Mark', 'شعار مجرد / رمزي') },
+                    { id: 'badge', label: L('Badge / Emblem', 'شعار شارة / درع') }
                   ].map(type => (
                     <div 
                       key={type.id}
@@ -444,93 +629,24 @@ export default function DesignStudioView() {
               </div>
 
               {/* Colors */}
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🎨 {L('Color Scheme', 'الألوان')}</div></div>
-                <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                  {[
-                    { id: 'orange-purple', gradient: 'linear-gradient(135deg,#FF6B35,#6C35FF)', name: 'Orange + Purple' },
-                    { id: 'black-gold', gradient: 'linear-gradient(135deg,#111,#FFD700)', name: 'Black + Gold' },
-                    { id: 'blue-white', gradient: 'linear-gradient(135deg,#0088CC,#fff)', name: 'Blue + White' },
-                    { id: 'green-white', gradient: 'linear-gradient(135deg,#00d98b,#fff)', name: 'Green + White' },
-                    { id: 'red-white', gradient: 'linear-gradient(135deg,#ef4444,#fff)', name: 'Red + White' },
-                    { id: 'monochrome', gradient: 'linear-gradient(135deg,#111,#888)', name: 'Monochrome' }
-                  ].map(color => (
-                    <div 
-                      key={color.id}
-                      onClick={() => { setLogoColor(color.id); saveDesignStudioData('logo', { logoColor: color.id }); }}
-                      style={{ padding: '7px 12px', borderRadius: '8px', border: logoColor === color.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: logoColor === color.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', color: logoColor === color.id ? 'var(--orange)' : 'var(--t2)' }}
-                    >
-                      <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: color.gradient, display: 'inline-block' }}></span>
-                      {color.name}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {renderColorSchemeCard(logoColor, customColorVal, setLogoColor, setCustomColorVal, (val) => saveDesignStudioData('logo', { logoColor: val }))}
 
               {/* Industry */}
               <div className="card">
                 <div className="sec-hd"><div className="sec-title">🏢 {L('Industry', 'الصناعة')}</div></div>
                 <CustomSelect className="inp" value={logoIndustry} onChange={(e) => { setLogoIndustry(e.target.value); saveDesignStudioData('logo', { industry: e.target.value }); }}>
-                  <option value="coaching">Coaching & Training</option>
-                  <option value="tech">Tech / AI / SaaS</option>
-                  <option value="ecommerce">E-commerce</option>
-                  <option value="food">Food & Restaurant</option>
+                  <option value="coaching">{L('Coaching & Training', 'التدريب والتطوير')}</option>
+                  <option value="tech">{L('Tech / AI / SaaS', 'التقنية والذكاء الاصطناعي')}</option>
+                  <option value="ecommerce">{L('E-commerce', 'التجارة الإلكترونية')}</option>
+                  <option value="food">{L('Food & Restaurant', 'الأغذية والمطاعم')}</option>
                 </CustomSelect>
               </div>
 
               {/* Reference Image */}
-              <div className="card" style={{ fontFamily: 'Tajawal, sans-serif' }}>
-                <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="sec-title">🖼️ {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
-                  {refImageBase64 && (
-                    <button 
-                      onClick={() => setRefImageBase64('')}
-                      style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      {L('Remove', 'إزالة')}
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
-                  {refImageBase64 ? (
-                    <img 
-                      src={refImageBase64} 
-                      alt="Reference" 
-                      style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--edge)' }} 
-                    />
-                  ) : (
-                    <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
-                      📷
-                    </div>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <label 
-                      style={{ 
-                        display: 'inline-block', 
-                        padding: '6px 12px', 
-                        background: 'var(--surface2)', 
-                        border: '1px solid var(--edge)', 
-                        borderRadius: '6px', 
-                        fontSize: '12px', 
-                        fontWeight: 600, 
-                        color: 'var(--t1)', 
-                        cursor: 'pointer' 
-                      }}
-                    >
-                      {L('Choose Image', 'اختر صورة')}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleRefImageUpload} 
-                        style={{ display: 'none' }} 
-                      />
-                    </label>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px' }}>
-                      {L('Upload reference logo for inspiration', 'ارفع شعارًا أو تصميمًا مرجعيًا ليكون مصدر إلهام')}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {renderReferenceDesignCard()}
+
+              {/* Design Idea */}
+              {renderDesignIdeaCard(logoIdea, (e) => setLogoIdea(e.target.value), (e) => saveDesignStudioData('logo', { idea: e.target.value }))}
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
                 ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Logo', 'توليد الشعار')} (${costGenerateLogo} Credits)`}
@@ -588,10 +704,10 @@ export default function DesignStudioView() {
                 <div className="sec-hd"><div className="sec-title">📐 {L('Post Size', 'حجم المنشور')}</div></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {[
-                    { id: '1080x1080', icon: '⬛', size: '1080×1080', desc: 'Square (IG/TikTok)' },
-                    { id: '1080x1920', icon: '📱', size: '1080×1920', desc: 'Story / Reel' },
-                    { id: '1200x628', icon: '🖼', size: '1200×628', desc: 'FB / LinkedIn' },
-                    { id: '1280x720', icon: '📺', size: '1280×720', desc: 'YouTube Thumb' }
+                    { id: '1080x1080', icon: '⬛', size: '1080×1080', desc: L('Square (IG/TikTok)', 'مربع (إنستغرام/تيك توك)') },
+                    { id: '1080x1920', icon: '📱', size: '1080×1920', desc: L('Story / Reel', 'قصة / ريلز عمودي') },
+                    { id: '1200x628', icon: '🖼', size: '1200×628', desc: L('FB / LinkedIn', 'فيسبوك / لينكد إن') },
+                    { id: '1280x720', icon: '📺', size: '1280×720', desc: L('YouTube Thumb', 'صورة يوتيوب مصغرة') }
                   ].map(s => (
                     <div 
                       key={s.id}
@@ -629,39 +745,17 @@ export default function DesignStudioView() {
                       placeholder="e.g. Arabic Creator Edition 🔥" 
                     />
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Design Idea / Description (optional)', 'فكرة التصميم (اختياري)')}</label>
-                    <textarea 
-                      className="inp" 
-                      value={socialIdea} 
-                      onChange={(e) => setSocialIdea(e.target.value)} 
-                      onBlur={(e) => saveDesignStudioData('social', { idea: e.target.value })} 
-                      placeholder={L('e.g., A minimalist design showing a lightbulb with growth charts...', 'مثال: تصميم بسيط يظهر مصباحاً كهربائياً مع رسوم بيانية للنمو...')} 
-                      style={{ height: '60px', resize: 'none', padding: '8px', fontSize: '12px', fontFamily: 'Tajawal, sans-serif' }}
-                    />
-                  </div>
                 </div>
               </div>
 
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">🎨 {L('Design Style', 'نمط التصميم')}</div></div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
-                  {[
-                    { id: 'gradient-dark', icon: '🌌', label: 'Dark Gradient' },
-                    { id: 'clean-white', icon: '☁️', label: 'Clean White' },
-                    { id: 'bold-typographic', icon: '⬛', label: 'Bold Type' },
-                    { id: 'neon-glow', icon: '⚡', label: 'Neon Glow' }
-                  ].map(s => (
-                    <div 
-                      key={s.id}
-                      onClick={() => { setSocialStyle(s.id); saveDesignStudioData('social', { socialStyle: s.id }); }}
-                      style={{ padding: '9px', borderRadius: '9px', border: socialStyle === s.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: socialStyle === s.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: socialStyle === s.id ? 'var(--orange)' : 'var(--t2)' }}
-                    >
-                      {s.icon} {s.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* Colors */}
+              {renderColorSchemeCard(socialColor, customSocialColorVal, setSocialColor, setCustomSocialColorVal, (val) => saveDesignStudioData('social', { socialColor: val }))}
+
+              {/* Reference Image */}
+              {renderReferenceDesignCard()}
+
+              {/* Design Idea */}
+              {renderDesignIdeaCard(socialIdea, (e) => setSocialIdea(e.target.value), (e) => saveDesignStudioData('social', { idea: e.target.value }))}
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
                 ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Post Artwork', 'توليد المنشور')} (${costGenerateLogo} Credits)`}
@@ -709,9 +803,9 @@ export default function DesignStudioView() {
                 <div className="sec-hd"><div className="sec-title">📐 {L('Banner Type', 'نوع الغلاف')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
                   {[
-                    { id: 'linkedin', icon: '💼', name: 'LinkedIn Banner', dims: '1584×396' },
-                    { id: 'youtube', icon: '▶️', name: 'YouTube Channel Art', dims: '2560×1440' },
-                    { id: 'twitter', icon: '🐦', name: 'X / Twitter Header', dims: '1500×500' }
+                    { id: 'linkedin', icon: '💼', name: L('LinkedIn Banner', 'غلاف لينكد إن'), dims: '1584×396' },
+                    { id: 'youtube', icon: '▶️', name: L('YouTube Channel Art', 'غلاف قناة يوتيوب'), dims: '2560×1440' },
+                    { id: 'twitter', icon: '🐦', name: L('X / Twitter Header', 'غلاف منصة إكس/تويتر'), dims: '1500×500' }
                   ].map(c => (
                     <div 
                       key={c.id}
@@ -773,72 +867,14 @@ export default function DesignStudioView() {
                 )}
               </div>
 
-              {/* Cover Idea Description */}
-              <div className="card">
-                <div className="sec-hd"><div className="sec-title">💡 {L('Banner Idea (optional)', 'وصف فكرة الغلاف (اختياري)')}</div></div>
-                <textarea 
-                  className="inp" 
-                  value={coverIdea} 
-                  onChange={(e) => setCoverIdea(e.target.value)} 
-                  onBlur={(e) => saveDesignStudioData('cover', { idea: e.target.value })} 
-                  placeholder={L('e.g., Abstract tech background with neon circuits...', 'مثال: خلفية تقنية مجردة مع دوائر إلكترونية نيون...')} 
-                  style={{ height: '60px', resize: 'none', padding: '8px', fontSize: '12px', fontFamily: 'Tajawal, sans-serif' }}
-                />
-              </div>
+              {/* Colors */}
+              {renderColorSchemeCard(coverColor, customCoverColorVal, setCoverColor, setCustomCoverColorVal, (val) => saveDesignStudioData('cover', { coverColor: val }))}
 
               {/* Reference Image */}
-              <div className="card">
-                <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="sec-title">🖼️ {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
-                  {refImageBase64 && (
-                    <button 
-                      onClick={() => setRefImageBase64('')}
-                      style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: '11px', cursor: 'pointer', fontWeight: 600 }}
-                    >
-                      {L('Remove', 'إزالة')}
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
-                  {refImageBase64 ? (
-                    <img 
-                      src={refImageBase64} 
-                      alt="Reference" 
-                      style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--edge)' }} 
-                    />
-                  ) : (
-                    <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
-                      📷
-                    </div>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <label 
-                      style={{ 
-                        display: 'inline-block', 
-                        padding: '6px 12px', 
-                        background: 'var(--surface2)', 
-                        border: '1px solid var(--edge)', 
-                        borderRadius: '6px', 
-                        fontSize: '12px', 
-                        fontWeight: 600, 
-                        color: 'var(--t1)', 
-                        cursor: 'pointer' 
-                      }}
-                    >
-                      {L('Choose Image', 'اختر صورة')}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleRefImageUpload} 
-                        style={{ display: 'none' }} 
-                      />
-                    </label>
-                    <div style={{ fontSize: '10px', color: 'var(--t3)', marginTop: '4px' }}>
-                      {L('Upload reference banner for style inspiration', 'ارفع غلافاً أو لافتة مرجعية ليكون مصدر إلهام')}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {renderReferenceDesignCard()}
+
+              {/* Design Idea */}
+              {renderDesignIdeaCard(coverIdea, (e) => setCoverIdea(e.target.value), (e) => saveDesignStudioData('cover', { idea: e.target.value }))}
 
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
                 ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Profile Banner', 'توليد الغلاف')} (${costGenerateLogo} Credits)`}
@@ -905,6 +941,16 @@ export default function DesignStudioView() {
                   </div>
                 </div>
               </div>
+
+              {/* Colors */}
+              {renderColorSchemeCard(cardColor, customCardColorVal, setCardColor, setCustomCardColorVal, (val) => saveDesignStudioData('card', { cardColor: val }))}
+
+              {/* Reference Image */}
+              {renderReferenceDesignCard()}
+
+              {/* Design Idea */}
+              {renderDesignIdeaCard(cardIdea, (e) => setCardIdea(e.target.value), (e) => saveDesignStudioData('card', { idea: e.target.value }))}
+
               <button className="btn btn-prime" onClick={handleGenerate} style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}>
                 ✦ {isGenerating ? L('Generating...', 'جاري التوليد...') : `${L('Generate Card Design', 'توليد بطاقة العمل')} (${costGenerateLogo} Credits)`}
               </button>

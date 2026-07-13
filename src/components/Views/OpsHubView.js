@@ -84,6 +84,11 @@ export default function OpsHubView() {
   // Tab state inside Ops Hub
   const [activeSubTab, setActiveSubTab] = useState('ops-sops');
   const [generatingSOP, setGeneratingSOP] = useState(false);
+  
+  // Custom SOP Builder inputs
+  const [sopTopic, setSopTopic] = useState('');
+  const [sopRole, setSopRole] = useState('Operations');
+  const [sopSteps, setSopSteps] = useState('');
 
   // Modal & Form States for Team Members
   const [showMemberModal, setShowMemberModal] = useState(false);
@@ -93,6 +98,7 @@ export default function OpsHubView() {
   const [memberRole, setMemberRole] = useState('VA Assistant');
   const [memberDept, setMemberDept] = useState('Operations');
   const [memberSalary, setMemberSalary] = useState(1000);
+  const [memberKpis, setMemberKpis] = useState('');
 
   // Bind to GC values
   const automations = GC.opsHub?.automations || {
@@ -120,15 +126,28 @@ export default function OpsHubView() {
   };
 
   const handleAIAddSOP = async () => {
+    if (!sopTopic.trim()) return;
     setGeneratingSOP(true);
-    const prompt = 'Generate a standard operating procedure (SOP) for "Onboarding a new coaching client". Structure it with steps, timeline, and communication tools.';
-    const sysPrompt = 'Operations and workflow expert. Highly structured markdown list.';
+    
+    const prompt = `Generate a highly structured and comprehensive Standard Operating Procedure (SOP) based on these details:
+- SOP Title/Topic: "${sopTopic}"
+- Assigned Department/Role: "${sopRole}"
+${sopSteps ? `- Key Steps/Tools to include: "${sopSteps}"` : ''}
+
+Structure the output with:
+1. **Purpose & Objective**
+2. **Prerequisites & Tools Required**
+3. **Step-by-Step Execution Workflow (with estimated time for each step)**
+4. **Quality Check & Common Errors to avoid**
+5. **Reporting & Sign-off instructions**`;
+
+    const sysPrompt = `You are a world-class Operations Consultant and workflow design expert. You write highly detailed, professional, and structured standard operating procedures in markdown. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
     try {
       const reply = await callClaudeAPI(prompt, sysPrompt, lang);
       const newSOP = {
         id: Date.now(),
-        title: L('Onboarding New Coaching Client', 'تهيئة عميل كوتشينج جديد'),
+        title: sopTopic.trim(),
         content: reply
       };
       const updatedSops = [newSOP, ...sopsList];
@@ -139,6 +158,9 @@ export default function OpsHubView() {
           sopsList: updatedSops
         }
       });
+      // Clear inputs
+      setSopTopic('');
+      setSopSteps('');
     } catch (e) {
       alert('Failed to generate SOP.');
     } finally {
@@ -166,6 +188,7 @@ export default function OpsHubView() {
     setMemberRole('VA Assistant');
     setMemberDept('Operations');
     setMemberSalary(1000);
+    setMemberKpis('');
     setShowMemberModal(true);
   };
 
@@ -177,6 +200,7 @@ export default function OpsHubView() {
     setMemberRole(member.role || 'VA Assistant');
     setMemberDept(member.department || 'Operations');
     setMemberSalary(member.salary || 1000);
+    setMemberKpis(member.kpis || '');
     setShowMemberModal(true);
   };
 
@@ -199,7 +223,8 @@ export default function OpsHubView() {
         salary: parseFloat(memberSalary) || 1000,
         contractType: 'Full-time',
         joinDate: new Date().toLocaleDateString('en-GB'),
-        permissions: ['dashboard']
+        permissions: ['dashboard'],
+        kpis: memberKpis.trim()
       };
       updatedMembers = [...teamList, newMember];
       logMsg = L(`Added team member ${memberName}`, `تم إضافة عضو الفريق ${memberName}`);
@@ -212,7 +237,8 @@ export default function OpsHubView() {
         role: memberRole.trim(),
         email: memberEmail.trim(),
         department: memberDept,
-        salary: parseFloat(memberSalary) || 1000
+        salary: parseFloat(memberSalary) || 1000,
+        kpis: memberKpis.trim()
       };
       updatedMembers[editingMemberIndex] = updatedMember;
       logMsg = L(`Updated team member ${memberName}`, `تم تحديث بيانات عضو الفريق ${memberName}`);
@@ -344,22 +370,76 @@ export default function OpsHubView() {
       {activeSubTab === 'ops-sops' && (
         <div className="tab-panel on" id="ops-sops">
           <div className="card">
-            <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div className="sec-hd" style={{ marginBottom: '10px' }}>
               <div className="sec-title">📋 {L('Standard Operating Procedures', 'أدلة التشغيل القياسية SOPs')}</div>
-              <button className="btn btn-prime" style={{ fontSize: '12px', padding: '5px 12px' }} onClick={handleAIAddSOP}>
-                {generatingSOP ? L('Generating...', 'جاري الإنشاء...') : `+ ${L('Create SOP', 'إنشاء دليل')}`}
+            </div>
+
+            {/* SOP AI Generator input form */}
+            <div style={{ background: 'var(--surface2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--edge)', marginBottom: '16px' }}>
+              <div style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '12px', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🤖 {L('AI SOP Builder', 'منشئ أدلة التشغيل بالذكاء الاصطناعي')}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('SOP Topic / Procedure Title *', 'عنوان الدليل أو موضوع الإجراء *')}
+                  </label>
+                  <input 
+                    className="inp"
+                    placeholder={L('e.g. Onboarding new clients, Weekly newsletter sending', 'مثال: تهيئة عميل جديد، إرسال النشرة البريدية')}
+                    value={sopTopic}
+                    onChange={(e) => setSopTopic(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Assigned Department / Role', 'القسم أو المسمى الوظيفي المسؤول')}
+                  </label>
+                  <select 
+                    className="inp"
+                    value={sopRole}
+                    onChange={(e) => setSopRole(e.target.value)}
+                    style={{ height: '38px', borderRadius: '8px' }}
+                  >
+                    <option value="Operations">{L('Operations', 'العمليات')}</option>
+                    <option value="Marketing">{L('Marketing', 'التسويق')}</option>
+                    <option value="Sales">{L('Sales & CRM', 'المبيعات والعملاء')}</option>
+                    <option value="Support">{L('Technical Support', 'الدعم الفني')}</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '11px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                  {L('Specific Steps or Tools (Optional)', 'الأدوات المستخدمة أو الخطوات الرئيسية (اختياري)')}
+                </label>
+                <textarea 
+                  className="inp"
+                  rows="2"
+                  placeholder={L('e.g. Use Notion, send email via ConvertKit, update Google sheets...', 'مثال: استخدام نوشن، إرسال إيميل عبر كونفرت كيت، تحديث ملفات جوجل...')}
+                  value={sopSteps}
+                  onChange={(e) => setSopSteps(e.target.value)}
+                  style={{ resize: 'none', fontSize: '12px' }}
+                />
+              </div>
+
+              <button 
+                className="btn btn-prime"
+                onClick={handleAIAddSOP}
+                style={{ width: '100%', justifyContent: 'center' }}
+                disabled={generatingSOP || !sopTopic.trim()}
+              >
+                {generatingSOP ? L('Generating SOP...', 'جاري توليد الدليل...') : `✦ ${L('Build SOP with AI', 'بناء دليل التشغيل بالذكاء الاصطناعي')}`}
               </button>
             </div>
+
             {dateFilteredSops.length === 0 ? (
               <div className="empty-state" style={{ padding: '30px' }}>
                 <div className="es-icon">📋</div>
                 <div className="es-title">{L('No SOPs yet', 'لا توجد أدلة عمل بعد')}</div>
                 <div className="es-sub">
-                  {L('Document your processes so you (or your team) can repeat them consistently. Use AI to generate SOPs instantly.', 'قم بتوثيق دورات عملياتك التشغيلية لتتمكن من تفويضها للفريق لاحقاً بسهولة.')}
+                  {L('Document your processes so you (or your team) can repeat them consistently. Complete the builder above to generate.', 'قم بتوثيق دورات عملياتك التشغيلية لتتمكن من تفويضها للفريق لاحقاً بسهولة.')}
                 </div>
-                <button className="btn btn-prime" onClick={handleAIAddSOP}>
-                  ✦ {L('AI Generate SOP', 'توليد دليل تشغيل بالذكاء')}
-                </button>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -412,6 +492,11 @@ export default function OpsHubView() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '13px' }}>{member.name} <span style={{ fontSize: '10.5px', color: 'var(--orange)', background: 'rgba(255,107,53,0.08)', padding: '2px 6px', borderRadius: '4px', marginInlineStart: '6px' }}>{member.department || 'Operations'}</span></div>
                       <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '2px' }}>{member.role} · {member.email} · {member.salary ? `$${member.salary}` : '$1000'}</div>
+                      {member.kpis && (
+                        <div style={{ fontSize: '11px', color: 'var(--orange)', marginTop: '4px', background: 'rgba(255,107,53,0.05)', padding: '4px 8px', borderRadius: '6px', borderLeft: '2px solid var(--orange)' }}>
+                          🎯 <strong>{L('KPIs:', 'مؤشرات الأداء:')}</strong> {member.kpis}
+                        </div>
+                      )}
                     </div>
                     <span className="badge b-green" style={{ marginRight: '8px', marginLeft: '8px' }}>{L('Active', 'نشط')}</span>
                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -537,18 +622,31 @@ export default function OpsHubView() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
-                  {L('Monthly Salary ($) *', 'الراتب الشهري ($) *')}
-                </label>
-                <input 
-                  type="number"
-                  className="inp"
-                  required
-                  value={memberSalary}
-                  onChange={(e) => setMemberSalary(e.target.value)}
-                  placeholder="1000"
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Monthly Salary ($) *', 'الراتب الشهري ($) *')}
+                  </label>
+                  <input 
+                    type="number"
+                    className="inp"
+                    required
+                    value={memberSalary}
+                    onChange={(e) => setMemberSalary(e.target.value)}
+                    placeholder="1000"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                    {L('Key Performance Indicators (KPIs)', 'مؤشرات الأداء (KPIs)')}
+                  </label>
+                  <input 
+                    className="inp"
+                    value={memberKpis}
+                    onChange={(e) => setMemberKpis(e.target.value)}
+                    placeholder={L('e.g. 5 leads/week', 'مثال: جلب 5 عملاء مهتمين أسبوعياً')}
+                  />
+                </div>
               </div>
 
               <button 

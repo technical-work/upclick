@@ -3882,3 +3882,10 @@ body,
 .tb-mobile-actions {
   display: none;
 }
+
+/* Zoom content container on desktop to scale dashboard up by 115% */
+@media (min-width: 992px) {
+  #ct {
+    zoom: 1.15;
+  }
+}

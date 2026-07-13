@@ -125,6 +125,7 @@ export default function Sidebar() {
       title: 'Build',
       items: [
         { page: 'landing', label: 'Landing Page AI', icon: '⚡' },
+        { page: 'courses', label: 'Courses', icon: '🎓' },
         { page: 'digital', label: 'Digital Products', icon: '📦' },
         { page: 'niche', label: 'Niche & Brand Studio', icon: '🎯' },
         { page: 'community', label: 'Community Hub', icon: '🏘️' },
@@ -256,7 +257,7 @@ export default function Sidebar() {
 
         {sections.map(sec => {
           const visibleItems = sec.items.filter(item => {
-            if (['home', 'profile', 'model-test', 'billing', 'support'].includes(item.page)) return true;
+            if (['home', 'profile', 'model-test', 'billing', 'support', 'courses'].includes(item.page)) return true;
             if (userData?.allowedTools) {
               return userData.allowedTools.includes(item.page);
             }

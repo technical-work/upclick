@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
 import { useAuth } from './AuthContext';
@@ -230,6 +230,7 @@ export function BusinessProvider({ children }) {
   });
 
   const [currentPage, setCurrentPage] = useState('home');
+  const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [crmActiveTab, setCrmActiveTab] = useState('pipeline');
   const [currency, setCurrencyState] = useState({ code: 'USD', name: 'US Dollar', symbol: '$', flag: '🇺🇸' });
   const [GC, setGC] = useState(initialGC);
@@ -330,10 +331,21 @@ export function BusinessProvider({ children }) {
         } catch (e) {}
       }
 
+      const savedPage = localStorage.getItem('upklick_current_page');
+      if (savedPage) setCurrentPage(savedPage);
+
       const onboardDone = localStorage.getItem('ba_onboard_done');
       setOnboardingDone(onboardDone === '1');
+      setIsPageLoaded(true);
     }
   }, []);
+
+  // Save page state to local storage when changed
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isPageLoaded && currentPage) {
+      localStorage.setItem('upklick_current_page', currentPage);
+    }
+  }, [currentPage, isPageLoaded]);
 
   // Sync lang/theme from Firebase if available
   useEffect(() => {

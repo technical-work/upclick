@@ -554,14 +554,17 @@ const getUserUsageStats = (user) => {
       });
     }
     // Count completed tasks
-    if (gc.tasks?.workspaces) {
-      gc.tasks.workspaces.forEach(ws => {
-        if (ws.tasks) {
-          ws.tasks.forEach(task => {
-            if (task.status === 'done' || task.status === 'completed' || task.completed) {
-              tasksCompleted++;
-            }
-          });
+    if (gc.tasks?.items) {
+      gc.tasks.items.forEach(task => {
+        if (task.done || task.status === 'done' || task.status === 'completed' || task.completed) {
+          tasksCompleted++;
+        }
+      });
+    }
+    if (gc.team?.tasks) {
+      gc.team.tasks.forEach(task => {
+        if (task.done || task.status === 'done' || task.status === 'completed' || task.completed) {
+          tasksCompleted++;
         }
       });
     }
@@ -582,7 +585,8 @@ const getUserUsageStats = (user) => {
     { key: 'crm', labelAr: 'CRM الذكي (Smart CRM)', labelEn: 'Smart CRM', seconds: su.crm || 0 },
     { key: 'tasks', labelAr: 'لوحة المهام (Task Board)', labelEn: 'Task Board', seconds: su.tasks || 0 },
     { key: 'telegram', labelAr: 'مركز التليجرام (Telegram Hub)', labelEn: 'Telegram Hub', seconds: su.telegram || 0 },
-    { key: 'finance', labelAr: 'المالية (Finance Hub)', labelEn: 'Finance Hub', seconds: su.finance || 0 }
+    { key: 'finance', labelAr: 'المالية (Finance Hub)', labelEn: 'Finance Hub', seconds: su.finance || 0 },
+    { key: 'other', labelAr: 'لوحة القيادة والصفحات الأخرى (Dashboard & Other)', labelEn: 'Dashboard & Other', seconds: su.other || 0 }
   ];
 
   const totalSecs = secDetails.reduce((a, b) => a + b.seconds, 0);
@@ -632,7 +636,8 @@ const getUserUsageStats = (user) => {
     { key: 'crm', labelAr: 'CRM الذكي (Smart CRM)', labelEn: 'Smart CRM', pct: 0, hours: 0 },
     { key: 'tasks', labelAr: 'لوحة المهام (Task Board)', labelEn: 'Task Board', pct: 0, hours: 0 },
     { key: 'telegram', labelAr: 'مركز التليجرام (Telegram Hub)', labelEn: 'Telegram Hub', pct: 0, hours: 0 },
-    { key: 'finance', labelAr: 'المالية (Finance Hub)', labelEn: 'Finance Hub', pct: 0, hours: 0 }
+    { key: 'finance', labelAr: 'المالية (Finance Hub)', labelEn: 'Finance Hub', pct: 0, hours: 0 },
+    { key: 'other', labelAr: 'لوحة القيادة والصفحات الأخرى (Dashboard & Other)', labelEn: 'Dashboard & Other', pct: 0, hours: 0 }
   ];
 
   return {

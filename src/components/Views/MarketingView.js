@@ -373,14 +373,42 @@ Perform a combined analysis merging our service details, ideal client profile, a
     const offer = GC.profile?.offer?.name || '';
     const price = GC.profile?.offer?.price || '';
     const icp = GC.strategy?.icp || '';
+    
+    // Competitor research if selected
+    let researchContext = '';
+    if (inputs.planUseResearch) {
+      const compOut = outputs['comp-out'] || '';
+      const dirOut = outputs['direction-out'] || '';
+      if (compOut || dirOut) {
+        researchContext = `\nHere is the Competitor & Ad Research we gathered from the Research tab:\n--- Competitors ---\n${compOut}\n--- Marketing Directions ---\n${dirOut}\n`;
+      }
+    }
 
-    const prompt = `Create a complete marketing strategy plan based on my Strategy Lab data:
-Business Idea & Niche: "${bizIdea}"
-Core Offer: "${offer}" at "${price}"
-Ideal Client Profile: "${icp}"
+    const prompt = `Create a complete, premium marketing strategy plan based on my business data and additional marketing inputs:
 
-Suggest the best organic and paid marketing channels, monthly budget allocation, specific launch tactics, and a month-by-month roadmap. No manual inputs are required, this is fully customized to my profile.`;
-    const system = `You are a Chief Marketing Officer. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
+Core Business Info:
+- Business Idea & Niche: "${bizIdea || GC.profile?.desc || ''}"
+- Core Offer: "${offer || GC.profile?.name || ''}" at "${price || GC.profile?.offer?.price || ''}"
+${inputs.planUseICP && icp ? `- Ideal Client Profile (ICP): "${icp}"` : ''}
+
+Additional Marketing Configuration Inputs:
+- Specific Target Audience: "${inputs.planAudience || 'Ideal client details'}"
+- Marketing Budget: "${inputs.planBudget || 'Organic / Free'}"
+- Primary Goals: "${inputs.planGoal || 'Get first clients'}"
+- Offer Hook/Unique Advantage: "${inputs.planOfferHook || 'High quality delivery'}"
+- Target Channels: "${inputs.planChannels || 'Organic Channels'}"
+- Preferred Content Style: "${inputs.planContentStyle || 'Written posts and short videos'}"
+
+${researchContext}
+
+Please build a comprehensive, highly tactical marketing plan covering:
+1. **Value Proposition & Hook Alignment**: How to frame our offer unique advantage to target the target audience.
+2. **Channel Execution Blueprint**: Step-by-step strategy for the selected channels ("${inputs.planChannels || 'Organic Channels'}"), detailing posting frequencies, formats, and best practices.
+3. **Monthly Marketing Budget & Resource Allocation**: Break down how to spend "${inputs.planBudget || 'Organic / Free'}" efficiently (ads vs tools vs content creation).
+4. **Step-by-Step Launch Timeline**: 30-60 day marketing calendar with milestones, action items, and launching tricks.
+5. **Key Performance Indicators (KPIs)**: Target metrics (traffic, click rates, lead numbers, conversion rate) based on the goals ("${inputs.planGoal || 'Get first clients'}").`;
+
+    const system = `You are a Chief Marketing Officer and Marketing Strategist. You design comprehensive, masterclass-level marketing strategies. Expand fully on every section with professional frameworks and concrete execution rules. Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     triggerAI('strategy', 'strat-plan-out', prompt, system);
   };
 
@@ -1015,26 +1043,185 @@ Please compute a comprehensive Lead & Client Growth Forecast:
           </div>
 
           {stratTab === 'plan' && (
-            <div className="card">
-              <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="sec-title">📋 {L('AI Marketing Strategy Plan', 'خطة الاستراتيجية التسويقية بالـ AI')}</div>
+            <div className="g2" style={{ alignItems: 'start' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                
+                {/* General Inputs Card */}
+                <div className="card">
+                  <div className="sec-hd"><div className="sec-title">🎯 {L('Marketing Parameters', 'مدخلات خطة التسويق')}</div></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('Specific Target Audience', 'تفاصيل الجمهور المستهدف بالتحديد')}
+                      </label>
+                      <textarea 
+                        className="inp" 
+                        rows="2" 
+                        placeholder={L('e.g., Young entrepreneurs, marketing agencies, content creators...', 'مثال: رواد الأعمال الشباب، وكالات التسويق، صناع المحتوى...')} 
+                        value={inputs.planAudience || ''} 
+                        onChange={e => handleInputChange('planAudience', e.target.value)} 
+                        onBlur={saveAllProgress}
+                      />
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                          {L('Marketing Budget', 'ميزانية التسويق')}
+                        </label>
+                        <input 
+                          className="inp" 
+                          placeholder={L('e.g., $200/mo or Organic', 'مثال: 500$ شهرياً أو تسويق مجاني')} 
+                          value={inputs.planBudget || ''} 
+                          onChange={e => handleInputChange('planBudget', e.target.value)} 
+                          onBlur={saveAllProgress}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                          {L('Primary Goal', 'الهدف التسويقي الرئيسي')}
+                        </label>
+                        <input 
+                          className="inp" 
+                          placeholder={L('e.g., Get first 10 coaching clients', 'مثال: الحصول على أول 10 عملاء')} 
+                          value={inputs.planGoal || ''} 
+                          onChange={e => handleInputChange('planGoal', e.target.value)} 
+                          onBlur={saveAllProgress}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Interview Questions Card */}
+                <div className="card">
+                  <div className="sec-hd"><div className="sec-title">🧭 {L('AI Marketing Interview Questions', 'أسئلة المقابلة التسويقية بالـ AI')}</div></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('1. What is your offer unique hook or advantage?', '١. ما هو الخطاف/الميزة الفريدة لعرضك؟')}
+                      </label>
+                      <input 
+                        className="inp" 
+                        placeholder={L('e.g., Live 1-on-1 calls and localized templates', 'مثال: مكالمات حية مخصصة وقوالب باللغة العربية')} 
+                        value={inputs.planOfferHook || ''} 
+                        onChange={e => handleInputChange('planOfferHook', e.target.value)} 
+                        onBlur={saveAllProgress}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('2. What are your preferred marketing channels?', '٢. ما هي قنوات التسويق التي تفضلها؟')}
+                      </label>
+                      <input 
+                        className="inp" 
+                        placeholder={L('e.g., LinkedIn organic, Instagram Reels, TikTok', 'مثال: لينكد إن، إنستجرام ريلز، تيك توك')} 
+                        value={inputs.planChannels || ''} 
+                        onChange={e => handleInputChange('planChannels', e.target.value)} 
+                        onBlur={saveAllProgress}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>
+                        {L('3. What content style do you prefer?', '٣. ما هو أسلوب المحتوى الذي تفضله؟')}
+                      </label>
+                      <input 
+                        className="inp" 
+                        placeholder={L('e.g., Video scripts, educational articles, visual designs', 'مثال: سكريبتات فيديو، مقالات تعليمية، تصاميم مرئية')} 
+                        value={inputs.planContentStyle || ''} 
+                        onChange={e => handleInputChange('planContentStyle', e.target.value)} 
+                        onBlur={saveAllProgress}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Research Mappings Card */}
+                <div className="card">
+                  <div className="sec-hd"><div className="sec-title">🔬 {L('Research & Profiles Integration', 'تكامل الأبحاث والملفات')}</div></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12.5px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={!!inputs.planUseResearch} 
+                        onChange={e => {
+                          handleInputChange('planUseResearch', e.target.checked);
+                          const updatedGC = {
+                            ...GC,
+                            marketing: {
+                              ...(GC?.marketing || {}),
+                              inputs: {
+                                ...(GC?.marketing?.inputs || {}),
+                                planUseResearch: e.target.checked
+                              }
+                            }
+                          };
+                          saveGC(updatedGC);
+                        }} 
+                      />
+                      <span>{L('Use competitor & ad research from Research tab', 'تضمين أبحاث المنافسين والإعلانات المكتشفة في قسم الأبحاث')}</span>
+                    </label>
+                    
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12.5px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={!!inputs.planUseICP} 
+                        onChange={e => {
+                          handleInputChange('planUseICP', e.target.checked);
+                          const updatedGC = {
+                            ...GC,
+                            marketing: {
+                              ...(GC?.marketing || {}),
+                              inputs: {
+                                ...(GC?.marketing?.inputs || {}),
+                                planUseICP: e.target.checked
+                              }
+                            }
+                          };
+                          saveGC(updatedGC);
+                        }} 
+                      />
+                      <span>{L('Use Ideal Client Profile (ICP) from Strategy Lab', 'تضمين ملف العميل المثالي من مختبر الاستراتيجية')}</span>
+                    </label>
+                  </div>
+                </div>
+
                 <button 
                   className="btn btn-prime" 
                   onClick={runAutoMarketingPlan}
+                  style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '14px' }}
                   disabled={loading['strat-plan-out']}
                 >
-                  {loading['strat-plan-out'] ? L('Generating...', 'جاري التوليد...') : `✦ ${L('Generate Marketing Plan', 'إنشاء خطة التسويق')} (${costStrategyBuilder} Credits)`}
+                  {loading['strat-plan-out'] ? L('Generating...', 'جاري التوليد...') : `✦ ${L('Generate Marketing Plan', 'بناء خطة التسويق')} (${costStrategyBuilder} Credits)`}
                 </button>
               </div>
-              <div 
-                className="ai-box"
-                style={{ marginTop: '15px' }}
-                dangerouslySetInnerHTML={{ 
-                  __html: loading['strat-plan-out'] 
-                    ? L('Formulating plan from your Strategy Lab setup...', 'جاري كتابة خطة التسويق بناءً على فكرة وعرض البزنس...') 
-                    : parseMarkdown(outputs['strat-plan-out'] || L('No plan generated yet. Click the button above to generate.', 'لم يتم إنشاء خطة حتى الآن. اضغط على الزر بالأعلى للتوليد.'))
-                }}
-              />
+
+              {/* Plan Output Card */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="sec-title">📋 {L('AI Marketing Plan Report', 'تقرير خطة التسويق بالـ AI')}</div>
+                  {outputs['strat-plan-out'] && !loading['strat-plan-out'] && (
+                    <button 
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => handleSaveToLibrary('Marketing Plan', outputs['strat-plan-out'])}
+                      style={{ fontSize: '11px', padding: '4px 8px' }}
+                    >
+                      💾 {L('Save to Library', 'حفظ للمكتبة')}
+                    </button>
+                  )}
+                </div>
+                <div 
+                  className="ai-box"
+                  style={{ flex: 1, overflowY: 'auto', maxHeight: '680px' }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: loading['strat-plan-out'] 
+                      ? L('Formulating marketing plan from your inputs and research...', 'جاري كتابة خطة التسويق بناءً على مدخلاتك وأبحاثك...') 
+                      : parseMarkdown(outputs['strat-plan-out'] || L('No plan generated yet. Complete the inputs on the left and click build.', 'لم يتم إنشاء خطة حتى الآن. أجب عن الأسئلة باليسار ثم اضغط بناء.'))
+                  }}
+                />
+              </div>
             </div>
           )}
 

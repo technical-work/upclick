@@ -20,6 +20,7 @@ export default function CalendarView() {
   const [selectedDay, setSelectedDay] = useState(tDay);
   const [filterType, setFilterType] = useState('all'); // 'all', 'content', 'coaching'
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDayEventsModal, setShowDayEventsModal] = useState(false);
 
   // Form states
   const [newTitle, setNewTitle] = useState('');
@@ -89,8 +90,15 @@ export default function CalendarView() {
     if (day) {
       setSelectedDay(day);
       setNewDay(day);
-      setShowAddModal(true);
+      setShowDayEventsModal(true);
     }
+  };
+
+  const handleAddClick = (e, day) => {
+    e.stopPropagation();
+    setSelectedDay(day);
+    setNewDay(day);
+    setShowAddModal(true);
   };
 
   const handleAddEvent = (e) => {
@@ -213,6 +221,17 @@ export default function CalendarView() {
           color: #fff;
           border-color: transparent;
           box-shadow: 0 4px 10px rgba(255, 107, 53, 0.25);
+        }
+        .day-add-btn {
+          opacity: 0.7;
+          transition: all 0.2s ease !important;
+        }
+        .day-add-btn:hover {
+          opacity: 1 !important;
+          background: var(--orange) !important;
+          color: #fff !important;
+          border-color: transparent !important;
+          transform: scale(1.1) !important;
         }
       `}</style>
 
@@ -339,9 +358,32 @@ export default function CalendarView() {
                     {/* Day Number Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px', alignItems: 'center' }}>
                       <span style={{ fontSize: '12px', fontWeight: 700 }}>{day}</span>
-                      {isTodayCell && (
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--orange)', boxShadow: '0 0 6px var(--orange)' }} />
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {isTodayCell && (
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--orange)', boxShadow: '0 0 6px var(--orange)' }} />
+                        )}
+                        <button 
+                          className="day-add-btn" 
+                          onClick={(e) => handleAddClick(e, day)}
+                          style={{
+                            background: 'var(--surface3)',
+                            border: '1px solid var(--edge2)',
+                            borderRadius: '4px',
+                            color: 'var(--t2)',
+                            fontSize: '10px',
+                            width: '18px',
+                            height: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                          title={L('Add Event', 'إضافة حدث')}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     
                     {/* Event pills */}
@@ -453,6 +495,87 @@ export default function CalendarView() {
               )}
             </div>
           </div>
+
+      {/* Day Events Modal Popup */}
+      {showDayEventsModal && (
+        <div className="modal-overlay" onClick={() => setShowDayEventsModal(false)}>
+          <div className="modal-box" style={{ maxWidth: '500px', padding: '24px' }} onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowDayEventsModal(false)}>✕</button>
+            
+            <div className="sec-hd" style={{ marginBottom: '16px', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
+              <div className="sec-title" style={{ fontSize: '16px', fontWeight: 800 }}>
+                📅 {L(`Events on ${monthNamesEn[currentMonth]} ${selectedDay}, ${currentYear}`, `أحداث يوم ${selectedDay} ${monthNamesAr[currentMonth]}، ${currentYear}`)}
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+              {selectedDayEvents.length === 0 ? (
+                <div style={{ fontSize: '13px', color: 'var(--t3)', textAlign: 'center', padding: '24px 10px' }}>
+                  {L('No events scheduled for this day.', 'لا توجد أحداث مجدولة لهذا اليوم.')}
+                </div>
+              ) : (
+                selectedDayEvents.map((ev) => (
+                  <div 
+                    key={ev.id} 
+                    className="row" 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      gap: '12px', 
+                      padding: '10px 12px', 
+                      background: 'var(--surface2)', 
+                      borderRadius: '8px', 
+                      borderLeft: `4px solid ${ev.type === 'coaching' ? 'var(--green)' : 'var(--purple)'}`,
+                      borderBottom: 'none'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                        <span className={`badge ${ev.type === 'coaching' ? 'b-green' : 'b-purple'}`} style={{ fontSize: '9px', padding: '1px 5px' }}>
+                          {ev.type === 'coaching' ? L('Coaching', 'جلسة') : L('Content', 'محتوى')}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--t3)' }}>⏰ {ev.time}</span>
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--t1)' }}>{ev.title}</div>
+                    </div>
+                    <button 
+                      className="btn btn-ghost" 
+                      onClick={() => handleDeleteEvent(ev.id)} 
+                      style={{ 
+                        padding: '4px 8px', 
+                        color: 'var(--red)', 
+                        border: 'none', 
+                        background: 'none', 
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                      title={L('Delete Event', 'حذف الحدث')}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setShowDayEventsModal(false)}>
+                {L('Close', 'إغلاق')}
+              </button>
+              <button 
+                className="btn btn-prime" 
+                onClick={() => {
+                  setShowDayEventsModal(false);
+                  setShowAddModal(true);
+                }}
+              >
+                + {L('Add Event', 'إضافة حدث')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Schedule Event Modal Popup */}
       {showAddModal && (

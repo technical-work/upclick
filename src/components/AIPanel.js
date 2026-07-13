@@ -525,10 +525,13 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
           <button
             className="tb-icon"
             onClick={startGuideMode}
-            style={{ width: '28px', height: '28px', fontSize: '13px', borderColor: 'rgba(255,107,53,.3)', color: 'var(--orange)' }}
+            style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderColor: 'rgba(255,107,53,.3)', color: 'var(--orange)' }}
             title={L("Guided Walkthrough", "إرشاد تفاعلي")}
           >
-            🧭
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+            </svg>
           </button>
           <button
             className="tb-icon"
@@ -550,8 +553,12 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
             padding: '10px 14px'
           }}
         >
-          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--orange)', marginBottom: '4px' }}>
-            🧭 {L('Guide Mode Active', 'وضع المرشد نشط')}
+          <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--orange)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+            </svg>
+            <span>{L('Guide Mode Active', 'وضع المرشد نشط')}</span>
           </div>
           <div style={{ fontSize: '11.5px', color: 'var(--t1)' }}>{guideStepText}</div>
           <div style={{ display: 'flex', gap: '5px', marginTop: '8px', flexWrap: 'wrap' }}>

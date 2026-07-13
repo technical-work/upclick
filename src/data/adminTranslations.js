@@ -12,7 +12,7 @@ export const adminTranslations = {
     'nav.libraryMgmt': 'إدارة المكتبة',
     'nav.templatesMgmt': 'إدارة القوالب',
     'nav.salesMgmt': 'إدارة المبيعات',
-    'nav.brandingSettings': 'إعدادات الهوية',
+    'nav.brandingSettings': 'إعدادات صفحة الهبوط',
     'nav.paymentSettings': 'إعدادات الدفع',
     'nav.logout': 'تسجيل الخروج',
 
@@ -226,7 +226,7 @@ export const adminTranslations = {
     'nav.libraryMgmt': 'Library Management',
     'nav.templatesMgmt': 'Templates Management',
     'nav.salesMgmt': 'Sales Management',
-    'nav.brandingSettings': 'Branding Settings',
+    'nav.brandingSettings': 'Landing Page Settings',
     'nav.paymentSettings': 'Payment Settings',
     'nav.logout': 'Logout',
 
