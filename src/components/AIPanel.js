@@ -473,13 +473,6 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
     rec.onend = () => {
       setVoiceActive(false);
-      // Auto-send if we captured text
-      if (input.trim() || voiceTranscript.trim()) {
-        setTimeout(() => {
-          askAI(input || voiceTranscript);
-          setInput('');
-        }, 500);
-      }
     };
 
     rec.onerror = (e) => {
@@ -536,14 +529,6 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
             title={L("Guided Walkthrough", "إرشاد تفاعلي")}
           >
             🧭
-          </button>
-          <button
-            className="tb-icon"
-            onClick={toggleVoiceInput}
-            style={{ width: '28px', height: '28px', fontSize: '13px' }}
-            title={L("Voice Input", "إدخال صوتي")}
-          >
-            🎙️
           </button>
           <button
             className="tb-icon"
@@ -636,7 +621,7 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
         )}
       </div>
 
-      <div className="ai-panel-foot">
+      <div className="ai-panel-foot" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
         <input
           className="inp"
           id="ai-inp"
@@ -651,6 +636,28 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
           }}
           style={{ flex: 1, fontSize: '12.5px', padding: '8px 12px' }}
         />
+        <button 
+          className="btn" 
+          onClick={toggleVoiceInput}
+          style={{
+            padding: '8px',
+            flexShrink: 0,
+            width: '35px',
+            height: '35px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '15px',
+            background: voiceActive ? 'rgba(255, 59, 48, 0.15)' : 'var(--s2)',
+            border: voiceActive ? '1px solid var(--red)' : '1px solid var(--edge)',
+            color: voiceActive ? 'var(--red)' : 'var(--t2)',
+            borderRadius: '8px',
+            cursor: 'pointer'
+          }}
+          title={L("Voice Input", "إدخال صوتي")}
+        >
+          {voiceActive ? '🛑' : '🎙️'}
+        </button>
         <button className="btn btn-prime" style={{ padding: '8px 12px', flexShrink: 0 }} onClick={handleSend}>
           ➤
         </button>
