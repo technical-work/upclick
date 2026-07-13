@@ -81,6 +81,57 @@ export default function CRMView() {
   } = useBusiness();
   const [draggedLeadId, setDraggedLeadId] = useState(null);
   
+  const pipelineTemplates = [
+    {
+      icon: '🧠',
+      nameAr: 'جلسات كوتشينغ واستشارات',
+      nameEn: 'Coaching & Consulting',
+      stages: [
+        { key: 'new', labelAr: 'ليد جديد', labelEn: 'New Lead', color: '#3b82f6' },
+        { key: 'booked', labelAr: 'جلسة استكشافية محجوزة', labelEn: 'Discovery Booked', color: '#a855f7' },
+        { key: 'proposal', labelAr: 'عرض مقترح', labelEn: 'Proposal Sent', color: '#f59e0b' },
+        { key: 'paid', labelAr: 'عميل مدفوع', labelEn: 'Paid Client', color: '#10b981' },
+        { key: 'completed', labelAr: 'جلسة مكتملة', labelEn: 'Completed', color: '#14b8a6' }
+      ]
+    },
+    {
+      icon: '🛍️',
+      nameAr: 'بيع منتجات رقمية / كورسات',
+      nameEn: 'Digital Products & Courses',
+      stages: [
+        { key: 'visited', labelAr: 'زيارة صفحة الهبوط', labelEn: 'Landing Page Visitor', color: '#3b82f6' },
+        { key: 'lead_magnet', labelAr: 'تحميل كتاب/هدية مجانية', labelEn: 'Lead Magnet Download', color: '#a855f7' },
+        { key: 'abandoned', labelAr: 'سلة شراء متروكة', labelEn: 'Abandoned Cart', color: '#f59e0b' },
+        { key: 'purchased', labelAr: 'تم الشراء بنجاح', labelEn: 'Purchased Successfully', color: '#10b981' }
+      ]
+    },
+    {
+      icon: '🤝',
+      nameAr: 'رعايات وشراكات محتوى',
+      nameEn: 'Sponsorships & Collabs',
+      stages: [
+        { key: 'prospect', labelAr: 'رعاة محتملين', labelEn: 'Prospect Sponsors', color: '#3b82f6' },
+        { key: 'pitched', labelAr: 'إرسال البورتفوليو والأسعار', labelEn: 'Pitched / Media Kit Sent', color: '#a855f7' },
+        { key: 'negotiating', labelAr: 'مفاوضات الشروط', labelEn: 'Negotiating', color: '#f59e0b' },
+        { key: 'signed', labelAr: 'تم توقيع العقد والدفع', labelEn: 'Contract Signed & Paid', color: '#10b981' },
+        { key: 'published', labelAr: 'نشر ومشاركة المحتوى', labelEn: 'Content Published', color: '#14b8a6' }
+      ]
+    },
+    {
+      icon: '📊',
+      nameAr: 'قمع المبيعات العام',
+      nameEn: 'Standard Sales Funnel',
+      stages: [
+        { key: 'lead', labelAr: 'عميل محتمل جديد', labelEn: 'New Lead', color: '#3b82f6' },
+        { key: 'contacted', labelAr: 'تم التواصل الأول', labelEn: 'Contacted', color: '#a855f7' },
+        { key: 'qualified', labelAr: 'مؤهل للشراء', labelEn: 'Qualified Lead', color: '#f59e0b' },
+        { key: 'proposal', labelAr: 'تم إرسال العرض المالي', labelEn: 'Proposal Sent', color: '#6366f1' },
+        { key: 'closed_won', labelAr: 'تم إغلاق البيعة بنجاح', labelEn: 'Closed Won', color: '#10b981' },
+        { key: 'closed_lost', labelAr: 'صفقة خاسرة', labelEn: 'Closed Lost', color: '#ef4444' }
+      ]
+    }
+  ];
+
   const [showWsDropdown, setShowWsDropdown] = useState(false);
   const [showWsModal, setShowWsModal] = useState(false);
   const [newWsName, setNewWsName] = useState('');
@@ -688,6 +739,56 @@ export default function CRMView() {
               <button className="btn-close" style={{ background: 'var(--surface2)', color: 'var(--t1)', width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }} onClick={() => setShowWsModal(false)}>✕</button>
             </div>
             <div className="ws-modal-body">
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label style={{ fontSize: '14px', color: 'var(--t2)', marginBottom: '10px', display: 'block' }}>
+                  {L('Choose a Pipeline Template (Optional)', 'اختر قالب خط مبيعات (اختياري)')}
+                </label>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}>
+                  {pipelineTemplates.map((tmpl, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        setNewWsName(L(tmpl.nameEn, tmpl.nameAr));
+                        setNewWsStages(tmpl.stages.map(s => ({
+                          key: s.key,
+                          label: L(s.labelEn, s.labelAr),
+                          color: s.color
+                        })));
+                      }}
+                      style={{
+                        padding: '10px 8px',
+                        background: 'var(--surface2)',
+                        border: '1.5px solid var(--edge)',
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        fontSize: '11.5px',
+                        fontWeight: '600',
+                        color: 'var(--t1)',
+                        transition: 'all 0.2s ease',
+                        userSelect: 'none'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--a)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--edge)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      <div style={{ fontSize: '18px', marginBottom: '4px' }}>{tmpl.icon}</div>
+                      <div style={{ lineHeight: '1.2' }}>{L(tmpl.nameEn, tmpl.nameAr)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="form-group">
                 <label style={{ fontSize: '14px', color: 'var(--t2)', marginBottom: '8px', display: 'block' }}>{L('Workspace Name', 'اسم مساحة العمل')}</label>
                 <input 
