@@ -456,9 +456,9 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
     rec.interimResults = true;
     rec.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
 
-    rec.onstart = () => {
+     rec.onstart = () => {
       setVoiceActive(true);
-      setVoiceStatus(L('🎙️ Listening... speak now', '🎙️ جاري الاستماع... تحدث الآن'));
+      setVoiceStatus(L('Listening... speak now', 'جاري الاستماع... تحدث الآن'));
       setVoiceTranscript('');
     };
 
@@ -477,7 +477,7 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
 
     rec.onerror = (e) => {
       setVoiceActive(false);
-      setVoiceStatus(`⚠️ ${e.error === 'not-allowed' ? 'Mic denied' : e.error}`);
+      setVoiceStatus(e.error === 'not-allowed' ? L('Mic access denied', 'تم رفض الوصول للميكروفون') : e.error);
     };
 
     recognitionRef.current = rec;
@@ -580,7 +580,16 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
             textAlign: 'center'
           }}
         >
-          <div style={{ fontSize: '12px', color: 'var(--red)', fontWeight: 600 }}>{voiceStatus}</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', color: 'var(--red)', fontWeight: 600 }}>
+            <span style={{ display: 'inline-flex', animation: 'pulse 1.5s infinite ease-in-out' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" x2="12" y1="19" y2="22" />
+              </svg>
+            </span>
+            {voiceStatus}
+          </div>
           <div style={{ fontSize: '11px', color: 'var(--t2)', marginTop: '3px' }}>{voiceTranscript}</div>
         </div>
       )}
@@ -656,7 +665,17 @@ Respond in ${lang === 'ar' ? 'Arabic' : 'English'}.`;
           }}
           title={L("Voice Input", "إدخال صوتي")}
         >
-          {voiceActive ? '🛑' : '🎙️'}
+          {voiceActive ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" x2="12" y1="19" y2="22" />
+            </svg>
+          )}
         </button>
         <button className="btn btn-prime" style={{ padding: '8px 12px', flexShrink: 0 }} onClick={handleSend}>
           ➤
