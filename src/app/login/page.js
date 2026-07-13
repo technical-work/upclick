@@ -19,6 +19,14 @@ export default function LoginPage() {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const isRTL = typeof window !== 'undefined' ? (document.documentElement.dir === 'rtl') : true;
+  const [theme, setTheme] = useState('dark');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('upklick_theme');
+      if (savedTheme) setTheme(savedTheme);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -99,7 +107,7 @@ export default function LoginPage() {
               marginBottom: '24px'
             }}>
               <img 
-                src={tenantConfig?.logoUrl || "/new-logo.png"} 
+                src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
                 alt={tenantConfig?.appName || "UpKlick"} 
                 style={{
                   height: '240px',
@@ -110,7 +118,7 @@ export default function LoginPage() {
             </div>
           ) : (
             <img 
-              src={tenantConfig?.logoUrl || "/new-logo.png"} 
+              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
               alt={tenantConfig?.appName || "UpKlick"} 
               style={styles.logo} 
             />
