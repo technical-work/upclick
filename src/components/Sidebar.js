@@ -155,8 +155,8 @@ export default function Sidebar() {
 
   return (
     <nav id="sb" className={`${collapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-      <button 
-        id="sb-tog" 
+      <button
+        id="sb-tog"
         onClick={() => {
           if (typeof window !== 'undefined' && window.innerWidth <= 768) {
             setMobileMenuOpen(false);
@@ -171,13 +171,14 @@ export default function Sidebar() {
       {(() => {
         const isDefaultLogo = !tenantConfig?.logoUrl;
         const logoContainerStyle = isDefaultLogo ? {
-          height: '80px',
+          height: collapsed ? '80px' : '75px',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           borderBottom: '1px solid var(--edge)',
-          padding: collapsed ? '10px 5px' : '10px 14px'
+          padding: collapsed ? '10px 5px' : '10px 14px',
+          transition: 'all 0.3s ease'
         } : {
           justifyContent: 'center',
           padding: '20px 14px',
@@ -188,15 +189,15 @@ export default function Sidebar() {
 
         const logoImgStyle = isDefaultLogo ? (
           collapsed ? {
-            height: '100px',
+            height: '110px',
             objectFit: 'contain',
-            marginTop: '20px',
+            marginTop: '15px',
             transition: 'all 0.3s ease'
           } : {
-            height: '210px',
+            height: '300px',
             objectFit: 'contain',
-            transition: 'all 0.3s ease',
-            marginTop: '-6px'
+            marginTop: '22px',
+            transition: 'all 0.3s ease'
           }
         ) : {
           maxHeight: '35px',
@@ -208,7 +209,7 @@ export default function Sidebar() {
         return (
           <div className="sb-logo" style={logoContainerStyle}>
             <img
-              src={tenantConfig?.logoUrl || "/new-logo.png"}
+              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
               alt={tenantConfig?.appName || "UpKlick Logo"}
               style={logoImgStyle}
               className={collapsed ? 'logo-collapsed' : 'logo-expanded'}
