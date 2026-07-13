@@ -90,8 +90,8 @@ export function parseMarkdown(mdText) {
   html = html.replace(/\*(.*?)\*/g, '<em style="color: var(--t2); font-style: italic; font-size: 13px; font-family: var(--fb);">$1</em>');
   html = html.replace(/_(.*?)_/g, '<em style="color: var(--t2); font-style: italic; font-size: 13px; font-family: var(--fb);">$1</em>');
 
-  // 4. Bullet lists
-  html = html.replace(/^\s*[\*\-]\s+(.*?)$/gm, '<div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; padding-right: 8px; padding-left: 8px;"><span style="color: var(--orange); font-size: 12px; margin-top: 2px;">•</span><span style="color: var(--t2); font-size: 13px;">$1</span></div>');
+  // 4. Bullet lists - matches asterisks, hyphens, plus signs, and literal bullet symbols
+  html = html.replace(/^\s*[\*\-\+•]\s+(.*?)$/gm, '<div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; padding-right: 8px; padding-left: 8px;"><span style="color: var(--orange); font-size: 12px; margin-top: 2px;">•</span><span style="color: var(--t2); font-size: 13px;">$1</span></div>');
 
   // 5. Number lists
   html = html.replace(/^\s*(\d+)\.\s+(.*?)$/gm, '<div style="display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; margin-bottom: 8px;"><span style="background: var(--purple-d); color: var(--purple); font-size: 11px; font-weight: 800; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; margin-top: 1px;">$1</span><span style="color: var(--t1); font-size: 13.5px; font-weight: 600;">$2</span></div>');
@@ -104,6 +104,13 @@ export function parseMarkdown(mdText) {
 
   // Clean duplicate line breaks
   html = html.replace(/(<br \/>){3,}/g, '<br /><br />');
+
+  // Remove <br /> tags that are adjacent to block elements to prevent double vertical margins
+  html = html
+    .replace(/(?:<br \/>\s*)+(<div style="display: flex; gap: 8px; align-items: flex-start;)/gi, '$1')
+    .replace(/(<\/div>)\s*(?:<br \/>\s*)+/gi, '$1')
+    .replace(/(?:<br \/>\s*)+(<h[1-6]|<hr|<table)/gi, '$1')
+    .replace(/(<\/h[1-6]>|<\/hr>|<\/table>)\s*(?:<br \/>\s*)+/gi, '$1');
 
   return html;
 }
