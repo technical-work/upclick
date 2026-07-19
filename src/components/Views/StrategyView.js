@@ -158,7 +158,7 @@ export default function StrategyView() {
 
   const runIdeaStrategy = async (answersOverride) => {
     saveProfileFields();
-    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const qAnswers = (typeof answersOverride === 'string' ? answersOverride : null) || GC.strategy.questionnaire_answers || '';
     const questionnaireContext = qAnswers 
       ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
       : '';
@@ -199,7 +199,7 @@ Write a comprehensive, professional, and detailed "Business & Offer Analysis" ma
 
   const runIcpStrategy = async (answersOverride) => {
     saveProfileFields();
-    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const qAnswers = (typeof answersOverride === 'string' ? answersOverride : null) || GC.strategy.questionnaire_answers || '';
     const questionnaireContext = qAnswers 
       ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
       : '';
@@ -235,7 +235,7 @@ Build a highly comprehensive "Ideal Client Profile (ICP)" analysis. You must cov
 
   const runSwotStrategy = async (answersOverride) => {
     saveProfileFields();
-    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const qAnswers = (typeof answersOverride === 'string' ? answersOverride : null) || GC.strategy.questionnaire_answers || '';
     const questionnaireContext = qAnswers 
       ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
       : '';
@@ -277,7 +277,7 @@ You must cover:
 
   const runRoadmapStrategy = async (answersOverride) => {
     saveProfileFields();
-    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const qAnswers = (typeof answersOverride === 'string' ? answersOverride : null) || GC.strategy.questionnaire_answers || '';
     const questionnaireContext = qAnswers 
       ? `\nHere are the detailed questionnaire answers from the user's interactive business strategy interview:\n${qAnswers}\n` 
       : '';
@@ -316,7 +316,7 @@ You must cover:
   };
 
   const runCompleteStrategy = async (answersOverride) => {
-    const qAnswers = answersOverride || GC.strategy.questionnaire_answers || '';
+    const qAnswers = (typeof answersOverride === 'string' ? answersOverride : null) || GC.strategy.questionnaire_answers || '';
     await runIdeaStrategy(qAnswers);
     await runIcpStrategy(qAnswers);
     await runSwotStrategy(qAnswers);
