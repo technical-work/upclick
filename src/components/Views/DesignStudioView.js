@@ -299,6 +299,39 @@ export default function DesignStudioView() {
     }
   };
 
+  const createThumbnail = (blob) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 300;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handleSave = async (url, type) => {
     if (!url) return;
     setIsSaving(true);
@@ -323,12 +356,17 @@ export default function DesignStudioView() {
 
       let permanentUrl = '';
       
-      // Upload to Firebase Storage directly
-      showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
-      const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
-      const storageRef = ref(storage, filename);
-      const snapshot = await uploadBytes(storageRef, blob);
-      permanentUrl = await getDownloadURL(snapshot.ref);
+      // Upload to Firebase Storage directly, fall back to base64 thumbnail on failure
+      try {
+        showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
+        const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
+        const storageRef = ref(storage, filename);
+        const snapshot = await uploadBytes(storageRef, blob);
+        permanentUrl = await getDownloadURL(snapshot.ref);
+      } catch (err) {
+        console.warn("Firebase Storage upload failed, falling back to base64 thumbnail:", err);
+        permanentUrl = await createThumbnail(blob);
+      }
 
       // Trigger local browser download
       try {
