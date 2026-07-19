@@ -8,11 +8,12 @@ export default function StrategyView() {
   const [activeTab, setActiveTab] = useState('idea');
   const [loading, setLoading] = useState({});
   const [showExportModal, setShowExportModal] = useState(false);
-  
+
+
   // GC.strategy.swot might have been an object previously, we'll ensure it is parsed as string if we output a string, 
   // or we just use a separate key like swot_analysis
   const swotData = typeof GC.strategy.swot === 'string' ? GC.strategy.swot : (GC.strategy.swot_analysis || '');
-  
+
   const [aiOutputs, setAiOutputs] = useState({
     idea: GC.strategy.idea_analysis || '',
     icp: GC.strategy.icp || '',
@@ -49,11 +50,11 @@ export default function StrategyView() {
 
     try {
       const response = await callClaudeAPI(
-        promptText, 
-        systemText, 
-        lang, 
-        GC, 
-        `Strategy Lab - ${key}`, 
+        promptText,
+        systemText,
+        lang,
+        GC,
+        `Strategy Lab - ${key}`,
         (chunk) => {
           if (!hasReceivedFirstChunk) {
             hasReceivedFirstChunk = true;
@@ -63,7 +64,7 @@ export default function StrategyView() {
           setAiOutputs(prev => ({ ...prev, [key]: accumulated }));
         }
       );
-      
+
       const finalRes = response || accumulated;
       setAiOutputs(prev => ({ ...prev, [key]: finalRes }));
       saveCallback(finalRes);
@@ -77,8 +78,8 @@ export default function StrategyView() {
 
   const runCompleteStrategy = async () => {
     handleSaveGC({
-      profile: { 
-        ...GC.profile, 
+      profile: {
+        ...GC.profile,
         name: bizName, desc: bizDesc, niche: bizNiche, stage: bizStage,
         offer: { ...GC.profile.offer, name: offerName, price: offerPrice, transform: offerTransform, duration: offerDuration }
       }
@@ -127,13 +128,13 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
           <div className="card" style={{ width: '100%', maxWidth: '800px', height: '90vh', overflowY: 'auto', position: 'relative', background: 'var(--surface)' }}>
             <button className="btn btn-ghost" style={{ position: 'absolute', top: '15px', right: '15px' }} onClick={() => setShowExportModal(false)}>✕</button>
             <div className="sec-hd"><div className="sec-title">📑 {L('Strategy Overview', 'النظرة العامة للاستراتيجية')}</div></div>
-            <div className="ai-box" style={{ background: 'transparent', border: 'none' }} dangerouslySetInnerHTML={{ 
+            <div className="ai-box" style={{ background: 'transparent', border: 'none' }} dangerouslySetInnerHTML={{
               __html: parseMarkdown(
                 `# ${L('Business Idea & Offer', 'فكرة البزنس والعرض')}\n\n${aiOutputs.idea || ''}\n\n---\n\n` +
                 `# ${L('Ideal Client Profile', 'العميل المثالي')}\n\n${aiOutputs.icp || ''}\n\n---\n\n` +
                 `# ${L('SWOT Analysis', 'تحليل SWOT')}\n\n${aiOutputs.swot || ''}\n\n---\n\n` +
                 `# ${L('Growth Roadmap', 'خارطة طريق النمو')}\n\n${aiOutputs.roadmap || ''}`
-              ) 
+              )
             }} />
           </div>
         </div>
@@ -219,9 +220,9 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
           </div>
           <div className="card">
             <div className="sec-hd"><div className="sec-title">{L('Idea & Offer Analysis', 'تحليل الفكرة والعرض')}</div></div>
-            <div 
+            <div
               className="ai-box"
-              dangerouslySetInnerHTML={{ 
+              dangerouslySetInnerHTML={{
                 __html: loading.idea ? L('Analyzing concept and optimizing offer...', 'جاري تحليل الفكرة وتحسين العرض...') : parseMarkdown(aiOutputs.idea || L('Your analysis report will appear here.', 'سيظهر تقرير التحليل هنا.'))
               }}
             />
@@ -233,9 +234,9 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
       {activeTab === 'icp' && (
         <div className="card">
           <div className="sec-hd"><div className="sec-title">🎯 {L('Ideal Client Profile (ICP)', 'الملف المثالي للعميل')}</div></div>
-          <div 
+          <div
             className="ai-box"
-            dangerouslySetInnerHTML={{ 
+            dangerouslySetInnerHTML={{
               __html: loading.icp ? L('Building profile based on your business idea...', 'جاري بناء الملف بناءً على فكرة البزنس...') : parseMarkdown(aiOutputs.icp || L('Detailed client profile will automatically generate when you run the strategy.', 'سيتم توليد ملف العميل تلقائياً عند بناء الاستراتيجية.'))
             }}
           />
@@ -246,9 +247,9 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
       {activeTab === 'swot' && (
         <div className="card">
           <div className="sec-hd"><div className="sec-title">⚔️ {L('SWOT Analysis', 'تحليل SWOT')}</div></div>
-          <div 
+          <div
             className="ai-box"
-            dangerouslySetInnerHTML={{ 
+            dangerouslySetInnerHTML={{
               __html: loading.swot ? L('Generating SWOT matrix insights...', 'جاري كتابة تحليلات SWOT...') : parseMarkdown(aiOutputs.swot || L('Actionable SWOT strategies will automatically generate when you run the strategy.', 'سيتم توليد تحليل SWOT تلقائياً عند بناء الاستراتيجية.'))
             }}
           />
@@ -259,9 +260,9 @@ Build a 90-day Growth Roadmap. Provide a week-by-week implementation guide for t
       {activeTab === 'roadmap' && (
         <div className="card">
           <div className="sec-hd"><div className="sec-title">🗺️ {L('Growth Roadmap', 'خارطة طريق النمو')}</div></div>
-          <div 
+          <div
             className="ai-box"
-            dangerouslySetInnerHTML={{ 
+            dangerouslySetInnerHTML={{
               __html: loading.roadmap ? L('Building roadmap...', 'جاري بناء خطة العمل...') : parseMarkdown(aiOutputs.roadmap || L('Your personalized roadmap will automatically generate when you run the strategy.', 'سيتم توليد خارطة الطريق تلقائياً عند بناء الاستراتيجية.'))
             }}
           />
