@@ -4,6 +4,34 @@ import React, { useState } from 'react';
 import { useBusiness } from '../context/BusinessContext';
 import { useAuth } from '../context/AuthContext';
 import { CURRENCIES } from '../data/mockData';
+import { 
+  Home, 
+  Target, 
+  MessageSquare, 
+  Brain, 
+  Megaphone, 
+  Sparkles, 
+  Zap, 
+  Radio, 
+  TrendingUp, 
+  Link2, 
+  Layers, 
+  Globe,
+  BookOpen, 
+  Package, 
+  Compass, 
+  Users, 
+  Palette, 
+  CheckSquare, 
+  Calendar, 
+  CreditCard, 
+  Workflow, 
+  Network, 
+  HelpCircle, 
+  Clock, 
+  Cpu, 
+  LogOut 
+} from 'lucide-react';
 
 export default function Sidebar() {
   const {
@@ -92,65 +120,65 @@ export default function Sidebar() {
     {
       title: 'Dashboard',
       items: [
-        { page: 'home', label: 'Dashboard', icon: '⌂' }
+        { page: 'home', label: 'Dashboard', icon: Home }
       ]
     },
     {
       title: 'Grow',
       items: [
-        { page: 'crm', label: 'Smart CRM', icon: '🎯', badge: hotLeads },
-        { page: 'telegram', label: 'Telegram Hub', icon: '💬' },
-        { page: 'strategy', label: 'Strategy Lab', icon: '🧠' }
+        { page: 'crm', label: 'Smart CRM', icon: Target, badge: hotLeads },
+        { page: 'telegram', label: 'Telegram Hub', icon: MessageSquare },
+        { page: 'strategy', label: 'Strategy Lab', icon: Brain }
       ]
     },
     {
       title: 'Marketing Lab',
       items: [
-        { page: 'marketing', label: 'Marketing OS', icon: '📣', id: 'sb-marketing' },
-        { page: 'content', label: 'Content Hub', icon: '✦' },
-        { page: 'automation', label: 'Automation Hub', icon: '⚡' },
-        { page: 'tracking-center', label: 'Pixel & Tracking', icon: '📡' },
-        { page: 'ai-growth', label: 'AI Growth Intel', icon: '🔮' }
+        { page: 'marketing', label: 'Marketing OS', icon: Megaphone, id: 'sb-marketing' },
+        { page: 'content', label: 'Content Hub', icon: Sparkles },
+        { page: 'automation', label: 'Automation Hub', icon: Zap },
+        { page: 'tracking-center', label: 'Pixel & Tracking', icon: Radio },
+        { page: 'ai-growth', label: 'AI Growth Intel', icon: TrendingUp }
       ]
     },
     {
       title: 'Creator',
       items: [
-        { page: 'revenue', label: 'Creator Hub', icon: '⚡' },
-        { page: 'social', label: 'Social Accounts', icon: '📡' },
-        { page: 'tiktok-trends', label: 'Social Trends', icon: '📡' },
-        { page: 'bio', label: 'Bio Link', icon: '🔗' }
+        { page: 'revenue', label: 'Creator Hub', icon: Layers },
+        { page: 'social', label: 'Social Accounts', icon: Network },
+        { page: 'tiktok-trends', label: 'Social Trends', icon: TrendingUp },
+        { page: 'bio', label: 'Bio Link', icon: Link2 }
       ]
     },
     {
       title: 'Build',
       items: [
-        { page: 'landing', label: 'Landing Page AI', icon: '⚡' },
-        { page: 'courses', label: 'Courses', icon: '🎓' },
-        { page: 'digital', label: 'Digital Products', icon: '📦' },
-        { page: 'niche', label: 'Niche & Brand Studio', icon: '🎯' },
-        { page: 'community', label: 'Community Hub', icon: '🏘️' },
-        { page: 'design', label: 'Design Studio', icon: '🎨' }
+        { page: 'landing', label: 'Landing Page AI', icon: Globe },
+        { page: 'courses', label: 'Courses', icon: BookOpen },
+        { page: 'digital', label: 'Digital Products', icon: Package },
+        { page: 'niche', label: 'Niche & Brand Studio', icon: Compass },
+        { page: 'community', label: 'Community Hub', icon: Users },
+        { page: 'design', label: 'Design Studio', icon: Palette }
       ]
     },
     {
       title: 'Manage',
       items: [
-        { page: 'tasks', label: 'Task Board', icon: '◉', badge: highTasks },
-        { page: 'calendar', label: 'Calendar', icon: '📅' },
-        { page: 'finance', label: 'Finance', icon: '💳' },
-        { page: 'ops', label: 'Ops Hub', icon: '⚙' },
-        { page: 'team', label: 'Team Hub', icon: '👥' }
+        { page: 'tasks', label: 'Task Board', icon: CheckSquare, badge: highTasks },
+        { page: 'calendar', label: 'Calendar', icon: Calendar },
+        { page: 'finance', label: 'Finance', icon: CreditCard },
+        { page: 'ops', label: 'Ops Hub', icon: Workflow },
+        { page: 'team', label: 'Team Hub', icon: Users }
       ]
     },
     {
       title: 'Settings',
       items: [
-        { page: 'integrations', label: 'Integrations', icon: '⛓' },
-        { page: 'analytics', label: 'Analytics', icon: '◈' },
-        { page: 'billing', label: 'Billing & Credits', icon: '💳' },
-        { page: 'support', label: 'Technical Support', icon: '🛠' },
-        { page: 'model-test', label: 'اختبار الموديل', icon: '⏱️' }
+        { page: 'integrations', label: 'Integrations', icon: Link2 },
+        { page: 'analytics', label: 'Analytics', icon: TrendingUp },
+        { page: 'billing', label: 'Billing & Credits', icon: CreditCard },
+        { page: 'support', label: 'Technical Support', icon: HelpCircle },
+        { page: 'model-test', label: 'اختبار الموديل', icon: Clock }
       ]
     }
   ];
@@ -251,7 +279,7 @@ export default function Sidebar() {
               fontWeight: 600
             }}
           >
-            <span>✦</span>
+            <Sparkles size={16} />
             <span className="sb-lbl">{t('AI Assistant')}</span>
           </button>
         </div>
@@ -300,20 +328,25 @@ export default function Sidebar() {
                 overflow: 'hidden',
                 transition: 'max-height 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
               }}>
-                {sec.items.map((item) => (
-                  <button
-                    key={item.page}
-                    id={item.id || `sb-${item.page}`}
-                    className={`sb-btn ${currentPage === item.page ? 'on' : ''}`}
-                    onClick={() => setCurrentPage(item.page)}
-                  >
-                    <span className="sb-icon">{item.icon}</span>
-                    <span className="sb-lbl">{t(item.label)}</span>
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <span className="sb-badge">{item.badge}</span>
-                    )}
-                  </button>
-                ))}
+                {sec.items.map((item) => {
+                  const IconComponent = item.icon;
+                  return (
+                    <button
+                      key={item.page}
+                      id={item.id || `sb-${item.page}`}
+                      className={`sb-btn ${currentPage === item.page ? 'on' : ''}`}
+                      onClick={() => setCurrentPage(item.page)}
+                    >
+                      <span className="sb-icon">
+                        <IconComponent size={16} />
+                      </span>
+                      <span className="sb-lbl">{t(item.label)}</span>
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className="sb-badge">{item.badge}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
@@ -335,7 +368,7 @@ export default function Sidebar() {
               {displayName}
             </div>
             <div className="sb-user-plan" id="t-plan">
-              {userData?.role === 'team_member' ? (isRtl ? '👤 عضو فريق' : '👤 Team Member') : GC.profile.type ? `${GC.profile.type} — Pro` : (userData?.role === 'admin' ? 'Admin — Pro' : t('t-plan'))}
+              {userData?.role === 'team_member' ? (isRtl ? 'عضو فريق' : 'Team Member') : GC.profile.type ? `${GC.profile.type} — Pro` : (userData?.role === 'admin' ? 'Admin — Pro' : t('t-plan'))}
             </div>
           </div>
           <span style={{ fontSize: '12px', color: 'var(--t3)', flexShrink: 0 }}>
@@ -361,7 +394,8 @@ export default function Sidebar() {
             justifyContent: 'center',
             boxSizing: 'border-box'
           }}>
-            🤖 {isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} {Math.round(userData.aiCredits)} {isRtl ? 'كريديت' : 'cr'}
+            <Cpu size={14} />
+            <span>{isRtl ? 'رصيد الذكاء الاصطناعي:' : 'AI Credits:'} {Math.round(userData.aiCredits)} {isRtl ? 'كريديت' : 'cr'}</span>
           </div>
         )}
 
@@ -392,7 +426,7 @@ export default function Sidebar() {
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,61,110,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,61,110,0.3)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,61,110,0.15)'; }}
         >
-          <span>⎋</span>
+          <LogOut size={16} />
           <span>{isRtl ? 'تسجيل الخروج' : 'Sign Out'}</span>
         </button>
       </div>
