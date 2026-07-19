@@ -46,3 +46,5 @@ firebase-debug.log
 
 .vercel
 .env*
+upklick-software-firebase-adminsdk-fbsvc-7c8b04f04c.json
+*-firebase-adminsdk-*.json
