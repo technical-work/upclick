@@ -8,7 +8,7 @@ import { libStorage } from '../../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function DesignStudioView() {
-  const { t, L, setAiPanelOpen, GC, saveGC, showToast, checkCredits, tenantConfig } = useBusiness();
+  const { t, L, setAiPanelOpen, GC, saveGC, showToast, checkCredits, tenantConfig, lang } = useBusiness();
   const { user } = useAuth();
   const costGenerateLogo = tenantConfig?.costGenerateLogo !== undefined ? Number(tenantConfig.costGenerateLogo) : 40;
   
