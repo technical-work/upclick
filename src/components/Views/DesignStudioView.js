@@ -6,6 +6,30 @@ import CustomSelect from '../CustomSelect';
 import { useAuth } from '../../context/AuthContext';
 import { libStorage } from '../../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { 
+  Palette, 
+  Image, 
+  Lightbulb, 
+  Type, 
+  Baseline as CaseSensitive, 
+  Briefcase, 
+  Eye, 
+  Maximize, 
+  FileText, 
+  User, 
+  CreditCard, 
+  Tag, 
+  Smartphone, 
+  Download, 
+  Trash2, 
+  Sparkles, 
+  Zap, 
+  Gem, 
+  PartyPopper,
+  Cpu,
+  Compass,
+  Camera
+} from 'lucide-react';
 
 export default function DesignStudioView() {
   const { t, L, setAiPanelOpen, GC, saveGC, showToast, checkCredits, tenantConfig, lang } = useBusiness();
@@ -449,7 +473,7 @@ export default function DesignStudioView() {
   const renderColorSchemeCard = (activeColor, customVal, onSelectColor, onSelectCustomColor, onSaveColor) => {
     return (
       <div className="card">
-        <div className="sec-hd"><div className="sec-title">🎨 {L('Color Scheme', 'الألوان')}</div></div>
+        <div className="sec-hd"><div className="sec-title"><Palette size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Color Scheme', 'الألوان')}</div></div>
         <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
           {colorPresets.map(color => (
             <div 
@@ -518,7 +542,7 @@ export default function DesignStudioView() {
     return (
       <div className="card" style={{ fontFamily: 'Tajawal, sans-serif' }}>
         <div className="sec-hd" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="sec-title">🖼️ {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
+          <div className="sec-title"><Image size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Reference Design (Optional)', 'تصميم مرجعي (اختياري)')}</div>
           {refImageBase64 && (
             <button 
               onClick={() => setRefImageBase64('')}
@@ -536,8 +560,8 @@ export default function DesignStudioView() {
               style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--edge)' }} 
             />
           ) : (
-            <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
-              📷
+            <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--t3)', border: '1px dashed var(--edge)' }}>
+              <Camera size={20} />
             </div>
           )}
           <div style={{ flex: 1 }}>
@@ -574,7 +598,7 @@ export default function DesignStudioView() {
   const renderDesignIdeaCard = (value, onChange, onBlur) => {
     return (
       <div className="card">
-        <div className="sec-hd"><div className="sec-title">💡 {L('Design Idea (Optional)', 'فكرة التصميم (اختياري)')}</div></div>
+        <div className="sec-hd"><div className="sec-title"><Lightbulb size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Design Idea (Optional)', 'فكرة التصميم (اختياري)')}</div></div>
         <textarea 
           className="inp" 
           value={value} 
@@ -588,41 +612,47 @@ export default function DesignStudioView() {
   };
 
   const tabs = [
-    { id: 'logo', label: L('🏷 Logo Maker', '🏷 صانع الشعارات') },
-    { id: 'social', label: L('📱 Social Media', '📱 السوشيال ميديا') },
-    { id: 'cover', label: L('🖼 Cover & Banner', '🖼 أغلفة ولافتات') },
-    { id: 'card', label: L('💳 Business Card', '💳 بطاقة عمل') },
-    { id: 'gallery', label: L('💾 Saved', '💾 المحفوظات') },
+    { id: 'logo', label: L('Logo Maker', 'صانع الشعارات'), icon: Tag },
+    { id: 'social', label: L('Social Media', 'السوشيال ميديا'), icon: Smartphone },
+    { id: 'cover', label: L('Cover & Banner', 'أغلفة ولافتات'), icon: Image },
+    { id: 'card', label: L('Business Card', 'بطاقة عمل'), icon: CreditCard },
+    { id: 'gallery', label: L('Saved', 'المحفوظات'), icon: Palette },
   ];
 
   return (
     <div className="pg on" id="pg-design">
       <div className="pg-header">
-        <div className="pg-title">
-          <span className="pg-icon">🎨</span>
-          {L('Design Studio', 'استوديو التصميم')}
+        <div className="pg-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <Palette size={20} style={{ color: 'var(--orange)' }} />
+          <span>{L('Design Studio', 'استوديو التصميم')}</span>
         </div>
         <div className="pg-actions">
           <button 
             className="btn btn-ghost" 
-            style={{ fontSize: '12px', padding: '6px 13px' }} 
+            style={{ fontSize: '12px', padding: '6px 13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }} 
             onClick={() => setActiveTab('gallery')}
           >
-            🖼 {L('My Designs', 'تصاميمي')}
+            <Palette size={14} />
+            <span>{L('My Designs', 'تصاميمي')}</span>
           </button>
         </div>
       </div>
 
       <div className="tabs-bar">
-        {tabs.map(tab => (
-          <button 
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? 'on' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button 
+              key={tab.id}
+              className={`tab-btn ${activeTab === tab.id ? 'on' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ═══ LOGO MAKER ═══ */}
@@ -633,7 +663,7 @@ export default function DesignStudioView() {
               
               {/* Brand Name */}
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">✍️ {L('Brand Name', 'اسم العلامة')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><Type size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Brand Name', 'اسم العلامة')}</div></div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input 
                     className="inp" 
@@ -661,22 +691,29 @@ export default function DesignStudioView() {
 
               {/* Style */}
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">🎨 {L('Logo Style', 'أسلوب الشعار')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><Sparkles size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Logo Style', 'أسلوب الشعار')}</div></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {[
-                    { id: 'modern', icon: '✦', name: L('Modern / Minimal', 'حديث / مبسط') },
-                    { id: 'bold', icon: '💪', name: L('Bold / Strong', 'قوي / بارز') },
-                    { id: 'luxury', icon: '💎', name: L('Luxury / Premium', 'فاخر / راقٍ') },
-                    { id: 'playful', icon: '🎉', name: L('Playful / Fun', 'مرح / ممتع') },
-                    { id: 'tech', icon: '🤖', name: L('Tech / AI', 'تقني / ذكاء اصطناعي') },
-                    { id: 'arabic', icon: '🕌', name: L('Arabic Heritage', 'تراث عربي أصيل') }
+                    { id: 'modern', name: L('Modern / Minimal', 'حديث / مبسط') },
+                    { id: 'bold', name: L('Bold / Strong', 'قوي / بارز') },
+                    { id: 'luxury', name: L('Luxury / Premium', 'فاخر / راقٍ') },
+                    { id: 'playful', name: L('Playful / Fun', 'مرح / ممتع') },
+                    { id: 'tech', name: L('Tech / AI', 'تقني / ذكاء اصطناعي') },
+                    { id: 'arabic', name: L('Arabic Heritage', 'تراث عربي أصيل') }
                   ].map(style => (
                     <div 
                       key={style.id}
                       onClick={() => { setLogoStyle(style.id); saveDesignStudioData('logo', { logoStyle: style.id }); }}
                       style={{ padding: '10px 12px', borderRadius: '10px', border: logoStyle === style.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: logoStyle === style.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', textAlign: 'center' }}
                     >
-                      <div style={{ fontSize: '18px', marginBottom: '3px' }}>{style.icon}</div>
+                      <div style={{ marginBottom: '5px', display: 'flex', justifyContent: 'center', color: logoStyle === style.id ? 'var(--orange)' : 'var(--t3)' }}>
+                        {style.id === 'modern' ? <Sparkles size={18} />
+                         : style.id === 'bold' ? <Zap size={18} />
+                         : style.id === 'luxury' ? <Gem size={18} />
+                         : style.id === 'playful' ? <PartyPopper size={18} />
+                         : style.id === 'tech' ? <Cpu size={18} />
+                         : <Compass size={18} />}
+                      </div>
                       <div style={{ fontSize: '12.5px', fontWeight: 600, color: logoStyle === style.id ? 'var(--orange)' : 'var(--t2)' }}>{style.name}</div>
                     </div>
                   ))}
@@ -685,7 +722,7 @@ export default function DesignStudioView() {
 
               {/* Logo Type */}
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">🔤 {L('Logo Type', 'نوع الشعار')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><CaseSensitive size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Logo Type', 'نوع الشعار')}</div></div>
                 <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
                   {[
                     { id: 'wordmark', label: L('Wordmark', 'شعار نصي (كتابي)') },
@@ -710,7 +747,7 @@ export default function DesignStudioView() {
 
               {/* Industry */}
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">🏢 {L('Industry', 'الصناعة')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><Briefcase size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Industry', 'الصناعة')}</div></div>
                 <CustomSelect className="inp" value={logoIndustry} onChange={(e) => { setLogoIndustry(e.target.value); saveDesignStudioData('logo', { industry: e.target.value }); }}>
                   <option value="coaching">{L('Coaching & Training', 'التدريب والتطوير')}</option>
                   <option value="tech">{L('Tech / AI / SaaS', 'التقنية والذكاء الاصطناعي')}</option>
@@ -734,7 +771,7 @@ export default function DesignStudioView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div className="card" style={{ position: 'sticky', top: '14px' }}>
                 <div className="sec-hd">
-                  <div className="sec-title">👁 {L('Live Preview', 'معاينة حية')}</div>
+                  <div className="sec-title"><Eye size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Live Preview', 'معاينة حية')}</div>
                   {generatedLogoUrl && (
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <button 
@@ -761,7 +798,7 @@ export default function DesignStudioView() {
                 ) : (
                   <div style={{ background: '#111', borderRadius: '14px', padding: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', transition: 'background .3s' }}>
                     <div style={{ textAlign: 'center', color: '#555' }}>
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎨</div>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}><Palette size={32} style={{ color: 'var(--t3)' }} /></div>
                       <div style={{ fontSize: '13px' }}>{L('Your logo will appear here', 'سيظهر شعارك هنا')}</div>
                     </div>
                   </div>
@@ -778,20 +815,27 @@ export default function DesignStudioView() {
           <div className="g2" style={{ alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">📐 {L('Post Size', 'حجم المنشور')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><Maximize size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Post Size', 'حجم المنشور')}</div></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {[
-                    { id: '1080x1080', icon: '⬛', size: '1080×1080', desc: L('Square (IG/TikTok)', 'مربع (إنستغرام/تيك توك)') },
-                    { id: '1080x1920', icon: '📱', size: '1080×1920', desc: L('Story / Reel', 'قصة / ريلز عمودي') },
-                    { id: '1200x628', icon: '🖼', size: '1200×628', desc: L('FB / LinkedIn', 'فيسبوك / لينكد إن') },
-                    { id: '1280x720', icon: '📺', size: '1280×720', desc: L('YouTube Thumb', 'صورة يوتيوب مصغرة') }
+                    { id: '1080x1080', size: '1080×1080', desc: L('Square (IG/TikTok)', 'مربع (إنستغرام/تيك توك)') },
+                    { id: '1080x1920', size: '1080×1920', desc: L('Story / Reel', 'قصة / ريلز عمودي') },
+                    { id: '1200x628', size: '1200×628', desc: L('FB / LinkedIn', 'فيسبوك / لينكد إن') },
+                    { id: '1280x720', size: '1280×720', desc: L('YouTube Thumb', 'صورة يوتيوب مصغرة') }
                   ].map(s => (
                     <div 
                       key={s.id}
                       onClick={() => { setSocialSize(s.id); saveDesignStudioData('social', { socialSize: s.id }); }}
                       style={{ padding: '10px', borderRadius: '10px', border: socialSize === s.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: socialSize === s.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', textAlign: 'center' }}
                     >
-                      <div style={{ fontSize: '15px', marginBottom: '3px' }}>{s.icon}</div>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
+                        <div style={{ 
+                          width: '18px', 
+                          height: s.id === '1080x1080' ? '18px' : s.id === '1080x1920' ? '24px' : s.id === '1200x628' ? '10px' : '12px', 
+                          border: `1.5px solid ${socialSize === s.id ? 'var(--orange)' : 'var(--t3)'}`, 
+                          borderRadius: '2px' 
+                        }}></div>
+                      </div>
                       <div style={{ fontSize: '12px', fontWeight: 600, color: socialSize === s.id ? 'var(--orange)' : 'var(--t2)' }}>{s.size}</div>
                       <div style={{ fontSize: '10.5px', color: 'var(--t3)' }}>{s.desc}</div>
                     </div>
@@ -800,7 +844,7 @@ export default function DesignStudioView() {
               </div>
 
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">📝 {L('Content', 'المحتوى')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><FileText size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Content', 'المحتوى')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Main Title / Headline', 'العنوان الرئيسي')}</label>
@@ -841,7 +885,7 @@ export default function DesignStudioView() {
 
             <div className="card" style={{ position: 'sticky', top: '14px' }}>
               <div className="sec-hd">
-                <div className="sec-title">👁 {L('Preview', 'معاينة')}</div>
+                <div className="sec-title"><Eye size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Preview', 'معاينة')}</div>
                 {generatedSocialUrl && (
                   <button 
                     className="btn btn-ghost" 
@@ -854,14 +898,17 @@ export default function DesignStudioView() {
                 )}
               </div>
               {isGenerating ? (
-                <div style={{ textAlign: 'center', padding: '28px' }}><div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>🎨</div><div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Creating your design...', 'يتم إنشاء تصميمك...')}</div></div>
+                <div style={{ textAlign: 'center', padding: '28px' }}><div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>✦</div><div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Creating your design...', 'يتم إنشاء تصميمك...')}</div></div>
               ) : generatedSocialUrl ? (
                 <div style={{ textAlign: 'center', background: '#111', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '280px' }}>
                   <img src={generatedSocialUrl} alt="Generated Social Post" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '300px' }} />
                 </div>
               ) : (
                 <div style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '280px' }}>
-                  <div style={{ textAlign: 'center', color: '#555' }}><div style={{ fontSize: '28px', marginBottom: '8px' }}>📱</div><div style={{ fontSize: '13px' }}>{L('Social post design', 'تصميم السوشيال ميديا')}</div></div>
+                  <div style={{ textAlign: 'center', color: '#555' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}><Smartphone size={32} style={{ color: 'var(--t3)' }} /></div>
+                    <div style={{ fontSize: '13px' }}>{L('Social post design', 'تصميم السوشيال ميديا')}</div>
+                  </div>
                 </div>
               )}
             </div>
@@ -877,19 +924,23 @@ export default function DesignStudioView() {
               
               {/* Type */}
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">📐 {L('Banner Type', 'نوع الغلاف')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><Maximize size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Banner Type', 'نوع الغلاف')}</div></div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
                   {[
-                    { id: 'linkedin', icon: '💼', name: L('LinkedIn Banner', 'غلاف لينكد إن'), dims: '1584×396' },
-                    { id: 'youtube', icon: '▶️', name: L('YouTube Channel Art', 'غلاف قناة يوتيوب'), dims: '2560×1440' },
-                    { id: 'twitter', icon: '🐦', name: L('X / Twitter Header', 'غلاف منصة إكس/تويتر'), dims: '1500×500' }
+                    { id: 'linkedin', name: L('LinkedIn Banner', 'غلاف لينكد إن'), dims: '1584×396' },
+                    { id: 'youtube', name: L('YouTube Channel Art', 'غلاف قناة يوتيوب'), dims: '2560×1440' },
+                    { id: 'twitter', name: L('X / Twitter Header', 'غلاف منصة إكس/تويتر'), dims: '1500×500' }
                   ].map(c => (
                     <div 
                       key={c.id}
                       onClick={() => { setCoverType(c.id); saveDesignStudioData('cover', { coverType: c.id }); }}
                       style={{ padding: '10px 14px', borderRadius: '10px', border: coverType === c.id ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverType === c.id ? 'var(--or-d)' : 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
                     >
-                      <span style={{ fontSize: '18px' }}>{c.icon}</span>
+                      <span style={{ display: 'inline-flex', color: coverType === c.id ? 'var(--orange)' : 'var(--t3)' }}>
+                        {c.id === 'linkedin' ? <Briefcase size={18} />
+                         : c.id === 'youtube' ? <Cpu size={18} />
+                         : <Compass size={18} />}
+                      </span>
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: coverType === c.id ? 'var(--orange)' : 'var(--t2)' }}>{c.name}</div>
                         <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{c.dims}</div>
@@ -901,19 +952,21 @@ export default function DesignStudioView() {
 
               {/* Text / Copy Configuration */}
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">✍️ {L('Banner Text / Copy', 'الكتابة والنصوص على الغلاف')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><Type size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Banner Text / Copy', 'الكتابة والنصوص على الغلاف')}</div></div>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                   <button 
                     onClick={() => { setCoverTextMode('ai'); saveDesignStudioData('cover', { textMode: 'ai' }); }}
-                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: coverTextMode === 'ai' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverTextMode === 'ai' ? 'var(--or-d)' : 'var(--surface2)', color: coverTextMode === 'ai' ? 'var(--orange)' : 'var(--t2)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: coverTextMode === 'ai' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverTextMode === 'ai' ? 'var(--or-d)' : 'var(--surface2)', color: coverTextMode === 'ai' ? 'var(--orange)' : 'var(--t2)', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
                   >
-                    🤖 {L('AI Auto Text', 'توليد بالـ AI')}
+                    <Cpu size={14} />
+                    <span>{L('AI Auto Text', 'توليد بالـ AI')}</span>
                   </button>
                   <button 
                     onClick={() => { setCoverTextMode('custom'); saveDesignStudioData('cover', { textMode: 'custom' }); }}
-                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: coverTextMode === 'custom' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverTextMode === 'custom' ? 'var(--or-d)' : 'var(--surface2)', color: coverTextMode === 'custom' ? 'var(--orange)' : 'var(--t2)', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                    style={{ flex: 1, padding: '8px', borderRadius: '8px', border: coverTextMode === 'custom' ? '2px solid var(--orange)' : '1px solid var(--edge)', background: coverTextMode === 'custom' ? 'var(--or-d)' : 'var(--surface2)', color: coverTextMode === 'custom' ? 'var(--orange)' : 'var(--t2)', cursor: 'pointer', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
                   >
-                    ✏️ {L('Write Custom Text', 'أكتب النص بنفسي')}
+                    <FileText size={14} />
+                    <span>{L('Write Custom Text', 'أكتب النص بنفسي')}</span>
                   </button>
                 </div>
                 {coverTextMode === 'custom' && (
@@ -960,7 +1013,7 @@ export default function DesignStudioView() {
             
             <div className="card" style={{ position: 'sticky', top: '14px' }}>
               <div className="sec-hd">
-                <div className="sec-title">👁 {L('Preview', 'معاينة')}</div>
+                <div className="sec-title"><Eye size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Preview', 'معاينة')}</div>
                 {generatedCoverUrl && (
                   <button 
                     className="btn btn-ghost" 
@@ -973,14 +1026,17 @@ export default function DesignStudioView() {
                 )}
               </div>
               {isGenerating ? (
-                <div style={{ textAlign: 'center', padding: '28px' }}><div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>🖼</div><div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Creating banner...', 'يتم تصميم الغلاف...')}</div></div>
+                <div style={{ textAlign: 'center', padding: '28px' }}><div style={{ fontSize: '28px', animation: 'pulse 1s infinite' }}>✦</div><div style={{ fontSize: '13px', color: 'var(--t2)', marginTop: '8px' }}>{L('Creating banner...', 'يتم تصميم الغلاف...')}</div></div>
               ) : generatedCoverUrl ? (
                 <div style={{ textAlign: 'center', background: '#111', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
                   <img src={generatedCoverUrl} alt="Generated Cover" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '180px' }} />
                 </div>
               ) : (
                 <div style={{ background: '#111', borderRadius: '12px', overflow: 'hidden', minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ textAlign: 'center', color: '#555' }}><div style={{ fontSize: '28px', marginBottom: '8px' }}>🖼</div><div style={{ fontSize: '13px' }}>{L('Banner preview', 'معاينة الغلاف')}</div></div>
+                  <div style={{ textAlign: 'center', color: '#555' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}><Image size={32} style={{ color: 'var(--t3)' }} /></div>
+                    <div style={{ fontSize: '13px' }}>{L('Banner preview', 'معاينة الغلاف')}</div>
+                  </div>
                 </div>
               )}
             </div>
@@ -994,7 +1050,7 @@ export default function DesignStudioView() {
           <div className="g2" style={{ alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div className="card">
-                <div className="sec-hd"><div className="sec-title">👤 {L('Your Info', 'بياناتك')}</div></div>
+                <div className="sec-hd"><div className="sec-title"><User size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Your Info', 'بياناتك')}</div></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <div>
                     <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Full Name', 'الاسم')}</label>
@@ -1035,7 +1091,7 @@ export default function DesignStudioView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', position: 'sticky', top: '14px' }}>
               <div className="card">
                 <div className="sec-hd">
-                  <div className="sec-title">👁 {L('Front', 'الوجه')}</div>
+                  <div className="sec-title"><Eye size={16} style={{ verticalAlign: 'middle', marginInlineEnd: '6px' }} /> {L('Front', 'الوجه')}</div>
                   {generatedCardUrl && (
                     <button 
                       className="btn btn-ghost" 
@@ -1048,14 +1104,17 @@ export default function DesignStudioView() {
                   )}
                 </div>
                 {isGenerating ? (
-                  <div style={{ textAlign: 'center', padding: '20px' }}><div style={{ fontSize: '24px', animation: 'pulse 1s infinite' }}>💳</div></div>
+                  <div style={{ textAlign: 'center', padding: '20px' }}><div style={{ fontSize: '24px', animation: 'pulse 1s infinite' }}>✦</div></div>
                 ) : generatedCardUrl ? (
                   <div style={{ textAlign: 'center', background: '#111', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '170px' }}>
                     <img src={generatedCardUrl} alt="Generated Business Card" style={{ maxWidth: '100%', borderRadius: '10px', maxHeight: '150px' }} />
                   </div>
                 ) : (
                   <div style={{ background: '#111', borderRadius: '10px', overflow: 'hidden', minHeight: '170px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ textAlign: 'center', color: '#555' }}><div style={{ fontSize: '24px', marginBottom: '6px' }}>💳</div><div style={{ fontSize: '12px' }}>{L('Business card front', 'وجه البطاقة')}</div></div>
+                    <div style={{ textAlign: 'center', color: '#555' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}><CreditCard size={32} style={{ color: 'var(--t3)' }} /></div>
+                      <div style={{ fontSize: '12px' }}>{L('Business card front', 'وجه البطاقة')}</div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1076,26 +1135,43 @@ export default function DesignStudioView() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                     <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 600, textTransform: 'capitalize' }}>
-                        {design.type === 'logo' ? L('🏷 Logo', '🏷 شعار')
-                         : design.type === 'social' ? L('📱 Social Post', '📱 منشور')
-                         : design.type === 'cover' ? L('🖼 Cover', '🖼 غلاف')
-                         : L('💳 Card', '💳 بطاقة')}
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {design.type === 'logo' ? (
+                          <>
+                            <Tag size={13} style={{ color: 'var(--orange)' }} />
+                            <span>{L('Logo', 'شعار')}</span>
+                          </>
+                        ) : design.type === 'social' ? (
+                          <>
+                            <Smartphone size={13} style={{ color: 'var(--orange)' }} />
+                            <span>{L('Social Post', 'منشور')}</span>
+                          </>
+                        ) : design.type === 'cover' ? (
+                          <>
+                            <Image size={13} style={{ color: 'var(--orange)' }} />
+                            <span>{L('Cover', 'غلاف')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard size={13} style={{ color: 'var(--orange)' }} />
+                            <span>{L('Card', 'بطاقة')}</span>
+                          </>
+                        )}
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{design.date}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button 
                         className="btn btn-ghost" 
-                        style={{ padding: '6px', fontSize: '12px' }}
+                        style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         onClick={() => handleDownloadOnly(design.url, design.type)}
                         title={L('Download', 'تنزيل')}
                       >
-                        📥
+                        <Download size={13} />
                       </button>
                       <button 
                         className="btn btn-ghost" 
-                        style={{ padding: '6px', color: 'var(--red)', fontSize: '12px' }}
+                        style={{ padding: '6px', color: 'var(--red)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         onClick={() => {
                           const updated = savedDesigns.filter(d => d.id !== design.id);
                           setSavedDesigns(updated);
@@ -1104,7 +1180,7 @@ export default function DesignStudioView() {
                         }}
                         title={L('Delete', 'حذف')}
                       >
-                        🗑️
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>
@@ -1114,7 +1190,7 @@ export default function DesignStudioView() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '14px' }}>
               <div className="empty-state" style={{ gridColumn: '1/-1', padding: '40px' }}>
-                <div className="es-icon">🎨</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}><Palette size={36} style={{ color: 'var(--t3)' }} /></div>
                 <div className="es-title">{L('No saved designs yet', 'لا توجد تصاميم محفوظة')}</div>
                 <div className="es-sub">{L('Generate logos, social posts, banners, or cards and save them here', 'قم بتوليد الشعارات واحفظها هنا')}</div>
               </div>
