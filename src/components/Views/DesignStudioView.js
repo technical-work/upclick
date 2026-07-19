@@ -323,33 +323,25 @@ export default function DesignStudioView() {
 
       let permanentUrl = '';
       
-      // 1. If Cloudinary is connected, upload to Cloudinary
-      if (GC?.integrations?.cloudinaryConnected && GC?.integrations?.cloudinaryCloudName && GC?.integrations?.cloudinaryUploadPreset) {
-        showToast(L('Uploading to Cloudinary...', 'جاري الرفع إلى Cloudinary...'));
-        const formData = new FormData();
-        formData.append('file', blob);
-        formData.append('upload_preset', GC.integrations.cloudinaryUploadPreset);
-        
-        const cRes = await fetch(`https://api.cloudinary.com/v1_1/${GC.integrations.cloudinaryCloudName}/auto/upload`, {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (cRes.ok) {
-          const cData = await cRes.json();
-          permanentUrl = cData.secure_url;
-        } else {
-          console.warn("Cloudinary upload failed, falling back to Firebase Storage.");
-        }
-      }
+      // Upload to Firebase Storage directly
+      showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
+      const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
+      const storageRef = ref(storage, filename);
+      const snapshot = await uploadBytes(storageRef, blob);
+      permanentUrl = await getDownloadURL(snapshot.ref);
 
-      // 2. If Cloudinary is not connected or failed, upload to Firebase Storage
-      if (!permanentUrl) {
-        showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
-        const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
-        const storageRef = ref(storage, filename);
-        const snapshot = await uploadBytes(storageRef, blob);
-        permanentUrl = await getDownloadURL(snapshot.ref);
+      // Trigger local browser download
+      try {
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${type}_design_${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(downloadUrl);
+      } catch (err) {
+        console.warn("Failed to trigger local file download:", err);
       }
 
       if (permanentUrl) {
