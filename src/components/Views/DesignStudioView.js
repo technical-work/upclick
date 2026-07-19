@@ -336,7 +336,7 @@ export default function DesignStudioView() {
     if (!url) return;
     setIsSaving(true);
     try {
-      showToast(L('Downloading and processing image...', 'جاري تحميل ومعالجة الصورة...'));
+      showToast(L('Saving...', 'جاري الحفظ...'));
       
       let blob;
       if (url.startsWith('data:')) {
@@ -356,7 +356,6 @@ export default function DesignStudioView() {
 
       // Upload to Firebase Storage (libStorage) directly, fall back to base64 thumbnail on failure
       try {
-        showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
         const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
         const storageRef = ref(libStorage, filename);
         const snapshot = await uploadBytes(storageRef, blob);
