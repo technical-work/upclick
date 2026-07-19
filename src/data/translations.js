@@ -547,7 +547,8 @@ export const Tr = {
     'landing-persona-title-1': 'The Content Creator',
     'landing-persona-desc-1': 'Turn your audience into income. Script videos, track trends, build your bio link, and monetize with digital products automatically.',
     'landing-persona-title-2': 'The Entrepreneur',
-    'landing-persona-desc-2': 'Build funnels, spy on competitors, run marketing campaigns, track finance — your complete business command center.'
+    'landing-persona-desc-2': 'Build funnels, spy on competitors, run marketing campaigns, track finance — your complete business command center.',
+    'Pixel & Tracking': 'Pixel & Tracking'
   },
   ar: {
     't-sub': 'منصة المنشئين',
@@ -1270,5 +1271,6 @@ export const ARTEXT = {
   "Finance": "المالية",
   "Team": "الفريق",
   "Team Chat": "دردشة الفريق",
-  "Billing & Subscription": "الاشتراكات والفواتير"
+  "Billing & Subscription": "الاشتراكات والفواتير",
+  "Pixel & Tracking": "البيكسل والتتبع"
 };

@@ -109,6 +109,7 @@ export default function Sidebar() {
         { page: 'marketing', label: 'Marketing OS', icon: '📣', id: 'sb-marketing' },
         { page: 'content', label: 'Content Hub', icon: '✦' },
         { page: 'automation', label: 'Automation Hub', icon: '⚡' },
+        { page: 'tracking-center', label: 'Pixel & Tracking', icon: '📡' },
         { page: 'ai-growth', label: 'AI Growth Intel', icon: '🔮' }
       ]
     },

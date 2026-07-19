@@ -304,7 +304,7 @@ export default function DesignStudioView() {
     setIsSaving(true);
     try {
       showToast(L('Downloading and processing image...', 'جاري تحميل ومعالجة الصورة...'));
-      const response = await fetch(url);
+      const response = await fetch(`/api/ai/proxy-image?url=${encodeURIComponent(url)}`);
       const blob = await response.clone().blob();
 
       let permanentUrl = '';
