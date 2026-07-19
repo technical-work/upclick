@@ -293,6 +293,7 @@ export default function BioLinkView() {
           certifications,
           projects
         },
+        trackingCenter: GC.trackingCenter || null,
         updatedAt: new Date().toISOString()
       };
 

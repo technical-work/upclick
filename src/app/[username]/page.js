@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { Tracking } from '../../lib/tracking';
+import TrackingScripts from '../../components/TrackingScripts';
 
 export default function PublicBioPage() {
   const { username } = useParams();
@@ -27,6 +29,8 @@ export default function PublicBioPage() {
         console.error("Error fetching bio profile:", err);
       } finally {
         setLoading(false);
+        // Dispatch page view right after loading
+        Tracking.page();
       }
     };
 
@@ -283,6 +287,9 @@ export default function PublicBioPage() {
       textAlign: isAr ? 'right' : 'left'
     }}>
       
+      {/* Tracking Scripts Injection */}
+      <TrackingScripts trackingCenter={profile.trackingCenter} />
+      
       {/* Container */}
       <div style={{
         maxWidth: '640px',
@@ -402,6 +409,7 @@ export default function PublicBioPage() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => Tracking.track('Click_Bio_Link', { link_url: link.url, link_title: link.title })}
                   className="link-card-button"
                   style={{
                     ...cardStyle,

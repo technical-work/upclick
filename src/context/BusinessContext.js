@@ -197,6 +197,12 @@ const initialGC = {
     tmplOutput: '',
     broadcasts: []
   },
+  trackingCenter: {
+    meta: { connected: false, business: null, page: null, pixel: { id: '', name: '' } },
+    google: { connected: false, property: { name: '', measurementId: '' } },
+    customEvents: [],
+    advancedMode: false
+  },
   _lastSaved: null
 };
 

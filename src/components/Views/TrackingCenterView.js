@@ -5,19 +5,21 @@ import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 
 export default function TrackingCenterView() {
-  const { L, lang, showToast } = useBusiness();
+  const { L, lang, showToast, GC, saveGC } = useBusiness();
   const { user } = useAuth();
   const isRtl = lang === 'ar';
 
-  // 1. Core local storage key
-  const STORAGE_KEY = `mtc_state_${user?.uid || 'default'}`;
+  const trackingConfig = GC?.trackingCenter || {
+    meta: { connected: false, business: null, page: null, pixel: null },
+    google: { connected: false, property: null },
+    advancedMode: false,
+    customEvents: []
+  };
+
+  const { meta, google, advancedMode, customEvents } = trackingConfig;
 
   // 2. React States
   const [activeTab, setActiveTab] = useState('overview');
-  const [advancedMode, setAdvancedMode] = useState(false);
-  const [customEvents, setCustomEvents] = useState([]);
-  const [meta, setMeta] = useState({ connected: false, business: null, page: null, pixel: null });
-  const [google, setGoogle] = useState({ connected: false, property: null });
 
   // Realtime Log States
   const [rtData, setRtData] = useState([]);
@@ -32,36 +34,15 @@ export default function TrackingCenterView() {
   // Test Event states
   const [testResults, setTestResults] = useState({});
 
-  // 3. Load State from LocalStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setAdvancedMode(parsed.advancedMode || false);
-          setCustomEvents(parsed.customEvents || []);
-          setMeta(parsed.meta || { connected: false, business: null, page: null, pixel: null });
-          setGoogle(parsed.google || { connected: false, property: null });
-        } catch (e) {
-          console.error("Failed to parse mtc_state", e);
-        }
-      }
-    }
-  }, [STORAGE_KEY]);
-
   // 4. Save State function
   const saveState = (updatedFields) => {
-    if (typeof window !== 'undefined') {
-      const currentState = {
-        advancedMode,
-        customEvents,
-        meta,
-        google,
+    saveGC({
+      ...GC,
+      trackingCenter: {
+        ...trackingConfig,
         ...updatedFields
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-    }
+      }
+    });
   };
 
   // 5. Initialize Realtime Logs & Debug logs loops
