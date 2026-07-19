@@ -3,6 +3,20 @@
  * Safely dispatches events to Meta Pixel (fbq) and Google Analytics (gtag)
  */
 
+// Helper to notify the local UpKlick dashboard (Tracking Center) for Realtime Logs
+const notifyDashboard = (eventName, payload) => {
+  if (typeof window !== 'undefined') {
+    const event = new CustomEvent('upklick_track', {
+      detail: {
+        event: eventName,
+        payload: payload,
+        time: new Date().toLocaleTimeString('en-GB', { hour12: false })
+      }
+    });
+    window.dispatchEvent(event);
+  }
+};
+
 export const Tracking = {
   /**
    * Track a standard page view
@@ -15,6 +29,7 @@ export const Tracking = {
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'page_view');
       }
+      notifyDashboard('Page View', {});
     }
   },
 
@@ -29,6 +44,7 @@ export const Tracking = {
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'generate_lead', payload);
       }
+      notifyDashboard('Lead', payload);
     }
   },
 
@@ -43,6 +59,7 @@ export const Tracking = {
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'book_meeting', payload);
       }
+      notifyDashboard('Book Meeting', payload);
     }
   },
 
@@ -60,6 +77,7 @@ export const Tracking = {
       if (typeof window.gtag === 'function') {
         window.gtag('event', 'purchase', data);
       }
+      notifyDashboard('Purchase', data);
     }
   },
 
@@ -76,6 +94,7 @@ export const Tracking = {
       if (typeof window.gtag === 'function') {
         window.gtag('event', eventName, payload);
       }
+      notifyDashboard(eventName, payload);
     }
   }
 };

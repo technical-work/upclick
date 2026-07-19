@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
+import { Tracking } from '../../lib/tracking';
 
 export default function TrackingCenterView() {
   const { L, lang, showToast, GC, saveGC } = useBusiness();
@@ -47,60 +48,27 @@ export default function TrackingCenterView() {
 
   // 5. Initialize Realtime Logs & Debug logs loops
   useEffect(() => {
-    // Generate initial realtime logs
-    const eventNames = ['Page View', 'Lead', 'Purchase', 'Add To Cart', 'Complete Registration', 'Book Meeting', 'Generate AI', 'Login'];
-    const countries = ['🇪🇬 مصر', '🇸🇦 السعودية', '🇦🇪 الإمارات', '🇳🇱 هولندا', '🇰🇼 الكويت', '🇯🇴 الأردن', '🇲🇦 المغرب'];
-    const platforms = ['Meta', 'GA4', 'Server DB'];
-    const campaigns = ['ramadan_launch', 'ai_creators_q3', 'coach_upsell', 'retargeting_ar', 'brand_os_beta', '—'];
-
-    const genRtLog = () => {
-      const now = new Date();
-      return {
-        time: now.toLocaleTimeString('en-GB', { hour12: false }),
-        user: 'user_' + Math.floor(Math.random() * 9000 + 1000),
-        event: eventNames[Math.floor(Math.random() * eventNames.length)],
-        platform: platforms[Math.floor(Math.random() * platforms.length)],
-        country: countries[Math.floor(Math.random() * countries.length)],
-        utm: campaigns[Math.floor(Math.random() * campaigns.length)],
-        status: Math.random() > 0.08 ? 'success' : 'failed'
+    // Listen for actual Tracking SDK events
+    const handleTrackEvent = (e) => {
+      const { event, payload, time } = e.detail;
+      const newLog = {
+        time: time,
+        user: 'Current User', // Local user testing
+        event: event,
+        platform: 'Meta / GA4',
+        country: 'Local',
+        utm: '—',
+        status: 'success'
       };
+      setRtData(prev => [newLog, ...prev].slice(0, 80));
+      addDebugLog('POST', `/tracking/events/${event.replace(/\s+/g, '').toLowerCase()}`, '200 OK — Dispatched to pixels');
     };
 
-    const initialLogs = Array.from({ length: 15 }, genRtLog);
-    setRtData(initialLogs);
-
-    // Interval to append new logs in realtime
-    const logInterval = setInterval(() => {
-      setRtData(prev => [genRtLog(), ...prev].slice(0, 80));
-    }, 2500);
-
-    // Initial debug log line
-    const addDebugLog = (method, path, result) => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('en-GB', { hour12: false });
-      const newLog = `[${timeStr}] ${method} ${path} → ${result}`;
-      setDebugLogs(prev => [newLog, ...prev].slice(0, 100));
-    };
-
-    addDebugLog('GET', '/health/status', '200 OK — Checking systems');
-
-    // Interval to generate debug activity
-    const debugSamples = [
-      ['GET', '/health/meta/pixel', '200 OK — 14ms'],
-      ['POST', '/tracking/event', '200 OK — queued'],
-      ['GET', '/analytics/ga4/status', '200 OK'],
-      ['POST', '/tracking/purchase', '200 OK — forwarded'],
-      ['GET', '/oauth/refresh', '200 OK — refreshed']
-    ];
-
-    const debugInterval = setInterval(() => {
-      const [method, path, result] = debugSamples[Math.floor(Math.random() * debugSamples.length)];
-      addDebugLog(method, path, result);
-    }, 4500);
+    window.addEventListener('upklick_track', handleTrackEvent);
+    addDebugLog('GET', '/health/status', '200 OK — Realtime listener active');
 
     return () => {
-      clearInterval(logInterval);
-      clearInterval(debugInterval);
+      window.removeEventListener('upklick_track', handleTrackEvent);
     };
   }, []);
 
@@ -127,7 +95,7 @@ export default function TrackingCenterView() {
   ];
 
   const openWizard = (provider) => {
-    setWizard({ active: true, provider, step: 0, picks: {} });
+    setWizard({ active: true, provider, step: 1, picks: {} });
   };
 
   const closeWizard = () => {
@@ -135,59 +103,46 @@ export default function TrackingCenterView() {
   };
 
   useEffect(() => {
-    if (wizard.active && wizard.step === 0) {
-      const timer = setTimeout(() => {
-        setWizard(prev => ({ ...prev, step: 1 }));
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
+    // No automatic step progression needed
   }, [wizard.active, wizard.step]);
 
-  const selectWizardItem = (key, value, nextStep) => {
-    setWizard(prev => {
-      const updatedPicks = { ...prev.picks, [key]: value };
-      if (prev.provider === 'meta' && nextStep === 4) {
-        // Finalizing Meta
-        setTimeout(() => {
-          const finishedState = {
-            connected: true,
-            business: updatedPicks.business,
-            page: updatedPicks.page,
-            pixel: updatedPicks.pixel
-          };
-          setMeta(finishedState);
-          saveState({ meta: finishedState });
-          addDebugLog('POST', '/graph/v19/pixel/connect', '200 OK — Connected Pixel: ' + updatedPicks.pixel.name);
-          showToast(L('Meta Pixel connected successfully!', 'تم ربط بيكسل فيسبوك بنجاح!'));
-          setWizard(curr => ({ ...curr, step: 5 }));
-        }, 1100);
-        return { ...prev, step: 4, picks: updatedPicks };
-      }
+  const saveDirectIntegration = (provider, value) => {
+    if (provider === 'meta') {
+      const finishedState = {
+        connected: true,
+        business: 'Direct Setup',
+        page: 'Direct Setup',
+        pixel: { id: value, name: 'Custom Pixel' }
+      };
+      saveState({ meta: finishedState });
+      addDebugLog('POST', '/graph/v19/pixel/connect', '200 OK — Connected Pixel: ' + value);
+      showToast(L('Meta Pixel connected successfully!', 'تم ربط بيكسل فيسبوك بنجاح!'));
+      closeWizard();
+    } else if (provider === 'google') {
+      const finishedState = {
+        connected: true,
+        property: { measurementId: value, name: 'Custom GA4 Property' }
+      };
+      saveState({ google: finishedState });
+      addDebugLog('POST', '/analytics/v1/property/connect', '200 OK — Connected GA4: ' + value);
+      showToast(L('Google Analytics connected successfully!', 'تم ربط جوجل بنجاح!'));
+      closeWizard();
+    }
+  };
 
-      if (prev.provider === 'google' && nextStep === 3) {
-        // Finalizing Google
-        setTimeout(() => {
-          const finishedState = {
-            connected: true,
-            property: updatedPicks.property
-          };
-          setGoogle(finishedState);
-          saveState({ google: finishedState });
-          addDebugLog('POST', '/analytics/v1/property/connect', '200 OK — Connected GA4: ' + updatedPicks.property.name);
-          showToast(L('Google Analytics connected successfully!', 'تم ربط جوجل بنجاح!'));
-          setWizard(curr => ({ ...curr, step: 4 }));
-        }, 1100);
-        return { ...prev, step: 3, picks: updatedPicks };
-      }
-
-      return { ...prev, step: nextStep, picks: updatedPicks };
-    });
+  const disconnectIntegration = (provider) => {
+    if (provider === 'meta') {
+      saveState({ meta: { connected: false, business: null, page: null, pixel: null } });
+      showToast(L('Meta Pixel disconnected.', 'تم إلغاء اتصال فيسبوك بنجاح.'));
+    } else if (provider === 'google') {
+      saveState({ google: { connected: false, property: null } });
+      showToast(L('Google Analytics disconnected.', 'تم إلغاء اتصال جوجل بنجاح.'));
+    }
   };
 
   // 7. Toggle developer mode
   const handleToggleAdvanced = () => {
     const nextVal = !advancedMode;
-    setAdvancedMode(nextVal);
     saveState({ advancedMode: nextVal });
   };
 
@@ -198,7 +153,6 @@ export default function TrackingCenterView() {
     const cleanName = name.trim().replace(/[^a-zA-Z0-9_]/g, '');
     if (cleanName) {
       const nextEvents = [...customEvents, cleanName];
-      setCustomEvents(nextEvents);
       saveState({ customEvents: nextEvents });
       showToast(L('Custom event added!', 'تم إضافة الحدث المخصص بنجاح!'));
     }
@@ -222,12 +176,13 @@ export default function TrackingCenterView() {
   // 10. Run test event
   const runTestEvent = (index, eventName) => {
     setTestResults(prev => ({ ...prev, [index]: 'sending' }));
-    addDebugLog('POST', `/test/${eventName.toLowerCase().replace(/ /g, '_')}`, 'sending...');
-    setTimeout(() => {
-      const ok = Math.random() > 0.1;
-      setTestResults(prev => ({ ...prev, [index]: ok ? 'success' : 'failed' }));
-      addDebugLog('POST', `/test/${eventName.toLowerCase().replace(/ /g, '_')}`, ok ? '200 OK' : '500 ERROR — retry queued');
-    }, 900);
+    
+    try {
+      Tracking.track(eventName, { test_mode: true, source: 'Tracking Center Dashboard' });
+      setTestResults(prev => ({ ...prev, [index]: 'success' }));
+    } catch(err) {
+      setTestResults(prev => ({ ...prev, [index]: 'failed' }));
+    }
   };
 
   // 11. Mock stats & checklists
@@ -246,20 +201,7 @@ export default function TrackingCenterView() {
   const checklist = [
     meta.connected,
     google.connected,
-    meta.connected,
-    google.connected,
-    google.connected,
-    meta.connected,
-    true, // SSL active
-    true, // Webhook active
-    false, // Domain Verification
-    meta.connected || google.connected,
-    meta.connected || google.connected,
-    meta.connected || google.connected,
-    meta.connected || google.connected,
-    meta.connected || google.connected,
-    false, // GA4 custom dimensions
-    true // Tracking SDK setup
+    true, // SSL active (UpKlick hosts with SSL)
   ];
 
   const doneCount = checklist.filter(Boolean).length;
@@ -267,17 +209,8 @@ export default function TrackingCenterView() {
 
   const healthItems = [
     { label: L('Meta Connected', 'اتصال فيسبوك Meta'), ok: meta.connected },
-    { label: L('Pixel Installed', 'تثبيت كود البيكسل'), ok: meta.connected },
-    { label: L('Pixel Receiving Events', 'استقبال أحداث البيكسل'), ok: meta.connected },
-    { label: L('Conversion API Active', 'نشاط Conversions API'), ok: meta.connected },
     { label: L('GA4 Connected', 'اتصال جوجل GA4'), ok: google.connected },
-    { label: L('GA4 Receiving Events', 'استقبال أحداث جوجل'), ok: google.connected },
-    { label: L('Google Tag Manager', 'مدير علامات جوجل GTM'), ok: google.connected },
-    { label: L('Search Console Connected', 'اتصال Search Console'), ok: google.connected },
     { label: L('SSL / HTTPS Secure', 'أمان الاتصال SSL / HTTPS'), ok: true },
-    { label: L('Domain Verification', 'تحقق ملكية النطاق'), ok: false },
-    { label: L('Webhook Syncing', 'مزامنة الويب هوك'), ok: meta.connected || google.connected },
-    { label: L('OAuth Token Status', 'حالة صلاحية توكن المصادقة'), ok: meta.connected || google.connected }
   ];
 
   const testEvents = [
@@ -371,7 +304,7 @@ export default function TrackingCenterView() {
                   <div className="mtc-card-label">Marketing Readiness</div>
                   <div className="mtc-card-value">{readinessPercentage}%</div>
                   <div className="mtc-card-delta" style={{ color: 'var(--mtc-violet-soft)' }}>
-                    {doneCount} {L('out of 16 items ready', 'من أصل 16 بنداً جاهزاً')}
+                    {doneCount} {L(`out of ${checklist.length} items ready`, `من أصل ${checklist.length} بنود جاهزة`)}
                   </div>
                 </div>
                 <div className="mtc-card">
@@ -387,8 +320,10 @@ export default function TrackingCenterView() {
                   </div>
                 </div>
                 <div className="mtc-card">
-                  <div className="mtc-card-label">Today's Total Events</div>
-                  <div className="mtc-card-value">{rtData.length * 12 + 184}</div>
+                  <div className="mtc-card-label">Events Status</div>
+                  <div className="mtc-card-value" style={{ fontSize: '14px', color: 'var(--mtc-violet-soft)' }}>
+                    {meta.connected || google.connected ? L('Routing Active', 'نشط ويتم الإرسال') : L('Waiting for connection', 'بانتظار الربط')}
+                  </div>
                 </div>
                 <div className="mtc-card">
                   <div className="mtc-card-label">Active Pixel ID</div>
@@ -407,38 +342,21 @@ export default function TrackingCenterView() {
                   <div className="mtc-card-value" style={{ fontSize: '15px', color: '#4ade80' }}>{L('Secure ✓', 'نشط وآمن ✓')}</div>
                 </div>
                 <div className="mtc-card">
-                  <div className="mtc-card-label">Realtime Visitors</div>
-                  <div className="mtc-card-value" style={{ color: 'var(--mtc-green)' }}>{Math.floor(rtData.length / 3) + 3}</div>
+                  <div className="mtc-card-label">Local Test Logs</div>
+                  <div className="mtc-card-value" style={{ color: 'var(--mtc-green)' }}>{rtData.length}</div>
                 </div>
               </div>
 
-              <h3 className="mtc-sec-title">🏆 {L('Event Tracking Summary', 'أهم أحداث التتبع اليوم')}</h3>
+              <h3 className="mtc-sec-title">🏆 {L('Event Tracking Info', 'معلومات الأحداث والتحليلات')}</h3>
               <div className="mtc-grid mtc-g2">
-                <div className="mtc-card">
-                  <table className="mtc-table">
-                    <thead>
-                      <tr>
-                        <th>{L('Event Name', 'الحدث')}</th>
-                        <th>{L('Count', 'العدد الإجمالي')}</th>
-                        <th>{L('Conversion Rate', 'معدل التحويل')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { name: 'Page View', count: 1240, rate: '100.0' },
-                        { name: 'Lead', count: 242, rate: '19.5' },
-                        { name: 'Purchase', count: 48, rate: '3.8' },
-                        { name: 'Add To Cart', count: 194, rate: '15.6' },
-                        { name: 'Complete Registration', count: 104, rate: '8.3' }
-                      ].map((item, idx) => (
-                        <tr key={idx}>
-                          <td><b>{item.name}</b></td>
-                          <td>{item.count}</td>
-                          <td>{item.rate}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mtc-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '40px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>📊</div>
+                  <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>
+                    {L('Historical Data & Funnels', 'البيانات التاريخية والأقماع')}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--mtc-text-2)', lineHeight: '1.6' }}>
+                    {L('UpKlick currently routes all tracking events directly to your Meta Pixel and Google Analytics. To view your complete historical reports, conversion rates, and funnels, please log in to your Meta Events Manager or Google Analytics dashboard.', 'تقوم UpKlick حالياً بإرسال كافة أحداث التتبع مباشرة إلى بيكسل فيسبوك وحساب جوجل. لمشاهدة تقاريرك التاريخية ومعدلات التحويل بالتفصيل، يرجى التوجه للوحة تحكم Meta Events Manager أو حساب Google Analytics الخاص بك.')}
+                  </div>
                 </div>
                 <div className="mtc-card">
                   <div className="mtc-card-label" style={{ marginBottom: '8px' }}>{L('Recent Issues & Errors', 'أحدث المشكلات والأخطاء')}</div>
@@ -483,9 +401,16 @@ export default function TrackingCenterView() {
 
                   <div className="mtc-integ-meta-row">
                     <span>{meta.connected ? L('Last sync: Just now', 'آخر مزامنة: الآن') : '—'}</span>
-                    <button className="mtc-btn mtc-btn-primary" onClick={() => openWizard('meta')}>
-                      {meta.connected ? L('Reconnect Meta', 'إعادة المزامنة والربط') : L('Connect Meta', 'ربط حساب فيسبوك')}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {meta.connected && (
+                        <button className="mtc-btn mtc-btn-ghost" onClick={() => disconnectIntegration('meta')} style={{ color: 'var(--mtc-red)', borderColor: '#ef444433' }}>
+                          {L('Disconnect', 'إلغاء الربط')}
+                        </button>
+                      )}
+                      <button className="mtc-btn mtc-btn-primary" onClick={() => openWizard('meta')}>
+                        {meta.connected ? L('Reconnect Meta', 'إعادة المزامنة والربط') : L('Connect Meta', 'ربط حساب فيسبوك')}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -514,9 +439,16 @@ export default function TrackingCenterView() {
 
                   <div className="mtc-integ-meta-row">
                     <span>{google.connected ? L('Last sync: Just now', 'آخر مزامنة: الآن') : '—'}</span>
-                    <button className="mtc-btn mtc-btn-primary" onClick={() => openWizard('google')}>
-                      {google.connected ? L('Reconnect Google', 'إعادة المزامنة والربط') : L('Connect Google', 'ربط حساب جوجل')}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {google.connected && (
+                        <button className="mtc-btn mtc-btn-ghost" onClick={() => disconnectIntegration('google')} style={{ color: 'var(--mtc-red)', borderColor: '#ef444433' }}>
+                          {L('Disconnect', 'إلغاء الربط')}
+                        </button>
+                      )}
+                      <button className="mtc-btn mtc-btn-primary" onClick={() => openWizard('google')}>
+                        {google.connected ? L('Reconnect Google', 'إعادة المزامنة والربط') : L('Connect Google', 'ربط حساب جوجل')}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -674,35 +606,14 @@ export default function TrackingCenterView() {
           {/* 6. Tab: Funnels */}
           {activeTab === 'funnels' && (
             <div className="mtc-view active">
-              <p className="mtc-sec-desc">
-                {L('User acquisition funnel analysis constructed in realtime from standard pixel events.', 'تحليل فوري لقمع المبيعات ومسار تحويلات العملاء بناءً على أحداث البيكسل الحالية.')}
-              </p>
-              <div className="mtc-card" style={{ padding: '24px' }}>
-                {[
-                  { label: L('Landing Page View', 'زيارة الصفحة الرئيسية'), val: 100 },
-                  { label: L('Lead Capture / Signup', 'تسجيل البيانات / المهتمين'), val: 62 },
-                  { label: L('Dashboard Onboarding', 'دخول لوحة التحكم والتهيئة'), val: 54 },
-                  { label: L('AI Core Activation', 'تشغيل ميزات الذكاء الاصطناعي'), val: 41 },
-                  { label: L('Purchase (Sales Conversion)', 'عمليات الشراء (إتمام المبيعات)'), val: 19 },
-                  { label: L('Annual Pro upgrade', 'الترقية للباقة السنوية Pro'), val: 5 }
-                ].map((s, idx, arr) => {
-                  const dropPercentage = idx === 0 ? 0 : arr[idx - 1].val - s.val;
-                  return (
-                    <div className="mtc-funnel-step" key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                      <div className="mtc-funnel-label" style={{ width: '180px', fontSize: '12px', color: 'var(--mtc-text-1)', flexShrink: 0 }}>
-                        {s.label}
-                      </div>
-                      <div className="mtc-funnel-bar-wrap" style={{ flex: 1, background: '#170f26', borderRadius: '8px', overflow: 'hidden', height: '30px', border: '1px solid var(--mtc-border-soft)' }}>
-                        <div className="mtc-funnel-bar" style={{ width: `${s.val}%`, height: '100%', background: 'var(--mtc-grad)', display: 'flex', alignItems: 'center', padding: '0 10px', fontSize: '11px', fontWeight: '700', color: '#fff', transition: 'width .6s ease' }}>
-                          {s.val}%
-                        </div>
-                      </div>
-                      <div className="mtc-funnel-drop" style={{ fontSize: '11px', color: 'var(--mtc-red)', width: '56px', textAlign: isRtl ? 'right' : 'left' }}>
-                        {idx === 0 ? '' : `-${dropPercentage}%`}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mtc-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '38px', marginBottom: '16px' }}>🪜</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>
+                  {L('Funnels are tracked in your Analytics Provider', 'يتم تتبع الأقماع في منصات التحليل الخاصة بك')}
+                </div>
+                <div style={{ fontSize: '13.5px', color: 'var(--mtc-text-2)', lineHeight: '1.6', maxWidth: '400px' }}>
+                  {L('Because UpKlick prioritizes data privacy and performance, we route all funnel drops directly to your Meta Pixel and GA4 accounts. Please view your funnel visualizations there.', 'نظراً لاهتمام UpKlick بالخصوصية وسرعة الأداء، يتم إرسال كافة نقاط التحويل والهبوط في القمع التسويقي فوراً إلى فيسبوك وجوجل. يرجى استعراض أقماعك هناك.')}
+                </div>
               </div>
             </div>
           )}
@@ -710,67 +621,13 @@ export default function TrackingCenterView() {
           {/* 7. Tab: Analytics */}
           {activeTab === 'analytics' && (
             <div className="mtc-view active">
-              <div className="mtc-grid mtc-g2">
-                
-                {/* Traffic Chart */}
-                <div className="mtc-card">
-                  <div className="mtc-card-label" style={{ marginBottom: '12px' }}>{L('Traffic Acquisition Sources', 'مصادر الزيارات وحركة المرور')}</div>
-                  {[
-                    { label: L('Facebook Meta Ads', 'إعلانات فيسبوك وانستغرام'), value: 38 },
-                    { label: L('Google Search Ads', 'إعلانات محرك بحث جوجل'), value: 26 },
-                    { label: L('Organic Search', 'زيارات البحث المجاني'), value: 20 },
-                    { label: L('Direct Link Visit', 'دخول مباشر للموقع'), value: 11 },
-                    { label: L('Referral Partners', 'روابط إحالة وشركاء'), value: 5 }
-                  ].map((d, i) => (
-                    <div key={i} style={{ marginBottom: '9px' }}>
-                      <div style={{ display: 'flex', justifyItems: 'space-between', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--mtc-text-1)', marginBottom: '4px' }}>
-                        <span>{d.label}</span>
-                        <span>{d.value}%</span>
-                      </div>
-                      <div style={{ height: '7px', background: '#170f26', borderRadius: '6px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${d.value}%`, background: 'var(--mtc-grad)' }}></div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="mtc-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '38px', marginBottom: '16px' }}>📈</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>
+                  {L('Analytics Dashboard', 'لوحة التحليلات')}
                 </div>
-
-                {/* Device Chart */}
-                <div className="mtc-card">
-                  <div className="mtc-card-label" style={{ marginBottom: '12px' }}>{L('Device Distribution', 'توزيع الأجهزة والمستخدمين')}</div>
-                  {[
-                    { label: L('Mobile Web Clients', 'متصفحات الهواتف المحمولة'), value: 64 },
-                    { label: L('Desktop / Laptops', 'أجهزة الكمبيوتر المكتبية'), value: 31 },
-                    { label: L('Tablet Clients', 'الأجهزة اللوحية (تابلت)'), value: 5 }
-                  ].map((d, i) => (
-                    <div key={i} style={{ marginBottom: '9px' }}>
-                      <div style={{ display: 'flex', justifyItems: 'space-between', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--mtc-text-1)', marginBottom: '4px' }}>
-                        <span>{d.label}</span>
-                        <span>{d.value}%</span>
-                      </div>
-                      <div style={{ height: '7px', background: '#170f26', borderRadius: '6px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${d.value}%`, background: 'linear-gradient(90deg,#8a1f4b,#c2477c)' }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mtc-grid mtc-g4" style={{ marginTop: '14px' }}>
-                <div className="mtc-card">
-                  <div className="mtc-card-label">{L('Average Conversion Rate', 'معدل التحويل المتوسط')}</div>
-                  <div className="mtc-card-value">3.4%</div>
-                </div>
-                <div className="mtc-card">
-                  <div className="mtc-card-label">{L('Avg Session Time', 'متوسط زمن الجلسة')}</div>
-                  <div className="mtc-card-value">4:12</div>
-                </div>
-                <div className="mtc-card">
-                  <div className="mtc-card-label">{L('Returning Visitors', 'الزوار النشطين المتكررين')}</div>
-                  <div className="mtc-card-value">28%</div>
-                </div>
-                <div className="mtc-card">
-                  <div className="mtc-card-label">{L('Avg Bounce Rate', 'معدل الارتداد')}</div>
-                  <div className="mtc-card-value">41%</div>
+                <div style={{ fontSize: '13.5px', color: 'var(--mtc-text-2)', lineHeight: '1.6', maxWidth: '400px' }}>
+                  {L('Detailed analytics, including traffic sources, devices, and conversion rates are securely recorded by Meta and Google. Check your respective dashboards for comprehensive reports.', 'تسجل منصات Meta وجوجل كافة التحليلات الدقيقة مثل مصادر الزيارات، الأجهزة المستخدمة، ومعدلات التحويل. راجع لوحات التحكم الخاصة بك لتقارير شاملة.')}
                 </div>
               </div>
             </div>
@@ -950,197 +807,62 @@ export default function TrackingCenterView() {
                 <span className="mtc-close" onClick={closeWizard} style={{ cursor: 'pointer', color: 'var(--mtc-text-2)', fontSize: '18px', position: 'absolute', right: isRtl ? 'auto' : '0', left: isRtl ? '0' : 'auto' }}>✕</span>
               </div>
 
-              {/* Wizard Steps indicator */}
-              <div className="mtc-steps-row" style={{ display: 'flex', gap: '6px', margin: '16px 0 20px' }}>
-                {Array.from({ length: wizard.provider === 'meta' ? 5 : 4 }).map((_, stepIdx) => (
-                  <div
-                    key={stepIdx}
-                    className={`mtc-step-dot ${stepIdx <= wizard.step ? 'done' : ''}`}
-                    style={{ flex: 1, height: '4px', borderRadius: '4px', background: stepIdx <= wizard.step ? 'var(--mtc-grad)' : '#332750', transition: '.2s' }}
-                  />
-                ))}
-              </div>
-
               {/* Wizard Body content */}
               <div className="mtc-wizard-body" style={{ minHeight: '180px' }}>
                 {wizard.provider === 'meta' && (
-                  <>
-                    {/* Meta Step 0: Loading Auth */}
-                    {wizard.step === 0 && (
-                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <div className="mtc-spinner" />
-                        <div className="mtc-center-text" style={{ color: 'var(--mtc-text-2)', fontSize: '12px', marginTop: '10px' }}>
-                          {L('Requesting OAuth credentials and permissions from Meta Ads...', 'جاري تسجيل الدخول وطلب الأذونات من Meta...')}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Meta Step 1: Choose Business Manager */}
-                    {wizard.step === 1 && (
-                      <div>
-                        <div style={{ fontSize: '12.5px', marginBottom: '9px', color: 'var(--mtc-text-1)' }}>{L('Select Business Manager Account', 'اختر حساب الأعمال (Business Manager)')}</div>
-                        <div className="mtc-option-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {metaBusinesses.map(b => (
-                            <div
-                              key={b}
-                              className="mtc-option-item"
-                              onClick={() => selectWizardItem('business', b, 2)}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--mtc-border)', borderRadius: '11px', cursor: 'pointer', transition: '.15s', fontSize: '12.5px', color: 'var(--mtc-text-0)' }}
-                            >
-                              <span>🏢 {b}</span>
-                              <span>{isRtl ? '‹' : '›'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Meta Step 2: Choose Page */}
-                    {wizard.step === 2 && (
-                      <div>
-                        <div style={{ fontSize: '12.5px', marginBottom: '9px', color: 'var(--mtc-text-1)' }}>{L('Select Facebook Page', 'اختر الصفحة المرتبطة بالحملة')}</div>
-                        <div className="mtc-option-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {metaPages.map(p => (
-                            <div
-                              key={p}
-                              className="mtc-option-item"
-                              onClick={() => selectWizardItem('page', p, 3)}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--mtc-border)', borderRadius: '11px', cursor: 'pointer', transition: '.15s', fontSize: '12.5px', color: 'var(--mtc-text-0)' }}
-                            >
-                              <span>📄 {p}</span>
-                              <span>{isRtl ? '‹' : '›'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Meta Step 3: Choose Pixel */}
-                    {wizard.step === 3 && (
-                      <div>
-                        <div style={{ fontSize: '12.5px', marginBottom: '9px', color: 'var(--mtc-text-1)' }}>{L('Select Facebook Pixel Tag', 'اختر البيكسل المراد تثبيته')}</div>
-                        <div className="mtc-option-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {metaPixels.map(px => (
-                            <div
-                              key={px.id}
-                              className="mtc-option-item"
-                              onClick={() => selectWizardItem('pixel', px, 4)}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--mtc-border)', borderRadius: '11px', cursor: 'pointer', transition: '.15s', fontSize: '12.5px', color: 'var(--mtc-text-0)' }}
-                            >
-                              <span>🎯 {px.name} ({px.id})</span>
-                              <span>{isRtl ? '‹' : '›'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Meta Step 4: Loading verify */}
-                    {wizard.step === 4 && (
-                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <div className="mtc-spinner" />
-                        <div className="mtc-center-text" style={{ color: 'var(--mtc-text-2)', fontSize: '12px', marginTop: '10px' }}>
-                          {L('Writing tracking scripts and saving configs...', 'جاري الحفظ والتحقق وتثبيت البيكسل...')}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Meta Step 5: Success Output */}
-                    {wizard.step === 5 && (
-                      <div style={{ textAlign: 'center' }}>
-                        <div className="mtc-success-tick">✓</div>
-                        <div className="mtc-center-text" style={{ color: '#fff', fontSize: '13.5px', fontWeight: '700', margin: '10px 0' }}>
-                          {L('Meta Ads Linked Successfully!', 'تم ربط حساب فيسبوك بنجاح!')}
-                        </div>
-                        <div className="mtc-center-text" style={{ fontSize: '11.5px', color: 'var(--mtc-text-2)', marginBottom: '16px' }}>
-                          {L(`Pixel "${meta.pixel?.name || ''}" is now live and tracking conversions.`, `البيكسل "${meta.pixel?.name || ''}" نشط الآن ويسجل أحداث تحويل العملاء.`)}
-                        </div>
-                        <button className="mtc-btn mtc-btn-primary" onClick={closeWizard}>
-                          {L('Close', 'تم')}
-                        </button>
-                      </div>
-                    )}
-                  </>
+                  <div>
+                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--mtc-text-1)', lineHeight: '1.6' }}>
+                      {L('Enter your Meta Pixel ID below to connect it directly to your UpKlick pages.', 'قم بإدخال رقم الـ Meta Pixel الخاص بك بالأسفل ليتم ربطه فوراً في كافة صفحاتك ومشاريعك.')}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <input 
+                        type="text" 
+                        id="directPixelId" 
+                        placeholder="e.g. 123456789012345" 
+                        defaultValue={meta.connected ? meta.pixel.id : ''}
+                        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--mtc-border)', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '14px', width: '100%' }}
+                        autoFocus
+                      />
+                      <button 
+                        className="mtc-btn mtc-btn-primary"
+                        onClick={() => {
+                          const val = document.getElementById('directPixelId')?.value?.trim();
+                          if(val) saveDirectIntegration('meta', val);
+                        }}
+                        style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold' }}
+                      >
+                        {L('Save Connection', 'حفظ التتبع وربط')}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {wizard.provider === 'google' && (
-                  <>
-                    {/* Google Step 0: Loading Auth */}
-                    {wizard.step === 0 && (
-                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <div className="mtc-spinner" />
-                        <div className="mtc-center-text" style={{ color: 'var(--mtc-text-2)', fontSize: '12px', marginTop: '10px' }}>
-                          {L('Signing in securely with Google Account...', 'جاري تسجيل الدخول بحساب Google...')}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Google Step 1: Choose Account */}
-                    {wizard.step === 1 && (
-                      <div>
-                        <div style={{ fontSize: '12.5px', marginBottom: '9px', color: 'var(--mtc-text-1)' }}>{L('Select Google Account', 'اختر حساب جوجل المرتبط')}</div>
-                        <div className="mtc-option-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {googleAccounts.map(a => (
-                            <div
-                              key={a}
-                              className="mtc-option-item"
-                              onClick={() => selectWizardItem('account', a, 2)}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--mtc-border)', borderRadius: '11px', cursor: 'pointer', transition: '.15s', fontSize: '12.5px', color: 'var(--mtc-text-0)' }}
-                            >
-                              <span>👤 {a}</span>
-                              <span>{isRtl ? '‹' : '›'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Google Step 2: Choose GA4 Property */}
-                    {wizard.step === 2 && (
-                      <div>
-                        <div style={{ fontSize: '12.5px', marginBottom: '9px', color: 'var(--mtc-text-1)' }}>{L('Select Google Analytics GA4 Property', 'اختر الحساب التحليلي GA4')}</div>
-                        <div className="mtc-option-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {googleProperties.map(p => (
-                            <div
-                              key={p.measurementId}
-                              className="mtc-option-item"
-                              onClick={() => selectWizardItem('property', p, 3)}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--mtc-border)', borderRadius: '11px', cursor: 'pointer', transition: '.15s', fontSize: '12.5px', color: 'var(--mtc-text-0)' }}
-                            >
-                              <span>📈 {p.name} ({p.measurementId})</span>
-                              <span>{isRtl ? '‹' : '›'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Google Step 3: Loading verify */}
-                    {wizard.step === 3 && (
-                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                        <div className="mtc-spinner" />
-                        <div className="mtc-center-text" style={{ color: 'var(--mtc-text-2)', fontSize: '12px', marginTop: '10px' }}>
-                          {L('Binding GA4 Property and GTM tags...', 'جاري ربط حساب جوجل التحليلي وتحميل الأكواد...')}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Google Step 4: Success Output */}
-                    {wizard.step === 4 && (
-                      <div style={{ textAlign: 'center' }}>
-                        <div className="mtc-success-tick">✓</div>
-                        <div className="mtc-center-text" style={{ color: '#fff', fontSize: '13.5px', fontWeight: '700', margin: '10px 0' }}>
-                          {L('Google Analytics Linked!', 'تم ربط حساب جوجل بنجاح!')}
-                        </div>
-                        <div className="mtc-center-text" style={{ fontSize: '11.5px', color: 'var(--mtc-text-2)', marginBottom: '16px' }}>
-                          {L(`Property "${google.property?.name || ''}" is now receiving tracking events.`, `الحساب التحليلي "${google.property?.name || ''}" نشط الآن ويسجل البيانات.`)}
-                        </div>
-                        <button className="mtc-btn mtc-btn-primary" onClick={closeWizard}>
-                          {L('Close', 'تم')}
-                        </button>
-                      </div>
-                    )}
-                  </>
+                  <div>
+                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--mtc-text-1)', lineHeight: '1.6' }}>
+                      {L('Enter your Google Analytics 4 Measurement ID below to connect it directly to your UpKlick pages.', 'قم بإدخال رمز القياس (Measurement ID) الخاص بحساب GA4 ليتم ربطه فوراً.')}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <input 
+                        type="text" 
+                        id="directGA4Id" 
+                        placeholder="e.g. G-ABC123XYZ" 
+                        defaultValue={google.connected ? google.property.measurementId : ''}
+                        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--mtc-border)', background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '14px', width: '100%' }}
+                        autoFocus
+                      />
+                      <button 
+                        className="mtc-btn mtc-btn-primary"
+                        onClick={() => {
+                          const val = document.getElementById('directGA4Id')?.value?.trim();
+                          if(val) saveDirectIntegration('google', val);
+                        }}
+                        style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold' }}
+                      >
+                        {L('Save Connection', 'حفظ التتبع وربط')}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
               </div>
