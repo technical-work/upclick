@@ -199,6 +199,7 @@ export default function Topbar() {
         </div>
       )}
 
+
       <div className="tb-actions">
         {/* EGP Rate Box */}
         <div style={{
