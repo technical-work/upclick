@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import CustomSelect from '../CustomSelect';
 import { useAuth } from '../../context/AuthContext';
-import { storage } from '../../lib/firebase';
+import { libStorage } from '../../lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function DesignStudioView() {
@@ -354,13 +354,11 @@ export default function DesignStudioView() {
         blob = await response.clone().blob();
       }
 
-      let permanentUrl = '';
-      
-      // Upload to Firebase Storage directly, fall back to base64 thumbnail on failure
+      // Upload to Firebase Storage (libStorage) directly, fall back to base64 thumbnail on failure
       try {
         showToast(L('Uploading to Firebase Storage...', 'جاري الرفع إلى Firebase...'));
         const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
-        const storageRef = ref(storage, filename);
+        const storageRef = ref(libStorage, filename);
         const snapshot = await uploadBytes(storageRef, blob);
         permanentUrl = await getDownloadURL(snapshot.ref);
       } catch (err) {
