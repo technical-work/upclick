@@ -354,6 +354,8 @@ export default function DesignStudioView() {
         blob = await response.clone().blob();
       }
 
+      let permanentUrl = '';
+
       // Upload to Firebase Storage (libStorage) directly, fall back to base64 thumbnail on failure
       try {
         const filename = `designs/${user?.uid}/${type}_${Date.now()}.png`;
