@@ -403,6 +403,40 @@ export default function DesignStudioView() {
     }
   };
 
+  const handleDownloadOnly = async (designUrl, type) => {
+    try {
+      showToast(L('Downloading...', 'جاري التحميل...'));
+      let blob;
+      if (designUrl.startsWith('data:')) {
+        const arr = designUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        blob = new Blob([u8arr], { type: mime });
+      } else {
+        const response = await fetch(`/api/ai/proxy-image?url=${encodeURIComponent(designUrl)}`);
+        blob = await response.clone().blob();
+      }
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${type}_saved_${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+      showToast(L('Download started!', 'بدأ التحميل!'));
+    } catch (err) {
+      console.error("Failed to download image:", err);
+      showToast(L('Failed to download image', 'فشل تحميل الصورة'));
+    }
+  };
+
   const colorPresets = [
     { id: 'orange-purple', gradient: 'linear-gradient(135deg,#FF6B35,#6C35FF)', name: L('Orange + Purple', 'برتقالي + بنفسجي') },
     { id: 'black-gold', gradient: 'linear-gradient(135deg,#111,#FFD700)', name: L('Black + Gold', 'أسود + ذهبي') },
@@ -1050,18 +1084,29 @@ export default function DesignStudioView() {
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--t3)' }}>{design.date}</div>
                     </div>
-                    <button 
-                      className="btn btn-ghost" 
-                      style={{ padding: '6px', color: 'var(--red)', fontSize: '12px' }}
-                      onClick={() => {
-                        const updated = savedDesigns.filter(d => d.id !== design.id);
-                        setSavedDesigns(updated);
-                        saveSavedDesigns(updated);
-                        showToast(L('Design deleted', 'تم حذف التصميم'));
-                      }}
-                    >
-                      🗑️
-                    </button>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '6px', fontSize: '12px' }}
+                        onClick={() => handleDownloadOnly(design.url, design.type)}
+                        title={L('Download', 'تنزيل')}
+                      >
+                        📥
+                      </button>
+                      <button 
+                        className="btn btn-ghost" 
+                        style={{ padding: '6px', color: 'var(--red)', fontSize: '12px' }}
+                        onClick={() => {
+                          const updated = savedDesigns.filter(d => d.id !== design.id);
+                          setSavedDesigns(updated);
+                          saveSavedDesigns(updated);
+                          showToast(L('Design deleted', 'تم حذف التصميم'));
+                        }}
+                        title={L('Delete', 'حذف')}
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
