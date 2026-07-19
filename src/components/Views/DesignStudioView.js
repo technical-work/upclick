@@ -304,8 +304,22 @@ export default function DesignStudioView() {
     setIsSaving(true);
     try {
       showToast(L('Downloading and processing image...', 'جاري تحميل ومعالجة الصورة...'));
-      const response = await fetch(`/api/ai/proxy-image?url=${encodeURIComponent(url)}`);
-      const blob = await response.clone().blob();
+      
+      let blob;
+      if (url.startsWith('data:')) {
+        const arr = url.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        blob = new Blob([u8arr], { type: mime });
+      } else {
+        const response = await fetch(`/api/ai/proxy-image?url=${encodeURIComponent(url)}`);
+        blob = await response.clone().blob();
+      }
 
       let permanentUrl = '';
       
