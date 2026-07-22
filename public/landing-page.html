@@ -4536,12 +4536,18 @@
         }));
       } catch (err) {}
 
-      // 3. For page link navigation (e.g. /login or /register), delay 200ms so Pixel request completes
+      // 3. For page link navigation (e.g. /login or /register), append cta param so target page fires events on this page
       if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
         e.preventDefault();
+        var targetUrl = href;
+        if (isSignup && targetUrl.indexOf('cta=') === -1) {
+          targetUrl += (targetUrl.indexOf('?') !== -1 ? '&' : '?') + 'cta=start_free';
+        } else if (isLogin && targetUrl.indexOf('cta=') === -1) {
+          targetUrl += (targetUrl.indexOf('?') !== -1 ? '&' : '?') + 'cta=login_click';
+        }
         setTimeout(function() {
-          window.location.href = href;
-        }, 200);
+          window.location.href = targetUrl;
+        }, 150);
       }
     });
 

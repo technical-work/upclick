@@ -233,6 +233,16 @@ export default function RegisterPage() {
       const savedTheme = localStorage.getItem('upklick_theme');
       if (savedTheme) setTheme(savedTheme);
       try { Tracking.page('/register'); } catch (e) {}
+
+      // Fire Meta Pixel events directly on this page if coming from CTA
+      const search = window.location.search;
+      if (search.includes('cta=start_free') || search.includes('cta=signup')) {
+        if (typeof window.fbq === 'function') {
+          window.fbq('track', 'Lead', { content_name: 'Start Free Register CTA' });
+          window.fbq('track', 'InitiateCheckout', { content_name: 'Start Free Register CTA' });
+          window.fbq('trackCustom', 'StartFreeCTA', { source: 'landing_or_login' });
+        }
+      }
     }
   }, []);
 
