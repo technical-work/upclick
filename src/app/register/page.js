@@ -294,6 +294,10 @@ export default function RegisterPage() {
       const uid = userCredential.user.uid;
 
       Tracking.identify(uid, { email, name });
+      if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+        window.fbq('track', 'CompleteRegistration', { email, name });
+        window.fbq('track', 'Lead', { email, name });
+      }
       Tracking.track('CompleteRegistration', { email, name });
       Tracking.lead({ source: 'registration_page', name, email });
 

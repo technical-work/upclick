@@ -4502,11 +4502,17 @@
 
       if (typeof window.fbq === 'function') {
         if (isSignup) {
-          window.fbq('track', 'Lead', { cta_name: text });
+          // Standard Meta Pixel events (shows directly in Pixel Helper under active pixel)
+          window.fbq('track', 'Lead', { content_name: text, content_category: 'Landing CTA' });
+          window.fbq('track', 'InitiateCheckout', { content_name: text });
           window.fbq('trackCustom', 'SignUpClick', { button_text: text, destination: href || '' });
         } else if (isLogin) {
+          // Standard Meta Pixel event for Login / Contact
+          window.fbq('track', 'Contact', { content_name: text });
           window.fbq('trackCustom', 'LoginClick', { button_text: text, destination: href || '' });
         } else {
+          // Standard Meta Pixel event for Content engagement
+          window.fbq('track', 'ViewContent', { content_name: text });
           window.fbq('trackCustom', 'LandingPageClick', { button_text: text, destination: href || '' });
         }
       }

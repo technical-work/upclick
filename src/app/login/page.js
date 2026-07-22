@@ -68,6 +68,9 @@ export default function LoginPage() {
 
     try {
       Tracking.custom('LoginAttempt', { email });
+      if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+        window.fbq('track', 'Contact', { content_name: 'Login Submission', email });
+      }
       await login(email, password);
       Tracking.track('Login', { email });
     } catch (err) {
