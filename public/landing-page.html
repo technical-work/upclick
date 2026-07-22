@@ -2571,7 +2571,7 @@
       <div class="hdr-btns"><button class="btn btn-ghost" onclick="toggleLang(this)"
           style="padding:7px 14px;font-size:13px" data-t="landing-btn-lang">عربي</button>
         <a href="/login" class="btn btn-ghost" data-t="landing-nav-signin">Sign In</a>
-        <a href="/login" class="btn btn-prime" data-t="landing-nav-startfree">Start Free →</a>
+        <a href="/register?cta=start_free" class="btn btn-prime" data-t="landing-nav-startfree">Start Free →</a>
       </div>
     </div>
   </header>
@@ -2589,7 +2589,7 @@
       data-t="landing-nav-pricing">Pricing</a>
     <a href="#roadmap" onclick="document.getElementById('mob-nav').classList.remove('open')"
       data-t="landing-nav-roadmap">Roadmap</a>
-    <a href="/login" class="btn btn-prime btn-xl"
+    <a href="/register?cta=start_free" class="btn btn-prime btn-xl"
       style="margin-top:8px; width: 100%; max-width: 280px; justify-content: center;"
       data-t="landing-nav-startfree">Start Free →</a>
     <a href="/login" class="btn btn-ghost btn-xl" style="width: 100%; max-width: 280px; justify-content: center;"
@@ -2621,7 +2621,7 @@
           </div>
         </div>
         <div class="hero-cta">
-          <a href="/login" class="btn btn-prime btn-xl" data-t="landing-hero-cta-trial">🚀 Start Free Trial</a>
+          <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-hero-cta-trial">🚀 Start Free Trial</a>
           <a href="#preview" class="btn btn-ghost btn-xl" data-t="landing-hero-cta-preview">See it Live →</a>
         </div>
         <div class="hero-trust">
@@ -3211,7 +3211,7 @@
             <div class="pf"><span class="chk" style="color:var(--t3)">−</span> Marketing OS</div>
             <div class="pf"><span class="chk" style="color:var(--t3)">−</span> Telegram Hub</div>
           </div>
-          <a href="/login" class="btn btn-ghost" style="width:100%;justify-content:center">Start Free</a>
+          <a href="/register?cta=start_free" class="btn btn-ghost" style="width:100%;justify-content:center">Start Free</a>
         </div>
         <div class="price-card featured">
           <div class="price-badge">Most Popular</div>
@@ -3230,7 +3230,7 @@
             <div class="pf has"><span class="chk">✓</span> Telegram Bot Control</div>
             <div class="pf has"><span class="chk">✓</span> All integrations</div>
           </div>
-          <a href="/login" class="btn btn-prime" style="width:100%;justify-content:center">Start 14-Day Free Trial</a>
+          <a href="/register?cta=start_free" class="btn btn-prime" style="width:100%;justify-content:center">Start 14-Day Free Trial</a>
           <div style="text-align:center;font-size:12px;color:var(--t3);margin-top:8px">No credit card required</div>
         </div>
         <div class="price-card">
@@ -3248,7 +3248,7 @@
             <div class="pf has"><span class="chk">✓</span> Team analytics</div>
             <div class="pf has"><span class="chk">✓</span> API access</div>
           </div>
-          <a href="/login" class="btn btn-ghost" style="width:100%;justify-content:center">Contact Sales</a>
+          <a href="/register?cta=start_free" class="btn btn-ghost" style="width:100%;justify-content:center">Contact Sales</a>
         </div>
       </div>
     </div>
@@ -3415,7 +3415,7 @@
         <p class="cta-sub" data-t="landing-final-sub">Join 2,400+ Arab entrepreneurs already using UpKlick.<br>Start
           free — no credit card, no commitment.</p>
         <div class="cta-btns">
-          <a href="/login" class="btn btn-prime btn-xl" data-t="landing-final-cta-trial">🚀 Start Free Trial</a>
+          <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-final-cta-trial">🚀 Start Free Trial</a>
           <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')"
             class="btn btn-ghost btn-xl" data-t="landing-final-cta-talk">💬 Talk to Us</a>
         </div>
@@ -4510,7 +4510,7 @@
 
       if (typeof window.fbq === 'function') {
         if (isSignup) {
-          window.fbq('trackCustom', 'StartFreeCTA', { button_text: text, destination: href || '' });
+          window.fbq('trackCustom', 'SignUpClick', { button_text: text, destination: href || '' });
           window.fbq('trackCustom', 'SignUpClick', { button_text: text, destination: href || '' });
         } else if (isLogin) {
           window.fbq('trackCustom', 'LoginClick', { button_text: text, destination: href || '' });

@@ -36,7 +36,7 @@ export default function LoginPage() {
       if (search.includes('cta=start_free') || search.includes('cta=signup')) {
         hasFiredCtaRef.current = true;
         if (typeof window.fbq === 'function') {
-          window.fbq('trackCustom', 'StartFreeCTA', { source: 'landing_page' });
+          window.fbq('trackCustom', 'SignUpClick', { source: 'landing_page' });
         }
       } else if (search.includes('cta=login_click') || search.includes('cta=login')) {
         hasFiredCtaRef.current = true;
