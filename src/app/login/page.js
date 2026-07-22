@@ -308,6 +308,16 @@ export default function LoginPage() {
             </span>
             <a 
               href="/register" 
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'Lead', { content_name: 'إنشاء حساب جديد (تجربة مجانية)' });
+                    window.fbq('track', 'InitiateCheckout', { content_name: 'Free Trial Signup Click' });
+                    window.fbq('trackCustom', 'SignUpClick', { button_text: 'إنشاء حساب جديد (تجربة مجانية)' });
+                  }
+                  Tracking.lead({ source: 'login_page_signup_button' });
+                }
+              }}
               style={{ 
                 ...styles.registerButton, 
                 ...(tenantConfig?.primaryColor 

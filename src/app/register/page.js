@@ -530,6 +530,15 @@ export default function RegisterPage() {
           </span>
           <a 
             href="/login" 
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                if (typeof window.fbq === 'function') {
+                  window.fbq('track', 'Contact', { content_name: 'تسجيل الدخول الآن | Login' });
+                  window.fbq('trackCustom', 'LoginClick', { button_text: 'تسجيل الدخول الآن | Login' });
+                }
+                Tracking.custom('LoginClick', { source: 'register_page_login_button' });
+              }
+            }}
             style={{ 
               ...styles.loginButton, 
               ...(tenantConfig?.primaryColor 
