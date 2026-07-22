@@ -36,9 +36,10 @@ export default function LoginPage() {
           window.fbq('track', 'InitiateCheckout', { content_name: 'Start Free Landing CTA' });
           window.fbq('trackCustom', 'StartFreeCTA', { source: 'landing_page' });
         }
-      } else if (search.includes('cta=login_click')) {
+      } else if (search.includes('cta=login_click') || search.includes('cta=login')) {
         if (typeof window.fbq === 'function') {
           window.fbq('track', 'Contact', { content_name: 'Login Click CTA' });
+          window.fbq('trackCustom', 'LoginClick', { source: 'register_page_or_landing' });
         }
       }
     }

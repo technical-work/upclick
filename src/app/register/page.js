@@ -539,7 +539,7 @@ export default function RegisterPage() {
             لديك حساب بالفعل؟
           </span>
           <a 
-            href="/login" 
+            href="/login?cta=login_click" 
             onClick={() => {
               if (typeof window !== 'undefined') {
                 if (typeof window.fbq === 'function') {
