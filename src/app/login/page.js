@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { query, collection, where, getDocs } from 'firebase/firestore';
@@ -22,23 +22,25 @@ export default function LoginPage() {
   const isRTL = typeof window !== 'undefined' ? (document.documentElement.dir === 'rtl') : true;
   const [theme, setTheme] = useState('dark');
 
+  const hasFiredCtaRef = useRef(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('upklick_theme');
       if (savedTheme) setTheme(savedTheme);
-      try { Tracking.page('/login'); } catch (e) {}
+      try { Tracking.page('/login'); } catch (e) { }
 
-      // Fire Meta Pixel events directly on this page if coming from landing CTA
+      if (hasFiredCtaRef.current) return;
+
       const search = window.location.search;
       if (search.includes('cta=start_free') || search.includes('cta=signup')) {
+        hasFiredCtaRef.current = true;
         if (typeof window.fbq === 'function') {
-          window.fbq('track', 'Lead', { content_name: 'Start Free Landing CTA' });
-          window.fbq('track', 'InitiateCheckout', { content_name: 'Start Free Landing CTA' });
           window.fbq('trackCustom', 'StartFreeCTA', { source: 'landing_page' });
         }
       } else if (search.includes('cta=login_click') || search.includes('cta=login')) {
+        hasFiredCtaRef.current = true;
         if (typeof window.fbq === 'function') {
-          window.fbq('track', 'Contact', { content_name: 'Login Click CTA' });
           window.fbq('trackCustom', 'LoginClick', { source: 'register_page_or_landing' });
         }
       }
@@ -48,7 +50,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const currentHost = window.location.hostname;
-    
+
     // Fetch tenant by domain match
     const q = query(collection(db, 'tenants'), where('domain', '==', currentHost));
     getDocs(q).then((snap) => {
@@ -83,9 +85,6 @@ export default function LoginPage() {
 
     try {
       Tracking.custom('LoginAttempt', { email });
-      if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
-        window.fbq('track', 'Contact', { content_name: 'Login Submission', email });
-      }
       await login(email, password);
       Tracking.track('Login', { email });
     } catch (err) {
@@ -129,9 +128,9 @@ export default function LoginPage() {
               justifyContent: 'center',
               marginBottom: '24px'
             }}>
-              <img 
-                src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
-                alt={tenantConfig?.appName || "UpKlick"} 
+              <img
+                src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
+                alt={tenantConfig?.appName || "UpKlick"}
                 style={{
                   height: '240px',
                   objectFit: 'contain',
@@ -140,15 +139,15 @@ export default function LoginPage() {
               />
             </div>
           ) : (
-            <img 
-              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
-              alt={tenantConfig?.appName || "UpKlick"} 
-              style={styles.logo} 
+            <img
+              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
+              alt={tenantConfig?.appName || "UpKlick"}
+              style={styles.logo}
             />
           );
         })()}
         <h1 style={{ ...styles.title, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>
-          {isForgotPassword 
+          {isForgotPassword
             ? 'استعادة كلمة المرور'
             : tenantConfig?.appName ? `تسجيل الدخول - ${tenantConfig.appName}` : 'تسجيل الدخول'
           }
@@ -175,11 +174,11 @@ export default function LoginPage() {
                 border: '1px solid rgba(0, 240, 180, 0.2)',
                 lineHeight: '1.5'
               }}>
-                تم إرسال بريد إعادة تعيين كلمة المرور بنجاح! 
+                تم إرسال بريد إعادة تعيين كلمة المرور بنجاح!
                 <br />
                 يرجى التحقق من صندوق البريد الخاص بك (Gmail).
               </div>
-              <button 
+              <button
                 onClick={() => { setIsForgotPassword(false); setResetEmailSent(false); }}
                 style={{
                   ...styles.button,
@@ -197,30 +196,30 @@ export default function LoginPage() {
             <form onSubmit={handleForgotPasswordSubmit} style={styles.form}>
               <div style={styles.inputGroup}>
                 <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={styles.input}
                   placeholder="example@email.com"
-                  required 
+                  required
                   dir="ltr"
                 />
               </div>
-              <button 
-                type="submit" 
-                disabled={loading} 
-                style={{ 
-                  ...styles.button, 
-                  ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
-                    ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
-                    : {}) 
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...styles.button,
+                  ...(tenantConfig?.primaryColor && tenantConfig?.accentColor
+                    ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` }
+                    : {})
                 }}
               >
                 {loading ? 'جاري الإرسال...' : 'إرسال رابط استعادة كلمة المرور'}
               </button>
               <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                <span 
+                <span
                   onClick={() => setIsForgotPassword(false)}
                   style={{ fontSize: '13px', color: '#9090b0', cursor: 'pointer', textDecoration: 'underline' }}
                 >
@@ -233,20 +232,20 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.inputGroup}>
               <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 style={styles.input}
                 placeholder="example@email.com"
-                required 
+                required
                 dir="ltr"
               />
             </div>
             <div style={styles.inputGroup}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
-                <span 
+                <span
                   onClick={() => { setIsForgotPassword(true); setError(''); setResetEmailSent(false); }}
                   style={{ fontSize: '12px', color: tenantConfig?.primaryColor || '#FF6B35', cursor: 'pointer', fontWeight: '500' }}
                 >
@@ -254,13 +253,13 @@ export default function LoginPage() {
                 </span>
               </div>
               <div style={{ position: 'relative', width: '100%' }}>
-                <input 
-                  type={showPassword ? 'text' : 'password'} 
+                <input
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ ...styles.input, width: '100%', paddingLeft: isRTL ? '40px' : '16px', paddingRight: isRTL ? '16px' : '40px' }}
                   placeholder="••••••••"
-                  required 
+                  required
                   dir="ltr"
                 />
                 <button
@@ -290,14 +289,14 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            <button 
-              type="submit" 
-              disabled={loading} 
-              style={{ 
-                ...styles.button, 
-                ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
-                  ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
-                  : {}) 
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                ...styles.button,
+                ...(tenantConfig?.primaryColor && tenantConfig?.accentColor
+                  ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` }
+                  : {})
               }}
             >
               {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
@@ -321,27 +320,17 @@ export default function LoginPage() {
             }}>
               ليس لديك حساب؟
             </span>
-            <a 
-              href="/register?cta=start_free" 
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  if (typeof window.fbq === 'function') {
-                    window.fbq('track', 'Lead', { content_name: 'إنشاء حساب جديد (تجربة مجانية)' });
-                    window.fbq('track', 'InitiateCheckout', { content_name: 'Free Trial Signup Click' });
-                    window.fbq('trackCustom', 'SignUpClick', { button_text: 'إنشاء حساب جديد (تجربة مجانية)' });
+            <a
+              href="/register?cta=start_free"
+              style={{
+                ...styles.registerButton,
+                ...(tenantConfig?.primaryColor
+                  ? {
+                    borderColor: `${tenantConfig.primaryColor}50`,
+                    background: `${tenantConfig.primaryColor}0d`,
+                    color: tenantConfig.textColor || '#f8f4ff'
                   }
-                  Tracking.lead({ source: 'login_page_signup_button' });
-                }
-              }}
-              style={{ 
-                ...styles.registerButton, 
-                ...(tenantConfig?.primaryColor 
-                  ? { 
-                      borderColor: `${tenantConfig.primaryColor}50`, 
-                      background: `${tenantConfig.primaryColor}0d`,
-                      color: tenantConfig.textColor || '#f8f4ff' 
-                    } 
-                  : {}) 
+                  : {})
               }}
             >
               🚀 إنشاء حساب جديد (تجربة مجانية)

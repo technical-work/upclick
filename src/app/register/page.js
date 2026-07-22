@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -21,7 +21,7 @@ const initialGC = {
     goal: ''
   },
   strategy: { idea_analysis: '', icp: '', swot: { s: '', w: '', o: '', t: '' }, roadmap: '' },
-  crm: { 
+  crm: {
     workspaces: [
       {
         id: 'default',
@@ -187,7 +187,7 @@ const validateEmail = (email) => {
   if (parts.length !== 2) return false;
   const domainParts = parts[1].split('.');
   if (domainParts.length < 2) return false;
-  
+
   const domainName = domainParts[0].toLowerCase();
   const tld = domainParts[domainParts.length - 1].toLowerCase();
 
@@ -200,11 +200,11 @@ const validateEmail = (email) => {
   // 4. If TLD is not a 2-letter country code (like .eg, .sa, .ae, .us), it must be a valid common generic TLD
   if (tld.length !== 2) {
     const validCommonTLDs = [
-      'com', 'net', 'org', 'edu', 'gov', 'mil', 'biz', 'info', 'co', 'me', 'io', 'app', 'tv', 'xyz', 'club', 'site', 'shop', 
-      'online', 'agency', 'arabic', 'museum', 'travel', 'coop', 'jobs', 'mobi', 'name', 'tech', 'store', 'space', 'website', 
-      'media', 'company', 'email', 'pro', 'link', 'work', 'vip', 'live', 'today', 'solutions', 'systems', 'run', 'rocks', 
-      'ninja', 'guru', 'icu', 'global', 'ltd', 'services', 'care', 'digital', 'network', 'download', 'support', 'expert', 
-      'tools', 'education', 'social', 'team', 'group', 'marketing', 'design', 'studio', 'software', 'technology', 'world', 
+      'com', 'net', 'org', 'edu', 'gov', 'mil', 'biz', 'info', 'co', 'me', 'io', 'app', 'tv', 'xyz', 'club', 'site', 'shop',
+      'online', 'agency', 'arabic', 'museum', 'travel', 'coop', 'jobs', 'mobi', 'name', 'tech', 'store', 'space', 'website',
+      'media', 'company', 'email', 'pro', 'link', 'work', 'vip', 'live', 'today', 'solutions', 'systems', 'run', 'rocks',
+      'ninja', 'guru', 'icu', 'global', 'ltd', 'services', 'care', 'digital', 'network', 'download', 'support', 'expert',
+      'tools', 'education', 'social', 'team', 'group', 'marketing', 'design', 'studio', 'software', 'technology', 'world',
       'chat', 'click', 'page', 'pub', 'dev', 'cloud', 'lawyer', 'clinic', 'dentist', 'events', 'business', 'fit', 'one'
     ];
     if (validCommonTLDs.indexOf(tld) === -1) {
@@ -228,18 +228,20 @@ export default function RegisterPage() {
   const [tenantConfig, setTenantConfig] = useState(null);
   const [theme, setTheme] = useState('dark');
 
+  const hasFiredCtaRef = useRef(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('upklick_theme');
       if (savedTheme) setTheme(savedTheme);
-      try { Tracking.page('/register'); } catch (e) {}
+      try { Tracking.page('/register'); } catch (e) { }
 
-      // Fire Meta Pixel events directly on this page if coming from CTA
+      if (hasFiredCtaRef.current) return;
+
       const search = window.location.search;
       if (search.includes('cta=start_free') || search.includes('cta=signup')) {
+        hasFiredCtaRef.current = true;
         if (typeof window.fbq === 'function') {
-          window.fbq('track', 'Lead', { content_name: 'Start Free Register CTA' });
-          window.fbq('track', 'InitiateCheckout', { content_name: 'Start Free Register CTA' });
           window.fbq('trackCustom', 'StartFreeCTA', { source: 'landing_or_login' });
         }
       }
@@ -416,9 +418,9 @@ export default function RegisterPage() {
               justifyContent: 'center',
               marginBottom: '24px'
             }}>
-              <img 
-                src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
-                alt={tenantConfig?.appName || "UpKlick"} 
+              <img
+                src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
+                alt={tenantConfig?.appName || "UpKlick"}
                 style={{
                   height: '240px',
                   objectFit: 'contain',
@@ -427,10 +429,10 @@ export default function RegisterPage() {
               />
             </div>
           ) : (
-            <img 
-              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")} 
-              alt={tenantConfig?.appName || "UpKlick"} 
-              style={styles.logo} 
+            <img
+              src={tenantConfig?.logoUrl || (theme === 'light' ? "/best_logo_light.png" : "/best_logo_dark.png")}
+              alt={tenantConfig?.appName || "UpKlick"}
+              style={styles.logo}
             />
           );
         })()}
@@ -464,59 +466,59 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.inputGroup}>
             <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>الاسم الكامل</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={styles.input}
               placeholder="الاسم الكامل"
-              required 
+              required
             />
           </div>
           <div style={styles.inputGroup}>
             <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>البريد الإلكتروني</label>
-            <input 
-              type="email" 
+            <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={styles.input}
               placeholder="example@email.com"
-              required 
+              required
               dir="ltr"
             />
           </div>
           <div style={styles.inputGroup}>
             <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={styles.input}
               placeholder="••••••••"
-              required 
+              required
               dir="ltr"
             />
           </div>
           <div style={styles.inputGroup}>
             <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>تأكيد كلمة المرور</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               style={styles.input}
               placeholder="••••••••"
-              required 
+              required
               dir="ltr"
             />
           </div>
-          <button 
-            type="submit" 
-            disabled={loading} 
-            style={{ 
-              ...styles.button, 
-              ...(tenantConfig?.primaryColor && tenantConfig?.accentColor 
-                ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` } 
-                : {}) 
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              ...styles.button,
+              ...(tenantConfig?.primaryColor && tenantConfig?.accentColor
+                ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` }
+                : {})
             }}
           >
             {loading ? 'جاري إنشاء الحساب...' : 'إنشاء حساب جديد'}
@@ -538,26 +540,17 @@ export default function RegisterPage() {
           }}>
             لديك حساب بالفعل؟
           </span>
-          <a 
-            href="/login?cta=login_click" 
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                if (typeof window.fbq === 'function') {
-                  window.fbq('track', 'Contact', { content_name: 'تسجيل الدخول الآن | Login' });
-                  window.fbq('trackCustom', 'LoginClick', { button_text: 'تسجيل الدخول الآن | Login' });
+          <a
+            href="/login?cta=login_click"
+            style={{
+              ...styles.loginButton,
+              ...(tenantConfig?.primaryColor
+                ? {
+                  borderColor: `${tenantConfig.primaryColor}50`,
+                  background: `${tenantConfig.primaryColor}0d`,
+                  color: tenantConfig.textColor || '#f8f4ff'
                 }
-                Tracking.custom('LoginClick', { source: 'register_page_login_button' });
-              }
-            }}
-            style={{ 
-              ...styles.loginButton, 
-              ...(tenantConfig?.primaryColor 
-                ? { 
-                    borderColor: `${tenantConfig.primaryColor}50`, 
-                    background: `${tenantConfig.primaryColor}0d`,
-                    color: tenantConfig.textColor || '#f8f4ff' 
-                  } 
-                : {}) 
+                : {})
             }}
           >
             🔑 تسجيل الدخول الآن | Login

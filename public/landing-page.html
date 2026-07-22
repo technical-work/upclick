@@ -2626,10 +2626,18 @@
         </div>
         <div class="hero-trust">
           <div class="hero-trust-avatars">
-            <span><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=48&h=48&q=80" alt="creator"></span>
-            <span><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=48&h=48&q=80" alt="creator"></span>
-            <span><img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=48&h=48&q=80" alt="creator"></span>
-            <span><img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=48&h=48&q=80" alt="creator"></span>
+            <span><img
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=48&h=48&q=80"
+                alt="creator"></span>
+            <span><img
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=48&h=48&q=80"
+                alt="creator"></span>
+            <span><img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=48&h=48&q=80"
+                alt="creator"></span>
+            <span><img
+                src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=48&h=48&q=80"
+                alt="creator"></span>
             <span>+</span>
           </div>
           <span data-t="landing-trust-text">+2,400 entrepreneurs already using UpKlick</span>
@@ -4463,7 +4471,7 @@
     });
 
     // Activity & Scroll Tracking for Landing Page
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
       var target = e.target.closest('a, button, .btn, .nav-item, .tool-item, [role="button"]');
       if (!target) return;
 
@@ -4502,13 +4510,9 @@
 
       if (typeof window.fbq === 'function') {
         if (isSignup) {
-          // Standard Meta Pixel events (shows directly in Pixel Helper under active pixel)
-          window.fbq('track', 'Lead', { content_name: text, content_category: 'Landing CTA' });
-          window.fbq('track', 'InitiateCheckout', { content_name: text });
+          window.fbq('trackCustom', 'StartFreeCTA', { button_text: text, destination: href || '' });
           window.fbq('trackCustom', 'SignUpClick', { button_text: text, destination: href || '' });
         } else if (isLogin) {
-          // Standard Meta Pixel event for Login / Contact
-          window.fbq('track', 'Contact', { content_name: text });
           window.fbq('trackCustom', 'LoginClick', { button_text: text, destination: href || '' });
         } else {
           // Standard Meta Pixel event for Content engagement
@@ -4534,7 +4538,7 @@
             time: new Date().toLocaleTimeString('en-GB', { hour12: false })
           }
         }));
-      } catch (err) {}
+      } catch (err) { }
 
       // 3. For page link navigation (e.g. /login or /register), append cta param so target page fires events on this page
       if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
@@ -4545,7 +4549,7 @@
         } else if (isLogin && targetUrl.indexOf('cta=') === -1) {
           targetUrl += (targetUrl.indexOf('?') !== -1 ? '&' : '?') + 'cta=login_click';
         }
-        setTimeout(function() {
+        setTimeout(function () {
           window.location.href = targetUrl;
         }, 150);
       }
@@ -4553,12 +4557,12 @@
 
     // Track Landing Page Scroll Depth (25%, 50%, 75%, 90%)
     var trackedDepths = {};
-    window.addEventListener('scroll', function() {
+    window.addEventListener('scroll', function () {
       var docHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (docHeight <= 0) return;
       var scrollPercent = Math.round((window.scrollY / docHeight) * 100);
 
-      [25, 50, 75, 90].forEach(function(depth) {
+      [25, 50, 75, 90].forEach(function (depth) {
         if (scrollPercent >= depth && !trackedDepths[depth]) {
           trackedDepths[depth] = true;
 
@@ -4576,7 +4580,7 @@
                 time: new Date().toLocaleTimeString('en-GB', { hour12: false })
               }
             }));
-          } catch(err) {}
+          } catch (err) { }
         }
       });
     });
