@@ -4462,10 +4462,19 @@
       }
     });
 
-    // Activity Tracking for Landing Page
+    // Activity & Scroll Tracking for Landing Page
     document.addEventListener('click', function(e) {
       var target = e.target.closest('a, button, .btn, .nav-item, .tool-item, [role="button"]');
       if (!target) return;
+
+      var href = target.getAttribute('href');
+      if (href && href.startsWith('#') && href.length > 1) {
+        var secEl = document.querySelector(href);
+        if (secEl) {
+          e.preventDefault();
+          secEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
 
       var text = (target.innerText || target.getAttribute('aria-label') || target.title || 'Button').trim().slice(0, 60);
       
@@ -4496,6 +4505,36 @@
           }
         }));
       } catch (err) {}
+    });
+
+    // Track Landing Page Scroll Depth (25%, 50%, 75%, 90%)
+    var trackedDepths = {};
+    window.addEventListener('scroll', function() {
+      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight <= 0) return;
+      var scrollPercent = Math.round((window.scrollY / docHeight) * 100);
+
+      [25, 50, 75, 90].forEach(function(depth) {
+        if (scrollPercent >= depth && !trackedDepths[depth]) {
+          trackedDepths[depth] = true;
+
+          if (typeof window.fbq === 'function') {
+            window.fbq('trackCustom', 'ScrollDepth', { depth: depth + '%' });
+          }
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', 'scroll', { event_category: 'LandingPage', event_label: depth + '%' });
+          }
+          try {
+            window.dispatchEvent(new CustomEvent('upklick_track', {
+              detail: {
+                event: 'Landing Scroll: ' + depth + '%',
+                payload: { depth: depth },
+                time: new Date().toLocaleTimeString('en-GB', { hour12: false })
+              }
+            }));
+          } catch(err) {}
+        }
+      });
     });
   </script>
 </body>
