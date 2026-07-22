@@ -4480,26 +4480,39 @@
       }
 
       // 2. Fire Meta Pixel & Google Analytics events
-      var isStartFree = (
+      var isSignup = (
+        text.indexOf('إنشاء') !== -1 ||
+        text.indexOf('حساب') !== -1 ||
         text.indexOf('ابدأ') !== -1 ||
         text.indexOf('مجاناً') !== -1 ||
         text.indexOf('مجانا') !== -1 ||
         text.indexOf('تجربتك') !== -1 ||
         text.indexOf('اشتراك') !== -1 ||
-        text.indexOf('Start') !== -1
+        text.indexOf('Start') !== -1 ||
+        text.indexOf('Register') !== -1 ||
+        text.indexOf('Sign Up') !== -1
+      );
+
+      var isLogin = (
+        text.indexOf('تسجيل') !== -1 ||
+        text.indexOf('الدخول') !== -1 ||
+        text.indexOf('Login') !== -1 ||
+        text.indexOf('Sign In') !== -1
       );
 
       if (typeof window.fbq === 'function') {
-        if (isStartFree) {
+        if (isSignup) {
           window.fbq('track', 'Lead', { cta_name: text });
-          window.fbq('trackCustom', 'StartFreeClick', { button_text: text, destination: href || '' });
+          window.fbq('trackCustom', 'SignUpClick', { button_text: text, destination: href || '' });
+        } else if (isLogin) {
+          window.fbq('trackCustom', 'LoginClick', { button_text: text, destination: href || '' });
         } else {
           window.fbq('trackCustom', 'LandingPageClick', { button_text: text, destination: href || '' });
         }
       }
 
       if (typeof window.gtag === 'function') {
-        window.gtag('event', isStartFree ? 'generate_lead' : 'click', {
+        window.gtag('event', isSignup ? 'generate_lead' : isLogin ? 'login_click' : 'click', {
           event_category: 'LandingPage',
           event_label: text,
           transport_type: 'beacon'

@@ -26,6 +26,7 @@ export default function LoginPage() {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('upklick_theme');
       if (savedTheme) setTheme(savedTheme);
+      try { Tracking.page('/login'); } catch (e) {}
     }
   }, []);
 

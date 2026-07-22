@@ -232,6 +232,7 @@ export default function RegisterPage() {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('upklick_theme');
       if (savedTheme) setTheme(savedTheme);
+      try { Tracking.page('/register'); } catch (e) {}
     }
   }, []);
 
