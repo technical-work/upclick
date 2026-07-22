@@ -242,7 +242,7 @@ export default function RegisterPage() {
       if (search.includes('cta=start_free') || search.includes('cta=signup')) {
         hasFiredCtaRef.current = true;
         if (typeof window.fbq === 'function') {
-          window.fbq('trackCustom', 'StartFreeCTA', { source: 'landing_or_login' });
+          window.fbq('trackCustom', 'SignUpClick', { source: 'landing_or_login' });
         }
       }
     }
