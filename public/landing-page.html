@@ -4468,6 +4468,9 @@
       if (!target) return;
 
       var href = target.getAttribute('href');
+      var text = (target.innerText || target.getAttribute('aria-label') || target.title || 'Button').trim().slice(0, 60);
+
+      // 1. Internal section anchor scrolling (#preview, #tools, #pricing, etc.)
       if (href && href.startsWith('#') && href.length > 1) {
         var secEl = document.querySelector(href);
         if (secEl) {
@@ -4476,22 +4479,30 @@
         }
       }
 
-      var text = (target.innerText || target.getAttribute('aria-label') || target.title || 'Button').trim().slice(0, 60);
-      
-      // Send to Meta Pixel if available
+      // 2. Fire Meta Pixel & Google Analytics events
+      var isStartFree = (
+        text.indexOf('ابدأ') !== -1 ||
+        text.indexOf('مجاناً') !== -1 ||
+        text.indexOf('مجانا') !== -1 ||
+        text.indexOf('تجربتك') !== -1 ||
+        text.indexOf('اشتراك') !== -1 ||
+        text.indexOf('Start') !== -1
+      );
+
       if (typeof window.fbq === 'function') {
-        if (text.indexOf('مجاناً') !== -1 || text.indexOf('تجربتك') !== -1 || text.indexOf('اشتراك') !== -1 || text.indexOf('Start') !== -1) {
+        if (isStartFree) {
           window.fbq('track', 'Lead', { cta_name: text });
+          window.fbq('trackCustom', 'StartFreeClick', { button_text: text, destination: href || '' });
         } else {
-          window.fbq('trackCustom', 'LandingPageClick', { button_text: text });
+          window.fbq('trackCustom', 'LandingPageClick', { button_text: text, destination: href || '' });
         }
       }
 
-      // Send to Google Analytics if available
       if (typeof window.gtag === 'function') {
-        window.gtag('event', 'click', {
+        window.gtag('event', isStartFree ? 'generate_lead' : 'click', {
           event_category: 'LandingPage',
-          event_label: text
+          event_label: text,
+          transport_type: 'beacon'
         });
       }
 
@@ -4500,11 +4511,19 @@
         window.dispatchEvent(new CustomEvent('upklick_track', {
           detail: {
             event: 'Landing CTA: ' + text,
-            payload: { cta: text },
+            payload: { cta: text, href: href },
             time: new Date().toLocaleTimeString('en-GB', { hour12: false })
           }
         }));
       } catch (err) {}
+
+      // 3. For page link navigation (e.g. /login or /register), delay 150ms so Pixel request completes
+      if (href && !href.startsWith('#') && !href.startsWith('javascript:') && target.tagName === 'A') {
+        e.preventDefault();
+        setTimeout(function() {
+          window.location.href = href;
+        }, 150);
+      }
     });
 
     // Track Landing Page Scroll Depth (25%, 50%, 75%, 90%)
