@@ -8,7 +8,15 @@ import TrackingScripts from '@/components/TrackingScripts';
 import { Tracking } from '@/lib/tracking';
 
 export default function GlobalTracking() {
-  const [trackingCenter, setTrackingCenter] = useState(null);
+  const [trackingCenter, setTrackingCenter] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('upklick_tracking_center');
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return null;
+  });
   const pathname = usePathname();
 
   // 1. Listen to global tenant tracking configuration from tenants/global
@@ -18,6 +26,9 @@ export default function GlobalTracking() {
         const data = docSnap.data();
         if (data.trackingCenter) {
           setTrackingCenter(data.trackingCenter);
+          try {
+            localStorage.setItem('upklick_tracking_center', JSON.stringify(data.trackingCenter));
+          } catch (e) {}
         }
       }
     }, (err) => {

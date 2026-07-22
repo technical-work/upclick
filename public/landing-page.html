@@ -4530,12 +4530,12 @@
         }));
       } catch (err) {}
 
-      // 3. For page link navigation (e.g. /login or /register), delay 150ms so Pixel request completes
-      if (href && !href.startsWith('#') && !href.startsWith('javascript:') && target.tagName === 'A') {
+      // 3. For page link navigation (e.g. /login or /register), delay 200ms so Pixel request completes
+      if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
         e.preventDefault();
         setTimeout(function() {
           window.location.href = href;
-        }, 150);
+        }, 200);
       }
     });
 
