@@ -4461,6 +4461,42 @@
         header.classList.remove('scrolled');
       }
     });
+
+    // Activity Tracking for Landing Page
+    document.addEventListener('click', function(e) {
+      var target = e.target.closest('a, button, .btn, .nav-item, .tool-item, [role="button"]');
+      if (!target) return;
+
+      var text = (target.innerText || target.getAttribute('aria-label') || target.title || 'Button').trim().slice(0, 60);
+      
+      // Send to Meta Pixel if available
+      if (typeof window.fbq === 'function') {
+        if (text.indexOf('مجاناً') !== -1 || text.indexOf('تجربتك') !== -1 || text.indexOf('اشتراك') !== -1 || text.indexOf('Start') !== -1) {
+          window.fbq('track', 'Lead', { cta_name: text });
+        } else {
+          window.fbq('trackCustom', 'LandingPageClick', { button_text: text });
+        }
+      }
+
+      // Send to Google Analytics if available
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'click', {
+          event_category: 'LandingPage',
+          event_label: text
+        });
+      }
+
+      // Send custom event for UpKlick tracking center real-time stream
+      try {
+        window.dispatchEvent(new CustomEvent('upklick_track', {
+          detail: {
+            event: 'Landing CTA: ' + text,
+            payload: { cta: text },
+            time: new Date().toLocaleTimeString('en-GB', { hour12: false })
+          }
+        }));
+      } catch (err) {}
+    });
   </script>
 </body>
 

@@ -48,7 +48,6 @@ import IntegrationsView from '@/components/Views/IntegrationsView';
 import ProfileView from '@/components/Views/ProfileView';
 import UpClickBuilderView from '@/components/Views/UpClickBuilderView';
 import AutomationHubView from '@/components/Views/AutomationHubView';
-import TrackingCenterView from '@/components/Views/TrackingCenterView';
 import TeamManagementView from '@/components/Views/TeamManagementView';
 import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
@@ -302,7 +301,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing', 'support', 'courses', 'tracking-center'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing', 'support', 'courses'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -356,8 +355,6 @@ function DashboardShell() {
         return <UpClickBuilderView />;
       case 'automation':
         return <AutomationHubView />;
-      case 'tracking-center':
-        return <TrackingCenterView />;
       case 'team':
         return <TeamManagementView />;
       case 'niche':

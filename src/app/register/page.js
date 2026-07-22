@@ -6,6 +6,7 @@ import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { Tracking } from '@/lib/tracking';
 
 const initialGC = {
   profile: {
@@ -286,9 +287,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      Tracking.custom('SignupAttempt', { email, name });
       // 1. Create User in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
+
+      Tracking.identify(uid, { email, name });
+      Tracking.track('CompleteRegistration', { email, name });
+      Tracking.lead({ source: 'registration_page', name, email });
 
       // Send Verification Email
       try {
@@ -366,6 +372,7 @@ export default function RegisterPage() {
       // router will auto-redirect through useEffect
     } catch (err) {
       console.error(err);
+      Tracking.custom('SignupFailed', { error: err.message, email });
       if (err.code === 'auth/email-already-in-use') {
         setError('هذا البريد الإلكتروني مسجل بالفعل.');
       } else if (err.code === 'auth/invalid-email') {

@@ -1,59 +1,106 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useBusiness } from '../../context/BusinessContext';
-import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../hooks/useTranslation';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { Tracking } from '../../lib/tracking';
 
-export default function TrackingCenterView() {
-  const { L, lang, showToast, GC, saveGC } = useBusiness();
-  const { user } = useAuth();
-  const isRtl = lang === 'ar';
+export default function TrackingSettingsPage() {
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.language?.startsWith('ar');
+  const L = (en, ar) => (isRtl ? ar : en);
 
-  const trackingConfig = GC?.trackingCenter || {
-    meta: { connected: false, business: null, page: null, pixel: null },
-    google: { connected: false, property: null },
+  // States
+  const [trackingConfig, setTrackingConfig] = useState({
+    meta: { connected: false, business: '', page: '', pixel: { id: '', name: '' } },
+    google: { connected: false, property: { name: '', measurementId: '' } },
     advancedMode: false,
     customEvents: []
-  };
+  });
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [rtData, setRtData] = useState([]);
+  const [rtFilter, setRtFilter] = useState('');
+  const [debugLogs, setDebugLogs] = useState([]);
+  const [wizard, setWizard] = useState({ active: false, provider: null, step: 0, picks: {} });
+  const [testResults, setTestResults] = useState({});
+  const [toastMessage, setToastMessage] = useState('');
 
   const { meta, google, advancedMode, customEvents } = trackingConfig;
 
-  // 2. React States
-  const [activeTab, setActiveTab] = useState('overview');
-
-  // Realtime Log States
-  const [rtData, setRtData] = useState([]);
-  const [rtFilter, setRtFilter] = useState('');
-
-  // Debug Console Logs
-  const [debugLogs, setDebugLogs] = useState([]);
-
-  // Connection Wizard states
-  const [wizard, setWizard] = useState({ active: false, provider: null, step: 0, picks: {} });
-
-  // Test Event states
-  const [testResults, setTestResults] = useState({});
-
-  // 4. Save State function
-  const saveState = (updatedFields) => {
-    saveGC({
-      ...GC,
-      trackingCenter: {
-        ...trackingConfig,
-        ...updatedFields
+  // Load existing tracking config from tenants/global
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'tenants', 'global'));
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.trackingCenter) {
+            setTrackingConfig({
+              meta: {
+                connected: false,
+                business: '',
+                page: '',
+                pixel: { id: '', name: '' },
+                ...(data.trackingCenter.meta || {})
+              },
+              google: {
+                connected: false,
+                property: { name: '', measurementId: '' },
+                ...(data.trackingCenter.google || {})
+              },
+              advancedMode: !!data.trackingCenter.advancedMode,
+              customEvents: data.trackingCenter.customEvents || []
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error loading global tracking config: ", err);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
+    loadConfig();
+  }, []);
+
+  // Save State function
+  const saveState = async (updatedFields) => {
+    const nextConfig = {
+      ...trackingConfig,
+      ...updatedFields
+    };
+    setTrackingConfig(nextConfig);
+    try {
+      await setDoc(doc(db, 'tenants', 'global'), {
+        trackingCenter: nextConfig
+      }, { merge: true });
+      showToast(L('Settings saved successfully!', 'تم حفظ الإعدادات بنجاح!'));
+    } catch (err) {
+      console.error("Error saving global tracking config: ", err);
+      showToast(L('Failed to save settings.', 'فشل حفظ الإعدادات.'));
+    }
   };
 
-  // 5. Initialize Realtime Logs & Debug logs loops
+  // Toast notification
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+    const el = document.getElementById('toast');
+    if (el) {
+      el.innerText = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+  };
+
+  // Realtime Log States & Listeners
   useEffect(() => {
-    // Listen for actual Tracking SDK events
     const handleTrackEvent = (e) => {
       const { event, payload, time } = e.detail;
       const newLog = {
         time: time,
-        user: 'Current User', // Local user testing
+        user: 'Platform User',
         event: event,
         platform: 'Meta / GA4',
         country: 'Local',
@@ -79,21 +126,7 @@ export default function TrackingCenterView() {
     setDebugLogs(prev => [newLog, ...prev].slice(0, 100));
   };
 
-  // 6. Handle Wizard Connection Steps
-  const metaBusinesses = ['UpKlick Business Manager', 'Mohamed Joe Coaching BM', 'Personal Brand OS Ads'];
-  const metaPages = ['UpKlick | Official Page', 'Mohamed Joe', 'Personal Brand OS'];
-  const metaPixels = [
-    { id: '812934710239481', name: 'UpKlick Main Pixel' },
-    { id: '129384710293841', name: 'Coaching Funnel Pixel' }
-  ];
-
-  const googleAccounts = ['Mohamed Joe — Google Account'];
-  const googleProperties = [
-    { name: 'UpKlick — Web', measurementId: 'G-K3P9XQ21LM' },
-    { name: 'Personal Brand OS', measurementId: 'G-7HN4Z8YB03' },
-    { name: 'CoachOS Landing', measurementId: 'G-4RT1WP66QD' }
-  ];
-
+  // Connection Steps
   const openWizard = (provider) => {
     setWizard({ active: true, provider, step: 1, picks: {} });
   };
@@ -101,10 +134,6 @@ export default function TrackingCenterView() {
   const closeWizard = () => {
     setWizard({ active: false, provider: null, step: 0, picks: {} });
   };
-
-  useEffect(() => {
-    // No automatic step progression needed
-  }, [wizard.active, wizard.step]);
 
   const saveDirectIntegration = (provider, value) => {
     if (provider === 'meta') {
@@ -116,7 +145,6 @@ export default function TrackingCenterView() {
       };
       saveState({ meta: finishedState });
       addDebugLog('POST', '/graph/v19/pixel/connect', '200 OK — Connected Pixel: ' + value);
-      showToast(L('Meta Pixel connected successfully!', 'تم ربط بيكسل فيسبوك بنجاح!'));
       closeWizard();
     } else if (provider === 'google') {
       const finishedState = {
@@ -125,7 +153,6 @@ export default function TrackingCenterView() {
       };
       saveState({ google: finishedState });
       addDebugLog('POST', '/analytics/v1/property/connect', '200 OK — Connected GA4: ' + value);
-      showToast(L('Google Analytics connected successfully!', 'تم ربط جوجل بنجاح!'));
       closeWizard();
     }
   };
@@ -133,20 +160,17 @@ export default function TrackingCenterView() {
   const disconnectIntegration = (provider) => {
     if (provider === 'meta') {
       saveState({ meta: { connected: false, business: null, page: null, pixel: null } });
-      showToast(L('Meta Pixel disconnected.', 'تم إلغاء اتصال فيسبوك بنجاح.'));
+      addDebugLog('POST', '/graph/v19/pixel/disconnect', '200 OK — Disconnected Pixel');
     } else if (provider === 'google') {
       saveState({ google: { connected: false, property: null } });
-      showToast(L('Google Analytics disconnected.', 'تم إلغاء اتصال جوجل بنجاح.'));
+      addDebugLog('POST', '/analytics/v1/property/disconnect', '200 OK — Disconnected GA4');
     }
   };
 
-  // 7. Toggle developer mode
   const handleToggleAdvanced = () => {
-    const nextVal = !advancedMode;
-    saveState({ advancedMode: nextVal });
+    saveState({ advancedMode: !advancedMode });
   };
 
-  // 8. Custom events logic
   const handleAddCustomEvent = () => {
     const name = prompt(L('Enter custom event name (in English, e.g. clicked_button):', 'أدخل اسم الحدث المخصص (باللغة الإنجليزية، مثل: clicked_button):'));
     if (!name) return;
@@ -154,11 +178,9 @@ export default function TrackingCenterView() {
     if (cleanName) {
       const nextEvents = [...customEvents, cleanName];
       saveState({ customEvents: nextEvents });
-      showToast(L('Custom event added!', 'تم إضافة الحدث المخصص بنجاح!'));
     }
   };
 
-  // 9. Export logs
   const handleExportLogs = () => {
     const header = ['Time', 'User ID', 'Event Name', 'Platform', 'Country', 'UTM Campaign', 'Status'];
     const rows = rtData.map(r => [r.time, r.user, r.event, r.platform, r.country, r.utm, r.status]);
@@ -167,25 +189,24 @@ export default function TrackingCenterView() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `tracking_logs_${Date.now()}.csv`);
+    link.setAttribute("download", `platform_tracking_logs_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // 10. Run test event
   const runTestEvent = (index, eventName) => {
     setTestResults(prev => ({ ...prev, [index]: 'sending' }));
-    
     try {
-      Tracking.track(eventName, { test_mode: true, source: 'Tracking Center Dashboard' });
+      if (Tracking && typeof Tracking.track === 'function') {
+        Tracking.track(eventName, { test_mode: true, source: 'Admin Settings Page' });
+      }
       setTestResults(prev => ({ ...prev, [index]: 'success' }));
     } catch(err) {
       setTestResults(prev => ({ ...prev, [index]: 'failed' }));
     }
   };
 
-  // 11. Mock stats & checklists
   const standardEvents = ['Page View', 'View Content', 'Lead', 'Contact', 'Purchase', 'Add To Cart', 'Initiate Checkout', 'Book Meeting', 'Complete Registration', 'Login', 'Logout', 'Generate AI', 'Upload File', 'Download File', 'Export PDF', 'Invite Member', 'Upgrade Plan', 'Cancel Subscription', 'Payment Success', 'Payment Failed', 'Project Created', 'Project Deleted', 'Subscription Started', 'Subscription Renewed', 'Subscription Cancelled'];
   const allEventsList = [...standardEvents, ...customEvents];
 
@@ -201,7 +222,7 @@ export default function TrackingCenterView() {
   const checklist = [
     meta.connected,
     google.connected,
-    true, // SSL active (UpKlick hosts with SSL)
+    true,
   ];
 
   const doneCount = checklist.filter(Boolean).length;
@@ -229,15 +250,48 @@ export default function TrackingCenterView() {
   if (!google.connected) {
     aiRecs.push({ ic: '⚠️', title: L('Google Analytics is not connected', 'حساب جوجل غير متصل'), desc: L('GA4 is crucial to study user behavior. Connect Google now.', 'تحليلات GA4 أساسية لدراسة سلوك الزوار. اربط حسابك الآن.') });
   }
-  if (meta.connected) {
-    aiRecs.push({ ic: '🎯', title: L('Lead Event tracking missing', 'تتبع حدث Lead مفقود'), desc: L('Ensure Tracking.lead() is called in your lead forms.', 'تأكد من إضافة كود Tracking.lead() عند إرسال النماذج.') });
-  }
   aiRecs.push({ ic: '🍪', title: L('Cookie Consent Banner missing', 'شريط الموافقة على ملفات الارتباط مفقود'), desc: L('Google Consent Mode v2 requires a consent banner to log data.', 'يتطلب وضع الموافقة من جوجل Consent Mode وجود شريط لملفات الارتباط.') });
-  aiRecs.push({ ic: '📉', title: L('Booking page lacks tracking', 'صفحة الحجز بدون تتبع'), desc: L('Inject Tracking.bookMeeting() to capture booking conversion data.', 'أضف كود تتبع المواعيد Tracking.bookMeeting() عند تأكيد الحجز.') });
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', flexDirection: 'column', gap: '15px' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,107,53,0.3)', borderTopColor: '#FF6B35', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <div>{L('Loading tracking configurations...', 'جاري تحميل إعدادات التتبع...')}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="pg on" id="pg-tracking-center" style={{ fontFamily: 'Tajawal, sans-serif' }}>
       
+      {/* Toast container overlay inside the component */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: isRtl ? 'auto' : '20px',
+          left: isRtl ? '20px' : 'auto',
+          background: 'var(--mtc-grad, linear-gradient(135deg, #7c3aed 0%, #8a1f4b 100%))',
+          color: '#fff',
+          padding: '12px 24px',
+          borderRadius: '10px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+          zIndex: 999999,
+          fontSize: '13px',
+          fontWeight: 'bold',
+          animation: 'slideIn 0.2s ease-out'
+        }}>
+          <style>{`
+            @keyframes slideIn {
+              from { transform: translateY(-20px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+          `}</style>
+          {toastMessage}
+        </div>
+      )}
+
       {/* Scope Wrapper to encapsulate all styles */}
       <div className="mtc-scope">
         
@@ -247,8 +301,8 @@ export default function TrackingCenterView() {
             <div className="mtc-title-wrap">
               <div className="mtc-brand-icon">📡</div>
               <div>
-                <b>{L('Marketing & Tracking Center', 'مركز التتبع والتسويق')}</b>
-                <span>{L('Unified pixel management & customer analytics', 'إدارة موحدة للأكواد وتحليلات العملاء والبيكسل')}</span>
+                <b>{L('Platform Pixel & Analytics Tracking', 'مركز التتبع والبيكسل للمنصة')}</b>
+                <span>{L('Unified system-wide tracking integrations', 'إدارة موحدة لأكواد التتبع والتحليلات والبيكسل على مستوى المنصة')}</span>
               </div>
             </div>
             <div className="mtc-top-actions">
@@ -268,8 +322,6 @@ export default function TrackingCenterView() {
               { id: 'events', label: L('🎯 Event SDK', '🎯 أحداث التتبّع') },
               { id: 'library', label: L('📚 Event Library', '📚 مكتبة الأحداث') },
               { id: 'realtime', label: L('⚡ Realtime', '⚡ البث اللحظي') },
-              { id: 'funnels', label: L('🪜 Funnels', '🪜 الأقماع') },
-              { id: 'analytics', label: L('📈 Analytics', '📈 التحليلات') },
               { id: 'health', label: L('🩺 Health Check', '🩺 فحص الصحة') },
               { id: 'debug', label: L('🧩 Debug Logs', '🧩 Debug') },
               { id: 'test', label: L('🧪 Test Center', '🧪 الاختبار التجريبي') },
@@ -297,7 +349,7 @@ export default function TrackingCenterView() {
           {activeTab === 'overview' && (
             <div className="mtc-view active">
               <div className="mtc-note">
-                💡 {L('This tracking studio centralizes event delivery to Meta Pixel & Google Analytics. Detailed setup configs can be accessed under the "Advanced" tab.', 'يقوم مركز التتبع بإرسال الأحداث وتوحيدها لبيكسل فيسبوك وجوجل إيناليتكس. إعدادات الربط المتقدمة متاحة في تبويب "إعداد متقدم".')}
+                💡 {L('This tracking studio centralizes event delivery to Meta Pixel & Google Analytics globally. Detailed configurations can be adjusted under the "Advanced" tab.', 'يقوم مركز التتبع بإرسال الأحداث وتوحيدها لبيكسل فيسبوك وجوجل إيناليتكس على مستوى النظام. إعدادات الربط المتقدمة متاحة في تبويب "إعداد متقدم".')}
               </div>
               <div className="mtc-grid mtc-g4">
                 <div className="mtc-card">
@@ -355,7 +407,7 @@ export default function TrackingCenterView() {
                     {L('Historical Data & Funnels', 'البيانات التاريخية والأقماع')}
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--mtc-text-2)', lineHeight: '1.6' }}>
-                    {L('UpKlick currently routes all tracking events directly to your Meta Pixel and Google Analytics. To view your complete historical reports, conversion rates, and funnels, please log in to your Meta Events Manager or Google Analytics dashboard.', 'تقوم UpKlick حالياً بإرسال كافة أحداث التتبع مباشرة إلى بيكسل فيسبوك وحساب جوجل. لمشاهدة تقاريرك التاريخية ومعدلات التحويل بالتفصيل، يرجى التوجه للوحة تحكم Meta Events Manager أو حساب Google Analytics الخاص بك.')}
+                    {L('Detailed reports, analytics dashboards, and campaign performance funnels can be securely accessed inside your Meta Events Manager and Google Analytics properties.', 'لمشاهدة تقارير الزيارات ومعدلات التحويل وحملات الإعلانات بالتفصيل، يرجى التوجه للوحة تحكم Meta Events Manager أو حساب Google Analytics الخاص بك.')}
                   </div>
                 </div>
                 <div className="mtc-card">
@@ -372,7 +424,7 @@ export default function TrackingCenterView() {
           {activeTab === 'integrations' && (
             <div className="mtc-view active">
               <p className="mtc-sec-desc">
-                {L('Link your social pixel accounts seamlessly, similar to Shopify integration flow.', 'اربط حسابات البيكسل والإحصائيات الخاصة بك بخطوات بسيطة بدون الحاجة لكتابة أكواد.')}
+                {L('Link the platform social pixel accounts seamlessly to run marketing ads.', 'اربط حسابات البيكسل والإحصائيات الخاصة بالمنصة بخطوات بسيطة بدون الحاجة لكتابة أكواد.')}
               </p>
               <div className="mtc-grid mtc-g2">
                 
@@ -489,13 +541,13 @@ export default function TrackingCenterView() {
           {activeTab === 'events' && (
             <div className="mtc-view active">
               <p className="mtc-sec-desc">
-                {L('All customer activities are dispatched automatically using our unified front-end Tracking SDK.', 'يتم إرسال أحداث تتبع الزوار والعملاء محلياً وسحابياً من خلال كود المطور الموحد التالي:')}
+                {L('All activities are dispatched automatically using our unified front-end Tracking SDK.', 'يتم إرسال أحداث تتبع الزوار والعملاء من خلال كود المطور الموحد التالي:')}
               </p>
               <div className="mtc-card" style={{ marginBottom: '16px' }}>
                 <div className="mtc-card-label" style={{ marginBottom: '8px' }}>Tracking SDK Reference</div>
                 <div className="mtc-console" style={{ height: 'auto', fontFamily: 'var(--mtc-mono)' }}>
                   <div className="mtc-log-line"><span className="mtc-log-get">Tracking.page()</span> → {L('Auto tracks Page Views on router path changes', 'تسجيل مشاهدات الصفحات تلقائياً عند تغيير المسار')}</div>
-                  <div className="mtc-log-line"><span className="mtc-log-get">Tracking.identify(userId, userTraits)</span> → {L('Identifies user context', 'ربط هوية العميل لتوحيد الجلسات')}</div>
+                  <div className="mtc-log-line"><span className="mtc-log-identify">Tracking.identify(userId, userTraits)</span> → {L('Identifies user context', 'ربط هوية العميل لتوحيد الجلسات')}</div>
                   <div className="mtc-log-line"><span className="mtc-log-post">Tracking.track("purchase", &#123; value: 49.00, currency: "USD" &#125;)</span> → {L('Logs purchases', 'تسجيل عمليات الشراء الفردية')}</div>
                   <div className="mtc-log-line"><span className="mtc-log-post">Tracking.lead(&#123; source: "main_funnel" &#125;)</span> → {L('Logs new lead captures', 'تسجيل بيانات العملاء المحتملين الجدد')}</div>
                   <div className="mtc-log-line"><span className="mtc-log-post">Tracking.bookMeeting(&#123; type: "coaching" &#125;)</span> → {L('Logs scheduled meetings', 'تسجيل حجز موعد جديد')}</div>
@@ -597,47 +649,24 @@ export default function TrackingCenterView() {
                           </td>
                         </tr>
                       ))}
+                    {rtData.length === 0 && (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--mtc-text-2)' }}>
+                          {L('No events dispatched in the current session yet.', 'لم يتم إرسال أي أحداث تتبع في الجلسة الحالية بعد.')}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {/* 6. Tab: Funnels */}
-          {activeTab === 'funnels' && (
-            <div className="mtc-view active">
-              <div className="mtc-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
-                <div style={{ fontSize: '38px', marginBottom: '16px' }}>🪜</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>
-                  {L('Funnels are tracked in your Analytics Provider', 'يتم تتبع الأقماع في منصات التحليل الخاصة بك')}
-                </div>
-                <div style={{ fontSize: '13.5px', color: 'var(--mtc-text-2)', lineHeight: '1.6', maxWidth: '400px' }}>
-                  {L('Because UpKlick prioritizes data privacy and performance, we route all funnel drops directly to your Meta Pixel and GA4 accounts. Please view your funnel visualizations there.', 'نظراً لاهتمام UpKlick بالخصوصية وسرعة الأداء، يتم إرسال كافة نقاط التحويل والهبوط في القمع التسويقي فوراً إلى فيسبوك وجوجل. يرجى استعراض أقماعك هناك.')}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 7. Tab: Analytics */}
-          {activeTab === 'analytics' && (
-            <div className="mtc-view active">
-              <div className="mtc-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '60px 20px', textAlign: 'center' }}>
-                <div style={{ fontSize: '38px', marginBottom: '16px' }}>📈</div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', marginBottom: '8px' }}>
-                  {L('Analytics Dashboard', 'لوحة التحليلات')}
-                </div>
-                <div style={{ fontSize: '13.5px', color: 'var(--mtc-text-2)', lineHeight: '1.6', maxWidth: '400px' }}>
-                  {L('Detailed analytics, including traffic sources, devices, and conversion rates are securely recorded by Meta and Google. Check your respective dashboards for comprehensive reports.', 'تسجل منصات Meta وجوجل كافة التحليلات الدقيقة مثل مصادر الزيارات، الأجهزة المستخدمة، ومعدلات التحويل. راجع لوحات التحكم الخاصة بك لتقارير شاملة.')}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 8. Tab: Health Check */}
+          {/* 6. Tab: Health Check */}
           {activeTab === 'health' && (
             <div className="mtc-view active">
               <p className="mtc-sec-desc">
-                {L('System-wide real-time health diagnostic checks for connected analytical tags.', 'فحص أوتوماتيكي مستمر لضمان نشاط وجودة الأكواد والبيكسل المتصلة بموقعك.')}
+                {L('Platform-wide diagnostic health checks for analytics scripts.', 'فحص أوتوماتيكي مستمر لضمان نشاط وجودة الأكواد والبيكسل المتصلة بموقعك.')}
               </p>
               <div className="mtc-card">
                 {healthItems.map((item, idx) => (
@@ -655,7 +684,7 @@ export default function TrackingCenterView() {
             </div>
           )}
 
-          {/* 9. Tab: Debug Logs */}
+          {/* 7. Tab: Debug Logs */}
           {activeTab === 'debug' && (
             <div className="mtc-view active">
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
@@ -680,7 +709,7 @@ export default function TrackingCenterView() {
             </div>
           )}
 
-          {/* 10. Tab: Test Center */}
+          {/* 8. Tab: Test Center */}
           {activeTab === 'test' && (
             <div className="mtc-view active">
               <p className="mtc-sec-desc">
@@ -718,7 +747,7 @@ export default function TrackingCenterView() {
             </div>
           )}
 
-          {/* 11. Tab: AI Optimization */}
+          {/* 9. Tab: AI Optimization */}
           {activeTab === 'automation' && (
             <div className="mtc-view active">
               <p className="mtc-sec-desc">
@@ -732,7 +761,7 @@ export default function TrackingCenterView() {
                       <b style={{ fontSize: '12.5px', display: 'block', marginBottom: '3px' }}>{rec.title}</b>
                       <span style={{ fontSize: '11px', color: 'var(--mtc-text-2)' }}>{rec.desc}</span>
                     </div>
-                    <button className="mtc-btn mtc-btn-ghost mtc-ai-fix-btn" style={{ marginLeft: isRtl ? '0' : 'auto', marginRight: isRtl ? 'auto' : '0', flexShrink: 0, fontSize: '11px', padding: '5px 10px' }}>
+                    <button className="mtc-btn mtc-btn-ghost mtc-ai-fix-btn" style={{ marginLeft: isRtl ? '0' : 'auto', marginRight: isRtl ? 'auto' : '0', flexShrink: 0, fontSize: '11px', padding: '5px 10px' }} onClick={() => showToast(L('AI configuration updated.', 'تم تحديث التكوين بواسطة الذكاء الاصطناعي.'))}>
                       {L('Auto Fix', 'إصلاح تلقائي')}
                     </button>
                   </div>
@@ -741,7 +770,7 @@ export default function TrackingCenterView() {
             </div>
           )}
 
-          {/* 12. Tab: Advanced Settings */}
+          {/* 10. Tab: Advanced Settings */}
           {activeTab === 'advanced' && (
             <div className="mtc-view active">
               {!advancedMode && (
@@ -755,37 +784,53 @@ export default function TrackingCenterView() {
                 <div>
                   <label style={{ fontSize: '11px', color: 'var(--mtc-text-2)' }}>Meta Pixel ID</label>
                   <input
+                    id="advancedMetaPixelId"
                     className="mtc-field"
                     placeholder="e.g. 1029384756102938"
                     disabled={!advancedMode}
                     defaultValue={meta.connected ? meta.pixel.id : ''}
                     style={{ background: '#100b1a', border: '1px solid var(--mtc-border)', borderRadius: '9px', color: '#fff', padding: '8px 11px', fontSize: '11.5px', width: '100%', marginTop: '4px' }}
+                    onBlur={(e) => {
+                      if (advancedMode) {
+                        const val = e.target.value.trim();
+                        saveState({
+                          meta: {
+                            ...meta,
+                            connected: !!val,
+                            pixel: { id: val, name: val ? 'Custom Pixel' : '' }
+                          }
+                        });
+                      }
+                    }}
                   />
                 </div>
 
                 <div style={{ marginTop: '8px' }}>
                   <label style={{ fontSize: '11px', color: 'var(--mtc-text-2)' }}>GA4 Measurement ID</label>
                   <input
+                    id="advancedGA4Id"
                     className="mtc-field"
                     placeholder="e.g. G-K3P9XQ21LM"
                     disabled={!advancedMode}
                     defaultValue={google.connected ? google.property.measurementId : ''}
                     style={{ background: '#100b1a', border: '1px solid var(--mtc-border)', borderRadius: '9px', color: '#fff', padding: '8px 11px', fontSize: '11.5px', width: '100%', marginTop: '4px' }}
-                  />
-                </div>
-
-                <div style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '11px', color: 'var(--mtc-text-2)' }}>Server Webhook URL</label>
-                  <input
-                    className="mtc-field"
-                    placeholder="https://yourdomain.com/api/v1/webhook"
-                    disabled={!advancedMode}
-                    style={{ background: '#100b1a', border: '1px solid var(--mtc-border)', borderRadius: '9px', color: '#fff', padding: '8px 11px', fontSize: '11.5px', width: '100%', marginTop: '4px' }}
+                    onBlur={(e) => {
+                      if (advancedMode) {
+                        const val = e.target.value.trim();
+                        saveState({
+                          google: {
+                            ...google,
+                            connected: !!val,
+                            property: { measurementId: val, name: val ? 'Custom GA4 Property' : '' }
+                          }
+                        });
+                      }
+                    }}
                   />
                 </div>
               </div>
               <div className="mtc-note">
-                ⚙️ {L('To sync true production conversions via Facebook Graph & Google Analytics APIs, ensure your Node/Next server routes handle OAuth redirects securely. Client secrets must remain encrypted on your server environment variables.', 'للتواصل الحقيقي مع خوادم فيسبوك وجوجل سحابياً، يرجى تهيئة إعادة توجيه OAuth على خوادمك بشكل آمن. يجب إبقاء مفاتيح الحسابات مشفرة في لوحة تحكم الخادم فقط لضمان الأمان.')}
+                ⚙️ {L('Client secrets and webhook variables are loaded globally inside client profiles. Verify server deployment settings to ensure data accuracy.', 'يتم تحميل مفاتيح الحسابات المشفرة ومتحولات الخادم في لوحة تحكم الخادم لضمان أمان الإرسال.')}
               </div>
             </div>
           )}
@@ -804,15 +849,15 @@ export default function TrackingCenterView() {
                 <div className="mtc-modal-title" style={{ fontSize: '15px', fontWeight: '700', color: '#fff' }}>
                   {wizard.provider === 'meta' ? L('Link Meta Account', 'ربط حساب فيسبوك (Meta)') : L('Link Google Account', 'ربط حساب جوجل (Google)')}
                 </div>
-                <span className="mtc-close" onClick={closeWizard} style={{ cursor: 'pointer', color: 'var(--mtc-text-2)', fontSize: '18px', position: 'absolute', right: isRtl ? 'auto' : '0', left: isRtl ? '0' : 'auto' }}>✕</span>
+                <span className="mtc-close" onClick={closeWizard} style={{ cursor: 'pointer', color: 'var(--mtc-text-2)', fontSize: '18px', position: 'absolute', [isRtl ? 'left' : 'right']: '0', [isRtl ? 'right' : 'left']: 'auto' }}>✕</span>
               </div>
 
               {/* Wizard Body content */}
               <div className="mtc-wizard-body" style={{ minHeight: '180px' }}>
                 {wizard.provider === 'meta' && (
                   <div>
-                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--mtc-text-1)', lineHeight: '1.6' }}>
-                      {L('Enter your Meta Pixel ID below to connect it directly to your UpKlick pages.', 'قم بإدخال رقم الـ Meta Pixel الخاص بك بالأسفل ليتم ربطه فوراً في كافة صفحاتك ومشاريعك.')}
+                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--mtc-text-1)', lineHeight: '1.6', textAlign: isRtl ? 'right' : 'left' }}>
+                      {L('Enter your Meta Pixel ID below to connect it directly to the platform.', 'قم بإدخال رقم الـ Meta Pixel الخاص بك بالأسفل ليتم ربطه فوراً في المنصة.')}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <input 
@@ -829,7 +874,7 @@ export default function TrackingCenterView() {
                           const val = document.getElementById('directPixelId')?.value?.trim();
                           if(val) saveDirectIntegration('meta', val);
                         }}
-                        style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold' }}
+                        style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', justifyContent: 'center' }}
                       >
                         {L('Save Connection', 'حفظ التتبع وربط')}
                       </button>
@@ -839,8 +884,8 @@ export default function TrackingCenterView() {
 
                 {wizard.provider === 'google' && (
                   <div>
-                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--mtc-text-1)', lineHeight: '1.6' }}>
-                      {L('Enter your Google Analytics 4 Measurement ID below to connect it directly to your UpKlick pages.', 'قم بإدخال رمز القياس (Measurement ID) الخاص بحساب GA4 ليتم ربطه فوراً.')}
+                    <div style={{ fontSize: '13px', marginBottom: '12px', color: 'var(--mtc-text-1)', lineHeight: '1.6', textAlign: isRtl ? 'right' : 'left' }}>
+                      {L('Enter your Google Analytics 4 Measurement ID below to connect it directly to the platform.', 'قم بإدخال رمز القياس (Measurement ID) الخاص بحساب GA4 ليتم ربطه فوراً.')}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <input 
@@ -857,14 +902,13 @@ export default function TrackingCenterView() {
                           const val = document.getElementById('directGA4Id')?.value?.trim();
                           if(val) saveDirectIntegration('google', val);
                         }}
-                        style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold' }}
+                        style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', justifyContent: 'center' }}
                       >
                         {L('Save Connection', 'حفظ التتبع وربط')}
                       </button>
                     </div>
                   </div>
                 )}
-
               </div>
 
             </div>

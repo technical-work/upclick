@@ -54,7 +54,8 @@ const LayoutContent = ({ children }) => {
         { path: '/admin?tab=sales', label: t('nav.salesMgmt'), step: 1, roles: ['admin'] },
         { path: '/admin?tab=branding', label: t('nav.brandingSettings'), step: 2, roles: ['admin'] },
         { path: '/admin?tab=payments', label: t('nav.paymentSettings'), step: 3, roles: ['admin'] },
-        { path: '/admin?tab=ai', label: i18n.language === 'ar' ? 'إعدادات الذكاء الاصطناعي' : 'AI Settings', step: 4, roles: ['admin'] }
+        { path: '/admin?tab=ai', label: i18n.language === 'ar' ? 'إعدادات الذكاء الاصطناعي' : 'AI Settings', step: 4, roles: ['admin'] },
+        { path: '/admin?tab=tracking', label: t('nav.trackingSettings'), step: 5, roles: ['admin'] }
       ]
     },
     {

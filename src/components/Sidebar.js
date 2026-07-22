@@ -137,7 +137,6 @@ export default function Sidebar() {
         { page: 'marketing', label: 'Marketing OS', icon: Megaphone, id: 'sb-marketing' },
         { page: 'content', label: 'Content Hub', icon: Sparkles },
         { page: 'automation', label: 'Automation Hub', icon: Zap },
-        { page: 'tracking-center', label: 'Pixel & Tracking', icon: Radio },
         { page: 'ai-growth', label: 'AI Growth Intel', icon: TrendingUp }
       ]
     },
@@ -286,7 +285,7 @@ export default function Sidebar() {
 
         {sections.map(sec => {
           const visibleItems = sec.items.filter(item => {
-            if (['home', 'profile', 'model-test', 'billing', 'support', 'courses', 'tracking-center'].includes(item.page)) return true;
+            if (['home', 'profile', 'model-test', 'billing', 'support', 'courses'].includes(item.page)) return true;
             if (userData?.allowedTools) {
               return userData.allowedTools.includes(item.page);
             }

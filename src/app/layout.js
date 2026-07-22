@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import GlobalTracking from "@/components/GlobalTracking";
 
 export const metadata = {
   title: "UpKlick",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <AuthProvider>
+          <GlobalTracking />
           {children}
         </AuthProvider>
       </body>

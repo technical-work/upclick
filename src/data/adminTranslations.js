@@ -14,6 +14,7 @@ export const adminTranslations = {
     'nav.salesMgmt': 'إدارة المبيعات',
     'nav.brandingSettings': 'إعدادات صفحة الهبوط',
     'nav.paymentSettings': 'إعدادات الدفع',
+    'nav.trackingSettings': 'البيكسل والتتبع',
     'nav.logout': 'تسجيل الخروج',
 
     // Dashboard info
@@ -228,6 +229,7 @@ export const adminTranslations = {
     'nav.salesMgmt': 'Sales Management',
     'nav.brandingSettings': 'Landing Page Settings',
     'nav.paymentSettings': 'Payment Settings',
+    'nav.trackingSettings': 'Pixel & Tracking',
     'nav.logout': 'Logout',
 
     // Dashboard info

@@ -82,11 +82,38 @@ export const Tracking = {
   },
 
   /**
+   * Identify user
+   */
+  identify: (userId, traits = {}) => {
+    if (typeof window !== 'undefined') {
+      if (typeof window.gtag === 'function') {
+        window.gtag('set', 'user_properties', { user_id: userId, ...traits });
+      }
+      notifyDashboard('Identify User', { userId, ...traits });
+    }
+  },
+
+  /**
    * Generic custom event tracker
    * @param {string} eventName The name of the event
    * @param {object} payload Additional metadata
    */
   track: (eventName, payload = {}) => {
+    if (typeof window !== 'undefined') {
+      if (typeof window.fbq === 'function') {
+        window.fbq('trackCustom', eventName, payload);
+      }
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', eventName, payload);
+      }
+      notifyDashboard(eventName, payload);
+    }
+  },
+
+  /**
+   * Alias for custom event tracking
+   */
+  custom: (eventName, payload = {}) => {
     if (typeof window !== 'undefined') {
       if (typeof window.fbq === 'function') {
         window.fbq('trackCustom', eventName, payload);

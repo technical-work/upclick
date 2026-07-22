@@ -52,6 +52,7 @@ import { useAuth } from '../../context/AuthContext';
 import BrandingSettings from './BrandingSettings';
 import PaymentSettingsPage from './PaymentSettingsPage';
 import AiSettingsPage from './AiSettingsPage';
+import TrackingSettingsPage from './TrackingSettingsPage';
 
 const secondaryFirebaseConfig = {
   apiKey: "AIzaSyCaswftcLmfIepG_F8fzizqGXFl5mnXvj8",
@@ -1223,6 +1224,7 @@ const AdminDashboard = () => {
              activeTab === 'branding' ? t('admin.brandingTitle') :
              activeTab === 'payments' ? t('admin.paymentsTitle') :
              activeTab === 'support' ? (isRTL ? 'الدعم الفني والشكاوى' : 'Support Tickets') :
+             activeTab === 'tracking' ? t('nav.trackingSettings') :
              t('admin.statsTitle')}
           </h2>
           <p style={{ color: 'var(--text2)', fontSize: '14px' }}>
@@ -1231,6 +1233,7 @@ const AdminDashboard = () => {
              activeTab === 'branding' ? t('admin.brandingDesc') :
              activeTab === 'payments' ? t('admin.paymentsDesc') :
              activeTab === 'support' ? (isRTL ? 'متابعة وحل مشكلات العملاء وفتح المحادثات الفورية' : 'Manage customer issues and open chat threads') :
+             activeTab === 'tracking' ? (isRTL ? 'إدارة وتتبع أكواد البيكسل والتحليلات الخاصة بالمنصة' : 'Manage and track platform pixel and analytics configurations') :
              t('admin.statsDesc')}
           </p>
           {error && <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', padding: '10px 15px', borderRadius: '8px', marginTop: '10px', fontSize: '13px', border: '1px solid rgba(239,68,68,0.2)' }}>⚠️ {error}</div>}
@@ -1712,6 +1715,8 @@ const AdminDashboard = () => {
         <PaymentSettingsPage />
       ) : activeTab === 'ai' && userData?.role === 'admin' ? (
         <AiSettingsPage />
+      ) : activeTab === 'tracking' && userData?.role === 'admin' ? (
+        <TrackingSettingsPage />
       ) : activeTab === 'support' && userData?.role === 'admin' ? (
         <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (

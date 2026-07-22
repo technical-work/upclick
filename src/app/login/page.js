@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Tracking } from '@/lib/tracking';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -65,9 +66,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      Tracking.custom('LoginAttempt', { email });
       await login(email, password);
+      Tracking.track('Login', { email });
     } catch (err) {
       console.error(err);
+      Tracking.custom('LoginFailed', { error: err.message });
       setError('فشل تسجيل الدخول. يرجى التحقق من البريد الإلكتروني وكلمة المرور.');
       setLoading(false);
     }
