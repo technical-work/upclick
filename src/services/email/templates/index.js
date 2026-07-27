@@ -151,7 +151,7 @@ export function getVerificationEmailTemplate({ name, code, verificationLink }) {
   `;
 }
 
-export function getResetPasswordEmailTemplate({ name, resetLink }) {
+export function getResetPasswordEmailTemplate({ name, code, resetLink }) {
   const recipientName = name ? name : 'عزيزنا المستخدم';
   return `
 <!DOCTYPE html>
@@ -160,7 +160,27 @@ export function getResetPasswordEmailTemplate({ name, resetLink }) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>إعادة تعيين كلمة المرور - UpKlick</title>
-  <style>${baseEmailStyle}</style>
+  <style>
+    ${baseEmailStyle}
+    .code-box {
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.12), rgba(108, 53, 255, 0.18));
+      border: 1.5px solid rgba(108, 53, 255, 0.35);
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      margin: 28px 0;
+    }
+    .code-digits {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: 12px;
+      color: #FF6B35;
+      margin: 12px 0;
+      direction: ltr;
+      display: inline-block;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -172,19 +192,24 @@ export function getResetPasswordEmailTemplate({ name, resetLink }) {
       <p class="text">
         مرحباً ${recipientName}، لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في UpKlick.
       </p>
-      <p class="text">
-        اضغط على الزر أدناه لاختيار كلمة مرور جديدة لحسابك:
-      </p>
-      <div class="btn-wrapper">
-        <a href="${resetLink}" target="_blank" class="btn">إعادة تعيين كلمة المرور</a>
+      
+      ${code ? `
+      <div class="code-box">
+        <div style="font-size: 13px; color: #a0aec0; margin-bottom: 6px;">رمز إعادة تعيين كلمة المرور</div>
+        <div class="code-digits">${code}</div>
+        <div style="font-size: 12px; color: #718096; margin-top: 8px;">الرمز صالح لمدة 15 دقيقة</div>
       </div>
+      ` : ''}
+
+      ${resetLink ? `
+      <div class="btn-wrapper">
+        <a href="${resetLink}" target="_blank" class="btn">أو التغيير المباشر عبر الرابط</a>
+      </div>
+      ` : ''}
+
       <p class="text" style="font-size: 13px; color: #718096;">
         إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذه الرسالة. ستبقى كلمة المرور الحالية دون تغيير.
       </p>
-      <div class="alt-link-text">
-        إذا تعذر عليك النقر على الزر، يمكنك استخدام الرابط التالي:<br>
-        <a href="${resetLink}" style="color: #6C35FF;">${resetLink}</a>
-      </div>
     </div>
     <div class="footer">
       &copy; ${new Date().getFullYear()} UpKlick. جميع الحقوق محفوظة.

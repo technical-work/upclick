@@ -10,28 +10,59 @@ export async function POST(req) {
     const { email } = await req.json();
 
     if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+      return NextResponse.json({ error: 'البريد الإلكتروني مطلوب' }, { status: 400 });
     }
 
-    const { adminAuth } = await getFirebaseAdmin();
+    const { adminAuth, adminDb } = await getFirebaseAdmin();
 
-    if (!adminAuth) {
-      console.warn('[send-reset-password] Firebase Admin Auth is not initialized.');
-      return NextResponse.json({ success: false, warning: 'Firebase Admin Auth is not initialized on server' }, { status: 200 });
+    // 1. Generate 6-digit OTP code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
+
+    let userName = '';
+    let targetUid = null;
+
+    if (adminAuth) {
+      try {
+        const userRecord = await adminAuth.getUserByEmail(email);
+        targetUid = userRecord.uid;
+        userName = userRecord.displayName || '';
+      } catch (uErr) {
+        console.warn('[send-reset-password] User not found in Firebase Auth:', uErr.message);
+      }
     }
 
+    // Save OTP code in Firestore user doc safely
+    if (targetUid && adminDb) {
+      try {
+        await adminDb.collection('users').doc(targetUid).set({
+          resetPasswordCode: code,
+          resetPasswordExpires: expiresAt
+        }, { merge: true });
+      } catch (dbErr) {
+        console.warn('[send-reset-password] Could not save code in adminDb:', dbErr.message);
+      }
+    }
+
+    // 2. Generate fallback Firebase password reset link
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
-    const actionCodeSettings = {
-      url: `${appUrl}/login`,
-      handleCodeInApp: false
-    };
+    let resetLink = '';
+    if (adminAuth) {
+      try {
+        resetLink = await adminAuth.generatePasswordResetLink(email, {
+          url: `${appUrl}/login`,
+          handleCodeInApp: false
+        });
+      } catch (lErr) {
+        console.warn('[send-reset-password] Action link error:', lErr.message);
+      }
+    }
 
-    // Generate secure Firebase password reset link
-    const resetLink = await adminAuth.generatePasswordResetLink(email, actionCodeSettings);
-
-    // Send email using Resend via abstract email service
+    // 3. Send email via Resend
     const emailResult = await emailService.sendPasswordResetEmail({
       to: email,
+      name: userName,
+      code,
       resetLink
     });
 
@@ -42,7 +73,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: 'Password reset email sent successfully',
+      message: 'Password reset code sent successfully',
       simulated: emailResult.simulated || false
     });
   } catch (error) {
