@@ -13,6 +13,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'البريد الإلكتروني مطلوب' }, { status: 400 });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
     const { adminAuth, adminDb } = await getFirebaseAdmin();
 
     // 1. Generate 6-digit OTP code
@@ -24,7 +25,7 @@ export async function POST(req) {
 
     if (adminAuth) {
       try {
-        const userRecord = await adminAuth.getUserByEmail(email);
+        const userRecord = await adminAuth.getUserByEmail(cleanEmail);
         targetUid = userRecord.uid;
         userName = userRecord.displayName || '';
       } catch (uErr) {
@@ -32,8 +33,28 @@ export async function POST(req) {
       }
     }
 
-    // Save OTP code in Firestore user doc safely
-    if (targetUid && adminDb) {
+    // Fallback Firestore search by email if targetUid is still null
+    if (!targetUid && adminDb) {
+      try {
+        const snap = await adminDb.collection('users').where('email', '==', cleanEmail).get();
+        if (!snap.empty) {
+          targetUid = snap.docs[0].id;
+          userName = snap.docs[0].data()?.name || '';
+        }
+      } catch (fErr) {
+        console.warn('[send-reset-password] Firestore email query error:', fErr.message);
+      }
+    }
+
+    if (!targetUid) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'لم يتم العثور على حساب مسجل بهذا البريد الإلكتروني. يرجى التأكد من البريد أو إنشاء حساب جديد.' 
+      }, { status: 404 });
+    }
+
+    // Save OTP code in Firestore user doc
+    if (adminDb) {
       try {
         await adminDb.collection('users').doc(targetUid).set({
           resetPasswordCode: code,
@@ -49,7 +70,7 @@ export async function POST(req) {
     let resetLink = '';
     if (adminAuth) {
       try {
-        resetLink = await adminAuth.generatePasswordResetLink(email, {
+        resetLink = await adminAuth.generatePasswordResetLink(cleanEmail, {
           url: `${appUrl}/login`,
           handleCodeInApp: false
         });
@@ -60,7 +81,7 @@ export async function POST(req) {
 
     // 3. Send email via Resend
     const emailResult = await emailService.sendPasswordResetEmail({
-      to: email,
+      to: cleanEmail,
       name: userName,
       code,
       resetLink
@@ -68,7 +89,11 @@ export async function POST(req) {
 
     if (!emailResult.success && !emailResult.simulated) {
       console.warn('[send-reset-password] Email send warning:', emailResult.error);
-      return NextResponse.json({ success: false, warning: 'Failed to send password reset email', details: emailResult.error }, { status: 200 });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'تعذر إرسال البريد الإلكتروني حالياً. يرجى التأكد من كتابة البريد بشكل صحيح أو المحاولة لاحقاً.',
+        details: emailResult.error 
+      }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -78,6 +103,6 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error('[send-reset-password] Server Error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Failed to process request' }, { status: 200 });
+    return NextResponse.json({ success: false, error: error.message || 'حدث خطأ غير متوقع' }, { status: 500 });
   }
 }
