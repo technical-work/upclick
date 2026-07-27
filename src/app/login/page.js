@@ -216,7 +216,7 @@ export default function LoginPage() {
         <p style={{ ...styles.subtitle, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
           {isForgotPassword
             ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزاً لإعادة تعيين كلمة المرور.'
-            : tenantConfig?.tagline || 'أدخل بياناتك للوصول إلى لوحة التحكم'
+            : tenantConfig?.tagline || 'نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب'
           }
         </p>
 
