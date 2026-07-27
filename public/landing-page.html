@@ -158,7 +158,7 @@
     /* HEADER */
     #hdr {
       position: fixed;
-      top: 16px;
+      top: 24px;
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
@@ -175,7 +175,7 @@
     }
 
     #hdr.scrolled {
-      top: 8px;
+      top: 12px;
       background: rgba(8, 8, 15, 0.85);
       border-color: rgba(255, 255, 255, 0.12);
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -726,11 +726,12 @@
     }
 
     .screen-preview {
-      padding: 12px;
-      min-height: 130px;
+      padding: 0;
+      height: 160px;
       display: flex;
       flex-direction: column;
-      gap: 7px
+      overflow: hidden;
+      background: #08080f;
     }
 
     .sp-row {
@@ -779,37 +780,49 @@
     }
 
     .tools-wrap {
-      max-width: 1200px;
+      max-width: 800px;
       margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1.4fr;
-      gap: 60px;
-      align-items: center
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
     }
 
     .tools-list {
       display: flex;
       flex-direction: column;
-      gap: 10px
+      gap: 12px
+    }
+
+    .tool-accordion-item {
+      border: 1px solid var(--edge);
+      border-radius: 14px;
+      background: var(--s1);
+      margin-bottom: 12px;
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    .tool-accordion-item.active {
+      border-color: rgba(255, 107, 53, 0.3);
+      background: rgba(16, 16, 24, 0.6);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     }
 
     .tool-item {
       display: flex;
       align-items: center;
       gap: 14px;
-      padding: 14px 16px;
-      border-radius: 14px;
-      border: 1px solid var(--edge);
-      background: var(--s1);
+      padding: 16px 20px;
       cursor: pointer;
-      transition: all .2s
+      width: 100%;
+      border: none !important;
+      background: transparent !important;
+      transition: all 0.2s ease;
     }
 
     .tool-item:hover,
     .tool-item.on {
-      border-color: rgba(255, 107, 53, .3);
-      background: var(--or-d);
-      transform: translateX(4px)
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .tool-item.on .tool-name {
@@ -844,20 +857,32 @@
       margin-left: auto;
       color: var(--t3);
       font-size: 14px;
-      transition: all .2s
+      transition: transform 0.3s ease;
     }
 
-    .tool-item.on .tool-arrow {
+    html[dir="rtl"] .tool-arrow {
+      margin-left: 0;
+      margin-right: auto;
+      transform: scaleX(-1);
+    }
+
+    .tool-accordion-item.active .tool-arrow {
+      transform: rotate(90deg) !important;
       color: var(--or);
-      transform: translateX(3px)
+    }
+
+    .tool-content-wrapper {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .tool-demo {
-      background: var(--s1);
-      border: 1px solid var(--edge2);
-      border-radius: var(--r3);
-      overflow: hidden;
-      min-height: 340px;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      padding: 0 20px 20px 20px !important;
+      min-height: auto !important;
       transition: all .3s;
       display: flex;
       flex-direction: column
@@ -1071,93 +1096,64 @@
     }
 
     .ss-sidebar {
-      width: 180px;
+      width: 220px;
       background: var(--s2);
       border-right: 1px solid var(--edge);
-      padding: 12px;
+      padding: 16px;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
-      gap: 4px
+      gap: 8px;
+      user-select: none;
+    }
+
+    html[dir="rtl"] .ss-sidebar {
+      border-right: none;
+      border-left: 1px solid var(--edge);
     }
 
     .ss-sb-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      color: var(--t2)
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      color: var(--t2);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .ss-sb-item:hover {
+      color: var(--t1);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .ss-sb-item.on {
       background: var(--or-d);
-      color: var(--or)
+      color: var(--or);
+      font-weight: 600;
     }
 
-    .ss-sb-sep {
-      font-size: 9px;
-      font-weight: 700;
-      color: var(--t3);
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      padding: 8px 10px 2px
-    }
-
-    .ss-content {
+    .ss-image-container {
       flex: 1;
-      padding: 16px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      align-content: start
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--s1);
+      min-height: 400px;
     }
 
-    .ss-stat {
-      background: var(--s2);
-      border-radius: 10px;
-      padding: 12px;
-      border: 1px solid var(--edge);
-      position: relative;
-      overflow: hidden
-    }
-
-    .ss-stat::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1.5px;
-      background: linear-gradient(90deg, var(--or), var(--pu))
-    }
-
-    .ss-stat-n {
-      font-family: var(--ff);
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--t1);
-      margin-top: 4px
-    }
-
-    .ss-stat-l {
-      font-size: 10px;
-      color: var(--t3)
-    }
-
-    .ss-wide {
-      grid-column: span 2
-    }
-
-    .ss-ai-box {
-      background: var(--or-d);
-      border: 1px solid rgba(255, 107, 53, .2);
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 11.5px;
-      color: var(--t1);
-      line-height: 1.6
+    .ss-image-container img {
+      width: 100%;
+      height: auto;
+      max-height: 550px;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--edge2);
     }
 
     /* ═══ 7. REVIEWS ═══ */
@@ -1178,8 +1174,8 @@
 
     .reviews-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 18px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
       margin-bottom: 20px
     }
 
@@ -1187,7 +1183,7 @@
       background: var(--s1);
       border: 1px solid var(--edge);
       border-radius: var(--r2);
-      padding: 24px;
+      padding: 14px 16px;
       transition: all .25s
     }
 
@@ -1208,10 +1204,10 @@
     }
 
     .review-text {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--t1);
-      line-height: 1.7;
-      margin-bottom: 16px;
+      line-height: 1.6;
+      margin-bottom: 12px;
       font-style: italic
     }
 
@@ -1222,27 +1218,27 @@
     }
 
     .reviewer-av {
-      width: 38px;
-      height: 38px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--or), var(--pu));
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
-      font-size: 14px;
+      font-size: 12px;
       color: #fff;
       flex-shrink: 0
     }
 
     .reviewer-name {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--t1)
     }
 
     .reviewer-role {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--t2)
     }
 
@@ -1976,8 +1972,9 @@
     /* Large screens (>= 1200px) - scale up elements to prevent "far away" feel */
     @media (min-width: 1200px) {
       #hdr {
-        top: 20px !important;
+        top: 24px !important;
         width: 92% !important;
+        max-width: 1300px !important;
       }
 
       #hero {
@@ -2124,6 +2121,15 @@
     @media(max-width:768px) {
 
       /* Header */
+      #hdr {
+        top: 16px !important;
+        width: 92% !important;
+      }
+
+      #hdr.scrolled {
+        top: 8px !important;
+      }
+
       .nav {
         display: none
       }
@@ -2175,51 +2181,269 @@
         color: var(--or)
       }
 
-      /* Mobile nav overlay */
+      /* Mobile nav drawer style */
       #mob-nav {
-        display: none;
         position: fixed;
-        inset: 0;
-        background: rgba(8, 8, 15, .97);
-        z-index: 999;
+        top: 0;
+        bottom: 0;
+        width: 300px;
+        height: 100vh;
+        background: rgba(10, 10, 16, 0.85);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 9999;
+        display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 28px
+        align-items: stretch;
+        justify-content: flex-start;
+        padding: 24px;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Slide direction based on HTML dir */
+      html[dir="rtl"] #mob-nav {
+        right: 0;
+        left: auto;
+        transform: translateX(100%);
+        border-right: none;
+      }
+
+      html[dir="ltr"] #mob-nav {
+        left: 0;
+        right: auto;
+        transform: translateX(-100%);
+        border-left: none;
       }
 
       #mob-nav.open {
-        display: flex
+        display: flex !important;
+        transform: translateX(0) !important;
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
       }
 
-      #mob-nav a {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--t1);
-        text-decoration: none;
-        font-family: var(--ff);
-        transition: color .2s
+      .mob-nav-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: 24px;
       }
 
-      #mob-nav a:hover {
-        color: var(--or)
-      }
-
-      #mob-nav .mob-close {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: var(--s2);
-        border: 1px solid var(--edge);
+      .mob-close-btn {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 20px;
-        color: var(--t2)
+        font-size: 14px;
+        color: var(--t2);
+        transition: all 0.2s ease;
+      }
+
+      .mob-close-btn:hover {
+        color: var(--t1);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+
+      .mob-nav-body {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+      }
+
+      .mob-nav-body a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--t2);
+        text-decoration: none;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .mob-nav-icon {
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        color: var(--t2);
+        transition: all 0.25s ease;
+        flex-shrink: 0;
+      }
+
+      .mob-nav-body a:hover {
+        color: var(--t1);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .mob-nav-body a:hover .mob-nav-icon {
+        background: var(--or-d);
+        border-color: rgba(255, 107, 53, 0.2);
+        color: var(--or);
+      }
+
+      .mob-nav-footer {
+        display: flex;
+        flex-direction: column;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        margin-top: auto;
+      }
+
+      .mob-lang-switcher {
+        display: flex;
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+      }
+
+      .lang-tab {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: var(--t3);
+        padding: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+
+      .lang-tab.on {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--t1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      html[dir="rtl"] #mob-nav .mob-close {
+        left: 16px;
+        right: auto;
+      }
+
+      html[dir="ltr"] #mob-nav .mob-close {
+        right: 16px;
+        left: auto;
+      }
+
+      #mob-nav-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 9998;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      /* Mobile layout adjustments for tools accordion */
+      .tools-wrap {
+        gap: 16px !important;
+      }
+
+      /* Reviews 2 Columns on Mobile */
+      .reviews-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+      }
+
+      .review-featured {
+        grid-column: span 1 !important;
+      }
+
+      .review-card {
+        padding: 10px 12px !important;
+      }
+
+      .review-text {
+        font-size: 11px !important;
+        line-height: 1.5 !important;
+        margin-bottom: 8px !important;
+      }
+
+      .reviewer-name {
+        font-size: 11px !important;
+      }
+
+      .reviewer-role {
+        font-size: 9px !important;
+      }
+
+      .reviewer-av {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 11px !important;
+      }
+
+      /* Personas 2 Columns on Mobile */
+      .personas-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+      }
+
+      .personas-grid .persona-card:last-child {
+        grid-column: span 2 !important;
+      }
+
+      .persona-card {
+        padding: 16px 20px !important;
+      }
+
+      .persona-emoji {
+        font-size: 32px !important;
+        margin-bottom: 8px !important;
+      }
+
+      .persona-title {
+        font-size: 16px !important;
+      }
+
+      .persona-desc {
+        font-size: 12.5px !important;
+        line-height: 1.6 !important;
+      }
+
+      /* Pricing 2 Columns on Mobile */
+      .pricing-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        max-width: 100% !important;
+      }
+
+      .pricing-grid .price-card:last-child {
+        grid-column: span 2 !important;
+        max-width: 500px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .price-card {
+        padding: 16px 20px !important;
+      }
+
+      .price-amount {
+        font-size: 24px !important;
       }
 
       /* Hero */
@@ -2336,6 +2560,10 @@
       /* Screens grid → 2 columns on mobile */
       .screens-grid {
         grid-template-columns: 1fr 1fr !important
+      }
+
+      .screen-preview {
+        height: 110px !important;
       }
 
       /* Tools */
@@ -2552,11 +2780,11 @@
   </div>
 
   <!-- ══════════════ HEADER ══════════════ -->
+  <!-- ══════════════ HEADER ══════════════ -->
   <header id="hdr">
     <div class="hdr-inner">
       <div class="hdr-brand-group">
-        <button class="mob-menu-btn" onclick="document.getElementById('mob-nav').classList.toggle('open')"
-          aria-label="Menu">☰</button>
+        <button class="mob-menu-btn" onclick="toggleMobNav(true)" aria-label="Menu">☰</button>
         <a href="#" class="logo">
           <img src="/best_logo_dark.png" alt="UpKlick">
         </a>
@@ -2576,28 +2804,53 @@
     </div>
   </header>
 
-  <!-- Mobile Navigation Overlay -->
+  <!-- Mobile Navigation Overlay Drawer -->
   <div id="mob-nav">
-    <button class="mob-close" onclick="document.getElementById('mob-nav').classList.remove('open')">✕</button>
-    <a href="#preview" onclick="document.getElementById('mob-nav').classList.remove('open')"
-      data-t="landing-nav-dashboard">Dashboard</a>
-    <a href="#tools" onclick="document.getElementById('mob-nav').classList.remove('open')"
-      data-t="landing-nav-tools">Tools</a>
-    <a href="#who" onclick="document.getElementById('mob-nav').classList.remove('open')" data-t="landing-nav-forwho">For
-      Who</a>
-    <a href="#pricing" onclick="document.getElementById('mob-nav').classList.remove('open')"
-      data-t="landing-nav-pricing">Pricing</a>
-    <a href="#roadmap" onclick="document.getElementById('mob-nav').classList.remove('open')"
-      data-t="landing-nav-roadmap">Roadmap</a>
-    <a href="/register?cta=start_free" class="btn btn-prime btn-xl"
-      style="margin-top:8px; width: 100%; max-width: 280px; justify-content: center;"
-      data-t="landing-nav-startfree">Start Free →</a>
-    <a href="/login" class="btn btn-ghost btn-xl" style="width: 100%; max-width: 280px; justify-content: center;"
-      data-t="landing-nav-signin">Sign In</a>
-    <button class="btn btn-ghost btn-xl"
-      onclick="toggleLang(this); document.getElementById('mob-nav').classList.remove('open')"
-      style="width: 100%; max-width: 280px; justify-content: center;" data-t="landing-btn-lang">عربي</button>
+    <div class="mob-nav-header">
+      <div class="logo" style="height: auto; width: auto; max-width: 110px; margin-top: 0;">
+        <img src="/best_logo_dark.png" alt="UpKlick" style="height: 28px; width: auto; margin-top: 0;">
+      </div>
+      <button class="mob-close-btn" onclick="toggleMobNav(false)">✕</button>
+    </div>
+
+    <div class="mob-nav-body">
+      <a href="#preview" onclick="toggleMobNav(false)">
+        <span class="mob-nav-icon">⌂</span>
+        <span data-t="landing-nav-dashboard">Dashboard</span>
+      </a>
+      <a href="#tools" onclick="toggleMobNav(false)">
+        <span class="mob-nav-icon">🛠️</span>
+        <span data-t="landing-nav-tools">Tools</span>
+      </a>
+      <a href="#who" onclick="toggleMobNav(false)">
+        <span class="mob-nav-icon">🎯</span>
+        <span data-t="landing-nav-forwho">For Who</span>
+      </a>
+      <a href="#pricing" onclick="toggleMobNav(false)">
+        <span class="mob-nav-icon">💳</span>
+        <span data-t="landing-nav-pricing">Pricing</span>
+      </a>
+      <a href="#roadmap" onclick="toggleMobNav(false)">
+        <span class="mob-nav-icon">🗺️</span>
+        <span data-t="landing-nav-roadmap">Roadmap</span>
+      </a>
+    </div>
+
+    <div class="mob-nav-footer">
+      <a href="/register?cta=start_free" class="btn btn-prime btn-xl"
+        style="width: 100%; justify-content: center; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);"
+        data-t="landing-nav-startfree">Start Free →</a>
+      <a href="/login" class="btn btn-ghost btn-xl"
+        style="width: 100%; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.08);"
+        data-t="landing-nav-signin">Sign In</a>
+
+      <div class="mob-lang-switcher">
+        <button class="lang-tab" id="mob-lang-ar" onclick="toggleLang('ar'); toggleMobNav(false)">العربية</button>
+        <button class="lang-tab" id="mob-lang-en" onclick="toggleLang('en'); toggleMobNav(false)">English</button>
+      </div>
+    </div>
   </div>
+  <div id="mob-nav-backdrop" onclick="toggleMobNav(false)"></div>
 
   <!-- ══════════════ 1. HERO ══════════════ -->
   <section id="hero">
@@ -2621,7 +2874,8 @@
           </div>
         </div>
         <div class="hero-cta">
-          <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-hero-cta-trial">🚀 Start Free Trial</a>
+          <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-hero-cta-trial">🚀 Start Free
+            Trial</a>
           <a href="#preview" class="btn btn-ghost btn-xl" data-t="landing-hero-cta-preview">See it Live →</a>
         </div>
         <div class="hero-trust">
@@ -2654,42 +2908,10 @@
               <span style="font-size:11px;color:var(--t3);margin-left:8px" data-t="landing-hero-db-title">UpKlick
                 Dashboard</span>
             </div>
-            <div class="dash-inner">
-              <div class="dash-card">
-                <div class="dash-card-lbl" data-t="landing-hero-db-revenue">Revenue</div>
-                <div class="dash-card-val">$8,420</div>
-                <div class="dash-card-ch" data-t="landing-hero-db-revenue-ch">↑ 24% this month</div>
-                <div class="mini-chart">
-                  <div class="mc-bar" style="height:40%"></div>
-                  <div class="mc-bar" style="height:60%"></div>
-                  <div class="mc-bar" style="height:45%"></div>
-                  <div class="mc-bar hi" style="height:75%"></div>
-                  <div class="mc-bar" style="height:55%"></div>
-                  <div class="mc-bar hi" style="height:90%"></div>
-                </div>
-              </div>
-              <div class="dash-card">
-                <div class="dash-card-lbl" data-t="landing-hero-db-leads">Active Leads</div>
-                <div class="dash-card-val">47</div>
-                <div class="dash-card-ch" data-t="landing-hero-db-leads-ch">↑ 12 new today</div>
-                <div class="mini-chart">
-                  <div class="mc-bar" style="height:30%"></div>
-                  <div class="mc-bar" style="height:50%"></div>
-                  <div class="mc-bar hi" style="height:70%"></div>
-                  <div class="mc-bar" style="height:60%"></div>
-                  <div class="mc-bar" style="height:55%"></div>
-                  <div class="mc-bar hi" style="height:85%"></div>
-                </div>
-              </div>
-              <div class="dash-card" style="grid-column:span 2">
-                <div class="dash-card-lbl" style="margin-bottom:8px" data-t="landing-hero-db-brief-title">✦ AI Daily
-                  Brief</div>
-                <div
-                  style="font-size:12px;color:var(--t1);line-height:1.6;background:var(--or-d);border-radius:8px;padding:10px;border:1px solid rgba(255,107,53,.2)"
-                  data-t="landing-hero-db-brief-body">
-                  Your conversion rate is up 18% this week. Focus on following up with 3 warm leads — Mohamed, Sarah,
-                  and Ahmed — who opened your proposal but haven't replied.</div>
-              </div>
+            <div class="dash-inner"
+              style="padding: 0; display: block; height: 340px; overflow: hidden; background: #08080f;">
+              <img src="/media__1785164082872.png" alt="Command Center"
+                style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
             </div>
           </div>
           <div class="float-badge" data-t="landing-hero-db-badge-ai">🤖 AI Analysis Ready</div>
@@ -2743,15 +2965,8 @@
               data-t="landing-ss-dashboard">Dashboard</span>
           </div>
           <div class="screen-preview">
-            <div class="sp-mini-cards">
-              <div class="sp-card"></div>
-              <div class="sp-card"></div>
-              <div class="sp-card"></div>
-              <div class="sp-card"></div>
-            </div>
-            <div class="sp-row" style="width:100%;height:60px;border-radius:8px;background:var(--or-d)"></div>
-            <div class="sp-row or" style="width:80%"></div>
-            <div class="sp-row pu" style="width:60%"></div>
+            <img src="/media__1785164082872.png" alt="Command Center"
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
@@ -2765,22 +2980,8 @@
               CRM</span>
           </div>
           <div class="screen-preview">
-            <div style="display:flex;gap:5px;margin-bottom:5px">
-              <div style="flex:1;height:80px;background:var(--s3);border-radius:8px;padding:8px">
-                <div style="width:60%;height:7px;background:var(--edge2);border-radius:3px;margin-bottom:5px"></div>
-                <div style="width:40%;height:6px;background:var(--or-d);border-radius:3px"></div>
-              </div>
-              <div style="flex:1;height:80px;background:var(--s3);border-radius:8px;padding:8px">
-                <div style="width:70%;height:7px;background:var(--edge2);border-radius:3px;margin-bottom:5px"></div>
-                <div style="width:50%;height:6px;background:var(--pu-d);border-radius:3px"></div>
-              </div>
-              <div style="flex:1;height:80px;background:var(--s3);border-radius:8px;padding:8px">
-                <div style="width:50%;height:7px;background:var(--edge2);border-radius:3px;margin-bottom:5px"></div>
-                <div style="width:30%;height:6px;background:var(--s3);border-radius:3px"></div>
-              </div>
-            </div>
-            <div class="sp-row" style="width:100%;height:8px"></div>
-            <div class="sp-row" style="width:80%;height:8px"></div>
+            <img src="/media__1785163909762.png" alt="Smart CRM"
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
@@ -2794,30 +2995,13 @@
               data-t="landing-ss-marketing">Marketing OS</span>
           </div>
           <div class="screen-preview">
-            <div style="display:flex;gap:5px;margin-bottom:8px">
-              <div
-                style="height:26px;padding:0 10px;background:var(--or-d);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--or)"
-                data-t="landing-ss-marketing-tag-research">
-                Research</div>
-              <div
-                style="height:26px;padding:0 10px;background:var(--s3);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--t3)"
-                data-t="landing-ss-marketing-tag-strategy">
-                Strategy</div>
-              <div
-                style="height:26px;padding:0 10px;background:var(--s3);border-radius:20px;display:flex;align-items:center;font-size:10px;color:var(--t3)"
-                data-t="landing-ss-marketing-tag-ads">
-                Ads</div>
-            </div>
-            <div class="sp-row or" style="width:100%;height:50px;border-radius:8px"></div>
-            <div class="sp-row" style="width:70%"></div>
-            <div class="sp-row pu" style="width:50%"></div>
+            <img src="/media__1785165848668.png" alt="Marketing OS"
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
             data-t="landing-ss-marketing-title">📣 Marketing OS</div>
         </div>
-      </div>
-      <div class="screens-grid">
         <div class="screen-card" onclick="selectScreenCard(this)">
           <div class="screen-bar">
             <div class="dot" style="background:#ff5f57"></div>
@@ -2826,15 +3010,8 @@
               data-t="landing-ss-finance-label">Finance</span>
           </div>
           <div class="screen-preview">
-            <div style="display:flex;align-items:flex-end;gap:4px;height:60px">
-              <div style="flex:1;border-radius:3px 3px 0 0;height:40%;background:var(--or-d)"></div>
-              <div style="flex:1;border-radius:3px 3px 0 0;height:60%;background:var(--or-d)"></div>
-              <div style="flex:1;border-radius:3px 3px 0 0;height:45%;background:var(--or-d)"></div>
-              <div style="flex:1;border-radius:3px 3px 0 0;height:80%;background:var(--or)"></div>
-              <div style="flex:1;border-radius:3px 3px 0 0;height:55%;background:var(--or-d)"></div>
-              <div style="flex:1;border-radius:3px 3px 0 0;height:90%;background:var(--or)"></div>
-            </div>
-            <div class="sp-row" style="width:100%;height:8px"></div>
+            <img src="/media__1785165891199.png" alt="Finance"
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
@@ -2848,12 +3025,8 @@
               data-t="landing-ss-growth-label">AI Growth Intel</span>
           </div>
           <div class="screen-preview">
-            <div
-              style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:8px;padding:8px;font-size:10.5px;color:var(--t1);line-height:1.5"
-              data-t="landing-ss-growth-brief">
-              ✦ Your competitor is running 3 ads targeting "online coaching". Opportunity score: 8.4/10</div>
-            <div class="sp-row" style="width:80%"></div>
-            <div class="sp-row pu" style="width:60%"></div>
+            <img src="/media__1785164127152.png" alt="AI Growth Intel"
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
@@ -2867,16 +3040,8 @@
               data-t="landing-ss-telegram-label">Telegram Hub</span>
           </div>
           <div class="screen-preview">
-            <div style="display:flex;flex-direction:column;gap:6px">
-              <div
-                style="background:var(--s3);border-radius:10px 10px 10px 2px;padding:7px 10px;font-size:10.5px;color:var(--t1);max-width:85%"
-                data-t="landing-ss-telegram-msg-in">
-                مرحباً! هل الكورس لا يزال متاحاً؟</div>
-              <div
-                style="background:var(--or-d);border-radius:10px 10px 2px 10px;padding:7px 10px;font-size:10.5px;color:var(--t1);max-width:85%;align-self:flex-end"
-                data-t="landing-ss-telegram-msg-out">
-                أهلاً! نعم، سعيد بمساعدتك 🎓</div>
-            </div>
+            <img src="/media__1785164103096.png" alt="Telegram Hub"
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
@@ -2889,13 +3054,18 @@
   <!-- ══════════════ 4. TOOLS ══════════════ -->
   <section id="tools">
     <div class="tools-wrap reveal">
-      <div>
+      <div style="text-align: center; margin-bottom: 20px; width: 100%;">
         <div class="sec-eyebrow" data-t="landing-tools-eyebrow">🛠️ 32 Built-in Tools</div>
         <h2 class="sec-h2" data-t="landing-tools-title">One tool for every<br><span class="grd">part of your
             business</span></h2>
-        <p class="sec-sub" style="margin-bottom:28px" data-t="landing-tools-sub">Each module is a complete mini-product
+        <p class="sec-sub" style="margin: 0 auto 28px auto;" data-t="landing-tools-sub">Each module is a complete
+          mini-product
           — not a placeholder. Every tool has real AI behind it.</p>
-        <div class="tools-list" id="tools-list">
+      </div>
+
+      <div class="tools-list" id="tools-list" style="width: 100%;">
+
+        <div class="tool-accordion-item active">
           <div class="tool-item on" onclick="selectTool(this,'crm')">
             <div class="tool-icon">🎯</div>
             <div>
@@ -2903,6 +3073,56 @@
               <div class="tool-desc">Pipeline + lead tracking + AI follow-ups</div>
             </div><span class="tool-arrow">→</span>
           </div>
+          <div class="tool-content-wrapper" style="max-height: 600px;">
+            <div class="tool-demo" id="tool-demo">
+              <div class="tool-demo-hd">
+                <span class="tool-demo-icon" id="td-icon">🎯</span>
+                <span class="tool-demo-title" id="td-title">Smart CRM</span>
+              </div>
+              <div class="tool-demo-body" id="td-body">
+                <div class="demo-stat-row">
+                  <div class="demo-stat">
+                    <div class="demo-stat-n">47</div>
+                    <div class="demo-stat-l">Active Leads</div>
+                  </div>
+                  <div class="demo-stat">
+                    <div class="demo-stat-n" style="color:var(--pu)">$12K</div>
+                    <div class="demo-stat-l">Pipeline Value</div>
+                  </div>
+                  <div class="demo-stat">
+                    <div class="demo-stat-n" style="color:#00d98b">68%</div>
+                    <div class="demo-stat-l">Conv. Rate</div>
+                  </div>
+                </div>
+                <div style="background:var(--s2);border-radius:10px;overflow:hidden">
+                  <div
+                    style="display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid var(--edge);font-size:11px;font-weight:700;color:var(--t3)">
+                    <span style="flex:2">NAME</span><span style="flex:1">STATUS</span><span style="flex:1">VALUE</span>
+                  </div>
+                  <div
+                    style="display:flex;gap:8px;padding:8px 10px;font-size:12.5px;color:var(--t1);align-items:center">
+                    <span style="flex:2">محمد الأحمد</span><span style="flex:1"><span
+                        style="background:var(--or-d);color:var(--or);padding:2px 7px;border-radius:20px;font-size:11px">Hot</span></span><span
+                      style="flex:1;color:#00d98b">$2,400</span>
+                  </div>
+                  <div
+                    style="display:flex;gap:8px;padding:8px 10px;font-size:12.5px;color:var(--t1);align-items:center;border-top:1px solid var(--edge)">
+                    <span style="flex:2">سارة الخليفة</span><span style="flex:1"><span
+                        style="background:var(--pu-d);color:var(--pu);padding:2px 7px;border-radius:20px;font-size:11px">Warm</span></span><span
+                      style="flex:1;color:#00d98b">$1,800</span>
+                  </div>
+                </div>
+                <div
+                  style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12.5px;color:var(--t1);margin-top:8px">
+                  ✦ <strong>AI Suggestion:</strong> Follow up with Mohamed — hasn\'t replied in 2 days. Best time: 7-9
+                  PM.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-accordion-item">
           <div class="tool-item" onclick="selectTool(this,'marketing')">
             <div class="tool-icon">📣</div>
             <div>
@@ -2910,6 +3130,10 @@
               <div class="tool-desc">8 tools: research, ads, funnels, AI consultant</div>
             </div><span class="tool-arrow">→</span>
           </div>
+          <div class="tool-content-wrapper"></div>
+        </div>
+
+        <div class="tool-accordion-item">
           <div class="tool-item" onclick="selectTool(this,'telegram')">
             <div class="tool-icon">💬</div>
             <div>
@@ -2917,6 +3141,10 @@
               <div class="tool-desc">Inbox, AI agent, broadcasts, automations</div>
             </div><span class="tool-arrow">→</span>
           </div>
+          <div class="tool-content-wrapper"></div>
+        </div>
+
+        <div class="tool-accordion-item">
           <div class="tool-item" onclick="selectTool(this,'digital')">
             <div class="tool-icon">📦</div>
             <div>
@@ -2924,6 +3152,10 @@
               <div class="tool-desc">Find trends, build plans, sell globally</div>
             </div><span class="tool-arrow">→</span>
           </div>
+          <div class="tool-content-wrapper"></div>
+        </div>
+
+        <div class="tool-accordion-item">
           <div class="tool-item" onclick="selectTool(this,'content')">
             <div class="tool-icon">✦</div>
             <div>
@@ -2931,6 +3163,10 @@
               <div class="tool-desc">Scripts, captions, hooks, viral ideas</div>
             </div><span class="tool-arrow">→</span>
           </div>
+          <div class="tool-content-wrapper"></div>
+        </div>
+
+        <div class="tool-accordion-item">
           <div class="tool-item" onclick="selectTool(this,'growth')">
             <div class="tool-icon">🔮</div>
             <div>
@@ -2938,49 +3174,9 @@
               <div class="tool-desc">Spy on competitors, find winning offers</div>
             </div><span class="tool-arrow">→</span>
           </div>
+          <div class="tool-content-wrapper"></div>
         </div>
-      </div>
-      <div class="tool-demo" id="tool-demo">
-        <div class="tool-demo-hd">
-          <span class="tool-demo-icon" id="td-icon">🎯</span>
-          <span class="tool-demo-title" id="td-title">Smart CRM</span>
-        </div>
-        <div class="tool-demo-body" id="td-body">
-          <div class="demo-stat-row">
-            <div class="demo-stat">
-              <div class="demo-stat-n">47</div>
-              <div class="demo-stat-l">Active Leads</div>
-            </div>
-            <div class="demo-stat">
-              <div class="demo-stat-n" style="color:var(--pu)">$12K</div>
-              <div class="demo-stat-l">Pipeline Value</div>
-            </div>
-            <div class="demo-stat">
-              <div class="demo-stat-n" style="color:#00d98b">68%</div>
-              <div class="demo-stat-l">Conv. Rate</div>
-            </div>
-          </div>
-          <div style="background:var(--s2);border-radius:10px;overflow:hidden">
-            <div
-              style="display:flex;gap:8px;padding:8px 10px;border-bottom:1px solid var(--edge);font-size:11px;font-weight:700;color:var(--t3)">
-              <span style="flex:2">NAME</span><span style="flex:1">STATUS</span><span style="flex:1">VALUE</span>
-            </div>
-            <div style="display:flex;gap:8px;padding:8px 10px;font-size:12.5px;color:var(--t1);align-items:center"><span
-                style="flex:2">محمد الأحمد</span><span style="flex:1"><span
-                  style="background:var(--or-d);color:var(--or);padding:2px 7px;border-radius:20px;font-size:11px">Hot</span></span><span
-                style="flex:1;color:#00d98b">$2,400</span></div>
-            <div
-              style="display:flex;gap:8px;padding:8px 10px;font-size:12.5px;color:var(--t1);align-items:center;border-top:1px solid var(--edge)">
-              <span style="flex:2">سارة الخليفة</span><span style="flex:1"><span
-                  style="background:var(--pu-d);color:var(--pu);padding:2px 7px;border-radius:20px;font-size:11px">Warm</span></span><span
-                style="flex:1;color:#00d98b">$1,800</span>
-            </div>
-          </div>
-          <div
-            style="background:var(--or-d);border:1px solid rgba(255,107,53,.2);border-radius:10px;padding:11px;font-size:12.5px;color:var(--t1)">
-            ✦ <strong>AI Suggestion:</strong> Follow up with Mohamed — hasn't replied in 2 days. Best time: 7-9 PM.
-          </div>
-        </div>
+
       </div>
     </div>
   </section>
@@ -3034,61 +3230,25 @@
           <div class="dot" style="background:#ff5f57"></div>
           <div class="dot" style="background:#febc2e"></div>
           <div class="dot" style="background:#28c840"></div>
-          <div class="ss-url" data-t="landing-ss-url">app.upklick.io/dashboard</div>
+          <div class="ss-url" id="ss-url-display">app.upklick.io/dashboard</div>
         </div>
         <div class="ss-main">
           <div class="ss-sidebar">
-            <div
-              style="padding:4px 6px;margin-bottom:4px;height:20px;width:60px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-              <img src="/new-logo.png" alt="UpKlick" style="height:80px;width:auto;object-fit:contain;margin-top:-2px;">
+            <div class="ss-sb-item on" onclick="changeScreenshot(this, 'dashboard', 'app.upklick.io/dashboard')">
+              <span>⌂</span> <span data-t="ss-tab-dashboard">Dashboard</span>
             </div>
-            <div class="ss-sb-item on" data-t="landing-ss-sb-dashboard">⌂ Dashboard</div>
-            <div class="ss-sb-sep" data-t="landing-ss-sb-grow">Grow</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-crm">🎯 Smart CRM</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-telegram">💬 Telegram</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-marketing">📣 Marketing</div>
-            <div class="ss-sb-sep" data-t="landing-ss-sb-discover">Discover</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-aigrowth">🔮 AI Growth</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-trends">📡 Trends</div>
-            <div class="ss-sb-sep" data-t="landing-ss-sb-manage">Manage</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-tasks">◉ Tasks</div>
-            <div class="ss-sb-item" data-t="landing-ss-sb-finance">💳 Finance</div>
+            <div class="ss-sb-item" onclick="changeScreenshot(this, 'design', 'app.upklick.io/design-studio')">
+              <span>🎨</span> <span data-t="ss-tab-design">Design Studio</span>
+            </div>
+            <div class="ss-sb-item" onclick="changeScreenshot(this, 'telegram', 'app.upklick.io/telegram-hub')">
+              <span>💬</span> <span data-t="ss-tab-telegram">Telegram Hub</span>
+            </div>
+            <div class="ss-sb-item" onclick="changeScreenshot(this, 'trends', 'app.upklick.io/social-trends')">
+              <span>📡</span> <span data-t="ss-tab-trends">Social Trends</span>
+            </div>
           </div>
-          <div class="ss-content">
-            <div class="ss-stat">
-              <div class="ss-stat-l" data-t="landing-ss-stat-revenue">Revenue</div>
-              <div class="ss-stat-n">$8,420</div>
-            </div>
-            <div class="ss-stat">
-              <div class="ss-stat-l" data-t="landing-ss-stat-leads">Active Leads</div>
-              <div class="ss-stat-n">47</div>
-            </div>
-            <div class="ss-stat">
-              <div class="ss-stat-l" data-t="landing-ss-stat-tasks">Tasks</div>
-              <div class="ss-stat-n">12</div>
-            </div>
-            <div class="ss-stat">
-              <div class="ss-stat-l" data-t="landing-ss-stat-followers">Followers</div>
-              <div class="ss-stat-n">284K</div>
-            </div>
-            <div class="ss-stat ss-wide">
-              <div class="ss-stat-l" style="margin-bottom:8px" data-t="landing-ss-stat-brief-title">✦ AI Daily Brief
-              </div>
-              <div class="ss-ai-box" data-t="landing-ss-stat-brief-body">Your conversion rate is up 18% this week. Focus
-                on following up with 3 warm leads
-                who opened your proposal. Revenue target: 67% complete — you need $2,600 more to hit your goal.</div>
-            </div>
-            <div class="ss-stat ss-wide">
-              <div class="ss-stat-l" style="margin-bottom:8px">📈 نمو المتابعين</div>
-              <div style="display:flex;align-items:flex-end;gap:4px;height:50px">
-                <div style="flex:1;height:40%;background:var(--or-d);border-radius:3px 3px 0 0"></div>
-                <div style="flex:1;height:55%;background:var(--or-d);border-radius:3px 3px 0 0"></div>
-                <div style="flex:1;height:45%;background:var(--or-d);border-radius:3px 3px 0 0"></div>
-                <div style="flex:1;height:70%;background:var(--or);border-radius:3px 3px 0 0"></div>
-                <div style="flex:1;height:60%;background:var(--or-d);border-radius:3px 3px 0 0"></div>
-                <div style="flex:1;height:85%;background:var(--or);border-radius:3px 3px 0 0"></div>
-              </div>
-            </div>
+          <div class="ss-image-container">
+            <img id="ss-img" src="/media__1785163909762.png" alt="Dashboard Screenshot">
           </div>
         </div>
       </div>
@@ -3211,7 +3371,8 @@
             <div class="pf"><span class="chk" style="color:var(--t3)">−</span> Marketing OS</div>
             <div class="pf"><span class="chk" style="color:var(--t3)">−</span> Telegram Hub</div>
           </div>
-          <a href="/register?cta=start_free" class="btn btn-ghost" style="width:100%;justify-content:center">Start Free</a>
+          <a href="/register?cta=start_free" class="btn btn-ghost" style="width:100%;justify-content:center">Start
+            Free</a>
         </div>
         <div class="price-card featured">
           <div class="price-badge">Most Popular</div>
@@ -3230,7 +3391,8 @@
             <div class="pf has"><span class="chk">✓</span> Telegram Bot Control</div>
             <div class="pf has"><span class="chk">✓</span> All integrations</div>
           </div>
-          <a href="/register?cta=start_free" class="btn btn-prime" style="width:100%;justify-content:center">Start 14-Day Free Trial</a>
+          <a href="/register?cta=start_free" class="btn btn-prime" style="width:100%;justify-content:center">Start
+            14-Day Free Trial</a>
           <div style="text-align:center;font-size:12px;color:var(--t3);margin-top:8px">No credit card required</div>
         </div>
         <div class="price-card">
@@ -3248,7 +3410,8 @@
             <div class="pf has"><span class="chk">✓</span> Team analytics</div>
             <div class="pf has"><span class="chk">✓</span> API access</div>
           </div>
-          <a href="/register?cta=start_free" class="btn btn-ghost" style="width:100%;justify-content:center">Contact Sales</a>
+          <a href="/register?cta=start_free" class="btn btn-ghost" style="width:100%;justify-content:center">Contact
+            Sales</a>
         </div>
       </div>
     </div>
@@ -3415,7 +3578,8 @@
         <p class="cta-sub" data-t="landing-final-sub">Join 2,400+ Arab entrepreneurs already using UpKlick.<br>Start
           free — no credit card, no commitment.</p>
         <div class="cta-btns">
-          <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-final-cta-trial">🚀 Start Free Trial</a>
+          <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-final-cta-trial">🚀 Start Free
+            Trial</a>
           <a href="#" onclick="document.getElementById('chat-panel').classList.toggle('open')"
             class="btn btn-ghost btn-xl" data-t="landing-final-cta-talk">💬 Talk to Us</a>
         </div>
@@ -3601,7 +3765,26 @@
     // ── FAQ ──
     function toggleFaq(btn) { btn.parentElement.classList.toggle('open'); }
 
-    // ── TOOLS DEMO ──
+    // ── MOBILE NAV BACKDROP DRAWER ──
+    function toggleMobNav(open) {
+      var nav = document.getElementById('mob-nav');
+      var backdrop = document.getElementById('mob-nav-backdrop');
+      if (open) {
+        nav.classList.add('open');
+        if (backdrop) {
+          backdrop.style.display = 'block';
+          setTimeout(function () { backdrop.style.opacity = '1'; }, 10);
+        }
+      } else {
+        nav.classList.remove('open');
+        if (backdrop) {
+          backdrop.style.opacity = '0';
+          setTimeout(function () { backdrop.style.display = 'none'; }, 300);
+        }
+      }
+    }
+
+    // ── TOOLS ACCORDION ──
     var toolDemos = {
       crm: {
         icon: '🎯',
@@ -3648,13 +3831,57 @@
     };
 
     function selectTool(el, key) {
+      var isAlreadyOn = el.classList.contains('on');
+
       document.querySelectorAll('.tool-item').forEach(function (t) { t.classList.remove('on'); });
+      document.querySelectorAll('.tool-accordion-item').forEach(function (item) {
+        item.classList.remove('active');
+        var wrapper = item.querySelector('.tool-content-wrapper');
+        if (wrapper) wrapper.style.maxHeight = null;
+      });
+
+      if (isAlreadyOn) {
+        return;
+      }
+
       el.classList.add('on');
+      var accordionItem = el.closest('.tool-accordion-item');
+      accordionItem.classList.add('active');
+
+      var wrapper = accordionItem.querySelector('.tool-content-wrapper');
+      var demoBox = document.getElementById('tool-demo');
+      if (wrapper && demoBox) {
+        wrapper.appendChild(demoBox);
+        wrapper.style.maxHeight = wrapper.scrollHeight + 'px';
+      }
+
       var d = toolDemos[key];
       if (!d) return;
       document.getElementById('td-icon').textContent = d.icon;
       document.getElementById('td-title').textContent = _lang === 'ar' ? d.titleAr : d.titleEn;
       document.getElementById('td-body').innerHTML = _lang === 'ar' ? d.htmlAr : d.htmlEn;
+    }
+
+    var screenshotImages = {
+      dashboard: '/media__1785164082872.png',
+      design: '/media__1785164065325.png',
+      telegram: '/media__1785164103096.png',
+      trends: '/media__1785164127152.png'
+    };
+
+    function changeScreenshot(el, key, url) {
+      document.querySelectorAll('.ss-sidebar .ss-sb-item').forEach(function (item) {
+        item.classList.remove('on');
+      });
+      el.classList.add('on');
+      var img = document.getElementById('ss-img');
+      if (img) {
+        img.src = screenshotImages[key];
+      }
+      var urlDisplay = document.getElementById('ss-url-display');
+      if (urlDisplay) {
+        urlDisplay.textContent = url;
+      }
     }
 
     function selectScreenCard(el) {
@@ -3794,6 +4021,10 @@
       'landing-ss-sb-discover': 'Discover',
       'landing-ss-sb-aigrowth': '🔮 AI Growth',
       'landing-ss-sb-trends': '📡 Trends',
+      'ss-tab-dashboard': 'Command Center',
+      'ss-tab-design': 'Design Studio',
+      'ss-tab-telegram': 'Telegram Hub',
+      'ss-tab-trends': 'Social Trends',
       'landing-ss-sb-manage': 'Manage',
       'landing-ss-sb-tasks': '◉ Tasks',
       'landing-ss-sb-finance': '💳 Finance',
@@ -3909,8 +4140,8 @@
       'landing-features-eyebrow': 'لقطات حية',
       'landing-features-title': 'كل ما تحتاجه لإدارة مشروعك، <span class="grd">في مكان واحد</span>',
       'landing-features-sub': 'لقطات حية وحقيقية من داخل لوحة التحكم.',
-      'landing-tools-eyebrow': '32 أداة مدمجة',
-      'landing-tools-title': 'أداة لكل <span class="grd">جزء في نشاطك أو تجارتك أو عملك</span>',
+      'landing-tools-eyebrow': 'أداة لكل جزء في نشاطك أو تجارتك أو عملك',
+      'landing-tools-title': '32 أداة مدمجة <span class="grd">بالذكاء الاصطناعي</span>',
       'landing-tools-sub': 'كل قسم هو منتج كامل بحد ذاته، مدعوم بالذكاء الاصطناعي.',
       'landing-personas-eyebrow': 'مبني لك',
       'landing-personas-title': 'منصة واحدة. <span class="grd">كل الاتجاهات.</span>',
@@ -3935,7 +4166,7 @@
       'landing-ss-telegram-label': 'مركز تليجرام',
       'landing-ss-dashboard-title': '⌂ لوحة التحكم الرئيسية',
       'landing-ss-crm-title': '🎯 إدارة العملاء الذكية',
-      'landing-ss-marketing-title': '📣 نظام التسويق',
+      'landing-ss-marketing-title': '📣 مولد صفحة الهبوط',
       'landing-ss-finance-title': '💳 المالية والحسابات',
       'landing-ss-growth-title': '🔮 ذكاء النمو الذكي',
       'landing-ss-telegram-title': '💬 مركز التليجرام',
@@ -3964,6 +4195,10 @@
       'landing-ss-eyebrow': '🖥️ داخل منصة UpKlick',
       'landing-ss-heading': 'كل أعمالك، <span class="grd">في لمحة سريعة</span>',
       'landing-ss-url': 'app.upklick.io/dashboard',
+      'ss-tab-dashboard': 'مركز القيادة',
+      'ss-tab-design': 'استوديو التصميم',
+      'ss-tab-telegram': 'مركز تليجرام للنمو',
+      'ss-tab-trends': 'الترندات الاجتماعية',
       'landing-ss-sb-dashboard': '⌂ الرئيسية',
       'landing-ss-sb-grow': 'النمو',
       'landing-ss-sb-crm': '🎯 إدارة العملاء',
@@ -4115,6 +4350,17 @@
         } else {
           btnAr.classList.add('on');
           btnEn.classList.remove('on');
+        }
+      }
+      var mobBtnEn = document.getElementById('mob-lang-en');
+      var mobBtnAr = document.getElementById('mob-lang-ar');
+      if (mobBtnEn && mobBtnAr) {
+        if (_lang === 'en') {
+          mobBtnEn.classList.add('on');
+          mobBtnAr.classList.remove('on');
+        } else {
+          mobBtnAr.classList.add('on');
+          mobBtnEn.classList.remove('on');
         }
       }
 
