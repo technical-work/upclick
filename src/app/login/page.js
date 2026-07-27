@@ -113,7 +113,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok || data.success === false) {
-        throw new Error(data.error || data.warning || 'فشل إرسال بريد استعادة كلمة المرور');
+        throw new Error(data.error || data.warning || 'فشل إرسال رمز إعادة التعيين');
       }
 
       setResetEmailSent(true);
@@ -173,6 +173,7 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <div style={{ ...styles.container, ...(tenantConfig?.bgColor ? { backgroundColor: tenantConfig.bgColor } : {}) }}>
@@ -400,40 +401,49 @@ export default function LoginPage() {
               />
             </div>
             <div style={styles.inputGroup}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ ...styles.label, marginBottom: 0, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
                 <span
-                  onClick={() => { setIsForgotPassword(true); setError(''); }}
-                  style={{ fontSize: '12px', color: tenantConfig?.accentColor || '#6C35FF', cursor: 'pointer' }}
+                  onClick={() => { setIsForgotPassword(true); setError(''); setResetEmailSent(false); }}
+                  style={{ fontSize: '12px', color: tenantConfig?.primaryColor || '#FF6B35', cursor: 'pointer', fontWeight: '500' }}
                 >
-                  نسيت كلمة المرور؟
+                  هل نسيت كلمة المرور؟
                 </span>
               </div>
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', width: '100%' }}>
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ ...styles.input, paddingLeft: isRTL ? '12px' : '40px', paddingRight: isRTL ? '40px' : '12px' }}
+                  style={{ ...styles.input, width: '100%', paddingLeft: isRTL ? '40px' : '16px', paddingRight: isRTL ? '16px' : '40px' }}
                   placeholder="••••••••"
                   required
+                  dir="ltr"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    [isRTL ? 'left' : 'right']: '12px',
                     top: '50%',
+                    [isRTL ? 'left' : 'right']: '12px',
                     transform: 'translateY(-50%)',
-                    background: 'none',
+                    background: 'transparent',
                     border: 'none',
-                    color: '#9090b0',
+                    color: 'var(--text2, #9090b0)',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: 0,
+                    outline: 'none',
+                    zIndex: 2
                   }}
                 >
-                  {showPassword ? '👁️' : '🙈'}
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  )}
                 </button>
               </div>
             </div>
@@ -447,28 +457,44 @@ export default function LoginPage() {
                   : {})
               }}
             >
-              {loading ? 'جاري تسجيل الدخول...' : (tenantConfig?.loginCtaText || 'تسجيل الدخول')}
+              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </button>
           </form>
         )}
 
-        <div style={styles.footer}>
-          <p style={{ ...styles.footerText, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
-            {tenantConfig?.signupPromptText || 'ليس لديك حساب؟'}{' '}
+        {tenantConfig?.freeTrial?.enabled && (
+          <div style={styles.registerContainer}>
+            <div style={{
+              width: '100%',
+              height: '1px',
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              margin: '22px 0'
+            }} />
+            <span style={{
+              display: 'block',
+              fontSize: '12.5px',
+              color: '#9090b0',
+              marginBottom: '12px'
+            }}>
+              ليس لديك حساب؟
+            </span>
             <a
-              href="/register"
-              onClick={(e) => {
-                try { Tracking.custom('SignUpClick', { source: 'login_page_link' }); } catch (err) { }
-              }}
+              href="/register?cta=start_free"
               style={{
-                ...styles.link,
-                ...(tenantConfig?.accentColor ? { color: tenantConfig.accentColor } : {})
+                ...styles.registerButton,
+                ...(tenantConfig?.primaryColor
+                  ? {
+                    borderColor: `${tenantConfig.primaryColor}50`,
+                    background: `${tenantConfig.primaryColor}0d`,
+                    color: tenantConfig.textColor || '#f8f4ff'
+                  }
+                  : {})
               }}
             >
-              {tenantConfig?.signupCtaText || '🚀 إنشاء حساب جديد (تجربة مجانية)'}
+              🚀 إنشاء حساب جديد (تجربة مجانية)
             </a>
-          </p>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -476,42 +502,45 @@ export default function LoginPage() {
 
 const styles = {
   container: {
-    minHeight: '100vh',
+    position: 'fixed',
+    inset: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'var(--bg, #08080c)',
-    padding: '20px',
-    fontFamily: 'inherit'
+    backgroundColor: '#08080f',
+    fontFamily: '"IBM Plex Sans Arabic", "DM Sans", sans-serif',
+    direction: 'rtl',
+    zIndex: 9999,
   },
   card: {
-    backgroundColor: 'var(--panel, #12121c)',
-    borderRadius: '24px',
-    padding: '40px',
     width: '100%',
-    maxWidth: '440px',
-    border: '1px solid var(--border, rgba(255, 255, 255, 0.08))',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+    maxWidth: '400px',
+    backgroundColor: '#181825',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '20px',
+    padding: '40px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center'
   },
   logo: {
     height: '48px',
-    marginBottom: '24px'
+    width: 'auto',
+    maxWidth: '180px',
+    objectFit: 'contain',
+    marginBottom: '24px',
   },
   title: {
-    fontSize: '24px',
+    color: '#f8f4ff',
+    fontSize: '22px',
     fontWeight: '700',
-    color: 'var(--text, #ffffff)',
-    marginBottom: '8px',
-    textAlign: 'center'
+    marginBottom: '8px'
   },
   subtitle: {
+    color: '#9090b0',
     fontSize: '14px',
-    color: 'var(--text2, #9090b0)',
-    marginBottom: '32px',
-    textAlign: 'center'
+    marginBottom: '30px'
   },
   form: {
     width: '100%',
@@ -522,62 +551,67 @@ const styles = {
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px'
+    gap: '8px',
+    width: '100%'
   },
   label: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: 'var(--text, #ffffff)'
+    color: '#f8f4ff',
+    fontSize: '13px',
+    fontWeight: '500'
   },
   input: {
-    width: '100%',
     padding: '12px 16px',
-    borderRadius: '12px',
-    backgroundColor: 'var(--bg3, #1a1a28)',
-    border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
-    color: '#ffffff',
+    borderRadius: '10px',
+    backgroundColor: '#101018',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: '#f8f4ff',
     fontSize: '14px',
     outline: 'none',
-    transition: 'all 0.2s',
-    boxSizing: 'border-box'
+    transition: 'border-color 0.2s'
   },
   button: {
-    width: '100%',
+    marginTop: '10px',
     padding: '14px',
     borderRadius: '12px',
     border: 'none',
     background: 'linear-gradient(135deg, #FF6B35, #6C35FF)',
-    color: '#ffffff',
+    color: '#fff',
     fontSize: '15px',
-    fontWeight: '600',
+    fontWeight: '700',
     cursor: 'pointer',
-    marginTop: '8px',
-    boxShadow: '0 4px 24px rgba(108, 53, 255, 0.35)',
-    transition: 'transform 0.2s, opacity 0.2s'
+    boxShadow: '0 4px 24px rgba(255,107,53,0.3)'
   },
   error: {
-    backgroundColor: 'rgba(255, 77, 77, 0.1)',
-    border: '1px solid rgba(255, 77, 77, 0.2)',
-    color: '#ff4d4d',
-    padding: '12px',
-    borderRadius: '12px',
-    fontSize: '13.3px',
+    color: '#ff5f57',
+    backgroundColor: 'rgba(255, 95, 87, 0.1)',
+    padding: '10px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    marginBottom: '20px',
     width: '100%',
     textAlign: 'center',
-    marginBottom: '20px',
-    boxSizing: 'border-box'
+    border: '1px solid rgba(255, 95, 87, 0.2)'
   },
-  footer: {
-    marginTop: '32px',
-    textAlign: 'center'
+  registerContainer: {
+    marginTop: '10px',
+    textAlign: 'center',
+    width: '100%'
   },
-  footerText: {
+  registerButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    padding: '12px',
+    borderRadius: '12px',
+    border: '1.5px solid rgba(255, 107, 53, 0.4)',
+    background: 'rgba(255, 107, 53, 0.04)',
+    color: '#f8f4ff',
     fontSize: '14px',
-    color: 'var(--text2, #9090b0)'
-  },
-  link: {
-    color: '#6C35FF',
+    fontWeight: '700',
     textDecoration: 'none',
-    fontWeight: '600'
+    transition: 'all 0.2s',
+    cursor: 'pointer',
+    boxShadow: '0 4px 15px rgba(255,107,53,0.05)'
   }
 };
