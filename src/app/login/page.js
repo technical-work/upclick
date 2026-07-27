@@ -374,7 +374,7 @@ export default function LoginPage() {
                     : {})
                 }}
               >
-                {loading ? 'جاري الإرسال...' : 'إرسال رابط استعادة كلمة المرور'}
+                {loading ? 'جاري الإرسال...' : 'إرسال كود استعادة كلمة المرور'}
               </button>
               <div style={{ textAlign: 'center', marginTop: '10px' }}>
                 <span
