@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function POST(request) {
@@ -17,8 +19,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
+    const { adminDb } = await getFirebaseAdmin();
+
     if (!adminDb) {
-      return NextResponse.json({ error: 'Firebase Admin SDK is not initialized.' }, { status: 500 });
+      console.warn('[api/ai/image] Firebase Admin SDK is not initialized.');
+      return NextResponse.json({ error: 'Firebase Admin SDK is not initialized on server.' }, { status: 500 });
     }
 
     // 1. Fetch global AI credentials

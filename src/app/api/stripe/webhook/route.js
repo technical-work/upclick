@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { adminDb } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const FALLBACK_SECRET_KEY = "sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH";
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
@@ -17,6 +20,8 @@ export async function POST(req) {
     if (!sig) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
     }
+
+    const { adminDb } = await getFirebaseAdmin();
 
     if (!adminDb) {
       return NextResponse.json({ error: 'Firebase Admin SDK not initialized' }, { status: 500 });

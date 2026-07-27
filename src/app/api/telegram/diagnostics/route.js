@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { adminDb as db } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
@@ -8,6 +11,8 @@ export async function POST(req) {
     if (!token) {
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
+
+    const { adminDb: db } = await getFirebaseAdmin();
 
     // 1. Fetch Webhook Info from Telegram
     let webhookInfo = null;

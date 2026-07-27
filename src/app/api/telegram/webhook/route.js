@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { adminDb as db } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
     const body = await req.json();
+    const { adminDb: db } = await getFirebaseAdmin();
     
     if (db) {
       // Log the webhook request for diagnostics
