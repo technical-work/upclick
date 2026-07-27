@@ -25,6 +25,9 @@ const privateKey = cleanEnvVar(process.env.FIREBASE_PRIVATE_KEY);
 let formattedPrivateKey = privateKey;
 if (formattedPrivateKey) {
   formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
+  if (formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) {
+    formattedPrivateKey = formattedPrivateKey.slice(1, -1);
+  }
 }
 
 if (projectId && formattedPrivateKey) {

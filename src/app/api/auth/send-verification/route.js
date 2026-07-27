@@ -10,43 +10,44 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    if (!adminAuth) {
-      console.error('[send-verification] Firebase Admin Auth is not initialized.');
-      return NextResponse.json({ error: 'Firebase Admin Auth is not initialized on server' }, { status: 500 });
-    }
-
     // 1. Generate 6-digit OTP code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins expiry
 
-    // 2. Save OTP code in Firestore user doc
+    // 2. Save OTP code in Firestore user doc safely
     let targetUid = uid;
-    if (!targetUid) {
+    if (adminAuth && !targetUid) {
       try {
         const userRecord = await adminAuth.getUserByEmail(email);
-        targetUid = userRecord.uid;
+        targetUid = userRecord?.uid;
       } catch (uErr) {
         console.warn('[send-verification] Could not find user by email:', uErr.message);
       }
     }
 
     if (targetUid && adminDb) {
-      await adminDb.collection('users').doc(targetUid).set({
-        emailVerificationCode: code,
-        emailVerificationExpires: expiresAt
-      }, { merge: true });
+      try {
+        await adminDb.collection('users').doc(targetUid).set({
+          emailVerificationCode: code,
+          emailVerificationExpires: expiresAt
+        }, { merge: true });
+      } catch (dbErr) {
+        console.warn('[send-verification] Could not save code in adminDb:', dbErr.message);
+      }
     }
 
     // 3. Generate fallback verification link
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
     let verificationLink = '';
-    try {
-      verificationLink = await adminAuth.generateEmailVerificationLink(email, {
-        url: `${appUrl}/login?verified=true`,
-        handleCodeInApp: false
-      });
-    } catch (lErr) {
-      console.warn('[send-verification] Could not generate action link:', lErr.message);
+    if (adminAuth) {
+      try {
+        verificationLink = await adminAuth.generateEmailVerificationLink(email, {
+          url: `${appUrl}/login?verified=true`,
+          handleCodeInApp: false
+        });
+      } catch (lErr) {
+        console.warn('[send-verification] Could not generate action link:', lErr.message);
+      }
     }
 
     // 4. Send email with 6-digit OTP code using Resend

@@ -361,9 +361,9 @@ export default function RegisterPage() {
       const isTrial = tenantConfig?.freeTrial?.enabled || false;
       const trialStartedAt = isTrial ? new Date().toISOString() : null;
 
-      // 3. Save User document and Bio Link document safely via Server Admin SDK
+      // 3. Save User document and Bio Link document via Server Admin SDK with client fallback
       try {
-        await fetch('/api/auth/create-user-doc', {
+        const cRes = await fetch('/api/auth/create-user-doc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -377,8 +377,30 @@ export default function RegisterPage() {
             initialGC
           })
         });
+
+        if (!cRes.ok) {
+          throw new Error(`Server status ${cRes.status}`);
+        }
       } catch (docErr) {
-        console.warn("Error creating user doc on server:", docErr);
+        console.warn("Server create-user-doc failed, running client fallback:", docErr.message);
+        try {
+          await setDoc(doc(db, 'users', uid), {
+            uid: uid,
+            name: name,
+            email: email,
+            role: 'user',
+            lang: 'ar',
+            theme: 'dark',
+            onboardingDone: false,
+            GC: userGC,
+            isTrial: isTrial,
+            trialStartedAt: trialStartedAt,
+            adminId: 'global',
+            createdAt: new Date().toISOString()
+          });
+        } catch (uErr) {
+          console.error("Client fallback setDoc error:", uErr);
+        }
       }
 
       // router will auto-redirect through useEffect
