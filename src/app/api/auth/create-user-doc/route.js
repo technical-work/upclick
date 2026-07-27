@@ -10,7 +10,8 @@ export async function POST(req) {
     }
 
     if (!adminDb) {
-      return NextResponse.json({ error: 'Admin database not initialized' }, { status: 500 });
+      console.warn('[create-user-doc] Admin database not initialized. Client fallback will be used.');
+      return NextResponse.json({ success: false, fallbackRequired: true, warning: 'Admin DB not initialized' }, { status: 200 });
     }
 
     // 1. Create/Update User document safely using Admin SDK

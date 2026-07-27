@@ -378,8 +378,9 @@ export default function RegisterPage() {
           })
         });
 
-        if (!cRes.ok) {
-          throw new Error(`Server status ${cRes.status}`);
+        const cData = await cRes.json();
+        if (!cRes.ok || cData.success === false) {
+          throw new Error(cData.warning || `Server status ${cRes.status}`);
         }
       } catch (docErr) {
         console.warn("Server create-user-doc failed, running client fallback:", docErr.message);

@@ -59,8 +59,8 @@ export async function POST(req) {
     });
 
     if (!emailResult.success && !emailResult.simulated) {
-      console.error('[send-verification] Email send failed:', emailResult.error);
-      return NextResponse.json({ error: 'Failed to send verification email', details: emailResult.error }, { status: 500 });
+      console.warn('[send-verification] Email send warning:', emailResult.error);
+      return NextResponse.json({ success: false, warning: 'Failed to send verification email', details: emailResult.error }, { status: 200 });
     }
 
     return NextResponse.json({

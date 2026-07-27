@@ -24,10 +24,13 @@ const privateKey = cleanEnvVar(process.env.FIREBASE_PRIVATE_KEY);
 
 let formattedPrivateKey = privateKey;
 if (formattedPrivateKey) {
-  formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
-  if (formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) {
+  // Strip surrounding quotes if present
+  if ((formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) ||
+      (formattedPrivateKey.startsWith("'") && formattedPrivateKey.endsWith("'"))) {
     formattedPrivateKey = formattedPrivateKey.slice(1, -1);
   }
+  // Replace literal escaped newlines with actual newline characters
+  formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
 }
 
 if (projectId && formattedPrivateKey) {
