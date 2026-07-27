@@ -3,9 +3,7 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
-  eslint: {
-    ignoreDuringBuilds: true
-  }
+  serverExternalPackages: ['firebase-admin', 'jwks-rsa', 'jose']
 };
 
 export default nextConfig;
