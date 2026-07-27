@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user, userData, loading: authLoading } = useAuth();
+  const { login, resetPassword, user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [tenantConfig, setTenantConfig] = useState(null);
@@ -113,7 +113,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok || data.success === false) {
-        throw new Error(data.error || data.warning || 'فشل إرسال رمز إعادة التعيين');
+        throw new Error(data.error || data.warning || 'فشل إرسال بريد استعادة كلمة المرور');
       }
 
       setResetEmailSent(true);
@@ -215,8 +215,8 @@ export default function LoginPage() {
         </h1>
         <p style={{ ...styles.subtitle, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
           {isForgotPassword
-            ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزاً لإعادة تعيين كلمة المرور.'
-            : tenantConfig?.tagline || 'نظام تشغيل الذكاء الاصطناعي لرواد الأعمال العرب'
+            ? 'أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.'
+            : tenantConfig?.tagline || 'أدخل بياناتك للوصول إلى لوحة التحكم'
           }
         </p>
 
@@ -373,7 +373,7 @@ export default function LoginPage() {
                     : {})
                 }}
               >
-                {loading ? 'جاري الإرسال...' : 'إرسال رمز استعادة كلمة المرور'}
+                {loading ? 'جاري الإرسال...' : 'إرسال رابط استعادة كلمة المرور'}
               </button>
               <div style={{ textAlign: 'center', marginTop: '10px' }}>
                 <span
@@ -561,7 +561,7 @@ const styles = {
     color: '#ff4d4d',
     padding: '12px',
     borderRadius: '12px',
-    fontSize: '13px',
+    fontSize: '13.3px',
     width: '100%',
     textAlign: 'center',
     marginBottom: '20px',
