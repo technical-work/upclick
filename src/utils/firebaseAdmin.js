@@ -56,4 +56,8 @@ if (projectId && formattedPrivateKey) {
   console.warn('Firebase Admin env vars missing. Ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set.');
 }
 
+export function getFirebaseAdmin() {
+  return { adminApp, adminDb, adminAuth };
+}
+
 export { adminDb, adminApp, adminAuth };

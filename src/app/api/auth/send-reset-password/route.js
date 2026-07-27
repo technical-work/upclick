@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import emailService from '@/services/email';
 
 export async function POST(req) {
@@ -10,9 +10,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
+    const { adminAuth } = getFirebaseAdmin();
+
     if (!adminAuth) {
-      console.error('[send-reset-password] Firebase Admin Auth is not initialized.');
-      return NextResponse.json({ error: 'Firebase Admin Auth is not initialized on server' }, { status: 500 });
+      console.warn('[send-reset-password] Firebase Admin Auth is not initialized.');
+      return NextResponse.json({ success: false, warning: 'Firebase Admin Auth is not initialized on server' }, { status: 200 });
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
@@ -31,8 +33,8 @@ export async function POST(req) {
     });
 
     if (!emailResult.success && !emailResult.simulated) {
-      console.error('[send-reset-password] Email send failed:', emailResult.error);
-      return NextResponse.json({ error: 'Failed to send password reset email', details: emailResult.error }, { status: 500 });
+      console.warn('[send-reset-password] Email send warning:', emailResult.error);
+      return NextResponse.json({ success: false, warning: 'Failed to send password reset email', details: emailResult.error }, { status: 200 });
     }
 
     return NextResponse.json({
@@ -42,7 +44,6 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error('[send-reset-password] Server Error:', error);
-    // Standardize error message for safety (e.g. user not found)
-    return NextResponse.json({ error: error.message || 'Failed to process request' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Failed to process request' }, { status: 200 });
   }
 }
