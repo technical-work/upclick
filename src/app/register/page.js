@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -305,6 +305,11 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
+      // Force refresh Auth token so Firestore SDK instantly attaches request.auth
+      try {
+        await userCredential.user.getIdToken(true);
+      } catch (tErr) { }
+
       Tracking.identify(uid, { email, name });
       if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
         window.fbq('track', 'CompleteRegistration', { email, name });
@@ -313,9 +318,13 @@ export default function RegisterPage() {
       Tracking.track('CompleteRegistration', { email, name });
       Tracking.lead({ source: 'registration_page', name, email });
 
-      // Send Verification Email
+      // Send Verification Email via Resend
       try {
-        await sendEmailVerification(userCredential.user);
+        await fetch('/api/auth/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name, uid })
+        });
       } catch (evErr) {
         console.error("Error sending verification email during registration:", evErr);
       }
@@ -352,39 +361,25 @@ export default function RegisterPage() {
       const isTrial = tenantConfig?.freeTrial?.enabled || false;
       const trialStartedAt = isTrial ? new Date().toISOString() : null;
 
-      // 3. Automatically create/publish public CV/Bio link document
-      await setDoc(doc(db, 'bio_links', cleanUsername), {
-        ownerUid: uid,
-        displayName: name,
-        bioTagline: initialGC.bioLink.bioTagline || 'Coach | Entrepreneur | Content Creator 🚀',
-        username: cleanUsername,
-        bioTheme: initialGC.bioLink.bioTheme || 'dark',
-        layout: 'classic',
-        font: 'Tajawal',
-        avatarUrl: '',
-        links: initialGC.bioLink.links || [],
-        socials: initialGC.bioLink.socials || {},
-        cvEnabled: false,
-        lang: 'ar',
-        cvSections: { experience: [], education: [], skills: [] },
-        updatedAt: new Date().toISOString()
-      });
-
-      // 4. Save User document
-      await setDoc(doc(db, 'users', uid), {
-        uid: uid,
-        name: name,
-        email: email,
-        role: 'user',
-        lang: 'ar',
-        theme: 'dark',
-        onboardingDone: false,
-        GC: userGC,
-        isTrial: isTrial,
-        trialStartedAt: trialStartedAt,
-        adminId: 'global',
-        createdAt: new Date().toISOString()
-      });
+      // 3. Save User document and Bio Link document safely via Server Admin SDK
+      try {
+        await fetch('/api/auth/create-user-doc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid,
+            email,
+            name,
+            userGC,
+            isTrial,
+            trialStartedAt,
+            cleanUsername,
+            initialGC
+          })
+        });
+      } catch (docErr) {
+        console.warn("Error creating user doc on server:", docErr);
+      }
 
       // router will auto-redirect through useEffect
     } catch (err) {

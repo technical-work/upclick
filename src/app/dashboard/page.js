@@ -4,7 +4,6 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
-import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
 // Core layout components
@@ -431,6 +430,39 @@ function EmailVerificationLock({ user, lang, logout }) {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (!otpCode || otpCode.trim().length !== 6) {
+      setResendMessage(lang === 'ar' ? '⚠️ يرجى إدخال رمز مكوّن من 6 أرقام' : '⚠️ Please enter 6-digit code');
+      return;
+    }
+    setVerifyLoading(true);
+    setResendMessage('');
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: auth.currentUser?.email, uid: auth.currentUser?.uid, code: otpCode.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResendMessage(lang === 'ar' ? '🎉 تم تفعيل الحساب بنجاح!' : '🎉 Account verified successfully!');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        setResendMessage(`❌ ${data.error || 'رمز غير صحيح'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setResendMessage(lang === 'ar' ? '❌ حدث خطأ أثناء تفعيل الرمز' : '❌ Verification error');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
 
   const handleCheck = async () => {
     setStatusLoading(true);
@@ -441,8 +473,8 @@ function EmailVerificationLock({ user, lang, logout }) {
           window.location.reload();
         } else {
           alert(lang === 'ar'
-            ? 'لم يتم تفعيل الحساب بعد. يرجى الضغط على الرابط في البريد الإلكتروني.'
-            : 'Email not verified yet. Please check your inbox and click the verification link.'
+            ? 'لم يتم تفعيل الحساب بعد. يرجى إدخال رمز التحقق المكون من 6 أرقام.'
+            : 'Email not verified yet. Please enter the 6-digit verification code.'
           );
         }
       }
@@ -458,14 +490,23 @@ function EmailVerificationLock({ user, lang, logout }) {
     setResendMessage('');
     try {
       if (auth.currentUser) {
-        await sendEmailVerification(auth.currentUser);
-        setResendMessage(lang === 'ar' ? '✅ تم إرسال الرابط بنجاح!' : '✅ Link sent successfully!');
+        const res = await fetch('/api/auth/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: auth.currentUser.email, name: user?.displayName || '', uid: auth.currentUser.uid })
+        });
+        if (res.ok) {
+          setResendMessage(lang === 'ar' ? '✅ تم إرسال رمز التحقق بنجاح!' : '✅ Code sent successfully!');
+        } else {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Failed');
+        }
       }
     } catch (err) {
       console.error(err);
       setResendMessage(lang === 'ar'
-        ? '❌ فشل إرسال الرابط. يرجى المحاولة لاحقاً.'
-        : '❌ Failed to send link. Please try again later.'
+        ? '❌ فشل إرسال الرمز. يرجى المحاولة لاحقاً.'
+        : '❌ Failed to send code. Please try again later.'
       );
     } finally {
       setResendLoading(false);
@@ -553,17 +594,15 @@ function EmailVerificationLock({ user, lang, logout }) {
           color: '#9090b0',
           fontSize: '14px',
           lineHeight: '1.7',
-          marginBottom: '28px'
+          marginBottom: '20px'
         }}>
           {isAr ? (
             <>
-              لقد أرسلنا رابط التحقق إلى بريدك الإلكتروني <strong>{user?.email}</strong>.
-              يرجى فحص صندوق الوارد (أو البريد المزعج/الرسائل الترويجية) والضغط على الرابط لتفعيل حسابك.
+              أرسلنا رمز التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني <strong>{user?.email}</strong> عبر <strong>Resend</strong>.
             </>
           ) : (
             <>
-              We have sent a verification link to <strong>{user?.email}</strong>.
-              Please check your inbox (including spam/promotions folder) and click the link to verify your account.
+              We sent a 6-digit verification code to <strong>{user?.email}</strong> via <strong>Resend</strong>.
             </>
           )}
         </p>
@@ -573,43 +612,67 @@ function EmailVerificationLock({ user, lang, logout }) {
           <div style={{
             fontSize: '13px',
             fontWeight: '600',
-            color: resendMessage.includes('✅') ? '#00ff88' : '#ff4d4d',
-            backgroundColor: resendMessage.includes('✅') ? 'rgba(0, 255, 136, 0.08)' : 'rgba(255, 77, 77, 0.08)',
+            color: (resendMessage.includes('✅') || resendMessage.includes('🎉')) ? '#00ff88' : '#ff4d4d',
+            backgroundColor: (resendMessage.includes('✅') || resendMessage.includes('🎉')) ? 'rgba(0, 255, 136, 0.08)' : 'rgba(255, 77, 77, 0.08)',
             padding: '10px 14px',
             borderRadius: '12px',
             marginBottom: '20px',
-            border: `1px solid ${resendMessage.includes('✅') ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 77, 77, 0.15)'}`
+            border: `1px solid ${(resendMessage.includes('✅') || resendMessage.includes('🎉')) ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 77, 77, 0.15)'}`
           }}>
             {resendMessage}
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* OTP Form */}
+        <form onSubmit={handleVerifyOtp} style={{ width: '100%', marginBottom: '20px' }}>
+          <div style={{ marginBottom: '14px' }}>
+            <input
+              type="text"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="123456"
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '12px',
+                border: '1.5px solid rgba(108, 53, 255, 0.4)',
+                backgroundColor: 'rgba(10, 10, 18, 0.8)',
+                color: '#FF6B35',
+                fontSize: '24px',
+                fontWeight: '800',
+                letterSpacing: '8px',
+                textAlign: 'center',
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+              dir="ltr"
+            />
+          </div>
           <button
-            onClick={handleCheck}
-            disabled={statusLoading}
+            type="submit"
+            disabled={verifyLoading || otpCode.length !== 6}
             className="btn-glow-verify"
             style={{
               width: '100%',
-              padding: '12px',
+              padding: '13px',
               borderRadius: '12px',
               border: 'none',
               background: 'linear-gradient(135deg, #FF6B35, #6C35FF)',
               color: '#fff',
               fontWeight: '700',
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
+              fontSize: '14.5px',
+              cursor: (verifyLoading || otpCode.length !== 6) ? 'not-allowed' : 'pointer',
+              opacity: (verifyLoading || otpCode.length !== 6) ? 0.6 : 1,
+              transition: 'all 0.2s ease'
             }}
           >
-            {statusLoading ? '...' : (isAr ? 'تم التفعيل؟ تحديث الحالة' : 'I Verified my Email')}
+            {verifyLoading ? (isAr ? 'جاري التحقق...' : 'Verifying...') : (isAr ? 'تأكيد الرمز والتفعيل ✨' : 'Confirm Code & Verify')}
           </button>
+        </form>
 
+        {/* Secondary Action Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
             onClick={handleResend}
             disabled={resendLoading}

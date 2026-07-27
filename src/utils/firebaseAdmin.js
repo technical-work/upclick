@@ -1,8 +1,10 @@
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 let adminApp = null;
 let adminDb = null;
+let adminAuth = null;
 
 const cleanEnvVar = (val) => {
   if (!val) return val;
@@ -40,6 +42,7 @@ if (projectId && formattedPrivateKey) {
       adminApp = apps[0];
     }
     adminDb = getFirestore(adminApp);
+    adminAuth = getAuth(adminApp);
   } catch (error) {
     console.error('Firebase admin initialization error', error.stack);
   }
@@ -47,4 +50,4 @@ if (projectId && formattedPrivateKey) {
   console.warn('Firebase Admin env vars missing. Ensure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY are set.');
 }
 
-export { adminDb, adminApp };
+export { adminDb, adminApp, adminAuth };

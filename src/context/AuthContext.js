@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -96,7 +96,16 @@ export function AuthProvider({ children }) {
   };
 
   const resetPassword = async (email) => {
-    return sendPasswordResetEmail(auth, email);
+    const res = await fetch('/api/auth/send-reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to send password reset email');
+    }
+    return data;
   };
 
   return (

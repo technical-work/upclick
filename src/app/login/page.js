@@ -101,7 +101,17 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await resetPassword(email);
+      const res = await fetch('/api/auth/send-reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
+      }
+
       setResetEmailSent(true);
       setError('');
     } catch (err) {
