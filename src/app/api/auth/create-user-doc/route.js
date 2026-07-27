@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
@@ -9,8 +12,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Missing required user parameters' }, { status: 400 });
     }
 
+    const { adminDb } = await getFirebaseAdmin();
+
     if (!adminDb) {
-      console.warn('[create-user-doc] Admin database not initialized. Client fallback will be used.');
+      console.warn('[create-user-doc] Admin DB not initialized. Client fallback will handle it.');
       return NextResponse.json({ success: false, fallbackRequired: true, warning: 'Admin DB not initialized' }, { status: 200 });
     }
 
@@ -53,6 +58,6 @@ export async function POST(req) {
     return NextResponse.json({ success: true, message: 'User document initialized successfully' });
   } catch (error) {
     console.error('[create-user-doc] Error initializing user doc:', error);
-    return NextResponse.json({ error: error.message || 'Server error' }, { status: 500 });
+    return NextResponse.json({ success: false, fallbackRequired: true, error: error.message || 'Server error' }, { status: 200 });
   }
 }

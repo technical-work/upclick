@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
@@ -8,6 +11,8 @@ export async function POST(req) {
     if (!code || code.trim().length !== 6) {
       return NextResponse.json({ error: 'رمز التحقق يجب أن يتكون من 6 أرقام' }, { status: 400 });
     }
+
+    const { adminAuth, adminDb } = await getFirebaseAdmin();
 
     if (!adminAuth || !adminDb) {
       return NextResponse.json({ error: 'سيرفر تفعيل الحسابات غير مهيأ' }, { status: 500 });

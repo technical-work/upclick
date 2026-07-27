@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import emailService from '@/services/email';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   try {
     const { email } = await req.json();
@@ -10,7 +13,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const { adminAuth } = getFirebaseAdmin();
+    const { adminAuth } = await getFirebaseAdmin();
 
     if (!adminAuth) {
       console.warn('[send-reset-password] Firebase Admin Auth is not initialized.');

@@ -1,7 +1,3 @@
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-
 const cleanEnvVar = (val) => {
   if (!val) return null;
   let cleaned = val.trim();
@@ -13,8 +9,12 @@ const cleanEnvVar = (val) => {
   return cleaned || null;
 };
 
-export function getFirebaseAdmin() {
+export async function getFirebaseAdmin() {
   try {
+    const { getApps, initializeApp, cert } = await import('firebase-admin/app');
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const { getAuth } = await import('firebase-admin/auth');
+
     const apps = getApps();
     if (apps.length > 0) {
       const app = apps[0];
@@ -48,22 +48,11 @@ export function getFirebaseAdmin() {
       adminAuth: getAuth(app)
     };
   } catch (error) {
-    console.error('[firebaseAdmin] Initialization error:', error.message);
+    console.error('[firebaseAdmin] Dynamic initialization error:', error.message);
     return { adminApp: null, adminDb: null, adminAuth: null };
   }
 }
 
-let adminApp = null;
-let adminDb = null;
-let adminAuth = null;
-
-try {
-  const res = getFirebaseAdmin();
-  adminApp = res.adminApp;
-  adminDb = res.adminDb;
-  adminAuth = res.adminAuth;
-} catch (e) {
-  console.warn('[firebaseAdmin] Top-level init suppressed:', e.message);
-}
-
-export { adminDb, adminApp, adminAuth };
+export let adminApp = null;
+export let adminDb = null;
+export let adminAuth = null;

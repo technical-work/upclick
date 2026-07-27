@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/utils/firebaseAdmin';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import emailService from '@/services/email';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
@@ -9,6 +12,8 @@ export async function POST(req) {
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
+
+    const { adminAuth, adminDb } = await getFirebaseAdmin();
 
     // 1. Generate 6-digit OTP code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -59,8 +64,8 @@ export async function POST(req) {
     });
 
     if (!emailResult.success && !emailResult.simulated) {
-      console.error('[send-verification] Email send failed:', emailResult.error);
-      return NextResponse.json({ error: 'Failed to send verification email', details: emailResult.error }, { status: 500 });
+      console.warn('[send-verification] Email send warning:', emailResult.error);
+      return NextResponse.json({ success: false, warning: 'Failed to send verification email', details: emailResult.error }, { status: 200 });
     }
 
     return NextResponse.json({
@@ -70,6 +75,6 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error('[send-verification] Server Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 200 });
   }
 }
