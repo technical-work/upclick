@@ -12,12 +12,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, resetPassword, user, userData, loading: authLoading } = useAuth();
+  const { login, user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [tenantConfig, setTenantConfig] = useState(null);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const isRTL = typeof window !== 'undefined' ? (document.documentElement.dir === 'rtl') : true;
   const [theme, setTheme] = useState('dark');
@@ -108,20 +112,67 @@ export default function LoginPage() {
       });
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send reset email');
+      if (!res.ok || data.success === false) {
+        throw new Error(data.error || data.warning || 'فشل إرسال رمز إعادة التعيين');
       }
 
       setResetEmailSent(true);
       setError('');
     } catch (err) {
       console.error(err);
-      setError('فشل إرسال البريد الإلكتروني. يرجى التأكد من كتابة البريد بشكل صحيح.');
+      setError(err.message || 'فشل إرسال البريد الإلكتروني. يرجى التأكد من كتابة البريد بشكل صحيح.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResetWithCodeSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!resetCode || resetCode.trim().length !== 6) {
+      setError('يرجى إدخال رمز التحقق المكون من 6 أرقام');
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      setError('كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/reset-password-with-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          code: resetCode,
+          newPassword
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+        throw new Error(data.error || data.warning || 'فشل تغيير كلمة المرور');
+      }
+
+      setResetSuccess(true);
+      setError('');
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'حدث خطأ أثناء تغيير كلمة المرور.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ ...styles.container, ...(tenantConfig?.bgColor ? { backgroundColor: tenantConfig.bgColor } : {}) }}>
@@ -164,7 +215,7 @@ export default function LoginPage() {
         </h1>
         <p style={{ ...styles.subtitle, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
           {isForgotPassword
-            ? 'أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور.'
+            ? 'أدخل بريدك الإلكتروني وسنرسل لك رمزاً لإعادة تعيين كلمة المرور.'
             : tenantConfig?.tagline || 'أدخل بياناتك للوصول إلى لوحة التحكم'
           }
         </p>
@@ -172,7 +223,7 @@ export default function LoginPage() {
         {error && <div style={styles.error}>{error}</div>}
 
         {isForgotPassword ? (
-          resetEmailSent ? (
+          resetSuccess ? (
             <div style={{ width: '100%', textAlign: 'center' }}>
               <div style={{
                 color: '#00F0B4',
@@ -184,24 +235,120 @@ export default function LoginPage() {
                 border: '1px solid rgba(0, 240, 180, 0.2)',
                 lineHeight: '1.5'
               }}>
-                تم إرسال بريد إعادة تعيين كلمة المرور بنجاح!
+                تم تغيير كلمة المرور بنجاح!
                 <br />
-                يرجى التحقق من صندوق البريد الخاص بك (Gmail).
+                يمكنك الآن تسجيل الدخول بحسابك باستخدام كلمة المرور الجديدة.
               </div>
               <button
-                onClick={() => { setIsForgotPassword(false); setResetEmailSent(false); }}
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setResetEmailSent(false);
+                  setResetSuccess(false);
+                  setResetCode('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
                 style={{
                   ...styles.button,
                   width: '100%',
-                  background: 'var(--bg3, #101018)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: 'var(--text2, #9090b0)',
-                  boxShadow: 'none'
+                  ...(tenantConfig?.primaryColor && tenantConfig?.accentColor
+                    ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` }
+                    : {})
                 }}
               >
                 العودة لتسجيل الدخول
               </button>
             </div>
+          ) : resetEmailSent ? (
+            <form onSubmit={handleResetWithCodeSubmit} style={styles.form}>
+              <div style={{
+                color: '#00F0B4',
+                backgroundColor: 'rgba(0, 240, 180, 0.08)',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                fontSize: '12.5px',
+                marginBottom: '4px',
+                border: '1px solid rgba(0, 240, 180, 0.2)',
+                lineHeight: '1.4',
+                textAlign: 'center'
+              }}>
+                تم إرسال رمز مكون من 6 أرقام إلى بريدك الإلكتروني. أدخل الرمز أدناه مع كلمة المرور الجديدة:
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>رمز التحقق (6 أرقام)</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  style={{
+                    ...styles.input,
+                    letterSpacing: '6px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    fontFamily: 'monospace'
+                  }}
+                  placeholder="123456"
+                  required
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور الجديدة</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={styles.input}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>تأكيد كلمة المرور الجديدة</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={styles.input}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  ...styles.button,
+                  ...(tenantConfig?.primaryColor && tenantConfig?.accentColor
+                    ? { background: `linear-gradient(135deg, ${tenantConfig.primaryColor}, ${tenantConfig.accentColor})`, boxShadow: `0 4px 24px ${tenantConfig.primaryColor}4D` }
+                    : {})
+                }}
+              >
+                {loading ? 'جاري الحفظ...' : 'حفظ كلمة المرور الجديدة 🔐'}
+              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '12.5px' }}>
+                <span
+                  onClick={() => setResetEmailSent(false)}
+                  style={{ color: '#9090b0', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  إعادة إرسال الرمز
+                </span>
+                <span
+                  onClick={() => { setIsForgotPassword(false); setResetEmailSent(false); }}
+                  style={{ color: '#9090b0', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  العودة لتسجيل الدخول
+                </span>
+              </div>
+            </form>
           ) : (
             <form onSubmit={handleForgotPasswordSubmit} style={styles.form}>
               <div style={styles.inputGroup}>
@@ -226,7 +373,7 @@ export default function LoginPage() {
                     : {})
                 }}
               >
-                {loading ? 'جاري الإرسال...' : 'إرسال رابط استعادة كلمة المرور'}
+                {loading ? 'جاري الإرسال...' : 'إرسال رمز استعادة كلمة المرور'}
               </button>
               <div style={{ textAlign: 'center', marginTop: '10px' }}>
                 <span
@@ -253,49 +400,40 @@ export default function LoginPage() {
               />
             </div>
             <div style={styles.inputGroup}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ ...styles.label, marginBottom: 0, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
                 <span
-                  onClick={() => { setIsForgotPassword(true); setError(''); setResetEmailSent(false); }}
-                  style={{ fontSize: '12px', color: tenantConfig?.primaryColor || '#FF6B35', cursor: 'pointer', fontWeight: '500' }}
+                  onClick={() => { setIsForgotPassword(true); setError(''); }}
+                  style={{ fontSize: '12px', color: tenantConfig?.accentColor || '#6C35FF', cursor: 'pointer' }}
                 >
-                  هل نسيت كلمة المرور؟
+                  نسيت كلمة المرور؟
                 </span>
               </div>
-              <div style={{ position: 'relative', width: '100%' }}>
+              <div style={{ position: 'relative' }}>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ ...styles.input, width: '100%', paddingLeft: isRTL ? '40px' : '16px', paddingRight: isRTL ? '16px' : '40px' }}
+                  style={{ ...styles.input, paddingLeft: isRTL ? '12px' : '40px', paddingRight: isRTL ? '40px' : '12px' }}
                   placeholder="••••••••"
                   required
-                  dir="ltr"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    top: '50%',
                     [isRTL ? 'left' : 'right']: '12px',
+                    top: '50%',
                     transform: 'translateY(-50%)',
-                    background: 'transparent',
+                    background: 'none',
                     border: 'none',
-                    color: 'var(--text2, #9090b0)',
+                    color: '#9090b0',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: 0,
-                    outline: 'none',
-                    zIndex: 2
+                    fontSize: '14px'
                   }}
                 >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                  )}
+                  {showPassword ? '👁️' : '🙈'}
                 </button>
               </div>
             </div>
@@ -309,44 +447,28 @@ export default function LoginPage() {
                   : {})
               }}
             >
-              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+              {loading ? 'جاري تسجيل الدخول...' : (tenantConfig?.loginCtaText || 'تسجيل الدخول')}
             </button>
           </form>
         )}
 
-        {tenantConfig?.freeTrial?.enabled && (
-          <div style={styles.registerContainer}>
-            <div style={{
-              width: '100%',
-              height: '1px',
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              margin: '22px 0'
-            }} />
-            <span style={{
-              display: 'block',
-              fontSize: '12.5px',
-              color: '#9090b0',
-              marginBottom: '12px'
-            }}>
-              ليس لديك حساب؟
-            </span>
+        <div style={styles.footer}>
+          <p style={{ ...styles.footerText, ...(tenantConfig?.text2Color ? { color: tenantConfig.text2Color } : {}) }}>
+            {tenantConfig?.signupPromptText || 'ليس لديك حساب؟'}{' '}
             <a
-              href="/register?cta=start_free"
+              href="/register"
+              onClick={(e) => {
+                try { Tracking.custom('SignUpClick', { source: 'login_page_link' }); } catch (err) { }
+              }}
               style={{
-                ...styles.registerButton,
-                ...(tenantConfig?.primaryColor
-                  ? {
-                    borderColor: `${tenantConfig.primaryColor}50`,
-                    background: `${tenantConfig.primaryColor}0d`,
-                    color: tenantConfig.textColor || '#f8f4ff'
-                  }
-                  : {})
+                ...styles.link,
+                ...(tenantConfig?.accentColor ? { color: tenantConfig.accentColor } : {})
               }}
             >
-              🚀 إنشاء حساب جديد (تجربة مجانية)
+              {tenantConfig?.signupCtaText || '🚀 إنشاء حساب جديد (تجربة مجانية)'}
             </a>
-          </div>
-        )}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -354,45 +476,42 @@ export default function LoginPage() {
 
 const styles = {
   container: {
-    position: 'fixed',
-    inset: 0,
+    minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#08080f',
-    fontFamily: '"IBM Plex Sans Arabic", "DM Sans", sans-serif',
-    direction: 'rtl',
-    zIndex: 9999,
+    backgroundColor: 'var(--bg, #08080c)',
+    padding: '20px',
+    fontFamily: 'inherit'
   },
   card: {
-    width: '100%',
-    maxWidth: '400px',
-    backgroundColor: '#181825',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: '20px',
+    backgroundColor: 'var(--panel, #12121c)',
+    borderRadius: '24px',
     padding: '40px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+    width: '100%',
+    maxWidth: '440px',
+    border: '1px solid var(--border, rgba(255, 255, 255, 0.08))',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center'
   },
   logo: {
     height: '48px',
-    width: 'auto',
-    maxWidth: '180px',
-    objectFit: 'contain',
-    marginBottom: '24px',
+    marginBottom: '24px'
   },
   title: {
-    color: '#f8f4ff',
-    fontSize: '22px',
+    fontSize: '24px',
     fontWeight: '700',
-    marginBottom: '8px'
+    color: 'var(--text, #ffffff)',
+    marginBottom: '8px',
+    textAlign: 'center'
   },
   subtitle: {
-    color: '#9090b0',
     fontSize: '14px',
-    marginBottom: '30px'
+    color: 'var(--text2, #9090b0)',
+    marginBottom: '32px',
+    textAlign: 'center'
   },
   form: {
     width: '100%',
@@ -403,67 +522,62 @@ const styles = {
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
-    width: '100%'
+    gap: '8px'
   },
   label: {
-    color: '#f8f4ff',
-    fontSize: '13px',
-    fontWeight: '500'
+    fontSize: '14px',
+    fontWeight: '500',
+    color: 'var(--text, #ffffff)'
   },
   input: {
+    width: '100%',
     padding: '12px 16px',
-    borderRadius: '10px',
-    backgroundColor: '#101018',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#f8f4ff',
+    borderRadius: '12px',
+    backgroundColor: 'var(--bg3, #1a1a28)',
+    border: '1px solid var(--border, rgba(255, 255, 255, 0.1))',
+    color: '#ffffff',
     fontSize: '14px',
     outline: 'none',
-    transition: 'border-color 0.2s'
+    transition: 'all 0.2s',
+    boxSizing: 'border-box'
   },
   button: {
-    marginTop: '10px',
+    width: '100%',
     padding: '14px',
     borderRadius: '12px',
     border: 'none',
     background: 'linear-gradient(135deg, #FF6B35, #6C35FF)',
-    color: '#fff',
+    color: '#ffffff',
     fontSize: '15px',
-    fontWeight: '700',
+    fontWeight: '600',
     cursor: 'pointer',
-    boxShadow: '0 4px 24px rgba(255,107,53,0.3)'
+    marginTop: '8px',
+    boxShadow: '0 4px 24px rgba(108, 53, 255, 0.35)',
+    transition: 'transform 0.2s, opacity 0.2s'
   },
   error: {
-    color: '#ff5f57',
-    backgroundColor: 'rgba(255, 95, 87, 0.1)',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    marginBottom: '20px',
-    width: '100%',
-    textAlign: 'center',
-    border: '1px solid rgba(255, 95, 87, 0.2)'
-  },
-  registerContainer: {
-    marginTop: '10px',
-    textAlign: 'center',
-    width: '100%'
-  },
-  registerButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+    border: '1px solid rgba(255, 77, 77, 0.2)',
+    color: '#ff4d4d',
     padding: '12px',
     borderRadius: '12px',
-    border: '1.5px solid rgba(255, 107, 53, 0.4)',
-    background: 'rgba(255, 107, 53, 0.04)',
-    color: '#f8f4ff',
+    fontSize: '13px',
+    width: '100%',
+    textAlign: 'center',
+    marginBottom: '20px',
+    boxSizing: 'border-box'
+  },
+  footer: {
+    marginTop: '32px',
+    textAlign: 'center'
+  },
+  footerText: {
     fontSize: '14px',
-    fontWeight: '700',
+    color: 'var(--text2, #9090b0)'
+  },
+  link: {
+    color: '#6C35FF',
     textDecoration: 'none',
-    transition: 'all 0.2s',
-    cursor: 'pointer',
-    boxShadow: '0 4px 15px rgba(255,107,53,0.05)'
+    fontWeight: '600'
   }
 };
