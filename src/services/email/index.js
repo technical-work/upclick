@@ -37,8 +37,8 @@ class EmailService {
   /**
    * Send Password Reset Email
    */
-  async sendPasswordResetEmail({ to, name, code, resetLink }) {
-    const html = getResetPasswordEmailTemplate({ name, code, resetLink });
+  async sendPasswordResetEmail({ to, name, code }) {
+    const html = getResetPasswordEmailTemplate({ name, code });
     const subject = code ? `رمز إعادة تعيين كلمة المرور في UpKlick هو: [ ${code} ]` : 'إعادة تعيين كلمة المرور - UpKlick';
     return this.provider.sendEmail({ to, subject, html });
   }

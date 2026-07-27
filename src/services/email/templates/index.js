@@ -151,7 +151,7 @@ export function getVerificationEmailTemplate({ name, code, verificationLink }) {
   `;
 }
 
-export function getResetPasswordEmailTemplate({ name, code, resetLink }) {
+export function getResetPasswordEmailTemplate({ name, code }) {
   const recipientName = name ? name : 'عزيزنا المستخدم';
   return `
 <!DOCTYPE html>
@@ -166,17 +166,17 @@ export function getResetPasswordEmailTemplate({ name, code, resetLink }) {
       background: linear-gradient(135deg, rgba(255, 107, 53, 0.12), rgba(108, 53, 255, 0.18));
       border: 1.5px solid rgba(108, 53, 255, 0.35);
       border-radius: 16px;
-      padding: 24px 16px;
+      padding: 26px 18px;
       text-align: center;
       margin: 28px 0;
     }
     .code-digits {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 38px;
+      font-size: 42px;
       font-weight: 800;
-      letter-spacing: 12px;
+      letter-spacing: 14px;
       color: #FF6B35;
-      margin: 12px 0;
+      margin: 14px 0;
       direction: ltr;
       display: inline-block;
     }
@@ -192,23 +192,15 @@ export function getResetPasswordEmailTemplate({ name, code, resetLink }) {
       <p class="text">
         مرحباً ${recipientName}، لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في UpKlick.
       </p>
-      
-      ${code ? `
+
       <div class="code-box">
         <div style="font-size: 13px; color: #a0aec0; margin-bottom: 6px;">رمز إعادة تعيين كلمة المرور</div>
-        <div class="code-digits">${code}</div>
-        <div style="font-size: 12px; color: #718096; margin-top: 8px;">الرمز صالح لمدة 15 دقيقة</div>
+        <div class="code-digits">${code || '000000'}</div>
+        <div style="font-size: 12px; color: #718096; margin-top: 8px;">الرمز صالح لمدة 15 دقيقة فقط</div>
       </div>
-      ` : ''}
 
-      ${resetLink ? `
-      <div class="btn-wrapper">
-        <a href="${resetLink}" target="_blank" class="btn">أو التغيير المباشر عبر الرابط</a>
-      </div>
-      ` : ''}
-
-      <p class="text" style="font-size: 13px; color: #718096;">
-        إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذه الرسالة. ستبقى كلمة المرور الحالية دون تغيير.
+      <p class="text" style="font-size: 13px; color: #718096; margin-top: 24px;">
+        أدخل هذا الرمز المكون من 6 أرقام داخل المنصة لاختيار كلمة المرور الجديدة. إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذه الرسالة، وستظل كلمة المرور الحالية دون تغيير.
       </p>
     </div>
     <div class="footer">
