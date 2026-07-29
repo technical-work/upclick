@@ -45,7 +45,9 @@ const DEFAULTS = {
   costSwotAnalysis: 15,
   costCompetitorAnalysis: 30,
   costStrategyBuilder: 50,
-  aiToolsConfig: []
+  aiToolsConfig: [],
+  customPlans: [],
+  customRechargePacks: []
 };
 
 const AiSettingsPage = () => {
@@ -122,7 +124,7 @@ const AiSettingsPage = () => {
           planProName: data.planProName || 'Pro',
           planProPrice: data.planProPrice !== undefined ? Number(data.planProPrice) : 1497,
           planProCredits: data.planProCredits !== undefined ? Number(data.planProCredits) : 2000,
-          
+
           recharge1Credits: data.recharge1Credits !== undefined ? Number(data.recharge1Credits) : 100,
           recharge1Price: data.recharge1Price !== undefined ? Number(data.recharge1Price) : 299,
           recharge2Credits: data.recharge2Credits !== undefined ? Number(data.recharge2Credits) : 250,
@@ -135,7 +137,9 @@ const AiSettingsPage = () => {
           costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 15,
           costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 30,
           costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 50,
-          aiToolsConfig: data.aiToolsConfig || []
+          aiToolsConfig: data.aiToolsConfig || [],
+          customPlans: Array.isArray(data.customPlans) ? data.customPlans : [],
+          customRechargePacks: Array.isArray(data.customRechargePacks) ? data.customRechargePacks : []
         });
         setGlobalStats({
           totalAiSpend: data.totalAiSpend !== undefined ? Number(data.totalAiSpend) : 0,
@@ -176,49 +180,107 @@ const AiSettingsPage = () => {
     }));
   };
 
+  const handleAddCustomPlan = () => {
+    const newPlan = {
+      id: 'custom_plan_' + Date.now(),
+      name: isRTL ? 'باقة مخصصة جديدة' : 'New Custom Plan',
+      price: 999,
+      credits: 15000,
+      icon: '🚀'
+    };
+    setSettings(prev => ({
+      ...prev,
+      customPlans: [...(prev.customPlans || []), newPlan]
+    }));
+  };
+
+  const handleUpdateCustomPlan = (id, field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      customPlans: (prev.customPlans || []).map(p => p.id === id ? { ...p, [field]: value } : p)
+    }));
+  };
+
+  const handleDeleteCustomPlan = (id) => {
+    setSettings(prev => ({
+      ...prev,
+      customPlans: (prev.customPlans || []).filter(p => p.id !== id)
+    }));
+  };
+
+  const handleAddCustomRechargePack = () => {
+    const newPack = {
+      id: 'custom_recharge_' + Date.now(),
+      name: isRTL ? 'حزمة شحن مخصصة' : 'Custom Recharge Pack',
+      price: 499,
+      credits: 5000,
+      icon: '⚡'
+    };
+    setSettings(prev => ({
+      ...prev,
+      customRechargePacks: [...(prev.customRechargePacks || []), newPack]
+    }));
+  };
+
+  const handleUpdateCustomRechargePack = (id, field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      customRechargePacks: (prev.customRechargePacks || []).map(p => p.id === id ? { ...p, [field]: value } : p)
+    }));
+  };
+
+  const handleDeleteCustomRechargePack = (id) => {
+    setSettings(prev => ({
+      ...prev,
+      customRechargePacks: (prev.customRechargePacks || []).filter(p => p.id !== id)
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await setDoc(doc(db, 'tenants', 'global'), {
-          openaiApiKey: settings.openaiApiKey,
-          defaultUserCredit: Number(settings.defaultUserCredit),
-          creditsPerDollar: Number(settings.creditsPerDollar || 100),
-          openaiModel: settings.openaiModel,
-          aiEnabled: settings.aiEnabled,
-          aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
-          creditMonthlyPlan: Number(settings.creditMonthlyPlan),
-          creditAnnualPlan: Number(settings.creditAnnualPlan),
-          creditLifetimePlan: Number(settings.creditLifetimePlan),
-          aiTemperature: Number(settings.aiTemperature),
-          aiMaxTokens: Number(settings.aiMaxTokens),
-          aiSystemInstruction: settings.aiSystemInstruction,
-          aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
+        openaiApiKey: settings.openaiApiKey,
+        defaultUserCredit: Number(settings.defaultUserCredit),
+        creditsPerDollar: Number(settings.creditsPerDollar || 100),
+        openaiModel: settings.openaiModel,
+        aiEnabled: settings.aiEnabled,
+        aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
+        creditMonthlyPlan: Number(settings.creditMonthlyPlan),
+        creditAnnualPlan: Number(settings.creditAnnualPlan),
+        creditLifetimePlan: Number(settings.creditLifetimePlan),
+        aiTemperature: Number(settings.aiTemperature),
+        aiMaxTokens: Number(settings.aiMaxTokens),
+        aiSystemInstruction: settings.aiSystemInstruction,
+        aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
 
-          planStarterName: settings.planStarterName,
-          planStarterPrice: Number(settings.planStarterPrice),
-          planStarterCredits: Number(settings.planStarterCredits),
-          planGrowthName: settings.planGrowthName,
-          planGrowthPrice: Number(settings.planGrowthPrice),
-          planGrowthCredits: Number(settings.planGrowthCredits),
-          planProName: settings.planProName,
-          planProPrice: Number(settings.planProPrice),
-          planProCredits: Number(settings.planProCredits),
+        planStarterName: settings.planStarterName,
+        planStarterPrice: Number(settings.planStarterPrice),
+        planStarterCredits: Number(settings.planStarterCredits),
+        planGrowthName: settings.planGrowthName,
+        planGrowthPrice: Number(settings.planGrowthPrice),
+        planGrowthCredits: Number(settings.planGrowthCredits),
+        planProName: settings.planProName,
+        planProPrice: Number(settings.planProPrice),
+        planProCredits: Number(settings.planProCredits),
 
-          recharge1Credits: Number(settings.recharge1Credits),
-          recharge1Price: Number(settings.recharge1Price),
-          recharge2Credits: Number(settings.recharge2Credits),
-          recharge2Price: Number(settings.recharge2Price),
-          recharge3Credits: Number(settings.recharge3Credits),
-          recharge3Price: Number(settings.recharge3Price),
+        recharge1Credits: Number(settings.recharge1Credits),
+        recharge1Price: Number(settings.recharge1Price),
+        recharge2Credits: Number(settings.recharge2Credits),
+        recharge2Price: Number(settings.recharge2Price),
+        recharge3Credits: Number(settings.recharge3Credits),
+        recharge3Price: Number(settings.recharge3Price),
 
-          costGenerateScript: Number(settings.costGenerateScript),
-          costGenerateLogo: Number(settings.costGenerateLogo),
-          costSwotAnalysis: Number(settings.costSwotAnalysis),
-          costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
-          costStrategyBuilder: Number(settings.costStrategyBuilder),
-          aiToolsConfig: settings.aiToolsConfig || [],
+        costGenerateScript: Number(settings.costGenerateScript),
+        costGenerateLogo: Number(settings.costGenerateLogo),
+        costSwotAnalysis: Number(settings.costSwotAnalysis),
+        costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
+        costStrategyBuilder: Number(settings.costStrategyBuilder),
+        aiToolsConfig: settings.aiToolsConfig || [],
+        customPlans: settings.customPlans || [],
+        customRechargePacks: settings.customRechargePacks || [],
 
-          updatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       }, { merge: true });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -269,7 +331,7 @@ const AiSettingsPage = () => {
     return logList.filter(log => {
       const ts = log.timestamp;
       const dateObj = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
-      
+
       if (timeRange === 'today') {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         return dateObj >= todayStart;
@@ -343,7 +405,7 @@ const AiSettingsPage = () => {
     let spend = 0;
     let tokens = 0;
     let calls = dateFilteredLogs.length;
-    
+
     dateFilteredLogs.forEach(l => {
       spend += (l.cost || 0);
       tokens += ((l.inputTokens || 0) + (l.outputTokens || 0));
@@ -379,7 +441,7 @@ const AiSettingsPage = () => {
   // Export filtered logs to CSV file
   const exportLogsToCSV = () => {
     if (filteredLogs.length === 0) return;
-    const headers = isRTL 
+    const headers = isRTL
       ? ['المستخدم', 'البريد الإلكتروني', 'الأداة', 'النموذج', 'المدخلات (Tokens)', 'المخرجات (Tokens)', 'التكلفة ($)', 'الوقت']
       : ['User', 'Email', 'Tool', 'Model', 'Input Tokens', 'Output Tokens', 'Cost ($)', 'Timestamp'];
     const rows = filteredLogs.map(log => {
@@ -397,12 +459,12 @@ const AiSettingsPage = () => {
         dateStr
       ];
     });
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
       + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ai_usage_logs_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `ai_usage_logs_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -626,7 +688,7 @@ const AiSettingsPage = () => {
           }
         }
       `}</style>
-      
+
       {/* Sub Tabs Navigation */}
       <div className="ai-settings-subtabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '10px' }}>
         <button
@@ -869,7 +931,7 @@ const AiSettingsPage = () => {
                     borderColor: testResult.success ? 'rgba(40, 200, 64, 0.2)' : 'rgba(255, 95, 87, 0.2)',
                     color: testResult.success ? 'var(--green, #28c840)' : 'var(--red, #ff5f57)'
                   }}>
-                    {testResult.success 
+                    {testResult.success
                       ? (isRTL ? `✓ المفتاح يعمل بنجاح! تم استيراد عدد النماذج المتوفرة: ${testResult.modelsCount}` : `✓ Key verified! Successfully loaded ${testResult.modelsCount} models.`)
                       : (isRTL ? `⚠️ خطأ في التحقق: ${testResult.error}` : `⚠️ Verification failed: ${testResult.error}`)
                     }
@@ -918,7 +980,7 @@ const AiSettingsPage = () => {
                     style={inputStyle}
                   />
                   <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                    {isRTL 
+                    {isRTL
                       ? `معدل التحويل: $1 دولار يساوي ${settings.creditsPerDollar || 100} كريديت.`
                       : `Conversion rate: $1 equals ${settings.creditsPerDollar || 100} credits.`
                     }
@@ -941,7 +1003,7 @@ const AiSettingsPage = () => {
                     style={inputStyle}
                   />
                   <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                    {isRTL 
+                    {isRTL
                       ? 'يتم ضرب تكلفة الاستهلاك الحقيقية بهذا الرقم عند الخصم.'
                       : 'Deducted credits are multiplied by this factor.'}
                   </div>
@@ -984,7 +1046,7 @@ const AiSettingsPage = () => {
                       style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <label htmlFor="aiEnabledSwitch" style={{ fontSize: '13px', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', fontWeight: 'bold' }}>
-                      {settings.aiEnabled 
+                      {settings.aiEnabled
                         ? (isRTL ? '🟢 مفعّل بالكامل لجميع المستخدمين' : '🟢 Fully Enabled for all users')
                         : (isRTL ? '🔴 معطّل وموقوف بالكامل للمنصة' : '🔴 Fully Disabled globally')
                       }
@@ -1067,6 +1129,68 @@ const AiSettingsPage = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Dynamic Custom Subscription Plans */}
+                  {(settings.customPlans || []).map((plan) => (
+                    <div key={plan.id} style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px dashed var(--accent)', position: 'relative' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <div style={{ fontWeight: 'bold', color: 'var(--accent)', fontSize: '13px' }}>
+                          {plan.name || (isRTL ? 'باقة مخصصة' : 'Custom Plan')}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomPlan(plan.id)}
+                          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                        >
+                          🗑️ {isRTL ? 'حذف' : 'Delete'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
+                            <input type="text" value={plan.name || ''} onChange={e => handleUpdateCustomPlan(plan.id, 'name', e.target.value)} style={inputStyle} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الأيقونة' : 'Icon'}</label>
+                            <input type="text" value={plan.icon || '🚀'} onChange={e => handleUpdateCustomPlan(plan.id, 'icon', e.target.value)} style={inputStyle} />
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                            <input type="number" value={plan.price || 0} onChange={e => handleUpdateCustomPlan(plan.id, 'price', e.target.value)} style={inputStyle} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                            <input type="number" value={plan.credits || 0} onChange={e => handleUpdateCustomPlan(plan.id, 'credits', e.target.value)} style={inputStyle} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddCustomPlan}
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      color: 'var(--accent)',
+                      border: '1px dashed var(--accent)',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    ➕ {isRTL ? 'إضافة باقة اشتراك جديدة' : 'Add New Subscription Plan'}
+                  </button>
                 </div>
               </div>
 
@@ -1126,6 +1250,68 @@ const AiSettingsPage = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Dynamic Custom Recharge Packages */}
+                  {(settings.customRechargePacks || []).map((pack) => (
+                    <div key={pack.id} style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px dashed var(--orange)', position: 'relative' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ fontWeight: 'bold', color: 'var(--orange)', fontSize: '12px' }}>
+                          {pack.name || (isRTL ? 'حزمة مخصصة' : 'Custom Pack')}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomRechargePack(pack.id)}
+                          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '10px', cursor: 'pointer' }}
+                        >
+                          🗑️ {isRTL ? 'حذف' : 'Delete'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الحزمة' : 'Pack Name'}</label>
+                            <input type="text" value={pack.name || ''} onChange={e => handleUpdateCustomRechargePack(pack.id, 'name', e.target.value)} style={inputStyle} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الأيقونة' : 'Icon'}</label>
+                            <input type="text" value={pack.icon || '⚡'} onChange={e => handleUpdateCustomRechargePack(pack.id, 'icon', e.target.value)} style={inputStyle} />
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
+                            <input type="number" value={pack.credits || 0} onChange={e => handleUpdateCustomRechargePack(pack.id, 'credits', e.target.value)} style={inputStyle} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
+                            <input type="number" value={pack.price || 0} onChange={e => handleUpdateCustomRechargePack(pack.id, 'price', e.target.value)} style={inputStyle} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <button
+                    type="button"
+                    onClick={handleAddCustomRechargePack}
+                    style={{
+                      background: 'rgba(249, 115, 22, 0.1)',
+                      color: 'var(--orange)',
+                      border: '1px dashed var(--orange)',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    ➕ {isRTL ? 'إضافة حزمة شحن رصيد جديدة' : 'Add New Recharge Pack'}
+                  </button>
                 </div>
               </div>
 
@@ -1234,7 +1420,7 @@ const AiSettingsPage = () => {
                   }}
                 />
                 <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                  {isRTL 
+                  {isRTL
                     ? 'اكتب التعليمات التي ترغب في توجيهها للذكاء الاصطناعي لتخصيص إجاباته وجعله يمثل علامتك التجارية بحرفية.'
                     : 'System-level instructions injected at the start of all chat conversations to brand your AI and tailor its responses.'}
                 </div>
@@ -1252,17 +1438,17 @@ const AiSettingsPage = () => {
             >
               <Save size={16} />
               <span>
-                {saving 
-                  ? (isRTL ? 'جاري الحفظ...' : 'Saving...') 
-                  : saved 
-                    ? (isRTL ? 'تم الحفظ بنجاح! ✓' : 'Saved Successfully! ✓') 
+                {saving
+                  ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                  : saved
+                    ? (isRTL ? 'تم الحفظ بنجاح! ✓' : 'Saved Successfully! ✓')
                     : (isRTL ? 'حفظ إعدادات الذكاء الاصطناعي' : 'Save AI Settings')
                 }
               </span>
             </button>
-            <button 
-              onClick={handleReset} 
-              className="btn" 
+            <button
+              onClick={handleReset}
+              className="btn"
               style={{ background: 'var(--bg3)', border: '1px solid var(--line)', color: 'var(--text2)' }}
             >
               <RefreshCw size={16} />
@@ -1280,7 +1466,7 @@ const AiSettingsPage = () => {
               <List size={16} style={{ color: 'var(--orange)' }} />
               <span>{isRTL ? 'سجلات استهلاك الذكاء الاصطناعي الفورية' : 'Live AI Transactions Logs'}</span>
             </div>
-            
+
             {/* Search, Filters & Export controls */}
             <div className="ai-settings-filter-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
               {/* Tool Filter */}
@@ -1328,13 +1514,13 @@ const AiSettingsPage = () => {
               </select>
 
               {/* Export Button */}
-              <button 
+              <button
                 onClick={exportLogsToCSV}
                 className="btn"
-                style={{ 
-                  background: 'var(--bg3)', 
-                  border: '1px solid var(--line2)', 
-                  color: 'var(--text)', 
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line2)',
+                  color: 'var(--text)',
                   padding: '9px 14px',
                   borderRadius: '10px',
                   fontSize: '12.5px',
@@ -1448,19 +1634,19 @@ const AiSettingsPage = () => {
 
               {/* Pagination Controls */}
               {filteredLogs.length > logsPerPage && (
-                <div className="ai-settings-pagination" style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '16px 20px', 
-                  borderTop: '1px solid var(--line2)', 
+                <div className="ai-settings-pagination" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  borderTop: '1px solid var(--line2)',
                   background: 'var(--bg3)',
                   flexWrap: 'wrap',
                   gap: '12px',
                   borderRadius: '0 0 10px 10px'
                 }}>
                   <div style={{ fontSize: '13px', color: 'var(--text3)', fontWeight: '600' }}>
-                    {isRTL 
+                    {isRTL
                       ? `عرض ${Math.min(filteredLogs.length, (logPage - 1) * logsPerPage + 1)}-${Math.min(filteredLogs.length, logPage * logsPerPage)} من أصل ${filteredLogs.length} سجل`
                       : `Showing ${Math.min(filteredLogs.length, (logPage - 1) * logsPerPage + 1)}-${Math.min(filteredLogs.length, logPage * logsPerPage)} of ${filteredLogs.length} entries`
                     }
@@ -1470,10 +1656,10 @@ const AiSettingsPage = () => {
                       onClick={() => setLogPage(prev => Math.max(prev - 1, 1))}
                       disabled={logPage === 1}
                       className="btn"
-                      style={{ 
-                        padding: '6px 12px', 
-                        fontSize: '12px', 
-                        background: logPage === 1 ? 'transparent' : 'var(--bg2)', 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        background: logPage === 1 ? 'transparent' : 'var(--bg2)',
                         borderColor: 'var(--line2)',
                         color: logPage === 1 ? 'var(--text3)' : 'var(--text)',
                         cursor: logPage === 1 ? 'not-allowed' : 'pointer'
@@ -1486,7 +1672,7 @@ const AiSettingsPage = () => {
                       const pageNumbers = [];
                       const startPage = Math.max(1, logPage - 2);
                       const endPage = Math.min(totalPages, logPage + 2);
-                      
+
                       for (let i = startPage; i <= endPage; i++) {
                         pageNumbers.push(i);
                       }
@@ -1556,10 +1742,10 @@ const AiSettingsPage = () => {
                       onClick={() => setLogPage(prev => Math.min(prev + 1, Math.ceil(filteredLogs.length / logsPerPage)))}
                       disabled={logPage === Math.ceil(filteredLogs.length / logsPerPage)}
                       className="btn"
-                      style={{ 
-                        padding: '6px 12px', 
-                        fontSize: '12px', 
-                        background: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'transparent' : 'var(--bg2)', 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        background: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'transparent' : 'var(--bg2)',
                         borderColor: 'var(--line2)',
                         color: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'var(--text3)' : 'var(--text)',
                         cursor: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'not-allowed' : 'pointer'
@@ -1578,7 +1764,7 @@ const AiSettingsPage = () => {
       {/* SUB TAB 3: ANALYTICS DASHBOARD */}
       {activeSubTab === 'analytics' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           {/* Global Aggregates Cards */}
           <div className="ai-settings-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {/* Spend Card */}
@@ -1623,14 +1809,14 @@ const AiSettingsPage = () => {
 
           {/* Detailed Analytics Tables */}
           <div className="ai-settings-detailed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
-            
+
             {/* Top Users Card */}
             <div className="card ai-settings-table-card" style={cardStyle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                 <DollarSign size={15} style={{ color: 'var(--green)' }} />
                 <span>{isRTL ? 'المستخدمين الأكثر استهلاكاً للرصيد' : 'Top 5 Most Active Users (Cost)'}</span>
               </div>
-              
+
               {topUsers.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px 0' }}>
                   {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
@@ -1814,7 +2000,7 @@ const AiSettingsPage = () => {
         </div>
       )}
 
-    
+
       {/* SUB TAB 4: TOOLS & PERMISSIONS */}
       {activeSubTab === 'tools' && (
         <div className="card" style={{ padding: '24px', background: 'var(--panelColor, #101018)', border: '1px solid var(--line, var(--edge))', borderRadius: '16px' }}>
@@ -1822,10 +2008,10 @@ const AiSettingsPage = () => {
             <span style={{ color: 'var(--orange)' }}>⚙️</span>
             <span>{isRTL ? 'إدارة أدوات الذكاء الاصطناعي والصلاحيات' : 'AI Tools & Permissions Management'}</span>
           </div>
-          
+
           <p style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '20px' }}>
-            {isRTL 
-              ? 'قم بتخصيص تكلفة كل أداة بالكريديت، وتحديد الباقات المسموح لها باستخدام الأداة، وإضافة تاج (Tag) مميز يظهر فوق الأداة للعميل.' 
+            {isRTL
+              ? 'قم بتخصيص تكلفة كل أداة بالكريديت، وتحديد الباقات المسموح لها باستخدام الأداة، وإضافة تاج (Tag) مميز يظهر فوق الأداة للعميل.'
               : 'Customize the credit cost of each tool, specify which plans are allowed to use it, and add a custom Tag to display above it.'}
           </p>
 
@@ -1839,7 +2025,7 @@ const AiSettingsPage = () => {
               const handleToolUpdate = (key, value) => {
                 let newConfigList = [...(settings.aiToolsConfig || [])];
                 let existingIdx = newConfigList.findIndex(t => t.id === baseTool.id);
-                
+
                 if (existingIdx === -1) {
                   newConfigList.push({
                     id: baseTool.id,
@@ -1852,7 +2038,7 @@ const AiSettingsPage = () => {
                 } else {
                   newConfigList[existingIdx][key] = value;
                 }
-                
+
                 handleFieldChange('aiToolsConfig', newConfigList);
               };
 
@@ -1871,29 +2057,29 @@ const AiSettingsPage = () => {
                   <div style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--text)' }}>
                     {baseTool.name}
                   </div>
-                  
+
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
                         {isRTL ? 'تكلفة الكريديت' : 'Credit Cost'}
                       </label>
-                      <input 
-                        type="number" 
-                        value={currentCost} 
+                      <input
+                        type="number"
+                        value={currentCost}
                         onChange={(e) => handleToolUpdate('cost', Number(e.target.value))}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--text)' }} 
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--text)' }}
                       />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
                         {isRTL ? 'نص التاج (Tag)' : 'Badge Tag'}
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder={isRTL ? 'مثال: حصري، جديد..' : 'e.g., Premium, New'}
-                        value={currentTag} 
+                        value={currentTag}
                         onChange={(e) => handleToolUpdate('tag', e.target.value)}
-                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--text)' }} 
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--text)' }}
                       />
                     </div>
                   </div>
@@ -1959,7 +2145,7 @@ const AiSettingsPage = () => {
           )}
         </div>
       )}
-\n</div>
+    </div>
   );
 };
 

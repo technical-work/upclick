@@ -40,6 +40,9 @@ export default function BillingView() {
 
   const currencySymbol = tenantConfig?.currency || 'EGP';
 
+  const customPlans = tenantConfig?.customPlans || [];
+  const customRechargePacks = tenantConfig?.customRechargePacks || [];
+
   // User details
   const currentPlanName = userData?.plan || 'Starter';
   const userCredits = userData?.aiCredits !== undefined ? Number(userData.aiCredits) : planStarterCredits;
@@ -589,6 +592,27 @@ export default function BillingView() {
                     {currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'ترقية' : 'Subscribe')}
                   </button>
                 </div>
+
+                {/* Dynamic Custom Subscription Plans */}
+                {customPlans.map((plan, idx) => {
+                  const isCurrent = currentPlanName.toLowerCase() === (plan.name || '').toLowerCase();
+                  return (
+                    <div key={plan.id || idx} className="recharge-card" style={isCurrent ? { borderColor: 'var(--accent)' } : {}}>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>{plan.icon || '🚀'}</div>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{plan.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{plan.credits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{plan.price} {currencySymbol}</div>
+                      <button
+                        onClick={() => handleOpenPaymentModal({ planName: plan.name, amount: Number(plan.price), currency: currencySymbol, planDuration: 'monthly', creditsToAdd: Number(plan.credits) })}
+                        disabled={isCurrent}
+                        className="btn btn-prime"
+                        style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                      >
+                        {isCurrent ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'اشتراك' : 'Subscribe')}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -642,6 +666,23 @@ export default function BillingView() {
                     {isRTL ? 'شراء' : 'Buy Now'}
                   </button>
                 </div>
+
+                {/* Dynamic Custom Recharge Packages */}
+                {customRechargePacks.map((pack, idx) => (
+                  <div key={pack.id || idx} className="recharge-card">
+                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>{pack.icon || '⚡'}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{pack.name || `${pack.credits} Credits`}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{pack.credits} {L('Credits', 'كريديت')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{pack.price} {currencySymbol}</div>
+                    <button
+                      onClick={() => handleOpenPaymentModal({ planName: pack.name || `${pack.credits} Credits Pack`, amount: Number(pack.price), currency: currencySymbol, planDuration: 'recharge', creditsToAdd: Number(pack.credits) })}
+                      className="btn btn-prime"
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                    >
+                      {isRTL ? 'شراء' : 'Buy Now'}
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 

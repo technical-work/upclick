@@ -1103,6 +1103,8 @@ export function BusinessProvider({ children }) {
     costSwotAnalysis: tenantConfig?.costSwotAnalysis !== undefined ? Number(tenantConfig.costSwotAnalysis) : 15,
     costCompetitorAnalysis: tenantConfig?.costCompetitorAnalysis !== undefined ? Number(tenantConfig.costCompetitorAnalysis) : 30,
     costStrategyBuilder: tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 50,
+    customPlans: Array.isArray(tenantConfig?.customPlans) ? tenantConfig.customPlans : [],
+    customRechargePacks: Array.isArray(tenantConfig?.customRechargePacks) ? tenantConfig.customRechargePacks : [],
   };
 
   return (
