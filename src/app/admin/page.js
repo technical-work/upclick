@@ -52,6 +52,7 @@ import { useAuth } from '../../context/AuthContext';
 import BrandingSettings from './BrandingSettings';
 import PaymentSettingsPage from './PaymentSettingsPage';
 import AiSettingsPage from './AiSettingsPage';
+import PlansSettingsPage from './PlansSettingsPage';
 import TrackingSettingsPage from './TrackingSettingsPage';
 
 const secondaryFirebaseConfig = {
@@ -1221,6 +1222,7 @@ const AdminDashboard = () => {
           <h2 style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text)' }}>
             {activeTab === 'users' ? t('admin.usersTitle') :
              activeTab === 'sales' ? t('admin.salesTitle') :
+             activeTab === 'plans' ? (isRTL ? 'إدارة الباقات والاشتراكات والأسعار' : 'Plans & Subscriptions Management') :
              activeTab === 'branding' ? t('admin.brandingTitle') :
              activeTab === 'payments' ? t('admin.paymentsTitle') :
              activeTab === 'support' ? (isRTL ? 'الدعم الفني والشكاوى' : 'Support Tickets') :
@@ -1230,6 +1232,7 @@ const AdminDashboard = () => {
           <p style={{ color: 'var(--text2)', fontSize: '14px' }}>
             {activeTab === 'users' ? t('admin.usersDesc') :
              activeTab === 'sales' ? t('admin.salesDesc') :
+             activeTab === 'plans' ? (isRTL ? 'تعديل أسعار وميزات الباقات وشحن الرصيد' : 'Configure subscription plans, features, and refill packs') :
              activeTab === 'branding' ? t('admin.brandingDesc') :
              activeTab === 'payments' ? t('admin.paymentsDesc') :
              activeTab === 'support' ? (isRTL ? 'متابعة وحل مشكلات العملاء وفتح المحادثات الفورية' : 'Manage customer issues and open chat threads') :
@@ -1709,6 +1712,8 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+      ) : activeTab === 'plans' && userData?.role === 'admin' ? (
+        <PlansSettingsPage />
       ) : activeTab === 'branding' && userData?.role === 'admin' ? (
         <BrandingSettings />
       ) : activeTab === 'payments' && userData?.role === 'admin' ? (

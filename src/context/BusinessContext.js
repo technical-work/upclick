@@ -1078,22 +1078,28 @@ export function BusinessProvider({ children }) {
 
   const processedTenantConfig = {
     ...tenantConfig,
-    planStarterName: tenantConfig?.planStarterName || 'Starter',
-    planStarterPrice: tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 499,
-    planStarterCredits: tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 200,
-    planGrowthName: tenantConfig?.planGrowthName || 'Growth',
-    planGrowthPrice: tenantConfig?.planGrowthPrice !== undefined ? Number(tenantConfig.planGrowthPrice) : 799,
-    planGrowthCredits: tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 600,
-    planProName: tenantConfig?.planProName || 'Pro',
-    planProPrice: tenantConfig?.planProPrice !== undefined ? Number(tenantConfig.planProPrice) : 1497,
-    planProCredits: tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 2000,
+    planStarterConfig: tenantConfig?.planStarterConfig || null,
+    planGrowthConfig: tenantConfig?.planGrowthConfig || null,
+    planProConfig: tenantConfig?.planProConfig || null,
+
+    planStarterName: tenantConfig?.planStarterConfig?.name || tenantConfig?.planStarterName || 'Starter',
+    planStarterPrice: tenantConfig?.planStarterConfig?.price !== undefined ? Number(tenantConfig.planStarterConfig.price) : (tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 299),
+    planStarterCredits: tenantConfig?.planStarterConfig?.credits !== undefined ? Number(tenantConfig.planStarterConfig.credits) : (tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 2000),
+
+    planGrowthName: tenantConfig?.planGrowthConfig?.name || tenantConfig?.planGrowthName || 'Growth',
+    planGrowthPrice: tenantConfig?.planGrowthConfig?.price !== undefined ? Number(tenantConfig.planGrowthConfig.price) : (tenantConfig?.planGrowthPrice !== undefined ? Number(tenantConfig.planGrowthPrice) : 499),
+    planGrowthCredits: tenantConfig?.planGrowthConfig?.credits !== undefined ? Number(tenantConfig.planGrowthConfig.credits) : (tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 5000),
+
+    planProName: tenantConfig?.planProConfig?.name || tenantConfig?.planProName || 'Pro',
+    planProPrice: tenantConfig?.planProConfig?.price !== undefined ? Number(tenantConfig.planProConfig.price) : (tenantConfig?.planProPrice !== undefined ? Number(tenantConfig.planProPrice) : 799),
+    planProCredits: tenantConfig?.planProConfig?.credits !== undefined ? Number(tenantConfig.planProConfig.credits) : (tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 10000),
     
-    recharge1Credits: tenantConfig?.recharge1Credits !== undefined ? Number(tenantConfig.recharge1Credits) : 100,
-    recharge1Price: tenantConfig?.recharge1Price !== undefined ? Number(tenantConfig.recharge1Price) : 299,
-    recharge2Credits: tenantConfig?.recharge2Credits !== undefined ? Number(tenantConfig.recharge2Credits) : 250,
-    recharge2Price: tenantConfig?.recharge2Price !== undefined ? Number(tenantConfig.recharge2Price) : 599,
-    recharge3Credits: tenantConfig?.recharge3Credits !== undefined ? Number(tenantConfig.recharge3Credits) : 500,
-    recharge3Price: tenantConfig?.recharge3Price !== undefined ? Number(tenantConfig.recharge3Price) : 999,
+    recharge1Credits: tenantConfig?.recharge1Credits !== undefined ? Number(tenantConfig.recharge1Credits) : 1000,
+    recharge1Price: tenantConfig?.recharge1Price !== undefined ? Number(tenantConfig.recharge1Price) : 26,
+    recharge2Credits: tenantConfig?.recharge2Credits !== undefined ? Number(tenantConfig.recharge2Credits) : 3500,
+    recharge2Price: tenantConfig?.recharge2Price !== undefined ? Number(tenantConfig.recharge2Price) : 399,
+    recharge3Credits: tenantConfig?.recharge3Credits !== undefined ? Number(tenantConfig.recharge3Credits) : 6000,
+    recharge3Price: tenantConfig?.recharge3Price !== undefined ? Number(tenantConfig.recharge3Price) : 699,
 
     creditsPerDollar: tenantConfig?.creditsPerDollar !== undefined ? Number(tenantConfig.creditsPerDollar) : 100,
     defaultUserCredit: tenantConfig?.defaultUserCredit !== undefined ? Number(tenantConfig.defaultUserCredit) : 5.00,
