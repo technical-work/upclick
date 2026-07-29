@@ -5,6 +5,7 @@ import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
+import { DEFAULT_AI_TOOLS } from '../constants/aiTools';
 import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 const BusinessContext = createContext();
@@ -1030,6 +1031,29 @@ export function BusinessProvider({ children }) {
     }
   };
 
+  
+  const getToolConfig = (toolId) => {
+    const baseTool = DEFAULT_AI_TOOLS.find(t => t.id === toolId);
+    if (!baseTool) return { cost: 0, isAllowed: true, tag: '' }; // Fallback
+
+    const customTools = processedTenantConfig?.aiToolsConfig || [];
+    const customTool = customTools.find(t => t.id === toolId);
+    
+    let cost = customTool && customTool.cost !== undefined ? customTool.cost : baseTool.cost;
+    let allowedPlans = customTool && customTool.allowedPlans ? customTool.allowedPlans : ['starter', 'growth', 'pro'];
+    let tag = customTool && customTool.tag ? customTool.tag : '';
+
+    const userPlan = userData?.planName ? userData.planName.toLowerCase() : 'starter';
+    const standardPlans = ['starter', 'growth', 'pro'];
+    let isAllowed = true;
+    if (standardPlans.includes(userPlan)) {
+      isAllowed = allowedPlans.includes(userPlan);
+    }
+
+    return { cost, isAllowed, tag, allowedPlans };
+  };
+
+
   const checkCredits = (cost) => {
     const cpd = tenantConfig?.creditsPerDollar !== undefined ? Number(tenantConfig.creditsPerDollar) : 100;
     const defCredits = (tenantConfig?.defaultUserCredit !== undefined ? Number(tenantConfig.defaultUserCredit) : 5.00) * cpd;
@@ -1166,7 +1190,8 @@ export function BusinessProvider({ children }) {
         confirmAction,
         promptAction,
         rates,
-        checkCredits
+        checkCredits,
+        getToolConfig
       }}
     >
       {children}

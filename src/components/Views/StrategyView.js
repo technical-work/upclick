@@ -3,6 +3,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
 import CustomSelect from '../CustomSelect';
+import AIToolButton from '../AIToolButton';
 
 export default function StrategyView() {
   const { lang, L, t, GC, saveGC, checkCredits, tenantConfig } = useBusiness();
@@ -587,9 +588,16 @@ You must cover:
           <div className="card">
             <div className="sec-hd">
               <div className="sec-title">{L('Idea & Offer Analysis', 'تحليل الفكرة والعرض')}</div>
-              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', minWidth: 'auto' }} onClick={runIdeaStrategy} disabled={loading.idea}>
-                ✦ {L('Generate / Update', 'توليد / تحديث')} ({costSwotAnalysis} Credits)
-              </button>
+              <AIToolButton 
+                toolId="viability_analysis" 
+                onClick={runIdeaStrategy} 
+                loading={loading.idea} 
+                text={L('Generate', 'توليد')} 
+                loadingText={L('Generating...', 'جاري التوليد...')} 
+                className="btn btn-ghost"
+                style={{ padding: '4px 8px', fontSize: '11px', minWidth: 'auto' }}
+                icon="✦"
+              />
             </div>
             <div 
               className="ai-box"

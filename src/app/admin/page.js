@@ -2262,6 +2262,40 @@ const AdminDashboard = () => {
                     <option value="lifetime">{isRTL ? 'مدى الحياة' : 'Lifetime'}</option>
                   </select>
                 </div>
+                
+                <div className="field">
+                  <label className="field-label">{t('admin.planNameLabel') || 'Plan Name'}</label>
+                  <select
+                    className="form-control"
+                    value={['starter', 'growth', 'pro'].includes(editingUser.planName?.toLowerCase()) ? editingUser.planName.toLowerCase() : (editingUser.planName ? 'custom' : 'starter')}
+                    onChange={e => {
+                      if (e.target.value !== 'custom') {
+                        setEditingUser({ ...editingUser, planName: e.target.value });
+                      } else {
+                        setEditingUser({ ...editingUser, planName: 'Enterprise' });
+                      }
+                    }}
+                  >
+                    <option value="starter">{isRTL ? 'ستارتر' : 'Starter'}</option>
+                    <option value="growth">{isRTL ? 'جروث' : 'Growth'}</option>
+                    <option value="pro">{isRTL ? 'برو' : 'Pro'}</option>
+                    <option value="custom">{isRTL ? 'باقة مخصصة' : 'Custom Plan'}</option>
+                  </select>
+                </div>
+                {(!['starter', 'growth', 'pro'].includes(editingUser.planName?.toLowerCase())) && (
+                  <div className="field">
+                    <label className="field-label">{isRTL ? 'اسم الباقة المخصصة' : 'Custom Plan Name'}</label>
+                    <input
+                      className="form-control"
+                      type="text"
+                      required
+                      value={editingUser.planName || ''}
+                      onChange={e => setEditingUser({ ...editingUser, planName: e.target.value })}
+                      placeholder={isRTL ? 'أدخل اسم الباقة المخصصة' : 'Enter custom plan name'}
+                    />
+                  </div>
+                )}
+
                 {(editingUser.subscriptionType || 'months') !== 'lifetime' && (
                   <div className="field">
                     <label className="field-label">{t('common.duration') || 'Duration'}</label>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { DEFAULT_AI_TOOLS } from '@/constants/aiTools';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
