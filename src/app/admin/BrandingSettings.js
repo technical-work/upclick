@@ -810,15 +810,6 @@ const BrandingSettings = () => {
           </label>
         </div>
 
-        {/* Starter Plan & Pricing */}
-        {renderPlanSection('planStarter', isRTL ? 'إعدادات باقة المبتدئين (Starter Plan)' : 'Starter Plan Settings')}
-
-        {/* Growth Plan & Pricing */}
-        {renderPlanSection('planGrowth', isRTL ? 'إعدادات باقة النمو (Growth Plan)' : 'Growth Plan Settings')}
-
-        {/* Pro Plan & Pricing */}
-        {renderPlanSection('planPro', isRTL ? 'إعدادات باقة المحترفين (Pro Plan)' : 'Pro Plan Settings')}
-
 
         {/* Advanced Overrides */}
         <div className="card" style={{ marginBottom: '12px' }}>

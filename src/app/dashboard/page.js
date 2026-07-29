@@ -51,7 +51,6 @@ import AutomationHubView from '@/components/Views/AutomationHubView';
 import TeamManagementView from '@/components/Views/TeamManagementView';
 import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
-import ModelTestView from '@/components/Views/ModelTestView';
 import BillingView from '@/components/Views/BillingView';
 import SupportView from '@/components/Views/SupportView';
 function DashboardShell() {
@@ -301,7 +300,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'model-test', 'billing', 'support', 'courses'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -361,8 +360,6 @@ function DashboardShell() {
         return <NicheStudioView />;
       case 'design':
         return <DesignStudioView />;
-      case 'model-test':
-        return <ModelTestView />;
       case 'billing':
         return <BillingView />;
       case 'support':

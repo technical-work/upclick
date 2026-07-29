@@ -178,8 +178,7 @@ export default function Sidebar() {
         { page: 'integrations', label: 'Integrations', icon: Link2 },
         { page: 'analytics', label: 'Analytics', icon: TrendingUp },
         { page: 'billing', label: 'Billing & Credits', icon: CreditCard },
-        { page: 'support', label: 'Technical Support', icon: HelpCircle },
-        { page: 'model-test', label: 'اختبار الموديل', icon: Clock }
+        { page: 'support', label: 'Technical Support', icon: HelpCircle }
       ]
     }
   ];

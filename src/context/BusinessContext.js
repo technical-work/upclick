@@ -26,13 +26,11 @@ export const ALL_SYSTEM_TOOLS = [
   { key: 'niche', labelAr: 'استوديو النيش والبراند (Niche Studio)', labelEn: 'Niche Studio', icon: '🧭' },
   { key: 'community', labelAr: 'مركز المجتمع (Community Hub)', labelEn: 'Community Hub', icon: '👥' },
   { key: 'design', labelAr: 'استوديو التصميم (Design Studio)', labelEn: 'Design Studio', icon: '🎨' },
-  { key: 'upclick', labelAr: 'منشئ اب كليك (UpClick Builder)', labelEn: 'UpClick Builder', icon: '🚀' },
   { key: 'tasks', labelAr: 'لوحة المهام (Task Board)', labelEn: 'Task Board', icon: '✅' },
   { key: 'calendar', labelAr: 'التقويم والأحداث (Calendar)', labelEn: 'Calendar', icon: '📅' },
   { key: 'finance', labelAr: 'المالية والمصروفات (Finance)', labelEn: 'Finance', icon: '💳' },
   { key: 'ops', labelAr: 'مركز العمليات (Ops Hub)', labelEn: 'Ops Hub', icon: '⚙️' },
   { key: 'team', labelAr: 'إدارة الفريق والعمليات (Team Hub)', labelEn: 'Team Hub', icon: '👥' },
-  { key: 'teamchat', labelAr: 'دردشة الفريق (Team Chat)', labelEn: 'Team Chat', icon: '💬' },
   { key: 'integrations', labelAr: 'التكاملات والربط (Integrations)', labelEn: 'Integrations', icon: '🔗' },
   { key: 'analytics', labelAr: 'التحليلات المتقدمة (Analytics)', labelEn: 'Analytics', icon: '📊' },
 ];
@@ -1168,12 +1166,7 @@ export function BusinessProvider({ children }) {
 
   const isToolAllowedForUser = (toolKey) => {
     if (userData?.role === 'admin' || userData?.role === 'super_admin') return true;
-    if (['home', 'profile', 'billing', 'support', 'model-test'].includes(toolKey)) return true;
-
-    // Check direct user tool overrides if defined by admin
-    if (Array.isArray(userData?.allowedTools)) {
-      return userData.allowedTools.includes(toolKey);
-    }
+    if (['home', 'profile', 'billing', 'support'].includes(toolKey)) return true;
 
     const userPlan = (userData?.plan || 'Starter').toLowerCase();
 
