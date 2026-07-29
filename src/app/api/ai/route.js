@@ -113,9 +113,33 @@ export async function POST(request) {
     const userData = userDoc.data();
     const aiCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : defaultUserCredit;
 
-    // Determine credit unit cost
+    // Determine tool configuration from dynamic aiToolsConfig or DEFAULT_AI_TOOLS
+    const aiToolsConfig = globalData.aiToolsConfig || [];
+    const baseTool = DEFAULT_AI_TOOLS.find(t => t.id === tool || t.name === tool);
+    const customTool = aiToolsConfig.find(t => t.id === tool || t.name === tool);
+
+    let configuredCost = customTool && customTool.cost !== undefined 
+      ? customTool.cost 
+      : (baseTool ? baseTool.cost : null);
+    
+    let allowedPlans = customTool && customTool.allowedPlans 
+      ? customTool.allowedPlans 
+      : ['starter', 'growth', 'pro'];
+
+    // Check Plan Authorization
+    const userPlan = (userData.planName || 'starter').toLowerCase();
+    const standardPlans = ['starter', 'growth', 'pro'];
+    if (standardPlans.includes(userPlan) && !allowedPlans.includes(userPlan)) {
+      return NextResponse.json({ 
+        error: 'هذه الأداة غير متاحة في باقتك الحالية. يمكنك ترقية الباقة لاستخدامها.' 
+      }, { status: 403 });
+    }
+
+    // Determine final credit unit cost
     let finalCreditsDeduction = 0;
-    if (creditsCost !== undefined && creditsCost !== null) {
+    if (configuredCost !== null && configuredCost !== undefined) {
+      finalCreditsDeduction = Number(configuredCost);
+    } else if (creditsCost !== undefined && creditsCost !== null) {
       finalCreditsDeduction = Number(creditsCost);
     } else {
       const toolLower = String(tool || '').toLowerCase();
@@ -130,7 +154,7 @@ export async function POST(request) {
       } else if (toolLower.includes('strategy') || toolLower.includes('roadmap')) {
         finalCreditsDeduction = globalData.costStrategyBuilder !== undefined ? Number(globalData.costStrategyBuilder) : 50;
       } else {
-        finalCreditsDeduction = 0; // default catch-all: no deduction for unrecognized tools
+        finalCreditsDeduction = 0;
       }
     }
 
