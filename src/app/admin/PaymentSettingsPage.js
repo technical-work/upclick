@@ -315,8 +315,17 @@ const PaymentSettingsPage = () => {
                       <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {paymentMethods.stripe.secretKey === 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH' ? (
                           <>
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' }}></span>
+                            <span style={{ color: '#f59e0b' }}>{isRTL ? 'متصل بحساب Stripe الافتراضي (وضع التجربة)' : 'Connected to Default Stripe (Test Mode)'}</span>
+                          </>
+                        ) : paymentMethods.stripe.secretKey ? (
+                          <>
                             <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#00d98b', boxShadow: '0 0 8px #00d98b' }}></span>
-                            <span style={{ color: '#00d98b' }}>{isRTL ? 'متصل بحساب Stripe الافتراضي' : 'Connected to Default Stripe'}</span>
+                            <span style={{ color: '#00d98b' }}>
+                              {paymentMethods.stripe.secretKey.startsWith('sk_live')
+                                ? (isRTL ? 'متصل بحساب Stripe الفعلي (الإنتاج)' : 'Connected to Live Stripe')
+                                : (isRTL ? 'متصل بحساب Stripe المخصص' : 'Connected to Custom Stripe')}
+                            </span>
                           </>
                         ) : (
                           <>
@@ -327,28 +336,17 @@ const PaymentSettingsPage = () => {
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px', lineHeight: '1.4', textAlign: 'start' }}>
                         {paymentMethods.stripe.secretKey === 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH'
-                          ? (isRTL ? 'الحساب الافتراضي sk_test_51Tn0... نشط وجاهز للتشغيل.' : 'Default account sk_test_51Tn0... is active and ready to run.')
-                          : (isRTL ? 'اضغط على زر الاتصال باليمين للربط السريع وحفظ المفاتيح الافتراضية.' : 'Click connect on the right to link the default sandbox keys.')}
+                          ? (isRTL ? 'الحساب الافتراضي sk_test_51Tn0... نشط للتجربة. يرجى إدخال مفاتيحك الفعلية للتشغيل الحقيقي.' : 'Default account sk_test_51Tn0... is active for testing. Enter your live keys to accept real payments.')
+                          : paymentMethods.stripe.secretKey
+                          ? (isRTL ? 'مفاتيح Stripe الخاصة بك نشطة ومحفوظة.' : 'Your custom Stripe keys are active and saved.')
+                          : (isRTL ? 'أدخل مفاتيحك الخاصة بـ Stripe لحسابك الفعلي.' : 'Enter your Stripe API keys to accept payments.')}
                       </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => {
-                        const targetSecret = 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH';
-                        const targetPublishable = 'pk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH';
-                        
-                        setPaymentMethods(prev => ({
-                          ...prev,
-                          stripe: {
-                            ...prev.stripe,
-                            secretKey: targetSecret,
-                            publishableKey: targetPublishable,
-                            enabled: true
-                          }
-                        }));
-                        
-                        window.open('https://dashboard.stripe.com/', '_blank');
+                        window.open('https://dashboard.stripe.com/apikeys', '_blank');
                       }}
                       style={{
                         background: 'var(--accent)',

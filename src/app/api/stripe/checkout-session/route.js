@@ -39,7 +39,7 @@ export async function POST(req) {
     let secretKey = FALLBACK_SECRET_KEY;
 
     // Fetch custom secret key from tenant config if configured
-    if (adminId) {
+    if (adminId && adminId !== 'global') {
       const tenantDoc = await adminDb.collection('tenants').doc(adminId).get();
       if (tenantDoc.exists) {
         const data = tenantDoc.data();
@@ -48,6 +48,23 @@ export async function POST(req) {
           secretKey = stripeConfig.secretKey;
         }
       }
+    }
+
+    // Fallback to global config if no tenant key is found or adminId is global/missing
+    if (secretKey === FALLBACK_SECRET_KEY) {
+      const globalDoc = await adminDb.collection('tenants').doc('global').get();
+      if (globalDoc.exists) {
+        const data = globalDoc.data();
+        const stripeConfig = data.paymentMethods?.stripe;
+        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
+          secretKey = stripeConfig.secretKey;
+        }
+      }
+    }
+
+    // Fallback to environment variables if still using fallback key
+    if (secretKey === FALLBACK_SECRET_KEY && process.env.STRIPE_SECRET_KEY) {
+      secretKey = process.env.STRIPE_SECRET_KEY;
     }
 
     const stripe = new Stripe(secretKey, {
