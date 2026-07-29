@@ -38,107 +38,6 @@ const DEFAULTS = {
   recharge2Credits: 250,
   recharge2Price: 599,
   recharge3Credits: 500,
-  recharge3Price: 999,
-
-  costGenerateScript: 5,
-  costGenerateLogo: 40,
-  costSwotAnalysis: 15,
-  costCompetitorAnalysis: 30,
-  costStrategyBuilder: 50
-};
-
-const AiSettingsPage = () => {
-  const { t, i18n } = useTranslation();
-  const { currentUser } = useAuth();
-  const isRTL = i18n.language?.startsWith('ar');
-
-  const [activeSubTab, setActiveSubTab] = useState('config'); // 'config' | 'logs' | 'analytics'
-  const [settings, setSettings] = useState(DEFAULTS);
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState(null);
-
-  // API Key Testing states
-  const [testingKey, setTestingKey] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-
-  // Advanced Logs & Analytics State
-  const [logs, setLogs] = useState([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterTool, setFilterTool] = useState('all');
-  const [filterModel, setFilterModel] = useState('all');
-  const [timeRange, setTimeRange] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'custom'
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  // Pagination State for Logs
-  const [logPage, setLogPage] = useState(1);
-  const [logsPerPage, setLogsPerPage] = useState(25);
-
-  useEffect(() => {
-    setLogPage(1);
-  }, [searchTerm, filterTool, filterModel, timeRange, startDate, endDate]);
-
-  // Refill Modal state
-  const [refillModalUser, setRefillModalUser] = useState(null); // { userId, email, name, currentCredits }
-  const [refillAmount, setRefillAmount] = useState('');
-  const [refilling, setRefilling] = useState(false);
-
-  const [globalStats, setGlobalStats] = useState({
-    totalAiSpend: 0,
-    totalAiTokens: 0,
-    totalAiCalls: 0
-  });
-
-  // Load global AI configuration & reactive aggregates
-  useEffect(() => {
-    if (!currentUser?.uid) return;
-    const unsub = onSnapshot(doc(db, 'tenants', 'global'), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setSettings({
-          openaiApiKey: data.openaiApiKey || '',
-          defaultUserCredit: data.defaultUserCredit !== undefined ? Number(data.defaultUserCredit) : 5.00,
-          creditsPerDollar: data.creditsPerDollar !== undefined ? Number(data.creditsPerDollar) : 100,
-          openaiModel: data.openaiModel || 'gpt-4o-mini',
-          aiEnabled: data.aiEnabled !== false,
-          aiMarkupMultiplier: data.aiMarkupMultiplier !== undefined ? Number(data.aiMarkupMultiplier) : 1.0,
-          creditMonthlyPlan: data.creditMonthlyPlan !== undefined ? Number(data.creditMonthlyPlan) : 10.00,
-          creditAnnualPlan: data.creditAnnualPlan !== undefined ? Number(data.creditAnnualPlan) : 120.00,
-          creditLifetimePlan: data.creditLifetimePlan !== undefined ? Number(data.creditLifetimePlan) : 500.00,
-          aiTemperature: data.aiTemperature !== undefined ? Number(data.aiTemperature) : 0.7,
-          aiMaxTokens: data.aiMaxTokens !== undefined ? Number(data.aiMaxTokens) : 1000,
-          aiSystemInstruction: data.aiSystemInstruction || '',
-          aiMaxMonthlyBudget: data.aiMaxMonthlyBudget !== undefined ? Number(data.aiMaxMonthlyBudget) : 100.00,
-
-          planStarterName: data.planStarterName || 'Starter',
-          planStarterPrice: data.planStarterPrice !== undefined ? Number(data.planStarterPrice) : 499,
-          planStarterCredits: data.planStarterCredits !== undefined ? Number(data.planStarterCredits) : 200,
-          planGrowthName: data.planGrowthName || 'Growth',
-          planGrowthPrice: data.planGrowthPrice !== undefined ? Number(data.planGrowthPrice) : 799,
-          planGrowthCredits: data.planGrowthCredits !== undefined ? Number(data.planGrowthCredits) : 600,
-          planProName: data.planProName || 'Pro',
-          planProPrice: data.planProPrice !== undefined ? Number(data.planProPrice) : 1497,
-          planProCredits: data.planProCredits !== undefined ? Number(data.planProCredits) : 2000,
-          
-          recharge1Credits: data.recharge1Credits !== undefined ? Number(data.recharge1Credits) : 100,
-          recharge1Price: data.recharge1Price !== undefined ? Number(data.recharge1Price) : 299,
-          recharge2Credits: data.recharge2Credits !== undefined ? Number(data.recharge2Credits) : 250,
-          recharge2Price: data.recharge2Price !== undefined ? Number(data.recharge2Price) : 599,
-          recharge3Credits: data.recharge3Credits !== undefined ? Number(data.recharge3Credits) : 500,
-          recharge3Price: data.recharge3Price !== undefined ? Number(data.recharge3Price) : 999,
-
-          costGenerateScript: data.costGenerateScript !== undefined ? Number(data.costGenerateScript) : 5,
-          costGenerateLogo: data.costGenerateLogo !== undefined ? Number(data.costGenerateLogo) : 40,
-          costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 15,
-          costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 30,
-          costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 50
-        });
-        setGlobalStats({
-          totalAiSpend: data.totalAiSpend !== undefined ? Number(data.totalAiSpend) : 0,
-          totalAiTokens: data.totalAiTokens !== undefined ? Number(data.totalAiTokens) : 0,
-          totalAiCalls: data.totalAiCalls !== undefined ? Number(data.totalAiCalls) : 0
         });
       }
     }, (err) => {
@@ -214,6 +113,7 @@ const AiSettingsPage = () => {
           costSwotAnalysis: Number(settings.costSwotAnalysis),
           costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
           costStrategyBuilder: Number(settings.costStrategyBuilder),
+          aiToolsConfig: settings.aiToolsConfig || [],
 
           updatedAt: serverTimestamp(),
       }, { merge: true });
