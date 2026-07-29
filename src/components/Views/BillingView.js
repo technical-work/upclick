@@ -553,18 +553,18 @@ export default function BillingView() {
                 {planStarterConfig.visible !== false && (
                   <div className="recharge-card" style={currentPlanName.toLowerCase().includes('starter') ? { borderColor: 'var(--accent)' } : {}}>
                     {planStarterConfig.badge && (
-                      <span style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: 'var(--accent)', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '4px', display: 'inline-block' }}>
+                      <span style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: 'var(--accent)', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '2px', display: 'inline-block' }}>
                         {isRTL ? planStarterConfig.badge : (planStarterConfig.badgeEn || planStarterConfig.badge)}
                       </span>
                     )}
-                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>🌱</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{isRTL ? (planStarterConfig.name || planStarterName) : (planStarterConfig.nameEn || planStarterName)}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planStarterCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planStarterPrice} {planStarterConfig.currency || currencySymbol}</div>
+                    <div style={{ fontSize: '22px', margin: '1px 0' }}>🌱</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', margin: '1px 0' }}>{isRTL ? (planStarterConfig.name || planStarterName) : (planStarterConfig.nameEn || planStarterName)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', margin: '1px 0' }}>{planStarterCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '4px 0 6px' }}>{planStarterPrice} {planStarterConfig.currency || currencySymbol}</div>
                     
                     {/* Features Bullet List */}
                     {((isRTL ? planStarterConfig.features : planStarterConfig.featuresEn) || []).length > 0 && (
-                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '4px 0 8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {((isRTL ? planStarterConfig.features : planStarterConfig.featuresEn) || []).map((feat, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span style={{ color: 'var(--green)' }}>✓</span>
@@ -578,7 +578,7 @@ export default function BillingView() {
                       onClick={() => handleOpenPaymentModal({ planName: planStarterName, amount: planStarterPrice, currency: planStarterConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planStarterCredits })}
                       disabled={currentPlanName.toLowerCase().includes('starter')}
                       className="btn btn-prime"
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
                       {currentPlanName.toLowerCase().includes('starter') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planStarterConfig.ctaText || 'اشتراك') : (planStarterConfig.ctaTextEn || 'Subscribe'))}
                     </button>
@@ -589,18 +589,18 @@ export default function BillingView() {
                 {planGrowthConfig.visible !== false && (
                   <div className="recharge-card" style={currentPlanName.toLowerCase().includes('growth') ? { borderColor: 'var(--accent)' } : {}}>
                     {planGrowthConfig.badge && (
-                      <span style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: 'var(--accent)', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '4px', display: 'inline-block' }}>
+                      <span style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: 'var(--accent)', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '2px', display: 'inline-block' }}>
                         {isRTL ? planGrowthConfig.badge : (planGrowthConfig.badgeEn || planGrowthConfig.badge)}
                       </span>
                     )}
-                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>📈</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{isRTL ? (planGrowthConfig.name || planGrowthName) : (planGrowthConfig.nameEn || planGrowthName)}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planGrowthCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planGrowthPrice} {planGrowthConfig.currency || currencySymbol}</div>
+                    <div style={{ fontSize: '22px', margin: '1px 0' }}>📈</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', margin: '1px 0' }}>{isRTL ? (planGrowthConfig.name || planGrowthName) : (planGrowthConfig.nameEn || planGrowthName)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', margin: '1px 0' }}>{planGrowthCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '4px 0 6px' }}>{planGrowthPrice} {planGrowthConfig.currency || currencySymbol}</div>
                     
                     {/* Features Bullet List */}
                     {((isRTL ? planGrowthConfig.features : planGrowthConfig.featuresEn) || []).length > 0 && (
-                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '4px 0 8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {((isRTL ? planGrowthConfig.features : planGrowthConfig.featuresEn) || []).map((feat, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span style={{ color: 'var(--green)' }}>✓</span>
@@ -614,7 +614,7 @@ export default function BillingView() {
                       onClick={() => handleOpenPaymentModal({ planName: planGrowthName, amount: planGrowthPrice, currency: planGrowthConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planGrowthCredits })}
                       disabled={currentPlanName.toLowerCase().includes('growth')}
                       className="btn btn-prime"
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
                       {currentPlanName.toLowerCase().includes('growth') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planGrowthConfig.ctaText || 'ترقية') : (planGrowthConfig.ctaTextEn || 'Upgrade'))}
                     </button>
@@ -625,18 +625,18 @@ export default function BillingView() {
                 {planProConfig.visible !== false && (
                   <div className="recharge-card" style={currentPlanName.toLowerCase().includes('pro') ? { borderColor: 'var(--accent)' } : {}}>
                     {planProConfig.badge && (
-                      <span style={{ fontSize: '10px', background: 'rgba(249,115,22,0.15)', color: 'var(--orange)', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '4px', display: 'inline-block' }}>
+                      <span style={{ fontSize: '10px', background: 'rgba(249,115,22,0.15)', color: 'var(--orange)', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '2px', display: 'inline-block' }}>
                         {isRTL ? planProConfig.badge : (planProConfig.badgeEn || planProConfig.badge)}
                       </span>
                     )}
-                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>👑</div>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{isRTL ? (planProConfig.name || planProName) : (planProConfig.nameEn || planProName)}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planProCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planProPrice} {planProConfig.currency || currencySymbol}</div>
+                    <div style={{ fontSize: '22px', margin: '1px 0' }}>👑</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', margin: '1px 0' }}>{isRTL ? (planProConfig.name || planProName) : (planProConfig.nameEn || planProName)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', margin: '1px 0' }}>{planProCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '4px 0 6px' }}>{planProPrice} {planProConfig.currency || currencySymbol}</div>
                     
                     {/* Features Bullet List */}
                     {((isRTL ? planProConfig.features : planProConfig.featuresEn) || []).length > 0 && (
-                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '4px 0 8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {((isRTL ? planProConfig.features : planProConfig.featuresEn) || []).map((feat, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <span style={{ color: 'var(--green)' }}>✓</span>
@@ -650,7 +650,7 @@ export default function BillingView() {
                       onClick={() => handleOpenPaymentModal({ planName: planProName, amount: planProPrice, currency: planProConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planProCredits })}
                       disabled={currentPlanName.toLowerCase().includes('pro')}
                       className="btn btn-prime"
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
                       {currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planProConfig.ctaText || 'ابدأ الآن') : (planProConfig.ctaTextEn || 'Subscribe'))}
                     </button>
