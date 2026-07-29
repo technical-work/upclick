@@ -40,11 +40,33 @@ const DEFAULTS = {
   recharge3Credits: 500,
   recharge3Price: 999,
 
-  costGenerateScript: 5,
-  costGenerateLogo: 40,
-  costSwotAnalysis: 15,
-  costCompetitorAnalysis: 30,
-  costStrategyBuilder: 50,
+  costGenerateScript: 15,
+  costGenerateLogo: 30,
+  costSwotAnalysis: 30,
+  costCompetitorAnalysis: 50,
+  costStrategyBuilder: 70,
+  costCrmLeadInsight: 10,
+  costTelegramAgent: 5,
+  costTelegramBroadcast: 15,
+  costIcpAnalysis: 25,
+  costMarketingFunnel: 35,
+  costMarketingOffer: 25,
+  costContentIdeas: 20,
+  costContentHook: 10,
+  costAutomationExecution: 15,
+  costGrowthIntelReport: 40,
+  costCreatorMonetization: 30,
+  costSocialTrendAnalysis: 20,
+  costBioLinkAi: 15,
+  costLandingPageAi: 50,
+  costCourseOutline: 45,
+  costDigitalProductGenerator: 40,
+  costNicheBrandIdentity: 35,
+  costCommunityAiReply: 5,
+  costDesignBanner: 25,
+  costTaskAiBreakdown: 10,
+  costCalendarSchedule: 10,
+  costOpsFinanceInsight: 20,
   aiToolsConfig: [],
   customPlans: [],
   customRechargePacks: []
@@ -132,11 +154,33 @@ const AiSettingsPage = () => {
           recharge3Credits: data.recharge3Credits !== undefined ? Number(data.recharge3Credits) : 500,
           recharge3Price: data.recharge3Price !== undefined ? Number(data.recharge3Price) : 999,
 
-          costGenerateScript: data.costGenerateScript !== undefined ? Number(data.costGenerateScript) : 5,
-          costGenerateLogo: data.costGenerateLogo !== undefined ? Number(data.costGenerateLogo) : 40,
-          costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 15,
-          costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 30,
-          costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 50,
+          costGenerateScript: data.costGenerateScript !== undefined ? Number(data.costGenerateScript) : 15,
+          costGenerateLogo: data.costGenerateLogo !== undefined ? Number(data.costGenerateLogo) : 30,
+          costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 30,
+          costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 50,
+          costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 70,
+          costCrmLeadInsight: data.costCrmLeadInsight !== undefined ? Number(data.costCrmLeadInsight) : 10,
+          costTelegramAgent: data.costTelegramAgent !== undefined ? Number(data.costTelegramAgent) : 5,
+          costTelegramBroadcast: data.costTelegramBroadcast !== undefined ? Number(data.costTelegramBroadcast) : 15,
+          costIcpAnalysis: data.costIcpAnalysis !== undefined ? Number(data.costIcpAnalysis) : 25,
+          costMarketingFunnel: data.costMarketingFunnel !== undefined ? Number(data.costMarketingFunnel) : 35,
+          costMarketingOffer: data.costMarketingOffer !== undefined ? Number(data.costMarketingOffer) : 25,
+          costContentIdeas: data.costContentIdeas !== undefined ? Number(data.costContentIdeas) : 20,
+          costContentHook: data.costContentHook !== undefined ? Number(data.costContentHook) : 10,
+          costAutomationExecution: data.costAutomationExecution !== undefined ? Number(data.costAutomationExecution) : 15,
+          costGrowthIntelReport: data.costGrowthIntelReport !== undefined ? Number(data.costGrowthIntelReport) : 40,
+          costCreatorMonetization: data.costCreatorMonetization !== undefined ? Number(data.costCreatorMonetization) : 30,
+          costSocialTrendAnalysis: data.costSocialTrendAnalysis !== undefined ? Number(data.costSocialTrendAnalysis) : 20,
+          costBioLinkAi: data.costBioLinkAi !== undefined ? Number(data.costBioLinkAi) : 15,
+          costLandingPageAi: data.costLandingPageAi !== undefined ? Number(data.costLandingPageAi) : 50,
+          costCourseOutline: data.costCourseOutline !== undefined ? Number(data.costCourseOutline) : 45,
+          costDigitalProductGenerator: data.costDigitalProductGenerator !== undefined ? Number(data.costDigitalProductGenerator) : 40,
+          costNicheBrandIdentity: data.costNicheBrandIdentity !== undefined ? Number(data.costNicheBrandIdentity) : 35,
+          costCommunityAiReply: data.costCommunityAiReply !== undefined ? Number(data.costCommunityAiReply) : 5,
+          costDesignBanner: data.costDesignBanner !== undefined ? Number(data.costDesignBanner) : 25,
+          costTaskAiBreakdown: data.costTaskAiBreakdown !== undefined ? Number(data.costTaskAiBreakdown) : 10,
+          costCalendarSchedule: data.costCalendarSchedule !== undefined ? Number(data.costCalendarSchedule) : 10,
+          costOpsFinanceInsight: data.costOpsFinanceInsight !== undefined ? Number(data.costOpsFinanceInsight) : 20,
           aiToolsConfig: data.aiToolsConfig || [],
           customPlans: Array.isArray(data.customPlans) ? data.customPlans : [],
           customRechargePacks: Array.isArray(data.customRechargePacks) ? data.customRechargePacks : []
@@ -276,6 +320,28 @@ const AiSettingsPage = () => {
         costSwotAnalysis: Number(settings.costSwotAnalysis),
         costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
         costStrategyBuilder: Number(settings.costStrategyBuilder),
+        costCrmLeadInsight: Number(settings.costCrmLeadInsight),
+        costTelegramAgent: Number(settings.costTelegramAgent),
+        costTelegramBroadcast: Number(settings.costTelegramBroadcast),
+        costIcpAnalysis: Number(settings.costIcpAnalysis),
+        costMarketingFunnel: Number(settings.costMarketingFunnel),
+        costMarketingOffer: Number(settings.costMarketingOffer),
+        costContentIdeas: Number(settings.costContentIdeas),
+        costContentHook: Number(settings.costContentHook),
+        costAutomationExecution: Number(settings.costAutomationExecution),
+        costGrowthIntelReport: Number(settings.costGrowthIntelReport),
+        costCreatorMonetization: Number(settings.costCreatorMonetization),
+        costSocialTrendAnalysis: Number(settings.costSocialTrendAnalysis),
+        costBioLinkAi: Number(settings.costBioLinkAi),
+        costLandingPageAi: Number(settings.costLandingPageAi),
+        costCourseOutline: Number(settings.costCourseOutline),
+        costDigitalProductGenerator: Number(settings.costDigitalProductGenerator),
+        costNicheBrandIdentity: Number(settings.costNicheBrandIdentity),
+        costCommunityAiReply: Number(settings.costCommunityAiReply),
+        costDesignBanner: Number(settings.costDesignBanner),
+        costTaskAiBreakdown: Number(settings.costTaskAiBreakdown),
+        costCalendarSchedule: Number(settings.costCalendarSchedule),
+        costOpsFinanceInsight: Number(settings.costOpsFinanceInsight),
         aiToolsConfig: settings.aiToolsConfig || [],
         customPlans: settings.customPlans || [],
         customRechargePacks: settings.customRechargePacks || [],
@@ -1317,29 +1383,156 @@ const AiSettingsPage = () => {
 
               {/* Divider: AI Tool Cost Settings */}
               <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
-                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
-                  {isRTL ? 'تسعير استهلاك أدوات الذكاء الاصطناعي بالكريديت' : 'AI Tools Credits Cost Settings'}
+                <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚡</span>
+                  <span>{isRTL ? 'تسعير استهلاك الكريديت لجميع أدوات الذكاء الاصطناعي في المنصة' : 'All AI Tools Credits Cost Settings'}</span>
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'توليد السكربت (أفكار / محتوى)' : 'Generate Script'}</label>
-                    <input type="number" value={settings.costGenerateScript || 0} onChange={e => handleFieldChange('costGenerateScript', e.target.value)} style={inputStyle} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                  {/* Strategy Lab */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: 'var(--orange)', marginBottom: '8px' }}>🧠 مختبر الاستراتيجية (Strategy Lab)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'بناء خطة الاستراتيجية الكاملة' : 'Strategy Builder Cost'}</label>
+                        <input type="number" value={settings.costStrategyBuilder || 0} onChange={e => handleFieldChange('costStrategyBuilder', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل المنافسين والفجوات' : 'Competitor Analysis Cost'}</label>
+                        <input type="number" value={settings.costCompetitorAnalysis || 0} onChange={e => handleFieldChange('costCompetitorAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل SWOT الاستراتيجي' : 'SWOT Analysis Cost'}</label>
+                        <input type="number" value={settings.costSwotAnalysis || 0} onChange={e => handleFieldChange('costSwotAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل العميل المثالي (ICP Profile)' : 'ICP Profile Cost'}</label>
+                        <input type="number" value={settings.costIcpAnalysis || 0} onChange={e => handleFieldChange('costIcpAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'تصميم اللوجو / البانر بالـ AI' : 'Generate Logo / Image'}</label>
-                    <input type="number" value={settings.costGenerateLogo || 0} onChange={e => handleFieldChange('costGenerateLogo', e.target.value)} style={inputStyle} />
+
+                  {/* Marketing OS & Content */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: 'var(--accent)', marginBottom: '8px' }}>📣 التسويق والمحتوى (Marketing & Content)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد السكربت والمنشورات' : 'Generate Script & Post'}</label>
+                        <input type="number" value={settings.costGenerateScript || 0} onChange={e => handleFieldChange('costGenerateScript', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد قمع المبيعات (Sales Funnel)' : 'Sales Funnel Cost'}</label>
+                        <input type="number" value={settings.costMarketingFunnel || 0} onChange={e => handleFieldChange('costMarketingFunnel', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء العرض التسويقي (Offer)' : 'Offer Generator Cost'}</label>
+                        <input type="number" value={settings.costMarketingOffer || 0} onChange={e => handleFieldChange('costMarketingOffer', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد خطة المحتوى (Content Ideas)' : 'Content Ideas Cost'}</label>
+                        <input type="number" value={settings.costContentIdeas || 0} onChange={e => handleFieldChange('costContentIdeas', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'صياغة الهوك والافتتاحية (Hooks)' : 'Content Hooks Cost'}</label>
+                        <input type="number" value={settings.costContentHook || 0} onChange={e => handleFieldChange('costContentHook', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'تحليل SWOT الاستراتيجي' : 'SWOT Analysis Cost'}</label>
-                    <input type="number" value={settings.costSwotAnalysis || 0} onChange={e => handleFieldChange('costSwotAnalysis', e.target.value)} style={inputStyle} />
+
+                  {/* Landing & Web Tools */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#10B981', marginBottom: '8px' }}>🌐 صفحات الهبوط والبايو (Landing & Bio)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء صفحة هبوط بالذكاء (Landing Page)' : 'Landing Page AI Cost'}</label>
+                        <input type="number" value={settings.costLandingPageAi || 0} onChange={e => handleFieldChange('costLandingPageAi', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد محتوى رابط البايو (Bio Link AI)' : 'Bio Link AI Cost'}</label>
+                        <input type="number" value={settings.costBioLinkAi || 0} onChange={e => handleFieldChange('costBioLinkAi', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء المنتجات الرقمية (Digital Products)' : 'Digital Products Cost'}</label>
+                        <input type="number" value={settings.costDigitalProductGenerator || 0} onChange={e => handleFieldChange('costDigitalProductGenerator', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء هياكل الكورسات (Courses AI)' : 'Courses AI Cost'}</label>
+                        <input type="number" value={settings.costCourseOutline || 0} onChange={e => handleFieldChange('costCourseOutline', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'تحليل المنافسين والفجوات' : 'Competitor Analysis Cost'}</label>
-                    <input type="number" value={settings.costCompetitorAnalysis || 0} onChange={e => handleFieldChange('costCompetitorAnalysis', e.target.value)} style={inputStyle} />
+
+                  {/* Design & Media */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#EC4899', marginBottom: '8px' }}>🎨 استوديو التصميم والصور (Design Studio)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تصميم اللوجو بالـ AI (Logo Generator)' : 'Generate Logo Cost'}</label>
+                        <input type="number" value={settings.costGenerateLogo || 0} onChange={e => handleFieldChange('costGenerateLogo', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تصميم البانر والسوشيال ميديا' : 'Design Banner Cost'}</label>
+                        <input type="number" value={settings.costDesignBanner || 0} onChange={e => handleFieldChange('costDesignBanner', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'هوية النيش والبراند (Brand Studio)' : 'Niche Brand Studio Cost'}</label>
+                        <input type="number" value={settings.costNicheBrandIdentity || 0} onChange={e => handleFieldChange('costNicheBrandIdentity', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'بناء خطة الاستراتيجية الكاملة' : 'Strategy Builder Cost'}</label>
-                    <input type="number" value={settings.costStrategyBuilder || 0} onChange={e => handleFieldChange('costStrategyBuilder', e.target.value)} style={inputStyle} />
+
+                  {/* Automation & Telegram */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#8B5CF6', marginBottom: '8px' }}>💬 التليجرام والأتمتة (Telegram & Automation)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'رد وكيل التليجرام الآلي (Telegram Agent)' : 'Telegram Agent Reply'}</label>
+                        <input type="number" value={settings.costTelegramAgent || 0} onChange={e => handleFieldChange('costTelegramAgent', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'حملات التليجرام الجماعية (Broadcast)' : 'Telegram Broadcast Cost'}</label>
+                        <input type="number" value={settings.costTelegramBroadcast || 0} onChange={e => handleFieldChange('costTelegramBroadcast', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تنفيذ مسارات الأتمتة (Automation AI)' : 'Automation Execution Cost'}</label>
+                        <input type="number" value={settings.costAutomationExecution || 0} onChange={e => handleFieldChange('costAutomationExecution', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل صفقات CRM الذكي (Smart CRM)' : 'Smart CRM Lead Insight'}</label>
+                        <input type="number" value={settings.costCrmLeadInsight || 0} onChange={e => handleFieldChange('costCrmLeadInsight', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Intelligence & Operations */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#F59E0B', marginBottom: '8px' }}>📈 الاستخبارات والعمليات (Intel & Ops)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'رادار استخبارات النمو (Growth Intel)' : 'Growth Intel Report'}</label>
+                        <input type="number" value={settings.costGrowthIntelReport || 0} onChange={e => handleFieldChange('costGrowthIntelReport', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل ترندات السوشيال (Social Trends)' : 'Social Trends Analysis'}</label>
+                        <input type="number" value={settings.costSocialTrendAnalysis || 0} onChange={e => handleFieldChange('costSocialTrendAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحقيق دخل المبدع (Creator Monetization)' : 'Creator Monetization Cost'}</label>
+                        <input type="number" value={settings.costCreatorMonetization || 0} onChange={e => handleFieldChange('costCreatorMonetization', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تفكيك وترتيب المهام (Task AI Breakdown)' : 'Task AI Breakdown Cost'}</label>
+                        <input type="number" value={settings.costTaskAiBreakdown || 0} onChange={e => handleFieldChange('costTaskAiBreakdown', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'جدولة الأحداث الذكية (Calendar AI)' : 'Calendar Schedule Cost'}</label>
+                        <input type="number" value={settings.costCalendarSchedule || 0} onChange={e => handleFieldChange('costCalendarSchedule', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل تقارير العمليات والمالية (Ops AI)' : 'Ops & Finance Insight Cost'}</label>
+                        <input type="number" value={settings.costOpsFinanceInsight || 0} onChange={e => handleFieldChange('costOpsFinanceInsight', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
