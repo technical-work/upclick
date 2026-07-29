@@ -313,18 +313,20 @@ const PaymentSettingsPage = () => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                     <div style={{ flex: 1, minWidth: '200px' }}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {paymentMethods.stripe.secretKey === 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH' ? (
+                        {paymentMethods.stripe.secretKey ? (
                           <>
-                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 8px #f59e0b' }}></span>
-                            <span style={{ color: '#f59e0b' }}>{isRTL ? 'متصل بحساب Stripe الافتراضي (وضع التجربة)' : 'Connected to Default Stripe (Test Mode)'}</span>
-                          </>
-                        ) : paymentMethods.stripe.secretKey ? (
-                          <>
-                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#00d98b', boxShadow: '0 0 8px #00d98b' }}></span>
-                            <span style={{ color: '#00d98b' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: paymentMethods.stripe.secretKey.startsWith('sk_live') ? '#00d98b' : '#f59e0b',
+                              boxShadow: paymentMethods.stripe.secretKey.startsWith('sk_live') ? '0 0 8px #00d98b' : '0 0 8px #f59e0b'
+                            }}></span>
+                            <span style={{ color: paymentMethods.stripe.secretKey.startsWith('sk_live') ? '#00d98b' : '#f59e0b' }}>
                               {paymentMethods.stripe.secretKey.startsWith('sk_live')
                                 ? (isRTL ? 'متصل بحساب Stripe الفعلي (الإنتاج)' : 'Connected to Live Stripe')
-                                : (isRTL ? 'متصل بحساب Stripe المخصص' : 'Connected to Custom Stripe')}
+                                : (isRTL ? 'متصل بحساب Stripe التجريبي' : 'Connected to Stripe (Test Mode)')}
                             </span>
                           </>
                         ) : (
@@ -335,10 +337,10 @@ const PaymentSettingsPage = () => {
                         )}
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px', lineHeight: '1.4', textAlign: 'start' }}>
-                        {paymentMethods.stripe.secretKey === 'sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH'
-                          ? (isRTL ? 'الحساب الافتراضي sk_test_51Tn0... نشط للتجربة. يرجى إدخال مفاتيحك الفعلية للتشغيل الحقيقي.' : 'Default account sk_test_51Tn0... is active for testing. Enter your live keys to accept real payments.')
-                          : paymentMethods.stripe.secretKey
-                          ? (isRTL ? 'مفاتيح Stripe الخاصة بك نشطة ومحفوظة.' : 'Your custom Stripe keys are active and saved.')
+                        {paymentMethods.stripe.secretKey
+                          ? (paymentMethods.stripe.secretKey.startsWith('sk_live')
+                              ? (isRTL ? 'مفاتيح Stripe الفعلية الخاصة بك نشطة ومحفوظة.' : 'Your live Stripe keys are active and saved.')
+                              : (isRTL ? 'مفاتيح Stripe التجريبية نشطة ومحفوظة للتجربة.' : 'Your test Stripe keys are active for testing.'))
                           : (isRTL ? 'أدخل مفاتيحك الخاصة بـ Stripe لحسابك الفعلي.' : 'Enter your Stripe API keys to accept payments.')}
                       </div>
                     </div>
