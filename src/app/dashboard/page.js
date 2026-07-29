@@ -20,6 +20,7 @@ import FinanceModal from '@/components/Modals/FinanceModal';
 import LandingPagePreviewModal from '@/components/Modals/LandingPagePreviewModal';
 import DigitalProductDetailModal from '@/components/Modals/DigitalProductDetailModal';
 import SocialConnectModal from '@/components/Modals/SocialConnectModal';
+import UpgradeToolModal from '@/components/Modals/UpgradeToolModal';
 
 // Sub-views
 import HomeView from '@/components/Views/HomeView';
@@ -54,7 +55,7 @@ import ModelTestView from '@/components/Views/ModelTestView';
 import BillingView from '@/components/Views/BillingView';
 import SupportView from '@/components/Views/SupportView';
 function DashboardShell() {
-  const { currentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme } = useBusiness();
+  const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -405,6 +406,17 @@ function DashboardShell() {
       <LandingPagePreviewModal />
       <DigitalProductDetailModal />
       <SocialConnectModal />
+
+      {lockedToolModal?.isOpen && (
+        <UpgradeToolModal
+          toolInfo={lockedToolModal.toolInfo}
+          targetPlans={lockedToolModal.targetPlans}
+          onClose={closeUpgradeModal}
+          onSelectPlan={() => {
+            setCurrentPage('billing');
+          }}
+        />
+      )}
 
       {/* Toast popup message holder */}
       <div id="toast" className="toast"></div>

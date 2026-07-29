@@ -54,7 +54,9 @@ export default function Sidebar() {
     guideActive,
     setGuideActive,
     guideFlowKey,
-    setGuideFlowKey
+    setGuideFlowKey,
+    isToolAllowedForUser,
+    openUpgradeModalForTool
   } = useBusiness();
 
   const { logout, userData } = useAuth();
@@ -283,16 +285,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {sections.map(sec => {
-          const visibleItems = sec.items.filter(item => {
-            if (['home', 'profile', 'model-test', 'billing', 'support', 'courses'].includes(item.page)) return true;
-            if (userData?.allowedTools) {
-              return userData.allowedTools.includes(item.page);
-            }
-            return true;
-          });
-          return { ...sec, items: visibleItems };
-        }).filter(sec => sec.items.length > 0).map((sec, idx) => {
+        {sections.map((sec, idx) => {
           const isDashboard = sec.title === 'Dashboard';
           const isOpen = openSections[sec.title] !== false;
 
@@ -329,19 +322,34 @@ export default function Sidebar() {
               }}>
                 {sec.items.map((item) => {
                   const IconComponent = item.icon;
+                  const isAllowed = isToolAllowedForUser ? isToolAllowedForUser(item.page) : true;
+
                   return (
                     <button
                       key={item.page}
                       id={item.id || `sb-${item.page}`}
                       className={`sb-btn ${currentPage === item.page ? 'on' : ''}`}
-                      onClick={() => setCurrentPage(item.page)}
+                      onClick={() => {
+                        if (!isAllowed) {
+                          if (openUpgradeModalForTool) openUpgradeModalForTool(item.page);
+                        } else {
+                          setCurrentPage(item.page);
+                        }
+                      }}
+                      style={!isAllowed ? { opacity: 0.85 } : {}}
                     >
                       <span className="sb-icon">
                         <IconComponent size={16} />
                       </span>
                       <span className="sb-lbl">{t(item.label)}</span>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span className="sb-badge">{item.badge}</span>
+                      {!isAllowed ? (
+                        <span style={{ fontSize: '10px', background: 'rgba(249, 115, 22, 0.15)', color: 'var(--orange)', padding: '2px 5px', borderRadius: '6px', fontWeight: 'bold', marginInlineStart: 'auto', border: '1px solid rgba(249, 115, 22, 0.3)' }}>
+                          🔒 PRO
+                        </span>
+                      ) : (
+                        item.badge !== undefined && item.badge > 0 && (
+                          <span className="sb-badge">{item.badge}</span>
+                        )
                       )}
                     </button>
                   );

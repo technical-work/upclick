@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { ALL_SYSTEM_TOOLS } from '../../context/BusinessContext';
 
 const DEFAULT_PLAN_STARTER = {
   visible: true,
@@ -30,7 +31,8 @@ const DEFAULT_PLAN_STARTER = {
     'AI Assistant',
     'Build 1 landing page',
     'Limited CRM leads (25 leads)'
-  ]
+  ],
+  allowedTools: ['crm', 'landing', 'tasks', 'calendar', 'bio', 'courses', 'social', 'design']
 };
 
 const DEFAULT_PLAN_GROWTH = {
@@ -60,7 +62,8 @@ const DEFAULT_PLAN_GROWTH = {
     'Unlimited landing pages',
     'Unlimited CRM leads',
     'Basic integrations'
-  ]
+  ],
+  allowedTools: ['crm', 'telegram', 'strategy', 'marketing', 'content', 'ai-growth', 'social', 'tiktok-trends', 'bio', 'landing', 'courses', 'digital', 'niche', 'design', 'tasks', 'calendar', 'finance', 'analytics', 'integrations']
 };
 
 const DEFAULT_PLAN_PRO = {
@@ -100,7 +103,8 @@ const DEFAULT_PLAN_PRO = {
     'Digital Products Hub',
     'Telegram Bot Control',
     'All integrations'
-  ]
+  ],
+  allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key)
 };
 
 const PlansSettingsPage = () => {
@@ -520,6 +524,71 @@ const PlansSettingsPage = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Tool Permissions Matrix */}
+      <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed var(--line)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--orange)', margin: 0 }}>
+            🔒 {isRTL ? 'تحديد الأدوات المتاحة والمفتوحة في هذه الباقة' : 'Enabled Tools & Permissions'}
+          </h4>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => planSetter(prev => ({ ...prev, allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key) }))}
+              style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}
+            >
+              ✓ {isRTL ? 'تحديد الكل' : 'Select All'}
+            </button>
+            <button
+              type="button"
+              onClick={() => planSetter(prev => ({ ...prev, allowedTools: [] }))}
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid #EF4444', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}
+            >
+              ✕ {isRTL ? 'إلغاء الكل' : 'Deselect All'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px', background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+          {ALL_SYSTEM_TOOLS.map((tool) => {
+            const isChecked = (planState.allowedTools || ALL_SYSTEM_TOOLS.map(t => t.key)).includes(tool.key);
+            return (
+              <label
+                key={tool.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '12px',
+                  color: isChecked ? 'var(--text)' : 'var(--text3)',
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  background: isChecked ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                  border: isChecked ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid transparent'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => {
+                    planSetter(prev => {
+                      const current = prev.allowedTools || ALL_SYSTEM_TOOLS.map(t => t.key);
+                      const updated = current.includes(tool.key)
+                        ? current.filter(k => k !== tool.key)
+                        : [...current, tool.key];
+                      return { ...prev, allowedTools: updated };
+                    });
+                  }}
+                  style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                />
+                <span>{tool.icon}</span>
+                <span>{isRTL ? tool.labelAr : tool.labelEn}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
     </div>
