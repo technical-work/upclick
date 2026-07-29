@@ -207,8 +207,20 @@ export default function UpgradeToolModal({ toolInfo, targetPlans = [], onClose, 
         <button
           type="button"
           onClick={onClose}
-          className="btn"
-          style={{ width: '100%', fontSize: '12px', color: 'var(--text3)' }}
+          style={{
+            width: '100%',
+            padding: '10px 16px',
+            borderRadius: '12px',
+            background: 'var(--bg2)',
+            border: '1px solid var(--line)',
+            color: 'var(--text2)',
+            fontSize: '13px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg4)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg2)'; }}
         >
           {isRTL ? 'إلغاء والعودة' : 'Cancel & Close'}
         </button>
