@@ -96,6 +96,7 @@ const AVAILABLE_TOOLS = [
   { key: 'tiktok-trends', labelAr: 'اتجاهات التواصل', labelEn: 'Social Trends' },
   { key: 'bio', labelAr: 'رابط البايو', labelEn: 'Bio Link' },
   { key: 'landing', labelAr: 'صفحة الهبوط بالذكاء', labelEn: 'Landing Page AI' },
+  { key: 'courses', labelAr: 'الكورسات والدورات', labelEn: 'Courses' },
   { key: 'digital', labelAr: 'المنتجات الرقمية', labelEn: 'Digital Products' },
   { key: 'niche', labelAr: 'استوديو العلامة التجارية', labelEn: 'Niche & Brand Studio' },
   { key: 'community', labelAr: 'مركز المجتمع', labelEn: 'Community Hub' },
