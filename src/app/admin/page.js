@@ -836,6 +836,16 @@ const AdminDashboard = () => {
     return new Date();
   };
 
+  const getUserDisplayName = (user) => {
+    if (!user) return '—';
+    return user.name || user.displayName || user.fullName || user.username || user.email || user.userEmail || (isRTL ? 'مستخدم جديد' : 'New User');
+  };
+
+  const getUserEmailDisplay = (user) => {
+    if (!user) return '—';
+    return user.email || user.userEmail || user.phoneNumber || '—';
+  };
+
   const fetchUsers = () => {
     setLoading(true);
     const q = collection(db, 'users');
@@ -1400,13 +1410,8 @@ const AdminDashboard = () => {
   };
 
   const getJoinMs = (user) => {
-    const ts = user.createdAt || user.trialStartedAt;
-    if (!ts) return 0;
-    if (typeof ts === 'string') return new Date(ts).getTime();
-    if (typeof ts === 'number') return ts;
-    if (ts.toDate) return ts.toDate().getTime();
-    if (ts.seconds) return ts.seconds * 1000;
-    return 0;
+    const d = getUserCreatedDate(user);
+    return d ? d.getTime() : Date.now();
   };
 
   const getRelativeTimeStr = (user) => {
@@ -2101,20 +2106,23 @@ const AdminDashboard = () => {
                             paginatedTopActive.map((user) => {
                               const uStats = getUserUsageStats(user);
                               const actStatus = getUserActivityStatus(user);
+                              const userName = getUserDisplayName(user);
+                              const userEmail = getUserEmailDisplay(user);
+
                               return (
                                 <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--line)' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
                                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px', color: 'var(--text)', flexShrink: 0 }}>
-                                      {((user.name || user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                                      {(userName.charAt(0) || 'U').toUpperCase()}
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</span>
                                         <span style={{ fontSize: '9px', fontWeight: '800', padding: '1px 6px', borderRadius: '10px', color: actStatus.color, background: actStatus.bg }}>
                                           {actStatus.text}
                                         </span>
                                       </div>
-                                      <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</span>
+                                      <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userEmail}</span>
                                     </div>
                                   </div>
 
@@ -2199,20 +2207,23 @@ const AdminDashboard = () => {
                             paginatedNewest.map((user) => {
                               const relativeTime = getRelativeTimeStr(user);
                               const joinDate = formatJoinDate(user);
+                              const userName = getUserDisplayName(user);
+                              const userEmail = getUserEmailDisplay(user);
+
                               return (
                                 <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--line)' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
                                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px', color: 'var(--green)', flexShrink: 0 }}>
-                                      {((user.name || user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                                      {(userName.charAt(0) || 'U').toUpperCase()}
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</span>
                                         <span style={{ fontSize: '9px', fontWeight: '800', padding: '1px 6px', borderRadius: '10px', background: 'rgba(16,185,129,0.12)', color: 'var(--green)' }}>
                                           🆕 {isRTL ? 'جديد' : 'NEW'}
                                         </span>
                                       </div>
-                                      <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</span>
+                                      <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userEmail}</span>
                                     </div>
                                   </div>
 
