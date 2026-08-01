@@ -812,20 +812,20 @@ const AdminDashboard = () => {
   ];
 
   const getUserCreatedDate = (user) => {
-    if (!user) return new Date();
+    if (!user) return null;
     const ts = user.createdAt || user.joinedAt || user.trialStartedAt || user.updatedAt;
-    if (!ts) return new Date();
+    if (!ts) return null;
     if (ts instanceof Date) return ts;
     if (typeof ts === 'string') {
       const d = new Date(ts);
-      return isNaN(d.getTime()) ? new Date() : d;
+      return isNaN(d.getTime()) ? null : d;
     }
     if (typeof ts === 'number') {
       const d = new Date(ts);
-      return isNaN(d.getTime()) ? new Date() : d;
+      return isNaN(d.getTime()) ? null : d;
     }
     if (ts?.toDate && typeof ts.toDate === 'function') {
-      try { return ts.toDate(); } catch (e) { return new Date(); }
+      try { return ts.toDate(); } catch (e) { return null; }
     }
     if (ts?.seconds !== undefined) {
       return new Date(ts.seconds * 1000);
@@ -833,7 +833,7 @@ const AdminDashboard = () => {
     if (ts?._seconds !== undefined) {
       return new Date(ts._seconds * 1000);
     }
-    return new Date();
+    return null;
   };
 
   const getUserDisplayName = (user) => {
@@ -1411,7 +1411,7 @@ const AdminDashboard = () => {
 
   const getJoinMs = (user) => {
     const d = getUserCreatedDate(user);
-    return d ? d.getTime() : Date.now();
+    return d ? d.getTime() : 0;
   };
 
   const getRelativeTimeStr = (user) => {
@@ -2058,8 +2058,11 @@ const AdminDashboard = () => {
 
                 {/* Section: Top 5 Active Users & Top 5 Newest Users with Pagination */}
                 {(() => {
+                  // Filter out empty/invalid user documents
+                  const validPeriodUsers = periodUsers.filter(u => u && (u.email || u.name || u.displayName || u.userEmail || u.phoneNumber));
+
                   // 1. Top Active Users (sorted by time spent desc)
-                  const sortedTopActiveUsers = [...periodUsers].sort((a, b) => {
+                  const sortedTopActiveUsers = [...validPeriodUsers].sort((a, b) => {
                     const statsA = getUserUsageStats(a);
                     const statsB = getUserUsageStats(b);
                     return statsB.timeSpent - statsA.timeSpent;
@@ -2069,9 +2072,9 @@ const AdminDashboard = () => {
                   const paginatedTopActive = sortedTopActiveUsers.slice((statsTopActivePage - 1) * topActivePerPage, statsTopActivePage * topActivePerPage);
 
                   // 2. Newest Users (sorted by created date desc)
-                  const sortedNewestUsers = [...periodUsers].sort((a, b) => {
-                    const dateA = getUserCreatedDate(a) ? getUserCreatedDate(a).getTime() : 0;
-                    const dateB = getUserCreatedDate(b) ? getUserCreatedDate(b).getTime() : 0;
+                  const sortedNewestUsers = [...validPeriodUsers].sort((a, b) => {
+                    const dateA = getJoinMs(a);
+                    const dateB = getJoinMs(b);
                     return dateB - dateA;
                   });
                   const newestPerPage = 5;
