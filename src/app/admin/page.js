@@ -1506,6 +1506,7 @@ const AdminDashboard = () => {
 
   const isDateInSelectedRange = (dateVal, preset = dateRangePreset, start = startDate, end = endDate) => {
     if (preset === 'all' && !start && !end) return true;
+    if (!dateVal && preset !== 'all') return false;
 
     let timeMs = 0;
     if (dateVal instanceof Date) timeMs = dateVal.getTime();
@@ -1514,9 +1515,10 @@ const AdminDashboard = () => {
     else if (dateVal?.toDate) timeMs = dateVal.toDate().getTime();
     else if (dateVal?.seconds) timeMs = dateVal.seconds * 1000;
     else if (dateVal?._seconds) timeMs = dateVal._seconds * 1000;
-    else timeMs = Date.now();
 
-    if (!timeMs || isNaN(timeMs)) timeMs = Date.now();
+    if (!timeMs || isNaN(timeMs)) {
+      return preset === 'all' && !start && !end;
+    }
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -1711,7 +1713,10 @@ const AdminDashboard = () => {
   );
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = (u.email || u.name || u.phoneNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
+    if (!u) return false;
+    if (!u.email && !u.name && !u.displayName && !u.userEmail && !u.phoneNumber) return false;
+
+    const matchesSearch = (u.email || u.userEmail || u.name || u.displayName || u.phoneNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
     if (!isDateInSelectedRange(getUserCreatedDate(u))) return false;
