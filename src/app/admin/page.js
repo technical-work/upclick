@@ -2972,6 +2972,8 @@ const AdminDashboard = () => {
                         const actStatus = getUserActivityStatus(user);
                         const isNew = isUserNew(user);
                         const relativeTime = getRelativeTimeStr(user);
+                        const displayName = getUserDisplayName(user);
+                        const displayEmail = getUserEmailDisplay(user);
                         const cleanPhone = (user.phoneNumber || '').replace(/[^0-9+]/g, '');
 
                         return (
@@ -2979,11 +2981,11 @@ const AdminDashboard = () => {
                             <td style={{ padding: '16px 20px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%', fontWeight: '700' }}>
-                                  {(user.name || user.email).charAt(0).toUpperCase()}
+                                  {(displayName.charAt(0) || 'U').toUpperCase()}
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
+                                    <span style={{ fontSize: '14px', fontWeight: '700' }}>{displayName}</span>
                                     <span style={{
                                       fontSize: '9.5px',
                                       fontWeight: '800',
@@ -3011,7 +3013,7 @@ const AdminDashboard = () => {
                                       </span>
                                     )}
                                   </div>
-                                  <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
+                                  <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{displayEmail}</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold' }}>
                                       🤖 {(() => {
@@ -3155,9 +3157,8 @@ const AdminDashboard = () => {
                     const trialDet = getTrialStatusDetailed(user);
                     const actStatus = getUserActivityStatus(user);
                     const isNew = isUserNew(user);
-                    const relativeTime = getRelativeTimeStr(user);
-                    const name = user.name || t('admin.newUser');
-                    const email = user.email;
+                    const name = getUserDisplayName(user);
+                    const email = getUserEmailDisplay(user);
                     const phone = user.phoneNumber || '—';
                     const cleanPhone = (user.phoneNumber || '').replace(/[^0-9+]/g, '');
                     const joinedDate = formatJoinDate(user);
@@ -3167,7 +3168,7 @@ const AdminDashboard = () => {
                         {/* Header: Avatar, Name, Email, Badge */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <div className="user-avatar" style={{ width: '36px', height: '36px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%', fontWeight: '700' }}>
-                            {(name || email).charAt(0).toUpperCase()}
+                            {(name.charAt(0) || 'U').toUpperCase()}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
