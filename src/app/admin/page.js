@@ -758,6 +758,7 @@ const AdminDashboard = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedAnalysisUser, setSelectedAnalysisUser] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
+  const [roleCategoryFilter, setRoleCategoryFilter] = useState('all');
 
   // Independent Date Filter for General Stats Tab
   const [statsDatePreset, setStatsDatePreset] = useState('all');
@@ -844,6 +845,27 @@ const AdminDashboard = () => {
   const getUserEmailDisplay = (user) => {
     if (!user) return '—';
     return user.email || user.userEmail || user.phoneNumber || '—';
+  };
+
+  const getUserCategory = (user) => {
+    if (!user) return { key: 'user', labelAr: '👤 مستخدم عادي', labelEn: '👤 Regular User', color: 'var(--blue)', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)' };
+    if (user.roleCategory === 'team' || user.role === 'admin' || user.isTeamMember) {
+      return { key: 'team', labelAr: '👥 ضمن الفريق', labelEn: '👥 Team Member', color: 'var(--purple)', bg: 'rgba(168,85,247,0.15)', border: 'rgba(168,85,247,0.35)' };
+    }
+    return { key: 'user', labelAr: '👤 مستخدم عادي', labelEn: '👤 Regular User', color: 'var(--blue)', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)' };
+  };
+
+  const handleToggleUserCategory = async (user) => {
+    const currentCat = getUserCategory(user).key;
+    const newCat = currentCat === 'team' ? 'user' : 'team';
+    try {
+      await setDoc(doc(db, 'users', user.id), {
+        roleCategory: newCat,
+        isTeamMember: newCat === 'team'
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error toggling user category:", err);
+    }
   };
 
   const fetchUsers = () => {
@@ -1350,6 +1372,8 @@ const AdminDashboard = () => {
         planName: activePlan,
         plan: activePlan,
         isTrial: false,
+        roleCategory: editingUser.roleCategory || 'user',
+        isTeamMember: editingUser.roleCategory === 'team',
         aiCredits: Number(editingUser.aiCredits || 0),
         allowedTools: editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
       }, { merge: true });
@@ -1721,6 +1745,11 @@ const AdminDashboard = () => {
 
     if (!isDateInSelectedRange(getUserCreatedDate(u))) return false;
     
+    if (roleCategoryFilter !== 'all') {
+      const catKey = getUserCategory(u).key;
+      if (catKey !== roleCategoryFilter) return false;
+    }
+
     if (activityFilter === 'all' || activityFilter === 'time_desc') return true;
     
     const uStats = getUserUsageStats(u);
@@ -1744,7 +1773,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     setUserPage(1);
-  }, [searchTerm, activityFilter, dateRangePreset, startDate, endDate]);
+  }, [searchTerm, activityFilter, roleCategoryFilter, dateRangePreset, startDate, endDate]);
 
   useEffect(() => {
     setSalesPage(1);
@@ -2896,8 +2925,18 @@ const AdminDashboard = () => {
 
           <div className="flex-responsive" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>{t('admin.myUsersTitle') || 'My Users List'}</h3>
-            <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '820px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '920px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
               {renderDateRangeFilter()}
+              <select
+                className="form-control"
+                style={{ width: 'auto', minWidth: '130px', cursor: 'pointer', fontSize: '12px', padding: '6px 12px' }}
+                value={roleCategoryFilter}
+                onChange={(e) => setRoleCategoryFilter(e.target.value)}
+              >
+                <option value="all">{isRTL ? 'جميع الفئات' : 'All Categories'}</option>
+                <option value="user">{isRTL ? '👤 مستخدمين عاديين' : '👤 Regular Users'}</option>
+                <option value="team">{isRTL ? '👥 ضمن الفريق' : '👥 Team Members'}</option>
+              </select>
               <select
                 className="form-control"
                 style={{ width: 'auto', minWidth: '170px', cursor: 'pointer', fontSize: '12px', padding: '6px 12px' }}
@@ -2975,6 +3014,7 @@ const AdminDashboard = () => {
                         const uStats = getUserUsageStats(user);
                         const trialDet = getTrialStatusDetailed(user);
                         const actStatus = getUserActivityStatus(user);
+                        const catInfo = getUserCategory(user);
                         const isNew = isUserNew(user);
                         const relativeTime = getRelativeTimeStr(user);
                         const displayName = getUserDisplayName(user);
@@ -2991,6 +3031,24 @@ const AdminDashboard = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '14px', fontWeight: '700' }}>{displayName}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleUserCategory(user)}
+                                      title={isRTL ? 'انقر لتغيير الفئة (ضمن الفريق / مستخدم عادي)' : 'Click to toggle category'}
+                                      style={{
+                                        fontSize: '9.5px',
+                                        fontWeight: '800',
+                                        padding: '1px 8px',
+                                        borderRadius: '12px',
+                                        color: catInfo.color,
+                                        background: catInfo.bg,
+                                        border: `1px solid ${catInfo.border}`,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                    >
+                                      {isRTL ? catInfo.labelAr : catInfo.labelEn}
+                                    </button>
                                     <span style={{
                                       fontSize: '9.5px',
                                       fontWeight: '800',
@@ -3161,6 +3219,7 @@ const AdminDashboard = () => {
                     const uStats = getUserUsageStats(user);
                     const trialDet = getTrialStatusDetailed(user);
                     const actStatus = getUserActivityStatus(user);
+                    const catInfo = getUserCategory(user);
                     const isNew = isUserNew(user);
                     const relativeTime = getRelativeTimeStr(user);
                     const name = getUserDisplayName(user);
@@ -3179,6 +3238,24 @@ const AdminDashboard = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                               <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUserCategory(user)}
+                                title={isRTL ? 'انقر لتغيير الفئة (ضمن الفريق / مستخدم عادي)' : 'Click to toggle category'}
+                                style={{
+                                  fontSize: '9.5px',
+                                  fontWeight: '800',
+                                  padding: '1px 8px',
+                                  borderRadius: '12px',
+                                  color: catInfo.color,
+                                  background: catInfo.bg,
+                                  border: `1px solid ${catInfo.border}`,
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {isRTL ? catInfo.labelAr : catInfo.labelEn}
+                              </button>
                               <span style={{
                                 fontSize: '9.5px',
                                 fontWeight: '800',
@@ -3594,6 +3671,18 @@ const AdminDashboard = () => {
                   placeholder={isRTL ? 'اترك الحقل فارغاً للإبقاء على كلمة المرور الحالية' : 'Leave blank to keep current password'}
                   minLength={6}
                 />
+              </div>
+
+              <div className="field" style={{ marginBottom: '12px' }}>
+                <label className="field-label">{isRTL ? '🏷️ فئة الحساب والوسام (التاج)' : '🏷️ User Category Tag'}</label>
+                <select
+                  className="form-control"
+                  value={editingUser.roleCategory || 'user'}
+                  onChange={e => setEditingUser({ ...editingUser, roleCategory: e.target.value })}
+                >
+                  <option value="user">{isRTL ? '👤 مستخدم عادي (User)' : '👤 Regular User'}</option>
+                  <option value="team">{isRTL ? '👥 ضمن الفريق (Team Member)' : '👥 Team Member'}</option>
+                </select>
               </div>
 
               <div className="grid-2" style={{ gap: '12px', marginBottom: '12px' }}>

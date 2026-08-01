@@ -27,6 +27,8 @@ export async function POST(req) {
       phoneNumber: phoneNumber || '',
       country: country || 'EG',
       role: 'user',
+      roleCategory: 'user',
+      isTeamMember: false,
       lang: 'ar',
       theme: 'dark',
       onboardingDone: false,
