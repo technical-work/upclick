@@ -3157,6 +3157,7 @@ const AdminDashboard = () => {
                     const trialDet = getTrialStatusDetailed(user);
                     const actStatus = getUserActivityStatus(user);
                     const isNew = isUserNew(user);
+                    const relativeTime = getRelativeTimeStr(user);
                     const name = getUserDisplayName(user);
                     const email = getUserEmailDisplay(user);
                     const phone = user.phoneNumber || '—';
