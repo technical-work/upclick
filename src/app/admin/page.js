@@ -1459,7 +1459,8 @@ const AdminDashboard = () => {
   };
 
   const getUserActivityStatus = (user) => {
-    const ts = user.lastActiveAt || user.updatedAt || user.lastLoginAt || user.createdAt;
+    // Only check actual user activity timestamps (NOT admin updates / updatedAt)
+    const ts = user.lastActiveAt || user.lastSeenAt || user.lastActivityAt || user.lastLoginAt;
     if (!ts) return { isOnline: false, text: isRTL ? '⚪ لم ينشط بعد' : '⚪ Never active', color: 'var(--text3)', bg: 'rgba(255,255,255,0.03)' };
 
     let timeMs = 0;
@@ -1467,6 +1468,7 @@ const AdminDashboard = () => {
     else if (typeof ts === 'number') timeMs = ts;
     else if (ts?.toDate) timeMs = ts.toDate().getTime();
     else if (ts?.seconds) timeMs = ts.seconds * 1000;
+    else if (ts?._seconds) timeMs = ts._seconds * 1000;
 
     if (!timeMs || isNaN(timeMs)) return { isOnline: false, text: isRTL ? '⚪ لم ينشط بعد' : '⚪ Never active', color: 'var(--text3)', bg: 'rgba(255,255,255,0.03)' };
 
