@@ -27,6 +27,7 @@ import {
   Download,
   XCircle,
   CheckCircle,
+  Calendar,
   X
 } from 'lucide-react';
 import {
@@ -1637,7 +1638,7 @@ const AdminDashboard = () => {
     const matchesSearch = (u.email || u.name || u.phoneNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
-    if (!isDateInSelectedRange(u.createdAt || u.trialStartedAt)) return false;
+    if (!isDateInSelectedRange(getUserCreatedDate(u))) return false;
     
     if (activityFilter === 'all' || activityFilter === 'time_desc') return true;
     
@@ -1764,26 +1765,29 @@ const AdminDashboard = () => {
       {activeTab === 'stats' ? (
         <>
           {(() => {
-            const onlineUsersCount = users.filter(u => getUserActivityStatus(u).isOnline).length;
-            const paidUsersCount = users.filter(u => {
+            const periodUsers = users.filter(u => isDateInSelectedRange(getUserCreatedDate(u)));
+            const periodSales = sales.filter(s => isDateInSelectedRange(s.createdAt));
+
+            const onlineUsersCount = periodUsers.filter(u => getUserActivityStatus(u).isOnline).length;
+            const paidUsersCount = periodUsers.filter(u => {
               const st = getTrialStatusDetailed(u);
               return st.type.startsWith('paid') || st.type === 'lifetime';
             }).length;
-            const activeTrialCount = users.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length;
-            const expiredTrialCount = users.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length;
+            const activeTrialCount = periodUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length;
+            const expiredTrialCount = periodUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length;
 
-            const totalSalesAmount = sales.reduce((acc, s) => acc + Number(s.amount || 0), 0);
-            const avgSaleAmount = sales.length ? Math.round(totalSalesAmount / sales.length) : 0;
+            const totalSalesAmount = periodSales.reduce((acc, s) => acc + Number(s.amount || 0), 0);
+            const avgSaleAmount = periodSales.length ? Math.round(totalSalesAmount / periodSales.length) : 0;
 
             // Plan Breakdown
-            const starterCount = users.filter(u => (u.planName || u.plan || 'Starter').toLowerCase() === 'starter').length;
-            const growthCount = users.filter(u => (u.planName || u.plan || '').toLowerCase() === 'growth').length;
-            const proCount = users.filter(u => (u.planName || u.plan || '').toLowerCase() === 'pro').length;
-            const customCount = users.filter(u => !['starter', 'growth', 'pro'].includes((u.planName || u.plan || '').toLowerCase())).length;
+            const starterCount = periodUsers.filter(u => (u.planName || u.plan || 'Starter').toLowerCase() === 'starter').length;
+            const growthCount = periodUsers.filter(u => (u.planName || u.plan || '').toLowerCase() === 'growth').length;
+            const proCount = periodUsers.filter(u => (u.planName || u.plan || '').toLowerCase() === 'pro').length;
+            const customCount = periodUsers.filter(u => !['starter', 'growth', 'pro'].includes((u.planName || u.plan || '').toLowerCase())).length;
 
             // Countries Breakdown
             const countriesMap = {};
-            users.forEach(u => {
+            periodUsers.forEach(u => {
               const c = u.country || 'EG';
               countriesMap[c] = (countriesMap[c] || 0) + 1;
             });
@@ -1802,7 +1806,7 @@ const AdminDashboard = () => {
 
             const formattedCountries = Object.entries(countriesMap).map(([code, count]) => {
               const meta = countryMeta[code] || { nameAr: code, nameEn: code, flag: '🌐' };
-              const pct = users.length ? Math.round((count / users.length) * 100) : 0;
+              const pct = periodUsers.length ? Math.round((count / periodUsers.length) * 100) : 0;
               return { code, count, pct, ...meta };
             }).sort((a, b) => b.count - a.count);
 
@@ -1864,18 +1868,29 @@ const AdminDashboard = () => {
             const activeGrowthList = computedGrowth.length ? computedGrowth : growthData;
 
             const executiveKpis = [
-              { label: isRTL ? '👥 إجمالي المشتركين' : 'Total Users', value: users.length.toString(), sub: isRTL ? 'مستخدم مسجل بالمنصة' : 'Registered Users', icon: <Users size={18} />, color: 'var(--accent)' },
+              { label: isRTL ? '👥 المشتركين بالمحافظة/الفترة' : 'Period Users', value: periodUsers.length.toString(), sub: isRTL ? `من إجمالي ${users.length} مستخدم مسجل` : `of ${users.length} total users`, icon: <Users size={18} />, color: 'var(--accent)' },
               { label: isRTL ? '🟢 نشطين الآن' : 'Active Online Now', value: onlineUsersCount.toString(), sub: isRTL ? 'يتفاعلون بالمنصة حالياً' : 'Online in last 5 mins', icon: <Zap size={18} />, color: 'var(--green)' },
-              { label: isRTL ? '👑 الباقات المدفوعة' : 'Paid Subscribers', value: paidUsersCount.toString(), sub: isRTL ? 'اشتراكات سارية ومفعلة' : 'Active Paid Subscriptions', icon: <Crown size={18} />, color: 'var(--purple)' },
-              { label: isRTL ? '⏰ التجربة المجانية' : 'Active Trials', value: activeTrialCount.toString(), sub: isRTL ? 'في فترة التجربة المجانية' : 'Users on Free Trial', icon: <Clock size={18} />, color: 'var(--amber)' },
-              { label: isRTL ? '💰 إجمالي المبيعات' : 'Total Revenue', value: `${totalSalesAmount} ${t('admin.currency')}`, sub: isRTL ? 'إجمالي الأرباح المحصلة' : 'Collected Sales', icon: <DollarSign size={18} />, color: 'var(--green)' },
-              { label: isRTL ? '📈 متوسط العملية' : 'Avg Order Value', value: `${avgSaleAmount} ${t('admin.currency')}`, sub: isRTL ? 'متوسط قيمة الاشتراك' : 'Average Sale', icon: <TrendingUp size={18} />, color: 'var(--accent)' },
+              { label: isRTL ? '👑 الباقات المدفوعة' : 'Paid Subscribers', value: paidUsersCount.toString(), sub: isRTL ? 'اشتراكات سارية ومفعلة بالفترة' : 'Active Paid Subscriptions', icon: <Crown size={18} />, color: 'var(--purple)' },
+              { label: isRTL ? '⏰ التجربة المجانية' : 'Active Trials', value: activeTrialCount.toString(), sub: isRTL ? 'في فترة التجربة المجانية بالفترة' : 'Users on Free Trial', icon: <Clock size={18} />, color: 'var(--amber)' },
+              { label: isRTL ? '💰 مبيعات الفترة' : 'Period Revenue', value: `${totalSalesAmount} ${t('admin.currency')}`, sub: isRTL ? 'إجمالي الأرباح بالفترة المختارة' : 'Collected Sales in Period', icon: <DollarSign size={18} />, color: 'var(--green)' },
+              { label: isRTL ? '📈 متوسط العملية' : 'Avg Order Value', value: `${avgSaleAmount} ${t('admin.currency')}`, sub: isRTL ? 'متوسط قيمة الاشتراك بالفترة' : 'Average Sale in Period', icon: <TrendingUp size={18} />, color: 'var(--accent)' },
               { label: isRTL ? '❌ التجارب المنتهية' : 'Expired Trials', value: expiredTrialCount.toString(), sub: isRTL ? 'تستدعي التواصل للتجديد' : 'Needs Follow-up', icon: <XCircle size={18} />, color: 'var(--red)' },
               { label: isRTL ? '⚡ حالة النظام والـ AI' : 'System Status', value: isRTL ? 'نشط 100%' : '100% Active', sub: isRTL ? 'جميع الخدمات تعمل بكفاءة' : 'All systems operational', icon: <CheckCircle size={18} />, color: 'var(--green)' },
             ];
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* Date Filter Control Bar */}
+                <div className="card flex-between" style={{ padding: '14px 20px', background: 'var(--bg2)', border: '1px solid var(--line)', margin: 0, flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={18} style={{ color: 'var(--accent)' }} />
+                    <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text)' }}>
+                      {isRTL ? '📅 تصفية الفترة الزمنية للإحصائيات:' : '📅 Filter Statistics Date Range:'}
+                    </span>
+                  </div>
+                  {renderDateRangeFilter()}
+                </div>
 
                 {/* KPI Grid */}
                 <div className="grid-4" style={{ gap: '14px' }}>
