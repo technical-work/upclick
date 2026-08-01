@@ -763,6 +763,8 @@ const AdminDashboard = () => {
   const [statsDatePreset, setStatsDatePreset] = useState('all');
   const [statsStartDate, setStatsStartDate] = useState('');
   const [statsEndDate, setStatsEndDate] = useState('');
+  const [statsTopActivePage, setStatsTopActivePage] = useState(1);
+  const [statsNewestPage, setStatsNewestPage] = useState(1);
 
   // Independent Date Filter for Users Tab
   const [dateRangePreset, setDateRangePreset] = useState('all');
@@ -2048,6 +2050,231 @@ const AdminDashboard = () => {
                   </div>
 
                 </div>
+
+                {/* Section: Top 5 Active Users & Top 5 Newest Users with Pagination */}
+                {(() => {
+                  // 1. Top Active Users (sorted by time spent desc)
+                  const sortedTopActiveUsers = [...periodUsers].sort((a, b) => {
+                    const statsA = getUserUsageStats(a);
+                    const statsB = getUserUsageStats(b);
+                    return statsB.timeSpent - statsA.timeSpent;
+                  });
+                  const topActivePerPage = 5;
+                  const totalTopActivePages = Math.ceil(sortedTopActiveUsers.length / topActivePerPage) || 1;
+                  const paginatedTopActive = sortedTopActiveUsers.slice((statsTopActivePage - 1) * topActivePerPage, statsTopActivePage * topActivePerPage);
+
+                  // 2. Newest Users (sorted by created date desc)
+                  const sortedNewestUsers = [...periodUsers].sort((a, b) => {
+                    const dateA = getUserCreatedDate(a) ? getUserCreatedDate(a).getTime() : 0;
+                    const dateB = getUserCreatedDate(b) ? getUserCreatedDate(b).getTime() : 0;
+                    return dateB - dateA;
+                  });
+                  const newestPerPage = 5;
+                  const totalNewestPages = Math.ceil(sortedNewestUsers.length / newestPerPage) || 1;
+                  const paginatedNewest = sortedNewestUsers.slice((statsNewestPage - 1) * newestPerPage, statsNewestPage * newestPerPage);
+
+                  return (
+                    <div className="grid-2" style={{ gap: '20px' }}>
+                      
+                      {/* Top 5 Most Active Users Card */}
+                      <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              🔥 {isRTL ? 'المستخدمين الأكثر استخداماً ونشاطاً' : 'Top Most Active Users'}
+                            </h3>
+                            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                              {isRTL ? 'مرتبة حسـب إجمالي الوقت المستغرق والتفاعل' : 'Sorted by time spent & interaction'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--accent)', background: 'rgba(236,92,49,0.1)', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                            Top 5
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {paginatedTopActive.length === 0 ? (
+                            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text3)', fontSize: '12px' }}>
+                              {isRTL ? 'لا توجد بيانات مستخدمين حالياً' : 'No users data'}
+                            </div>
+                          ) : (
+                            paginatedTopActive.map((user) => {
+                              const uStats = getUserUsageStats(user);
+                              const actStatus = getUserActivityStatus(user);
+                              return (
+                                <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px', color: 'var(--text)', flexShrink: 0 }}>
+                                      {((user.name || user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</span>
+                                        <span style={{ fontSize: '9px', fontWeight: '800', padding: '1px 6px', borderRadius: '10px', color: actStatus.color, background: actStatus.bg }}>
+                                          {actStatus.text}
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</span>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                    <div style={{ textAlign: 'end' }}>
+                                      <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--accent)' }}>
+                                        ⏱️ {uStats.timeSpentFormatted}
+                                      </div>
+                                      <span style={{ fontSize: '9px', fontWeight: '700', color: uStats.classColor, background: uStats.classBg, padding: '1px 6px', borderRadius: '8px' }}>
+                                        {isRTL ? uStats.classLabelAr : uStats.classLabelEn}
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditClick(user)}
+                                      className="btn btn-ghost btn-sm"
+                                      style={{ padding: '5px' }}
+                                      title={isRTL ? 'تعديل المستخدم' : 'Edit User'}
+                                    >
+                                      <Edit3 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Pagination Bar */}
+                        {totalTopActivePages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: '10px', marginTop: 'auto' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                              {isRTL ? `صفحة ${statsTopActivePage} من ${totalTopActivePages}` : `Page ${statsTopActivePage} of ${totalTopActivePages}`}
+                            </span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                type="button"
+                                disabled={statsTopActivePage <= 1}
+                                onClick={() => setStatsTopActivePage(prev => Math.max(prev - 1, 1))}
+                                className="btn btn-ghost btn-sm"
+                                style={{ fontSize: '11px', padding: '3px 8px', opacity: statsTopActivePage <= 1 ? 0.4 : 1 }}
+                              >
+                                {isRTL ? 'السابق' : 'Prev'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={statsTopActivePage >= totalTopActivePages}
+                                onClick={() => setStatsTopActivePage(prev => Math.min(prev + 1, totalTopActivePages))}
+                                className="btn btn-ghost btn-sm"
+                                style={{ fontSize: '11px', padding: '3px 8px', opacity: statsTopActivePage >= totalTopActivePages ? 0.4 : 1 }}
+                              >
+                                {isRTL ? 'التالي' : 'Next'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Top 5 Newest Registered Users Card */}
+                      <div className="card" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              🆕 {isRTL ? 'المستخدمين الجدد المضافين مؤخراً' : 'Newest Registered Users'}
+                            </h3>
+                            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                              {isRTL ? 'أحدث المستخدمين المنضمين للمنصة حديثاً' : 'Latest users joined the platform'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--green)', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                            Top 5
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {paginatedNewest.length === 0 ? (
+                            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text3)', fontSize: '12px' }}>
+                              {isRTL ? 'لا توجد بيانات مستخدمين حالياً' : 'No users data'}
+                            </div>
+                          ) : (
+                            paginatedNewest.map((user) => {
+                              const relativeTime = getRelativeTimeStr(user);
+                              const joinDate = formatJoinDate(user);
+                              return (
+                                <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px', color: 'var(--green)', flexShrink: 0 }}>
+                                      {((user.name || user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name || user.email}</span>
+                                        <span style={{ fontSize: '9px', fontWeight: '800', padding: '1px 6px', borderRadius: '10px', background: 'rgba(16,185,129,0.12)', color: 'var(--green)' }}>
+                                          🆕 {isRTL ? 'جديد' : 'NEW'}
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</span>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                                    <div style={{ textAlign: 'end' }}>
+                                      <div style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text)' }}>
+                                        🕒 {relativeTime}
+                                      </div>
+                                      <span style={{ fontSize: '9.5px', color: 'var(--text3)' }}>
+                                        {joinDate}
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditClick(user)}
+                                      className="btn btn-ghost btn-sm"
+                                      style={{ padding: '5px' }}
+                                      title={isRTL ? 'تعديل المستخدم' : 'Edit User'}
+                                    >
+                                      <Edit3 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {/* Pagination Bar */}
+                        {totalNewestPages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: '10px', marginTop: 'auto' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                              {isRTL ? `صفحة ${statsNewestPage} من ${totalNewestPages}` : `Page ${statsNewestPage} of ${totalNewestPages}`}
+                            </span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                type="button"
+                                disabled={statsNewestPage <= 1}
+                                onClick={() => setStatsNewestPage(prev => Math.max(prev - 1, 1))}
+                                className="btn btn-ghost btn-sm"
+                                style={{ fontSize: '11px', padding: '3px 8px', opacity: statsNewestPage <= 1 ? 0.4 : 1 }}
+                              >
+                                {isRTL ? 'السابق' : 'Prev'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={statsNewestPage >= totalNewestPages}
+                                onClick={() => setStatsNewestPage(prev => Math.min(prev + 1, totalNewestPages))}
+                                className="btn btn-ghost btn-sm"
+                                style={{ fontSize: '11px', padding: '3px 8px', opacity: statsNewestPage >= totalNewestPages ? 0.4 : 1 }}
+                              >
+                                {isRTL ? 'التالي' : 'Next'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })()}
 
                 {/* Section 3: Geographic Distribution & Platform Modules */}
                 <div className="grid-2" style={{ gap: '20px' }}>
