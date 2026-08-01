@@ -758,6 +758,13 @@ const AdminDashboard = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedAnalysisUser, setSelectedAnalysisUser] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
+
+  // Independent Date Filter for General Stats Tab
+  const [statsDatePreset, setStatsDatePreset] = useState('all');
+  const [statsStartDate, setStatsStartDate] = useState('');
+  const [statsEndDate, setStatsEndDate] = useState('');
+
+  // Independent Date Filter for Users Tab
   const [dateRangePreset, setDateRangePreset] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -803,23 +810,28 @@ const AdminDashboard = () => {
   ];
 
   const getUserCreatedDate = (user) => {
+    if (!user) return new Date();
     const ts = user.createdAt || user.joinedAt || user.trialStartedAt || user.updatedAt;
-    if (!ts) return null;
+    if (!ts) return new Date();
+    if (ts instanceof Date) return ts;
     if (typeof ts === 'string') {
       const d = new Date(ts);
-      return isNaN(d.getTime()) ? null : d;
+      return isNaN(d.getTime()) ? new Date() : d;
     }
     if (typeof ts === 'number') {
       const d = new Date(ts);
-      return isNaN(d.getTime()) ? null : d;
+      return isNaN(d.getTime()) ? new Date() : d;
     }
     if (ts?.toDate && typeof ts.toDate === 'function') {
-      try { return ts.toDate(); } catch (e) { return null; }
+      try { return ts.toDate(); } catch (e) { return new Date(); }
     }
-    if (ts?.seconds) {
+    if (ts?.seconds !== undefined) {
       return new Date(ts.seconds * 1000);
     }
-    return null;
+    if (ts?._seconds !== undefined) {
+      return new Date(ts._seconds * 1000);
+    }
+    return new Date();
   };
 
   const fetchUsers = () => {
@@ -1485,56 +1497,113 @@ const AdminDashboard = () => {
     return { type: 'trial_active', text: isRTL ? `⏰ متبقي ${daysLeft} يوم تجربة` : `⏰ ${daysLeft} days trial left`, daysLeft, expired: false };
   };
 
-  const isDateInSelectedRange = (dateVal) => {
-    if (dateRangePreset === 'all' && !startDate && !endDate) return true;
-    if (!dateVal && dateRangePreset !== 'all') return false;
+  const isDateInSelectedRange = (dateVal, preset = dateRangePreset, start = startDate, end = endDate) => {
+    if (preset === 'all' && !start && !end) return true;
 
     let timeMs = 0;
-    if (typeof dateVal === 'string') timeMs = new Date(dateVal).getTime();
+    if (dateVal instanceof Date) timeMs = dateVal.getTime();
+    else if (typeof dateVal === 'string') timeMs = new Date(dateVal).getTime();
     else if (typeof dateVal === 'number') timeMs = dateVal;
     else if (dateVal?.toDate) timeMs = dateVal.toDate().getTime();
     else if (dateVal?.seconds) timeMs = dateVal.seconds * 1000;
+    else if (dateVal?._seconds) timeMs = dateVal._seconds * 1000;
+    else timeMs = Date.now();
 
-    if (!timeMs && dateRangePreset !== 'all') return false;
+    if (!timeMs || isNaN(timeMs)) timeMs = Date.now();
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const todayEnd = todayStart + 86400000 - 1;
 
-    if (dateRangePreset === 'today') {
+    if (preset === 'today') {
       return timeMs >= todayStart && timeMs <= todayEnd;
     }
 
-    if (dateRangePreset === 'yesterday') {
+    if (preset === 'yesterday') {
       const yestStart = todayStart - 86400000;
       const yestEnd = todayStart - 1;
       return timeMs >= yestStart && timeMs <= yestEnd;
     }
 
-    if (dateRangePreset === 'last7') {
+    if (preset === 'last7') {
       const sevenDaysAgo = todayStart - (6 * 86400000);
       return timeMs >= sevenDaysAgo && timeMs <= todayEnd;
     }
 
-    if (dateRangePreset === 'thisMonth') {
+    if (preset === 'thisMonth') {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
       return timeMs >= monthStart && timeMs <= todayEnd;
     }
 
-    if (dateRangePreset === 'lastMonth') {
+    if (preset === 'lastMonth') {
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).getTime();
       return timeMs >= lastMonthStart && timeMs <= lastMonthEnd;
     }
 
-    if (dateRangePreset === 'custom' || startDate || endDate) {
-      let startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
-      let endMs = endDate ? new Date(endDate + 'T23:59:59').getTime() : Infinity;
+    if (preset === 'custom' || start || end) {
+      let startMs = start ? new Date(start + 'T00:00:00').getTime() : 0;
+      let endMs = end ? new Date(end + 'T23:59:59').getTime() : Infinity;
       return timeMs >= startMs && timeMs <= endMs;
     }
 
     return true;
   };
+
+  const renderStatsDateRangeFilter = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+      <select
+        className="form-control"
+        style={{
+          width: 'auto',
+          minWidth: '130px',
+          fontSize: '12px',
+          padding: '6px 12px',
+          background: 'var(--bg3)',
+          borderColor: 'var(--line)',
+          color: 'var(--text)',
+          borderRadius: '8px',
+          cursor: 'pointer'
+        }}
+        value={statsDatePreset}
+        onChange={(e) => {
+          setStatsDatePreset(e.target.value);
+          if (e.target.value !== 'custom') {
+            setStatsStartDate('');
+            setStatsEndDate('');
+          }
+        }}
+      >
+        <option value="all">{isRTL ? 'جميع الأوقات' : 'All Time'}</option>
+        <option value="today">{isRTL ? 'اليوم' : 'Today'}</option>
+        <option value="yesterday">{isRTL ? 'أمس' : 'Yesterday'}</option>
+        <option value="last7">{isRTL ? 'آخر 7 أيام' : 'Last 7 Days'}</option>
+        <option value="thisMonth">{isRTL ? 'هذا الشهر' : 'This Month'}</option>
+        <option value="lastMonth">{isRTL ? 'الشهر الماضي' : 'Last Month'}</option>
+        <option value="custom">{isRTL ? 'فترة مخصصة...' : 'Custom Period...'}</option>
+      </select>
+
+      {statsDatePreset === 'custom' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <input
+            type="date"
+            className="form-control"
+            style={{ width: 'auto', fontSize: '11px', padding: '4px 8px' }}
+            value={statsStartDate}
+            onChange={(e) => setStatsStartDate(e.target.value)}
+          />
+          <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'إلى' : 'to'}</span>
+          <input
+            type="date"
+            className="form-control"
+            style={{ width: 'auto', fontSize: '11px', padding: '4px 8px' }}
+            value={statsEndDate}
+            onChange={(e) => setStatsEndDate(e.target.value)}
+          />
+        </div>
+      )}
+    </div>
+  );
 
   const renderDateRangeFilter = () => (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -1765,8 +1834,8 @@ const AdminDashboard = () => {
       {activeTab === 'stats' ? (
         <>
           {(() => {
-            const periodUsers = users.filter(u => isDateInSelectedRange(getUserCreatedDate(u)));
-            const periodSales = sales.filter(s => isDateInSelectedRange(s.createdAt));
+            const periodUsers = users.filter(u => isDateInSelectedRange(getUserCreatedDate(u), statsDatePreset, statsStartDate, statsEndDate));
+            const periodSales = sales.filter(s => isDateInSelectedRange(s.createdAt, statsDatePreset, statsStartDate, statsEndDate));
 
             const onlineUsersCount = periodUsers.filter(u => getUserActivityStatus(u).isOnline).length;
             const paidUsersCount = periodUsers.filter(u => {
@@ -1889,7 +1958,7 @@ const AdminDashboard = () => {
                       {isRTL ? '📅 تصفية الفترة الزمنية للإحصائيات:' : '📅 Filter Statistics Date Range:'}
                     </span>
                   </div>
-                  {renderDateRangeFilter()}
+                  {renderStatsDateRangeFilter()}
                 </div>
 
                 {/* KPI Grid */}
