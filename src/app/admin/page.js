@@ -2601,36 +2601,52 @@ const AdminDashboard = () => {
         <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
-          {/* Summary Stats Bar */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-            gap: '10px',
-            padding: '16px 20px',
-            background: 'rgba(255,255,255,0.015)',
-            borderBottom: '1px solid var(--line)'
-          }}>
-            <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700' }}>{isRTL ? '👥 إجمالي المستخدمين' : '👥 Total Users'}</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', marginTop: '2px' }}>{users.length}</div>
-            </div>
-            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: '700' }}>{isRTL ? '🆕 جدد (آخر 48h)' : '🆕 New (48h)'}</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--green)', marginTop: '2px' }}>{users.filter(u => isUserNew(u)).length}</div>
-            </div>
-            <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--amber)', fontWeight: '700' }}>{isRTL ? '⏰ تجربة مجانية نشطة' : '⏰ Active Trial'}</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--amber)', marginTop: '2px' }}>{users.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length}</div>
-            </div>
-            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--red)', fontWeight: '700' }}>{isRTL ? '❌ تجربة منتهية' : '❌ Expired Trial'}</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--red)', marginTop: '2px' }}>{users.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length}</div>
-            </div>
-            <div style={{ background: 'rgba(168, 85, 247, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--purple)', fontWeight: '700' }}>{isRTL ? '👑 باقات مدفوعة' : '👑 Paid Plans'}</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--purple)', marginTop: '2px' }}>{users.filter(u => getTrialStatusDetailed(u).type.startsWith('paid') || getTrialStatusDetailed(u).type === 'lifetime').length}</div>
-            </div>
-          </div>
+          {/* Summary Stats Bar (Dynamically updated based on Date Filter) */}
+          {(() => {
+            const dateFilteredUsers = users.filter(u => isDateInSelectedRange(getUserCreatedDate(u), dateRangePreset, startDate, endDate));
+            const totalCount = dateFilteredUsers.length;
+            const newCount = dateFilteredUsers.filter(u => isUserNew(u)).length;
+            const activeTrialCount = dateFilteredUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length;
+            const expiredTrialCount = dateFilteredUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length;
+            const paidCount = dateFilteredUsers.filter(u => {
+              const st = getTrialStatusDetailed(u);
+              return st.type.startsWith('paid') || st.type === 'lifetime';
+            }).length;
+
+            return (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '10px',
+                padding: '16px 20px',
+                background: 'rgba(255,255,255,0.015)',
+                borderBottom: '1px solid var(--line)'
+              }}>
+                <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700' }}>
+                    {isRTL ? (dateRangePreset === 'all' ? '👥 إجمالي المستخدمين' : '👥 مستخدمي الفترة') : '👥 Period Users'}
+                  </div>
+                  <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', marginTop: '2px' }}>{totalCount}</div>
+                </div>
+                <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: '700' }}>{isRTL ? '🆕 جدد (آخر 48h)' : '🆕 New (48h)'}</div>
+                  <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--green)', marginTop: '2px' }}>{newCount}</div>
+                </div>
+                <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--amber)', fontWeight: '700' }}>{isRTL ? '⏰ تجربة مجانية نشطة' : '⏰ Active Trial'}</div>
+                  <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--amber)', marginTop: '2px' }}>{activeTrialCount}</div>
+                </div>
+                <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--red)', fontWeight: '700' }}>{isRTL ? '❌ تجربة منتهية' : '❌ Expired Trial'}</div>
+                  <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--red)', marginTop: '2px' }}>{expiredTrialCount}</div>
+                </div>
+                <div style={{ background: 'rgba(168, 85, 247, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--purple)', fontWeight: '700' }}>{isRTL ? '👑 باقات مدفوعة' : '👑 Paid Plans'}</div>
+                  <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--purple)', marginTop: '2px' }}>{paidCount}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="flex-responsive" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>{t('admin.myUsersTitle') || 'My Users List'}</h3>
