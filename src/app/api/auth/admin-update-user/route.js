@@ -33,7 +33,26 @@ export async function POST(req) {
 
     // 1. Update Firebase Authentication credentials
     if (Object.keys(updatePayload).length > 0) {
-      await adminAuth.updateUser(targetUid, updatePayload);
+      try {
+        await adminAuth.updateUser(targetUid, updatePayload);
+      } catch (authErr) {
+        console.warn('[admin-update-user] Firebase Auth update warning:', authErr.code || authErr.message);
+        if (authErr.code === 'auth/user-not-found' || authErr.message?.includes('no user record')) {
+          if (updatePayload.password && updatePayload.email) {
+            try {
+              await adminAuth.createUser({
+                uid: targetUid,
+                email: updatePayload.email,
+                password: updatePayload.password
+              });
+            } catch (createErr) {
+              console.warn('[admin-update-user] Auth create fallback warning:', createErr.message);
+            }
+          }
+        } else {
+          throw authErr;
+        }
+      }
     }
 
     // 2. Sync updated credentials in Firestore

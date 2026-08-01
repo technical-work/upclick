@@ -1329,19 +1329,23 @@ const AdminDashboard = () => {
     setError(null);
     try {
       // Sync Email & Password in Firebase Auth via Admin API
-      const authRes = await fetch('/api/auth/admin-update-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetUid: editingUser.id,
-          newEmail: editingUser.email ? editingUser.email.trim() : '',
-          newPassword: editingUser.newPassword ? editingUser.newPassword.trim() : ''
-        })
-      });
+      try {
+        const authRes = await fetch('/api/auth/admin-update-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetUid: editingUser.id,
+            newEmail: editingUser.email ? editingUser.email.trim() : '',
+            newPassword: editingUser.newPassword ? editingUser.newPassword.trim() : ''
+          })
+        });
 
-      const authData = await authRes.json();
-      if (!authRes.ok) {
-        throw new Error(authData.error || (isRTL ? 'فشل في تحديث بيانات المصادقة' : 'Failed to update authentication credentials'));
+        const authData = await authRes.json();
+        if (!authRes.ok) {
+          console.warn("Auth update warning:", authData.error);
+        }
+      } catch (authErr) {
+        console.warn("Auth update fetch warning:", authErr);
       }
 
       const subType = editingUser.subscriptionType || 'months';
