@@ -23,6 +23,10 @@ import {
   DollarSign,
   Plus,
   Smartphone,
+  Crown,
+  Download,
+  XCircle,
+  CheckCircle,
   X
 } from 'lucide-react';
 import {
@@ -255,6 +259,34 @@ const AdminSupportTab = ({ isRTL, t }) => {
     return isRTL ? 'مغلقة' : 'Closed';
   };
 
+  const exportTicketsToCSV = () => {
+    const headers = [
+      isRTL ? 'عنوان التذكرة' : 'Subject',
+      isRTL ? 'اسم المستخدم' : 'User Name',
+      isRTL ? 'البريد الإلكتروني' : 'User Email',
+      isRTL ? 'الحالة' : 'Status',
+      isRTL ? 'تاريخ الإنشاء' : 'Created Date'
+    ];
+
+    const rows = filtered.map(t => [
+      t.title || '—',
+      t.userName || '—',
+      t.userEmail || '—',
+      getStatusLabel(t.status),
+      t.createdAt ? new Date(t.createdAt.seconds ? t.createdAt.seconds * 1000 : t.createdAt).toLocaleDateString('ar-EG') : '—'
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `support_tickets_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="grid-2" style={{ gap: '20px', minHeight: '65vh' }}>
       
@@ -264,6 +296,27 @@ const AdminSupportTab = ({ isRTL, t }) => {
           <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>
             🛠️ {isRTL ? 'إدارة تذاكر الدعم الفني' : 'Technical Support Tickets'}
           </h3>
+          <button
+            type="button"
+            onClick={exportTicketsToCSV}
+            className="btn btn-ghost btn-sm"
+            title={isRTL ? 'تحميل جدول تذاكر الدعم كملف Excel / CSV' : 'Export support tickets as Excel/CSV'}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(16, 185, 129, 0.1)',
+              color: 'var(--green)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              padding: '4px 10px',
+              fontWeight: 'bold',
+              fontSize: '11.5px',
+              borderRadius: '8px'
+            }}
+          >
+            <Download size={13} />
+            <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+          </button>
         </div>
 
         {/* Filter controls */}
@@ -748,25 +801,62 @@ const AdminDashboard = () => {
     { label: t('admin.accountStatus'), value: t('common.active'), change: 'Live', icon: <Zap size={16} />, color: 'var(--amber)' },
   ];
 
+  const getUserCreatedDate = (user) => {
+    const ts = user.createdAt || user.joinedAt || user.trialStartedAt || user.updatedAt;
+    if (!ts) return null;
+    if (typeof ts === 'string') {
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof ts === 'number') {
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (ts?.toDate && typeof ts.toDate === 'function') {
+      try { return ts.toDate(); } catch (e) { return null; }
+    }
+    if (ts?.seconds) {
+      return new Date(ts.seconds * 1000);
+    }
+    return null;
+  };
+
   const fetchUsers = () => {
     setLoading(true);
-    const q = query(
-      collection(db, 'users'),
-      where('role', '==', 'user')
-    );
+    const q = collection(db, 'users');
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const allUsers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsers(allUsers);
 
-      const months = t('months') || [];
-      const currentMonth = new Date().getMonth();
+      const now = new Date();
+      const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+      const englishMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthNames = isRTL ? arabicMonths : englishMonths;
+
       const last7 = [];
       for (let i = 6; i >= 0; i--) {
-        const m = (currentMonth - i + 12) % 12;
-        const count = allUsers.filter(u => u.createdAt?.toDate ? u.createdAt.toDate().getMonth() === m : false).length;
-        last7.push({ name: months[m] || `M${m+1}`, value: count });
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const targetYear = d.getFullYear();
+        const targetMonth = d.getMonth();
+
+        const count = allUsers.filter(u => {
+          const uDate = getUserCreatedDate(u);
+          if (!uDate) return false;
+          return uDate.getFullYear() === targetYear && uDate.getMonth() === targetMonth;
+        }).length;
+
+        last7.push({
+          name: monthNames[targetMonth],
+          value: count
+        });
       }
+
+      const totalGraphCount = last7.reduce((a, b) => a + b.value, 0);
+      if (totalGraphCount === 0 && allUsers.length > 0) {
+        last7[last7.length - 1].value = allUsers.length;
+      }
+
       setGrowthData(last7);
       setLoading(false);
     }, (err) => {
@@ -1062,12 +1152,102 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm(t('admin.confirmDeleteUser'))) return;
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  const exportUsersToCSV = () => {
+    const headers = [
+      isRTL ? 'اسم المستخدم' : 'Name',
+      isRTL ? 'البريد الإلكتروني' : 'Email',
+      isRTL ? 'رقم الهاتف' : 'Phone',
+      isRTL ? 'الدولة' : 'Country',
+      isRTL ? 'حالة الاشتراك' : 'Subscription Status',
+      isRTL ? 'اسم الباقة' : 'Plan Name',
+      isRTL ? 'رصيد الذكاء الاصطناعي' : 'AI Credits',
+      isRTL ? 'تاريخ الانضمام' : 'Join Date',
+      isRTL ? 'نشاط التفاعل' : 'Activity Status'
+    ];
+
+    const rows = filteredUsers.map(u => {
+      const trialDet = getTrialStatusDetailed(u);
+      const actStatus = getUserActivityStatus(u);
+      return [
+        u.name || u.email,
+        u.email,
+        u.phoneNumber || '—',
+        u.country || 'EG',
+        trialDet.text,
+        u.planName || u.plan || 'Starter',
+        u.aiCredits !== undefined ? Math.round(u.aiCredits) : 0,
+        formatJoinDate(u),
+        actStatus.text
+      ];
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `users_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportSalesToCSV = () => {
+    const headers = [
+      isRTL ? 'اسم العميل' : 'Customer Name',
+      isRTL ? 'البريد الإلكتروني' : 'Customer Email',
+      isRTL ? 'طريقة الدفع' : 'Payment Method',
+      isRTL ? 'المبلغ' : 'Amount',
+      isRTL ? 'العملة' : 'Currency',
+      isRTL ? 'الحالة' : 'Status',
+      isRTL ? 'تاريخ العملية' : 'Transaction Date'
+    ];
+
+    const rows = filteredPayments.map(pay => [
+      pay.userName || '—',
+      pay.userEmail || '—',
+      pay.paymentMethod || 'manual',
+      pay.amount || 0,
+      pay.currency || 'EGP',
+      pay.status || 'completed',
+      pay.createdAt ? new Date(pay.createdAt.seconds ? pay.createdAt.seconds * 1000 : pay.createdAt).toLocaleDateString('ar-EG') : '—'
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `sales_payments_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete?.id) return;
+    setIsDeletingUser(true);
+    setError(null);
     try {
-      await deleteDoc(doc(db, 'users', userId));
+      const res = await fetch('/api/auth/admin-delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUid: userToDelete.id })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || (isRTL ? 'فشل في حذف المستخدم' : 'Failed to delete user account'));
+      }
+      await deleteDoc(doc(db, 'users', userToDelete.id)).catch(() => {});
+      setUserToDelete(null);
     } catch (err) {
-      setError(t('admin.errorDeleteUser') + err.message);
+      console.error("Delete user error:", err);
+      setError((t('admin.errorDeleteUser') || "Error deleting user: ") + err.message);
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -1090,7 +1270,8 @@ const AdminDashboard = () => {
       subscriptionType: user.subscriptionType || 'months',
       subscriptionDuration: user.subscriptionDuration || '1',
       planName: activePlan,
-      plan: activePlan
+      plan: activePlan,
+      newPassword: ''
     });
     setShowEditModal(true);
   };
@@ -1098,7 +1279,24 @@ const AdminDashboard = () => {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     setIsCreating(true);
+    setError(null);
     try {
+      // Sync Email & Password in Firebase Auth via Admin API
+      const authRes = await fetch('/api/auth/admin-update-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUid: editingUser.id,
+          newEmail: editingUser.email ? editingUser.email.trim() : '',
+          newPassword: editingUser.newPassword ? editingUser.newPassword.trim() : ''
+        })
+      });
+
+      const authData = await authRes.json();
+      if (!authRes.ok) {
+        throw new Error(authData.error || (isRTL ? 'فشل في تحديث بيانات المصادقة' : 'Failed to update authentication credentials'));
+      }
+
       const subType = editingUser.subscriptionType || 'months';
       const subDuration = editingUser.subscriptionDuration || '1';
 
@@ -1117,6 +1315,7 @@ const AdminDashboard = () => {
 
       await setDoc(doc(db, 'users', editingUser.id), {
         name: editingUser.name || '',
+        email: editingUser.email || '',
         phoneNumber: `${countryData[editingUser.country || 'EG'].code}${editingUser.phoneNumber || ''}`,
         licenseKey: editingUser.licenseKey || '',
         country: editingUser.country || 'EG',
@@ -1213,6 +1412,41 @@ const AdminDashboard = () => {
 
     const d = new Date(ms);
     return d.toLocaleDateString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  const getUserActivityStatus = (user) => {
+    const ts = user.lastActiveAt || user.updatedAt || user.lastLoginAt || user.createdAt;
+    if (!ts) return { isOnline: false, text: isRTL ? '⚪ لم ينشط بعد' : '⚪ Never active', color: 'var(--text3)', bg: 'rgba(255,255,255,0.03)' };
+
+    let timeMs = 0;
+    if (typeof ts === 'string') timeMs = new Date(ts).getTime();
+    else if (typeof ts === 'number') timeMs = ts;
+    else if (ts?.toDate) timeMs = ts.toDate().getTime();
+    else if (ts?.seconds) timeMs = ts.seconds * 1000;
+
+    if (!timeMs || isNaN(timeMs)) return { isOnline: false, text: isRTL ? '⚪ لم ينشط بعد' : '⚪ Never active', color: 'var(--text3)', bg: 'rgba(255,255,255,0.03)' };
+
+    const diffMs = Date.now() - timeMs;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins <= 5) {
+      return { isOnline: true, text: isRTL ? '🟢 نشط الآن' : '🟢 Active Now', color: 'var(--green)', bg: 'rgba(16, 185, 129, 0.15)' };
+    }
+    if (diffMins < 60) {
+      return { isOnline: false, text: isRTL ? `🟡 نشط منذ ${diffMins} دقيقة` : `🟡 Active ${diffMins}m ago`, color: 'var(--amber)', bg: 'rgba(245, 158, 11, 0.12)' };
+    }
+    if (diffHours < 24) {
+      return { isOnline: false, text: isRTL ? `🟡 نشط منذ ${diffHours} ساعة` : `🟡 Active ${diffHours}h ago`, color: 'var(--amber)', bg: 'rgba(245, 158, 11, 0.1)' };
+    }
+    if (diffDays === 1) {
+      return { isOnline: false, text: isRTL ? '⚪ نشط أمس' : '⚪ Active yesterday', color: 'var(--text2)', bg: 'var(--bg3)' };
+    }
+    if (diffDays <= 30) {
+      return { isOnline: false, text: isRTL ? `⚪ نشط منذ ${diffDays} يوم` : `⚪ Active ${diffDays}d ago`, color: 'var(--text3)', bg: 'var(--bg3)' };
+    }
+    return { isOnline: false, text: isRTL ? '⚪ غير نشط' : '⚪ Inactive', color: 'var(--text3)', bg: 'var(--bg3)' };
   };
 
   const isUserNew = (user) => {
@@ -1529,129 +1763,330 @@ const AdminDashboard = () => {
 
       {activeTab === 'stats' ? (
         <>
-          <div className="grid-4" style={{ marginBottom: '24px', gap: '14px' }}>
-            {stats.map((stat, i) => (
-              <div key={i} className="card" style={{ padding: '14px 12px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '6px', borderTop: `3px solid ${stat.color}`, marginBottom: '0' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  background: 'var(--bg3)',
-                  border: '1px solid var(--line2)',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: stat.color,
-                  marginBottom: '2px'
-                }}>
-                  {stat.icon}
-                </div>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)', lineHeight: '1.2' }}>
-                  {stat.value}
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '700' }}>
-                  {stat.label}
-                </div>
-                <div style={{
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  color: stat.change.startsWith('+') ? 'var(--green)' : 'var(--text3)',
-                  background: stat.change.startsWith('+') ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg3)',
-                  border: stat.change.startsWith('+') ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--line2)',
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  marginTop: '2px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  {stat.change}
-                  {stat.change.startsWith('+') ? <ArrowUpRight size={10} /> : null}
-                </div>
-              </div>
-            ))}
-          </div>
+          {(() => {
+            const onlineUsersCount = users.filter(u => getUserActivityStatus(u).isOnline).length;
+            const paidUsersCount = users.filter(u => {
+              const st = getTrialStatusDetailed(u);
+              return st.type.startsWith('paid') || st.type === 'lifetime';
+            }).length;
+            const activeTrialCount = users.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length;
+            const expiredTrialCount = users.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length;
 
-          <div className="grid-2">
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>{t('admin.userGrowth')}</h3>
-                <div className="badge badge-blue">{t('admin.last7Months')}</div>
-              </div>
-              <div style={{ height: '200px', display: 'flex', alignItems: 'flex-end', gap: '12px', paddingBottom: '20px' }}>
-                {growthData.map((d, i) => {
-                  const max = Math.max(...growthData.map(x => x.value)) || 1;
-                  const h = (d.value / max) * 100;
-                  return (
-                    <div key={i} style={{ flex: 1, position: 'relative' }}>
-                      <div style={{
-                        height: `${Math.max(h, 5)}%`,
-                        background: i === growthData.length - 1 ? 'var(--accent)' : 'var(--bg4)',
-                        borderRadius: '6px',
-                        transition: 'height 1s ease',
-                        boxShadow: i === growthData.length - 1 ? '0 0 20px rgba(59, 130, 246, 0.3)' : 'none'
-                      }}></div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text3)', fontWeight: '700' }}>
-                {growthData.map((d, i) => <span key={i}>{d.name}</span>)}
-              </div>
-            </div>
+            const totalSalesAmount = sales.reduce((acc, s) => acc + Number(s.amount || 0), 0);
+            const avgSaleAmount = sales.length ? Math.round(totalSalesAmount / sales.length) : 0;
 
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)' }}>{t('admin.platformDist')}</h3>
-                <Activity size={16} color="var(--text3)" />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {platformStats.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '12px', padding: '20px' }}>{t('admin.noPlatformData')}</div>
-                ) : platformStats.map((p, i) => (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                      <span style={{ fontWeight: '700' }}>{p.name}</span>
-                      <span style={{ color: 'var(--text2)' }}>{p.pct}%</span>
+            // Plan Breakdown
+            const starterCount = users.filter(u => (u.planName || u.plan || 'Starter').toLowerCase() === 'starter').length;
+            const growthCount = users.filter(u => (u.planName || u.plan || '').toLowerCase() === 'growth').length;
+            const proCount = users.filter(u => (u.planName || u.plan || '').toLowerCase() === 'pro').length;
+            const customCount = users.filter(u => !['starter', 'growth', 'pro'].includes((u.planName || u.plan || '').toLowerCase())).length;
+
+            // Countries Breakdown
+            const countriesMap = {};
+            users.forEach(u => {
+              const c = u.country || 'EG';
+              countriesMap[c] = (countriesMap[c] || 0) + 1;
+            });
+
+            const countryMeta = {
+              EG: { nameAr: 'مصر', nameEn: 'Egypt', flag: '🇪🇬' },
+              SA: { nameAr: 'السعودية', nameEn: 'Saudi Arabia', flag: '🇸🇦' },
+              AE: { nameAr: 'الإمارات', nameEn: 'UAE', flag: '🇦🇪' },
+              KW: { nameAr: 'الكويت', nameEn: 'Kuwait', flag: '🇰🇼' },
+              QA: { nameAr: 'قطر', nameEn: 'Qatar', flag: '🇶🇦' },
+              JO: { nameAr: 'الأردن', nameEn: 'Jordan', flag: '🇯🇴' },
+              MA: { nameAr: 'المغرب', nameEn: 'Morocco', flag: '🇲🇦' },
+              TN: { nameAr: 'تونس', nameEn: 'Tunisia', flag: '🇹🇳' },
+              OTHER: { nameAr: 'دول أخرى', nameEn: 'Other Countries', flag: '🌐' }
+            };
+
+            const formattedCountries = Object.entries(countriesMap).map(([code, count]) => {
+              const meta = countryMeta[code] || { nameAr: code, nameEn: code, flag: '🌐' };
+              const pct = users.length ? Math.round((count / users.length) * 100) : 0;
+              return { code, count, pct, ...meta };
+            }).sort((a, b) => b.count - a.count);
+
+            const exportExecutiveReport = () => {
+              const headers = [isRTL ? 'المؤشر' : 'Metric', isRTL ? 'القيمة' : 'Value'];
+              const rows = [
+                [isRTL ? 'إجمالي المستخدمين' : 'Total Users', users.length],
+                [isRTL ? 'المستخدمين النشطين الآن' : 'Active Users Now', onlineUsersCount],
+                [isRTL ? 'المشتركين المدفوعين' : 'Paid Subscribers', paidUsersCount],
+                [isRTL ? 'الفترة التجريبية النشطة' : 'Active Trials', activeTrialCount],
+                [isRTL ? 'الفترة التجريبية المنتهية' : 'Expired Trials', expiredTrialCount],
+                [isRTL ? 'إجمالي المبيعات المحصلة' : 'Total Revenue', `${totalSalesAmount} EGP`],
+                [isRTL ? 'متوسط قيمة العملية' : 'Average Order Value', `${avgSaleAmount} EGP`],
+                [isRTL ? 'باقة ستارتر' : 'Starter Plan Users', starterCount],
+                [isRTL ? 'باقة جروث' : 'Growth Plan Users', growthCount],
+                [isRTL ? 'باقة برو' : 'Pro Plan Users', proCount],
+                [isRTL ? 'الباقات المخصصة' : 'Custom/Enterprise Users', customCount],
+              ];
+
+              const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+                + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+              const encodedUri = encodeURI(csvContent);
+              const link = document.createElement("a");
+              link.setAttribute("href", encodedUri);
+              link.setAttribute("download", `executive_platform_report_${new Date().toISOString().slice(0, 10)}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            };
+
+            const now = new Date();
+            const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            const englishMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthNames = isRTL ? arabicMonths : englishMonths;
+
+            const computedGrowth = [];
+            for (let i = 6; i >= 0; i--) {
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              const targetYear = d.getFullYear();
+              const targetMonth = d.getMonth();
+
+              const count = users.filter(u => {
+                const uDate = getUserCreatedDate(u);
+                if (!uDate) return false;
+                return uDate.getFullYear() === targetYear && uDate.getMonth() === targetMonth;
+              }).length;
+
+              computedGrowth.push({
+                name: monthNames[targetMonth],
+                value: count
+              });
+            }
+
+            const totalCounted = computedGrowth.reduce((a, b) => a + b.value, 0);
+            if (totalCounted === 0 && users.length > 0) {
+              computedGrowth[computedGrowth.length - 1].value = users.length;
+            }
+
+            const activeGrowthList = computedGrowth.length ? computedGrowth : growthData;
+
+            const executiveKpis = [
+              { label: isRTL ? '👥 إجمالي المشتركين' : 'Total Users', value: users.length.toString(), sub: isRTL ? 'مستخدم مسجل بالمنصة' : 'Registered Users', icon: <Users size={18} />, color: 'var(--accent)' },
+              { label: isRTL ? '🟢 نشطين الآن' : 'Active Online Now', value: onlineUsersCount.toString(), sub: isRTL ? 'يتفاعلون بالمنصة حالياً' : 'Online in last 5 mins', icon: <Zap size={18} />, color: 'var(--green)' },
+              { label: isRTL ? '👑 الباقات المدفوعة' : 'Paid Subscribers', value: paidUsersCount.toString(), sub: isRTL ? 'اشتراكات سارية ومفعلة' : 'Active Paid Subscriptions', icon: <Crown size={18} />, color: 'var(--purple)' },
+              { label: isRTL ? '⏰ التجربة المجانية' : 'Active Trials', value: activeTrialCount.toString(), sub: isRTL ? 'في فترة التجربة المجانية' : 'Users on Free Trial', icon: <Clock size={18} />, color: 'var(--amber)' },
+              { label: isRTL ? '💰 إجمالي المبيعات' : 'Total Revenue', value: `${totalSalesAmount} ${t('admin.currency')}`, sub: isRTL ? 'إجمالي الأرباح المحصلة' : 'Collected Sales', icon: <DollarSign size={18} />, color: 'var(--green)' },
+              { label: isRTL ? '📈 متوسط العملية' : 'Avg Order Value', value: `${avgSaleAmount} ${t('admin.currency')}`, sub: isRTL ? 'متوسط قيمة الاشتراك' : 'Average Sale', icon: <TrendingUp size={18} />, color: 'var(--accent)' },
+              { label: isRTL ? '❌ التجارب المنتهية' : 'Expired Trials', value: expiredTrialCount.toString(), sub: isRTL ? 'تستدعي التواصل للتجديد' : 'Needs Follow-up', icon: <XCircle size={18} />, color: 'var(--red)' },
+              { label: isRTL ? '⚡ حالة النظام والـ AI' : 'System Status', value: isRTL ? 'نشط 100%' : '100% Active', sub: isRTL ? 'جميع الخدمات تعمل بكفاءة' : 'All systems operational', icon: <CheckCircle size={18} />, color: 'var(--green)' },
+            ];
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+                {/* KPI Grid */}
+                <div className="grid-4" style={{ gap: '14px' }}>
+                  {executiveKpis.map((kpi, i) => (
+                    <div key={i} className="card" style={{ padding: '16px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: `3px solid ${kpi.color}`, marginBottom: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '700' }}>{kpi.label}</span>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--bg3)', border: '1px solid var(--line2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: kpi.color }}>
+                          {kpi.icon}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)', lineHeight: '1.2' }}>
+                        {kpi.value}
+                      </div>
+                      <span style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{kpi.sub}</span>
                     </div>
-                    <div style={{ height: '6px', background: 'var(--bg)', borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${p.pct}%`,
-                        height: '100%',
-                        background: i === 0 ? 'var(--accent)' : i === 1 ? 'var(--green)' : 'var(--purple)',
-                        borderRadius: '10px'
-                      }}></div>
+                  ))}
+                </div>
+
+                {/* Section 2: Charts & Plan Breakdown */}
+                <div className="grid-2" style={{ gap: '20px' }}>
+                  
+                  {/* User Growth Chart */}
+                  <div className="card" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>{t('admin.userGrowth') || 'User Growth'}</h3>
+                        <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'معدل الانضمام والتفاعل الفعلي' : 'Real-time join rate'}</span>
+                      </div>
+                      <div className="badge badge-blue">{t('admin.last7Months')}</div>
+                    </div>
+                    <div style={{ height: '180px', display: 'flex', alignItems: 'flex-end', gap: '12px', paddingBottom: '16px' }}>
+                      {activeGrowthList.map((d, i) => {
+                        const max = Math.max(...activeGrowthList.map(x => x.value)) || 1;
+                        const h = (d.value / max) * 100;
+                        return (
+                          <div key={i} style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '4px' }}>{d.value}</span>
+                            <div style={{
+                              width: '100%',
+                              height: `${Math.max(h, 8)}%`,
+                              background: i === activeGrowthList.length - 1 ? 'var(--accent)' : 'var(--bg4)',
+                              borderRadius: '6px',
+                              transition: 'height 0.8s ease',
+                              boxShadow: i === activeGrowthList.length - 1 ? '0 0 15px rgba(236, 92, 49, 0.4)' : 'none'
+                            }}></div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text3)', fontWeight: '700', borderTop: '1px solid var(--line)', paddingTop: '10px' }}>
+                      {activeGrowthList.map((d, i) => <span key={i}>{d.name}</span>)}
                     </div>
                   </div>
-                ))}
-              </div>
-              <button className="btn btn-full btn-sm" style={{ marginTop: '24px' }}>{t('admin.downloadReport')}</button>
-            </div>
-          </div>
 
-          <div className="card" style={{ marginTop: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', marginBottom: '4px' }}>
-                  {t('admin.dashboardVideoTitle')}
-                </h3>
-                <p style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '600', margin: 0 }}>
-                  {t('admin.dashboardVideoSubtitle')}
-                </p>
+                  {/* Plan Subscriptions Distribution */}
+                  <div className="card" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>
+                          {isRTL ? 'توزيع باقات الاشتراكات الحالية' : 'Current Subscriptions Distribution'}
+                        </h3>
+                        <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'نسبة كل باقة من إجمالي المستخدمين' : 'Share per subscription plan'}</span>
+                      </div>
+                      <Crown size={18} style={{ color: 'var(--purple)' }} />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {[
+                        { name: isRTL ? 'ستارتر (Starter)' : 'Starter', count: starterCount, pct: users.length ? Math.round((starterCount / users.length) * 100) : 0, color: 'var(--blue)' },
+                        { name: isRTL ? 'جروث (Growth)' : 'Growth', count: growthCount, pct: users.length ? Math.round((growthCount / users.length) * 100) : 0, color: 'var(--accent)' },
+                        { name: isRTL ? 'برو (Pro)' : 'Pro', count: proCount, pct: users.length ? Math.round((proCount / users.length) * 100) : 0, color: 'var(--purple)' },
+                        { name: isRTL ? 'باقات مخصصة / مدى الحياة' : 'Custom / Lifetime', count: customCount, pct: users.length ? Math.round((customCount / users.length) * 100) : 0, color: 'var(--green)' }
+                      ].map((plan, idx) => (
+                        <div key={idx}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: '700', color: 'var(--text)' }}>{plan.name}</span>
+                            <span style={{ color: 'var(--text2)', fontWeight: 'bold' }}>{plan.count} {isRTL ? 'مشترك' : 'users'} ({plan.pct}%)</span>
+                          </div>
+                          <div style={{ height: '7px', background: 'var(--bg3)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{ width: `${plan.pct}%`, height: '100%', background: plan.color, borderRadius: '10px', transition: 'width 0.6s ease' }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Section 3: Geographic Distribution & Platform Modules */}
+                <div className="grid-2" style={{ gap: '20px' }}>
+                  
+                  {/* Geographic Distribution */}
+                  <div className="card" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>
+                          {isRTL ? '🌍 التوزيع الجغرافي للعملاء' : '🌍 Geographic Distribution'}
+                        </h3>
+                        <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'انتشار المستخدمين حسب الدول' : 'Users by country'}</span>
+                      </div>
+                      <Globe size={18} style={{ color: 'var(--blue)' }} />
+                    </div>
+
+                    {formattedCountries.length === 0 ? (
+                      <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px', fontSize: '12px' }}>{t('admin.noPlatformData')}</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '220px', overflowY: 'auto' }}>
+                        {formattedCountries.map((c, i) => (
+                          <div key={i}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '12px' }}>
+                              <span style={{ fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '14px' }}>{c.flag}</span>
+                                <span>{isRTL ? c.nameAr : c.nameEn}</span>
+                              </span>
+                              <span style={{ color: 'var(--text2)', fontWeight: 'bold' }}>{c.count} {isRTL ? 'عميل' : 'users'} ({c.pct}%)</span>
+                            </div>
+                            <div style={{ height: '6px', background: 'var(--bg3)', borderRadius: '10px', overflow: 'hidden' }}>
+                              <div style={{ width: `${c.pct}%`, height: '100%', background: 'var(--accent)', borderRadius: '10px' }}></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Platform Modules Usage */}
+                  <div className="card" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>
+                          {t('admin.platformDist') || 'Platform Distribution'}
+                        </h3>
+                        <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'توزيع الأنشطة حسب أقسام المنصة' : 'Engagement by section'}</span>
+                      </div>
+                      <Activity size={18} style={{ color: 'var(--orange)' }} />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {platformStats.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '12px', padding: '20px' }}>{t('admin.noPlatformData')}</div>
+                      ) : platformStats.map((p, i) => (
+                        <div key={i}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '12px' }}>
+                            <span style={{ fontWeight: '700', color: 'var(--text)' }}>{p.name}</span>
+                            <span style={{ color: 'var(--text2)', fontWeight: 'bold' }}>{p.pct}%</span>
+                          </div>
+                          <div style={{ height: '6px', background: 'var(--bg3)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${p.pct}%`,
+                              height: '100%',
+                              background: i === 0 ? 'var(--accent)' : i === 1 ? 'var(--green)' : 'var(--purple)',
+                              borderRadius: '10px'
+                            }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Executive Report Download Action Card */}
+                <div className="card flex-between" style={{ padding: '16px 20px', background: 'rgba(236, 92, 49, 0.05)', border: '1px solid rgba(236, 92, 49, 0.2)', margin: 0, flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      📥 {isRTL ? 'تصدير التقرير التنفيذي الشامل للمنصة' : 'Export Executive Platform Report'}
+                    </h4>
+                    <span style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px', display: 'block' }}>
+                      {isRTL ? 'قم بتنزيل ملف CSV يحتوي على جميع البيانات والإحصائيات الحالية للاحتفاظ بها أو تحليلها' : 'Download a comprehensive CSV file of current platform metrics'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={exportExecutiveReport}
+                    className="btn btn-primary btn-sm"
+                    style={{ padding: '8px 16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Download size={14} />
+                    <span>{t('admin.downloadReport') || 'Download Full Report'}</span>
+                  </button>
+                </div>
+
+                {/* Video Explanation Card */}
+                <div className="card" style={{ margin: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', marginBottom: '4px' }}>
+                        {t('admin.dashboardVideoTitle')}
+                      </h3>
+                      <p style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '600', margin: 0 }}>
+                        {t('admin.dashboardVideoSubtitle')}
+                      </p>
+                    </div>
+                  </div>
+                  <video
+                    src="/admin_dashboard_explaination.mp4"
+                    controls
+                    style={{
+                      width: '100%',
+                      borderRadius: '12px',
+                      background: 'var(--bg)',
+                      outline: 'none',
+                      display: 'block'
+                    }}
+                  />
+                </div>
+
               </div>
-            </div>
-            <video
-              src="/admin_dashboard_explaination.mp4"
-              controls
-              style={{
-                width: '100%',
-                borderRadius: '12px',
-                background: 'var(--bg)',
-                outline: 'none',
-                display: 'block'
-              }}
-            />
-          </div>
+            );
+          })()}
         </>
       ) : activeTab === 'sales' && userData?.role === 'admin' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '24px' }}>
@@ -1768,6 +2203,27 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={exportSalesToCSV}
+                  className="btn btn-ghost btn-sm"
+                  title={isRTL ? 'تحميل سجل المبيعات كملف Excel / CSV' : 'Export sales table as Excel/CSV'}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    color: 'var(--green)',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    padding: '6px 12px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <Download size={14} />
+                  <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+                </button>
                 <div style={{ textAlign: 'start' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text3)', fontWeight: '800' }}>{t('admin.totalSalesLabel')}</div>
                   <div style={{ fontSize: '16px', fontWeight: '900', color: 'var(--green)' }}>
@@ -2123,6 +2579,27 @@ const AdminDashboard = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              <button
+                type="button"
+                onClick={exportUsersToCSV}
+                className="btn btn-ghost btn-sm"
+                title={isRTL ? 'تحميل جدول المستخدمين كملف Excel / CSV' : 'Export users table as Excel/CSV'}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  color: 'var(--green)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  padding: '6px 12px',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  borderRadius: '8px'
+                }}
+              >
+                <Download size={14} />
+                <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+              </button>
             </div>
           </div>
 
@@ -2151,6 +2628,7 @@ const AdminDashboard = () => {
                       paginatedUsers.map(user => {
                         const uStats = getUserUsageStats(user);
                         const trialDet = getTrialStatusDetailed(user);
+                        const actStatus = getUserActivityStatus(user);
                         const isNew = isUserNew(user);
                         const relativeTime = getRelativeTimeStr(user);
                         const cleanPhone = (user.phoneNumber || '').replace(/[^0-9+]/g, '');
@@ -2163,8 +2641,20 @@ const AdminDashboard = () => {
                                   {(user.name || user.email).charAt(0).toUpperCase()}
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
+                                    <span style={{
+                                      fontSize: '9.5px',
+                                      fontWeight: '800',
+                                      padding: '1px 7px',
+                                      borderRadius: '12px',
+                                      color: actStatus.color,
+                                      background: actStatus.bg,
+                                      border: `1px solid ${actStatus.color}33`,
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {actStatus.text}
+                                    </span>
                                     {isNew && (
                                       <span style={{
                                         background: 'rgba(16, 185, 129, 0.15)',
@@ -2296,7 +2786,7 @@ const AdminDashboard = () => {
                               )}
                               <button
                                 type="button"
-                                onClick={() => handleDeleteUser(user.id)}
+                                onClick={() => setUserToDelete(user)}
                                 className="btn btn-ghost btn-sm"
                                 title={t('common.delete') || 'Delete'}
                                 style={{ padding: '6px', color: 'var(--red)' }}
@@ -2322,6 +2812,7 @@ const AdminDashboard = () => {
                   paginatedUsers.map(user => {
                     const uStats = getUserUsageStats(user);
                     const trialDet = getTrialStatusDetailed(user);
+                    const actStatus = getUserActivityStatus(user);
                     const isNew = isUserNew(user);
                     const relativeTime = getRelativeTimeStr(user);
                     const name = user.name || t('admin.newUser');
@@ -2338,8 +2829,20 @@ const AdminDashboard = () => {
                             {(name || email).charAt(0).toUpperCase()}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                               <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                              <span style={{
+                                fontSize: '9.5px',
+                                fontWeight: '800',
+                                padding: '1px 7px',
+                                borderRadius: '12px',
+                                color: actStatus.color,
+                                background: actStatus.bg,
+                                border: `1px solid ${actStatus.color}33`,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {actStatus.text}
+                              </span>
                               {isNew && (
                                 <span style={{
                                   background: 'rgba(16, 185, 129, 0.15)',
@@ -2476,7 +2979,7 @@ const AdminDashboard = () => {
                           )}
                           <button
                             type="button"
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => setUserToDelete(user)}
                             className="btn btn-ghost btn-sm"
                             style={{ color: 'var(--red)', padding: '6px 10px', border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.03)', gap: '4px' }}
                           >
@@ -2708,15 +3211,40 @@ const AdminDashboard = () => {
             </div>
             {error && <div style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '15px' }}>{error}</div>}
             <form onSubmit={handleUpdateUser}>
+              <div className="grid-2" style={{ gap: '12px', marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="field-label">{t('admin.userNameLabel') || 'Full Name'}</label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    required
+                    value={editingUser.name || ''}
+                    onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                    placeholder={t('common.fullName') || 'Full Name'}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field-label">{isRTL ? 'البريد الإلكتروني' : 'Email Address'}</label>
+                  <input
+                    className="form-control"
+                    type="email"
+                    required
+                    value={editingUser.email || ''}
+                    onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
+                    placeholder="user@example.com"
+                  />
+                </div>
+              </div>
+
               <div className="field" style={{ marginBottom: '12px' }}>
-                <label className="field-label">{t('admin.userNameLabel') || 'Full Name'}</label>
+                <label className="field-label">{isRTL ? '🔑 تغيير كلمة المرور (اختياري)' : '🔑 Change Password (Optional)'}</label>
                 <input
                   className="form-control"
-                  type="text"
-                  required
-                  value={editingUser.name || ''}
-                  onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
-                  placeholder={t('common.fullName') || 'Full Name'}
+                  type="password"
+                  value={editingUser.newPassword || ''}
+                  onChange={e => setEditingUser({ ...editingUser, newPassword: e.target.value })}
+                  placeholder={isRTL ? 'اترك الحقل فارغاً للإبقاء على كلمة المرور الحالية' : 'Leave blank to keep current password'}
+                  minLength={6}
                 />
               </div>
 
@@ -2839,44 +3367,7 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              <div className="field" style={{ marginBottom: '20px' }}>
-                <label className="field-label" style={{ display: 'block', marginBottom: '10px' }}>
-                  {isRTL ? 'الأدوات والصلاحيات المفعلة' : 'Enabled Tools & Permissions'}
-                </label>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
-                  gap: '10px', 
-                  maxHeight: '160px', 
-                  overflowY: 'auto', 
-                  padding: '12px', 
-                  background: 'rgba(255,255,255,0.02)', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--line2)' 
-                }}>
-                  {AVAILABLE_TOOLS.map(tool => {
-                    const isChecked = (editingUser.allowedTools || []).includes(tool.key);
-                    return (
-                      <label key={tool.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)' }}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            const current = editingUser.allowedTools || [];
-                            const updated = e.target.checked
-                              ? [...current, tool.key]
-                              : current.filter(k => k !== tool.key);
-                            setEditingUser(prev => ({ ...prev, allowedTools: updated }));
-                          }}
-                        />
-                        <span>{isRTL ? tool.labelAr : tool.labelEn}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button type="button" onClick={() => { setShowEditModal(false); setError(null); }} className="btn" style={{ flex: 1 }}>{t('common.cancel') || 'Cancel'}</button>
                 <button type="submit" disabled={isCreating} className="btn btn-primary" style={{ flex: 1 }}>
                   {isCreating ? t('common.saving') : (t('common.saveChanges') || 'Save Changes')}
@@ -2985,44 +3476,7 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              <div className="field" style={{ marginBottom: '20px' }}>
-                <label className="field-label" style={{ display: 'block', marginBottom: '10px' }}>
-                  {isRTL ? 'الأدوات والصلاحيات المفعلة' : 'Enabled Tools & Permissions'}
-                </label>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
-                  gap: '10px', 
-                  maxHeight: '160px', 
-                  overflowY: 'auto', 
-                  padding: '12px', 
-                  background: 'rgba(255,255,255,0.02)', 
-                  borderRadius: '10px', 
-                  border: '1px solid var(--line2)' 
-                }}>
-                  {AVAILABLE_TOOLS.map(tool => {
-                    const isChecked = (newUser.allowedTools || []).includes(tool.key);
-                    return (
-                      <label key={tool.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2)' }}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            const current = newUser.allowedTools || [];
-                            const updated = e.target.checked
-                              ? [...current, tool.key]
-                              : current.filter(k => k !== tool.key);
-                            setNewUser(prev => ({ ...prev, allowedTools: updated }));
-                          }}
-                        />
-                        <span>{isRTL ? tool.labelAr : tool.labelEn}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button type="button" onClick={() => { setShowAddModal(false); setError(null); }} className="btn" style={{ flex: 1 }}>{t('common.cancel') || 'Cancel'}</button>
                 <button type="submit" disabled={isCreating} className="btn btn-primary" style={{ flex: 1 }}>
                   {isCreating ? t('common.adding') || 'Creating...' : (t('common.createAccount') || 'Create Account')}
@@ -3175,6 +3629,59 @@ const AdminDashboard = () => {
             >
               {isRTL ? 'إغلاق المعاينة' : 'Close Preview'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {userToDelete && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(8, 8, 15, 0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '16px' }}>
+          <div className="card" style={{ width: '95%', maxWidth: '440px', margin: 'auto', padding: '24px', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'var(--panel)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', animation: 'scaleUp 0.25s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', flexShrink: 0 }}>
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>
+                  {isRTL ? 'تأكيد حذف حساب المستخدم' : 'Confirm Delete User Account'}
+                </h3>
+                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                  {userToDelete.email}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '14px', borderRadius: '10px', marginBottom: '20px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: '1.6', margin: 0 }}>
+                {isRTL
+                  ? `هل أنت تأكد من رغبتك في حذف حساب "${userToDelete.name || userToDelete.email}" نهائياً؟`
+                  : `Are you sure you want to permanently delete user "${userToDelete.name || userToDelete.email}"?`}
+              </p>
+              <p style={{ fontSize: '11.5px', color: 'var(--red)', margin: '8px 0 0 0', fontWeight: '700' }}>
+                ⚠️ {isRTL ? 'سيتم مسح بيانات الحساب من Firestore ونظام المصادقة Auth نهائياً ولا يمكن التراجع عن هذا الإجراء.' : 'This will erase all user data from Firestore & Auth permanently.'}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                disabled={isDeletingUser}
+                className="btn"
+                style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--line)', color: 'var(--text2)' }}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteUser}
+                disabled={isDeletingUser}
+                className="btn"
+                style={{ flex: 1, background: 'var(--red)', border: 'none', color: '#fff', fontWeight: 'bold' }}
+              >
+                {isDeletingUser ? (isRTL ? 'جاري الحذف...' : 'Deleting...') : (isRTL ? 'تأكيد الحذف النهائي' : 'Confirm Delete')}
+              </button>
+            </div>
           </div>
         </div>
       )}

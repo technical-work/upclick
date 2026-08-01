@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
-import { Key, DollarSign, Cpu, Save, RefreshCw, BarChart2, List, Settings, Search } from 'lucide-react';
+import { Key, DollarSign, Cpu, Save, RefreshCw, BarChart2, List, Settings, Search, Download } from 'lucide-react';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -101,8 +101,17 @@ const AiSettingsPage = () => {
   const [logPage, setLogPage] = useState(1);
   const [logsPerPage, setLogsPerPage] = useState(25);
 
+  // Pagination State for Analytics Dashboard Tables
+  const [analyticsUsersPage, setAnalyticsUsersPage] = useState(1);
+  const [analyticsUsersPerPage] = useState(6);
+
+  const [analyticsToolsPage, setAnalyticsToolsPage] = useState(1);
+  const [analyticsToolsPerPage] = useState(6);
+
   useEffect(() => {
     setLogPage(1);
+    setAnalyticsUsersPage(1);
+    setAnalyticsToolsPage(1);
   }, [searchTerm, filterTool, filterModel, timeRange, startDate, endDate]);
 
   // Refill Modal state
@@ -437,11 +446,22 @@ const AiSettingsPage = () => {
       // User Aggregates
       const userKey = log.userEmail || log.userId || 'Unknown User';
       if (!userStats[userKey]) {
-        userStats[userKey] = { email: userKey, name: log.userName || '', cost: 0, credits: 0, calls: 0, userId: log.userId };
+        userStats[userKey] = {
+          email: userKey,
+          name: log.userName || '',
+          cost: 0,
+          credits: 0,
+          calls: 0,
+          userId: log.userId,
+          toolCounts: {}
+        };
       }
       userStats[userKey].cost += (log.cost || 0);
       userStats[userKey].credits += (log.creditsDeducted || 0);
       userStats[userKey].calls += 1;
+
+      const tName = log.tool || 'General';
+      userStats[userKey].toolCounts[tName] = (userStats[userKey].toolCounts[tName] || 0) + 1;
 
       // Tool Aggregates
       const toolKey = log.tool || 'General';
@@ -453,18 +473,25 @@ const AiSettingsPage = () => {
       toolStats[toolKey].calls += 1;
     });
 
-    const topUsers = Object.values(userStats)
-      .sort((a, b) => b.cost - a.cost)
-      .slice(0, 5);
+    const allUserList = Object.values(userStats).map(u => {
+      let topTool = 'General';
+      let maxToolCalls = 0;
+      Object.entries(u.toolCounts || {}).forEach(([tool, count]) => {
+        if (count > maxToolCalls) {
+          maxToolCalls = count;
+          topTool = tool;
+        }
+      });
+      return { ...u, topTool };
+    }).sort((a, b) => b.cost - a.cost);
 
     const topTools = Object.values(toolStats)
-      .sort((a, b) => b.calls - a.calls)
-      .slice(0, 5);
+      .sort((a, b) => b.calls - a.calls);
 
-    return { topUsers, topTools };
+    return { allUserList, topTools };
   };
 
-  const { topUsers, topTools } = getAnalytics();
+  const { allUserList, topTools } = getAnalytics();
 
   // Compute dynamic stats for the selected period
   const getPeriodStats = () => {
@@ -1654,115 +1681,317 @@ const AiSettingsPage = () => {
           </div>
 
           {/* Detailed Analytics Tables */}
-          <div className="ai-settings-detailed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
+          {(() => {
+            const totalAnalyticsUsersPages = Math.ceil(allUserList.length / analyticsUsersPerPage) || 1;
+            const paginatedAnalyticsUsers = allUserList.slice((analyticsUsersPage - 1) * analyticsUsersPerPage, analyticsUsersPage * analyticsUsersPerPage);
 
-            {/* Top Users Card */}
-            <div className="card ai-settings-table-card" style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                <DollarSign size={15} style={{ color: 'var(--green)' }} />
-                <span>{isRTL ? 'المستخدمين الأكثر استهلاكاً للرصيد' : 'Top 5 Most Active Users (Cost)'}</span>
-              </div>
+            const totalAnalyticsToolsPages = Math.ceil(topTools.length / analyticsToolsPerPage) || 1;
+            const paginatedAnalyticsTools = topTools.slice((analyticsToolsPage - 1) * analyticsToolsPerPage, analyticsToolsPage * analyticsToolsPerPage);
 
-              {topUsers.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px 0' }}>
-                  {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الطلبات' : 'Calls'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'إجمالي الاستهلاك ($)' : 'Spend ($)'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topUsers.map((user, index) => (
-                      <tr key={index} style={tableRowStyle}>
-                        <td style={tableCellStyle}>
-                          <div style={{ fontWeight: 'bold' }}>{user.name || 'Anonymous'}</div>
-                          <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{user.email}</div>
-                        </td>
-                        <td style={tableCellStyle}>{user.calls}</td>
-                        <td style={tableCellStyle}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                                ${user.cost.toFixed(5)}
-                              </span>
-                              <span style={{ fontSize: '10.5px', color: 'var(--text3)' }}>
-                                {user.credits || 0} Credits
-                              </span>
-                            </div>
-                            {user.userId && (
-                              <button
-                                onClick={() => openRefillModal(user.userId, user.email, user.name)}
-                                className="btn"
-                                style={{
-                                  padding: '4px 10px',
-                                  fontSize: '11px',
-                                  background: 'rgba(255, 107, 53, 0.12)',
-                                  border: '1px solid var(--orange)',
-                                  color: 'var(--orange)',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                {isRTL ? 'شحن رصيد' : 'Refill'}
-                              </button>
-                            )}
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* Top Users Card */}
+                <div className="card ai-settings-table-card" style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '800', color: 'var(--text)' }}>
+                      <DollarSign size={16} style={{ color: 'var(--green)' }} />
+                      <span>{isRTL ? 'تحليل استهلاك ونشاط جميع المستخدمين (الأكثر نشاطاً)' : 'All Active Users Activity & Consumption Breakdown'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const headers = [
+                            isRTL ? 'المستخدم' : 'User',
+                            isRTL ? 'البريد الإلكتروني' : 'Email',
+                            isRTL ? 'الرصيد المتبقي' : 'Remaining Credits',
+                            isRTL ? 'الأداة الأكثر استخداماً' : 'Top Tool',
+                            isRTL ? 'التكلفة الإجمالية ($)' : 'Total Cost ($)'
+                          ];
+                          const rows = allUserList.map(u => [
+                            u.name || 'Anonymous',
+                            u.email || '—',
+                            u.credits || 0,
+                            u.topTool || '—',
+                            `$${(u.cost || 0).toFixed(5)}`
+                          ]);
+                          const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+                            + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+                          const encodedUri = encodeURI(csvContent);
+                          const link = document.createElement("a");
+                          link.setAttribute("href", encodedUri);
+                          link.setAttribute("download", `ai_user_analytics_${new Date().toISOString().slice(0, 10)}.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        title={isRTL ? 'تحميل كملف CSV' : 'Export as CSV'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: 'var(--green)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          padding: '3px 10px',
+                          fontWeight: 'bold',
+                          fontSize: '11px',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <Download size={13} />
+                        <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+                      </button>
+                      <span style={{ fontSize: '11px', color: 'var(--text3)', background: 'var(--bg3)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                        {allUserList.length} {isRTL ? 'مستخدم نشط' : 'active users'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {allUserList.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '24px 0' }}>
+                      {isRTL ? 'لا توجد عمليات استهلاك في هذه الفترة الزمنية.' : 'No consumption logs in this period.'}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={tableHeaderStyle}>{isRTL ? '#' : '#'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الطلبات' : 'Calls'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الكريديت المستهلك' : 'Credits Used'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الأداة الأكثر استخداماً' : 'Top Tool'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'التكلفة ($)' : 'Cost ($)'}</th>
+                              <th style={{ ...tableHeaderStyle, textAlign: 'center' }}>{isRTL ? 'الإجراء' : 'Action'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedAnalyticsUsers.map((user, index) => {
+                              const globalRank = ((analyticsUsersPage - 1) * analyticsUsersPerPage) + index + 1;
+                              return (
+                                <tr key={index} style={tableRowStyle}>
+                                  <td style={{ ...tableCellStyle, width: '30px', fontWeight: '800', color: 'var(--text3)' }}>
+                                    #{globalRank}
+                                  </td>
+                                  <td style={tableCellStyle}>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--text)' }}>{user.name || (isRTL ? 'مستخدم' : 'User')}</div>
+                                    <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{user.email}</div>
+                                  </td>
+                                  <td style={{ ...tableCellStyle, fontWeight: 'bold' }}>{user.calls}</td>
+                                  <td style={tableCellStyle}>
+                                    <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>
+                                      ⚡ {user.credits || 0} Cr
+                                    </span>
+                                  </td>
+                                  <td style={tableCellStyle}>
+                                    <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: '600', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                                      {user.topTool}
+                                    </span>
+                                  </td>
+                                  <td style={tableCellStyle}>
+                                    <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                      ${user.cost.toFixed(5)}
+                                    </span>
+                                  </td>
+                                  <td style={{ ...tableCellStyle, textAlign: 'center' }}>
+                                    {user.userId ? (
+                                      <button
+                                        onClick={() => openRefillModal(user.userId, user.email, user.name)}
+                                        className="btn"
+                                        style={{
+                                          padding: '4px 12px',
+                                          fontSize: '11px',
+                                          background: 'rgba(255, 107, 53, 0.12)',
+                                          border: '1px solid var(--orange)',
+                                          color: 'var(--orange)',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontWeight: 'bold',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                      >
+                                        {isRTL ? 'شحن رصيد' : 'Refill'}
+                                      </button>
+                                    ) : '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {allUserList.length > analyticsUsersPerPage && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                            {isRTL
+                              ? `عرض ${((analyticsUsersPage - 1) * analyticsUsersPerPage) + 1} - ${Math.min(analyticsUsersPage * analyticsUsersPerPage, allUserList.length)} من إجمالي ${allUserList.length} مستخدم`
+                              : `Showing ${((analyticsUsersPage - 1) * analyticsUsersPerPage) + 1} - ${Math.min(analyticsUsersPage * analyticsUsersPerPage, allUserList.length)} of ${allUserList.length} users`}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Top Features Card */}
-            <div className="card ai-settings-table-card" style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                <Cpu size={15} style={{ color: 'var(--orange)' }} />
-                <span>{isRTL ? 'الأدوات الأكثر استخداماً' : 'Top 5 Used AI Features (Calls)'}</span>
-              </div>
-
-              {topTools.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px 0' }}>
-                  {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              disabled={analyticsUsersPage <= 1}
+                              onClick={() => setAnalyticsUsersPage(prev => Math.max(prev - 1, 1))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsUsersPage <= 1 ? 0.4 : 1, cursor: analyticsUsersPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'السابق' : 'Prev'}
+                            </button>
+                            <span style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 'bold', padding: '0 4px' }}>
+                              {analyticsUsersPage} / {totalAnalyticsUsersPages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={analyticsUsersPage >= totalAnalyticsUsersPages}
+                              onClick={() => setAnalyticsUsersPage(prev => Math.min(prev + 1, totalAnalyticsUsersPages))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsUsersPage >= totalAnalyticsUsersPages ? 0.4 : 1, cursor: analyticsUsersPage >= totalAnalyticsUsersPages ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'التالي' : 'Next'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الأداة / الميزة' : 'Tool / Feature'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الاستخدامات' : 'Uses'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'تكلفة التشغيل ($)' : 'Incurred Cost ($)'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topTools.map((tool, index) => (
-                      <tr key={index} style={tableRowStyle}>
-                        <td style={tableCellStyle}>
-                          <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '12px', fontWeight: '600' }}>
-                            {tool.tool}
-                          </span>
-                        </td>
-                        <td style={tableCellStyle}>{tool.calls}</td>
-                        <td style={tableCellStyle}>
-                          <span style={{ color: 'var(--green)', fontWeight: '600' }}>
-                            ${tool.cost.toFixed(5)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
 
-          </div>
+                {/* Top Features Card */}
+                <div className="card ai-settings-table-card" style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '800', color: 'var(--text)' }}>
+                      <Cpu size={16} style={{ color: 'var(--orange)' }} />
+                      <span>{isRTL ? 'الأدوات الأكثر استخداماً' : 'Top Used AI Features'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const headers = [
+                            isRTL ? 'الأداة / الميزة' : 'Tool / Feature',
+                            isRTL ? 'عدد الاستخدامات' : 'Uses Count',
+                            isRTL ? 'تكلفة التشغيل ($)' : 'Incurred Cost ($)'
+                          ];
+                          const rows = topTools.map(t => [
+                            t.tool,
+                            t.calls || 0,
+                            `$${(t.cost || 0).toFixed(5)}`
+                          ]);
+                          const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+                            + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+                          const encodedUri = encodeURI(csvContent);
+                          const link = document.createElement("a");
+                          link.setAttribute("href", encodedUri);
+                          link.setAttribute("download", `ai_top_tools_${new Date().toISOString().slice(0, 10)}.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        title={isRTL ? 'تحميل كملف CSV' : 'Export as CSV'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: 'var(--green)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          padding: '3px 10px',
+                          fontWeight: 'bold',
+                          fontSize: '11px',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <Download size={13} />
+                        <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+                      </button>
+                      <span style={{ fontSize: '11px', color: 'var(--text3)', background: 'var(--bg3)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                        {topTools.length} {isRTL ? 'أداة مستخدمة' : 'used tools'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {topTools.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '24px 0' }}>
+                      {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', minWidth: '450px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الأداة / الميزة' : 'Tool / Feature'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الاستخدامات' : 'Uses'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'تكلفة التشغيل ($)' : 'Incurred Cost ($)'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedAnalyticsTools.map((tool, index) => (
+                              <tr key={index} style={tableRowStyle}>
+                                <td style={tableCellStyle}>
+                                  <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                                    {tool.tool}
+                                  </span>
+                                </td>
+                                <td style={{ ...tableCellStyle, fontWeight: 'bold' }}>{tool.calls}</td>
+                                <td style={tableCellStyle}>
+                                  <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                    ${tool.cost.toFixed(5)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {topTools.length > analyticsToolsPerPage && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                            {isRTL
+                              ? `عرض ${((analyticsToolsPage - 1) * analyticsToolsPerPage) + 1} - ${Math.min(analyticsToolsPage * analyticsToolsPerPage, topTools.length)} من إجمالي ${topTools.length} أداة`
+                              : `Showing ${((analyticsToolsPage - 1) * analyticsToolsPerPage) + 1} - ${Math.min(analyticsToolsPage * analyticsToolsPerPage, topTools.length)} of ${topTools.length} tools`}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              disabled={analyticsToolsPage <= 1}
+                              onClick={() => setAnalyticsToolsPage(prev => Math.max(prev - 1, 1))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsToolsPage <= 1 ? 0.4 : 1, cursor: analyticsToolsPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'السابق' : 'Prev'}
+                            </button>
+                            <span style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 'bold', padding: '0 4px' }}>
+                              {analyticsToolsPage} / {totalAnalyticsToolsPages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={analyticsToolsPage >= totalAnalyticsToolsPages}
+                              onClick={() => setAnalyticsToolsPage(prev => Math.min(prev + 1, totalAnalyticsToolsPages))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsToolsPage >= totalAnalyticsToolsPages ? 0.4 : 1, cursor: analyticsToolsPage >= totalAnalyticsToolsPages ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'التالي' : 'Next'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+              </div>
+            );
+          })()}
         </div>
       )}
 
