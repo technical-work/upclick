@@ -1751,7 +1751,26 @@ const AdminDashboard = () => {
     }
 
     if (activityFilter === 'all' || activityFilter === 'time_desc') return true;
-    
+
+    if (activityFilter === 'new_users') {
+      return isUserNew(u);
+    }
+
+    if (activityFilter === 'active_trial') {
+      const trialDet = getTrialStatusDetailed(u);
+      return trialDet && (trialDet.type === 'trial_active' || trialDet.type === 'starter') && !trialDet.expired;
+    }
+
+    if (activityFilter === 'expired_trial') {
+      const trialDet = getTrialStatusDetailed(u);
+      return trialDet && (trialDet.type === 'trial_expired' || trialDet.expired === true);
+    }
+
+    if (activityFilter === 'paid') {
+      const trialDet = getTrialStatusDetailed(u);
+      return trialDet && (trialDet.type === 'paid_active' || trialDet.type === 'lifetime' || (u.planName && u.planName !== 'Starter' && u.planName !== 'Free Trial'));
+    }
+
     const uStats = getUserUsageStats(u);
     return uStats.classification === activityFilter;
   }).sort((a, b) => {
