@@ -652,7 +652,7 @@ export default function BillingView() {
                       className="btn btn-prime"
                       style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
-                      {currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planProConfig.ctaText || 'ابدأ الآن') : (planProConfig.ctaTextEn || 'Subscribe'))}
+                      {currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? ((planProConfig.ctaText && !planProConfig.ctaText.includes('تجربة')) ? planProConfig.ctaText : 'ترقية الآن') : ((planProConfig.ctaTextEn && !planProConfig.ctaTextEn.includes('Trial')) ? planProConfig.ctaTextEn : 'Upgrade Now'))}
                     </button>
                   </div>
                 )}
@@ -938,7 +938,8 @@ export default function BillingView() {
                     });
 
                     // Deduct credit indicator
-                    const consumedCredits = Number(log.creditsDeducted || log.cost || 0);
+                    const rawVal = Number(log.creditsDeducted !== undefined ? log.creditsDeducted : (log.cost || 0));
+                    const displayCredits = rawVal > 0 ? (rawVal % 1 === 0 ? Math.round(rawVal) : rawVal.toFixed(2)) : '1.00';
 
                     return (
                       <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
@@ -949,7 +950,7 @@ export default function BillingView() {
                           </span>
                         </td>
                         <td style={{ padding: '12px 8px', fontWeight: '800', color: 'var(--red)', fontFamily: 'var(--mono)' }}>
-                          -{consumedCredits.toFixed(2)} Credits
+                          -{displayCredits} Credits
                         </td>
                       </tr>
                     );

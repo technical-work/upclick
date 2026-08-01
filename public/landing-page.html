@@ -2911,7 +2911,8 @@
             <div class="dash-inner"
               style="padding: 0; display: block; height: 340px; overflow: hidden; background: #08080f;">
               <img src="/media__1785164082872.png" alt="Command Center"
-                style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
+                style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;"
+                onerror="this.onerror=null; this.src='/media__1785164082872.png';">
             </div>
           </div>
           <div class="float-badge" data-t="landing-hero-db-badge-ai">🤖 AI Analysis Ready</div>
@@ -2966,7 +2967,8 @@
           </div>
           <div class="screen-preview">
             <img src="/media__1785164082872.png" alt="Command Center"
-              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;">
+              style="width: 100%; height: auto; object-fit: cover; object-position: top; display: block;"
+              onerror="this.onerror=null; this.src='/media__1785164082872.png';">
           </div>
           <div class="screen-title"
             style="padding:10px 12px;border-top:1px solid var(--edge);font-size:12px;font-weight:600;"
@@ -3248,7 +3250,7 @@
             </div>
           </div>
           <div class="ss-image-container">
-            <img id="ss-img" src="/media__1785163909762.png" alt="Dashboard Screenshot">
+            <img id="ss-img" src="/media__1785164082872.png" alt="Dashboard Screenshot">
           </div>
         </div>
       </div>
@@ -4524,7 +4526,7 @@
           }
         });
         cardHtml += '</div>' +
-          '<a href="/login" class="btn ' + (isFeatured ? 'btn-prime' : 'btn-ghost') + '" style="width:100%;justify-content:center">' + pCta + '</a>';
+          '<a href="/register?cta=start_free" class="btn ' + (isFeatured ? 'btn-prime' : 'btn-ghost') + '" style="width:100%;justify-content:center">' + pCta + '</a>';
         cardHtml += '</div>';
         return cardHtml;
       };
@@ -4588,9 +4590,23 @@
       if (tenantConfig && tenantConfig.textColor) root.style.setProperty('--t1', tenantConfig.textColor);
       if (tenantConfig && tenantConfig.text2Color) root.style.setProperty('--t2', tenantConfig.text2Color);
 
-      if (tenantConfig && tenantConfig.logoUrl) {
+      if (tenantConfig && tenantConfig.logoUrl && tenantConfig.logoUrl.trim()) {
         document.querySelectorAll('.logo img, .footer-brand img, .ss-sidebar img').forEach(function (img) {
           img.src = tenantConfig.logoUrl;
+          img.onerror = function () {
+            this.onerror = null;
+            this.src = '/best_logo_dark.png';
+          };
+        });
+      }
+
+      if (tenantConfig && tenantConfig.dashboardPreviewUrl && tenantConfig.dashboardPreviewUrl.trim()) {
+        document.querySelectorAll('.dash-inner img').forEach(function (img) {
+          img.src = tenantConfig.dashboardPreviewUrl;
+          img.onerror = function () {
+            this.onerror = null;
+            this.src = '/media__1785164082872.png';
+          };
         });
       }
 

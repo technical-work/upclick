@@ -704,6 +704,9 @@ const AdminDashboard = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedAnalysisUser, setSelectedAnalysisUser] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
+  const [dateRangePreset, setDateRangePreset] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [processingPaymentId, setProcessingPaymentId] = useState('');
   const [newUser, setNewUser] = useState({
     name: '',
@@ -1078,13 +1081,16 @@ const AdminDashboard = () => {
   };
 
   const handleEditClick = (user) => {
+    const activePlan = user.planName || user.plan || 'Starter';
     setEditingUser({
       ...user,
       phoneNumber: user.phoneNumber?.replace(countryData[user.country || 'EG'].code, '') || '',
       aiCredits: user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits,
       allowedTools: user.allowedTools || AVAILABLE_TOOLS.map(t => t.key),
       subscriptionType: user.subscriptionType || 'months',
-      subscriptionDuration: user.subscriptionDuration || '1'
+      subscriptionDuration: user.subscriptionDuration || '1',
+      planName: activePlan,
+      plan: activePlan
     });
     setShowEditModal(true);
   };
@@ -1103,7 +1109,11 @@ const AdminDashboard = () => {
       } else if (subType === 'months') {
         expiresAt = new Date();
         expiresAt.setMonth(expiresAt.getMonth() + parseInt(subDuration));
+      } else if (subType === 'lifetime') {
+        expiresAt = null;
       }
+
+      const activePlan = editingUser.planName || editingUser.plan || 'Starter';
 
       await setDoc(doc(db, 'users', editingUser.id), {
         name: editingUser.name || '',
@@ -1113,6 +1123,9 @@ const AdminDashboard = () => {
         subscriptionType: subType,
         subscriptionDuration: subType === 'lifetime' ? null : subDuration,
         expiresAt: expiresAt,
+        planName: activePlan,
+        plan: activePlan,
+        isTrial: false,
         aiCredits: Number(editingUser.aiCredits || 0),
         allowedTools: editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
       }, { merge: true });
@@ -1120,7 +1133,8 @@ const AdminDashboard = () => {
       setShowEditModal(false);
       setEditingUser(null);
     } catch (err) {
-      setError(t('admin.errorUpdateUser') + err.message);
+      console.error("Failed to update user:", err);
+      setError((t('admin.errorUpdateUser') || "Failed to update user: ") + err.message);
     } finally {
       setIsCreating(false);
     }
@@ -1154,7 +1168,7 @@ const AdminDashboard = () => {
 
   const getTrialStatus = (user) => {
     if (!user.isTrial || !user.trialStartedAt) return null;
-    const trialDays = tenantFreeTrial.days || 7;
+    const trialDays = tenantFreeTrial.days || 15;
     const ts = user.trialStartedAt;
     const startMs = ts?.toDate ? ts.toDate().getTime() : (ts?.seconds ? ts.seconds * 1000 : 0);
     if (!startMs) return null;
@@ -1166,14 +1180,230 @@ const AdminDashboard = () => {
   const getSubscriptionStatus = (user) => {
     if (!user.expiresAt) return null;
     const ts = user.expiresAt;
-    const expiresMs = ts?.toDate ? ts.toDate().getTime() : (ts?.seconds ? ts.seconds * 1000 : 0);
-    if (Date.now() > expiresMs) return { expired: true, daysLeft: 0 };
+    const expiresMs = ts?.toDate ? ts.toDate().getTime() : (ts?.seconds ? ts.seconds * 1000 : (typeof ts === 'number' ? ts : (typeof ts === 'string' ? new Date(ts).getTime() : 0)));
+    if (!expiresMs || Date.now() > expiresMs) return { expired: true, daysLeft: 0 };
     return { expired: false, daysLeft: Math.max(1, Math.ceil((expiresMs - Date.now()) / 86400000)) };
   };
 
+  const getJoinMs = (user) => {
+    const ts = user.createdAt || user.trialStartedAt;
+    if (!ts) return 0;
+    if (typeof ts === 'string') return new Date(ts).getTime();
+    if (typeof ts === 'number') return ts;
+    if (ts.toDate) return ts.toDate().getTime();
+    if (ts.seconds) return ts.seconds * 1000;
+    return 0;
+  };
+
+  const getRelativeTimeStr = (user) => {
+    const ms = getJoinMs(user);
+    if (!ms) return '—';
+    const diffMs = Date.now() - ms;
+    if (diffMs < 0) return isRTL ? 'الآن' : 'Just now';
+
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return isRTL ? 'الآن' : 'Just now';
+    if (diffMins < 60) return isRTL ? `منذ ${diffMins} دقيقة` : `${diffMins} mins ago`;
+    if (diffHours < 24) return isRTL ? `منذ ${diffHours} ساعة` : `${diffHours} hours ago`;
+    if (diffDays === 1) return isRTL ? 'أمس' : 'Yesterday';
+    if (diffDays <= 7) return isRTL ? `منذ ${diffDays} أيام` : `${diffDays} days ago`;
+
+    const d = new Date(ms);
+    return d.toLocaleDateString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  const isUserNew = (user) => {
+    const ms = getJoinMs(user);
+    if (!ms) return false;
+    const diffHours = (Date.now() - ms) / 3600000;
+    return diffHours <= 48; // Joined in last 48 hours
+  };
+
+  const getTrialStatusDetailed = (user) => {
+    const trialDays = tenantFreeTrial.days || 15;
+    const ms = getJoinMs(user);
+
+    // Paid Plan or Active Subscription
+    if (!user.isTrial && user.expiresAt) {
+      const ss = getSubscriptionStatus(user);
+      if (ss.expired) return { type: 'paid_expired', text: isRTL ? '❌ اشتراك منتهي' : '❌ Plan Expired', daysLeft: 0 };
+      return { type: 'paid_active', text: isRTL ? `👑 باقة مدفوعة (متبقي ${ss.daysLeft} يوم)` : `👑 Paid Plan (${ss.daysLeft}d left)`, daysLeft: ss.daysLeft };
+    }
+    if (!user.isTrial && !user.expiresAt && user.planName && user.planName !== 'starter') {
+      return { type: 'lifetime', text: isRTL ? '♾️ اشتراك مدى الحياة' : '♾️ Lifetime', daysLeft: Infinity };
+    }
+
+    // Trial Calculation
+    const ts = user.trialStartedAt || user.createdAt;
+    const startMs = ts?.toDate ? ts.toDate().getTime() : (ts?.seconds ? ts.seconds * 1000 : (typeof ts === 'number' ? ts : (typeof ts === 'string' ? new Date(ts).getTime() : ms)));
+    if (!startMs) return { type: 'starter', text: isRTL ? '🆓 تجربة مجانية' : 'Free Trial', daysLeft: 0 };
+
+    const expiresMs = startMs + trialDays * 86400000;
+    const daysLeft = Math.ceil((expiresMs - Date.now()) / 86400000);
+
+    if (Date.now() > expiresMs) {
+      return { type: 'trial_expired', text: isRTL ? '❌ انتهت الفترة التجريبية' : '❌ Trial Expired', daysLeft: 0, expired: true };
+    }
+    return { type: 'trial_active', text: isRTL ? `⏰ متبقي ${daysLeft} يوم تجربة` : `⏰ ${daysLeft} days trial left`, daysLeft, expired: false };
+  };
+
+  const isDateInSelectedRange = (dateVal) => {
+    if (dateRangePreset === 'all' && !startDate && !endDate) return true;
+    if (!dateVal && dateRangePreset !== 'all') return false;
+
+    let timeMs = 0;
+    if (typeof dateVal === 'string') timeMs = new Date(dateVal).getTime();
+    else if (typeof dateVal === 'number') timeMs = dateVal;
+    else if (dateVal?.toDate) timeMs = dateVal.toDate().getTime();
+    else if (dateVal?.seconds) timeMs = dateVal.seconds * 1000;
+
+    if (!timeMs && dateRangePreset !== 'all') return false;
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 86400000 - 1;
+
+    if (dateRangePreset === 'today') {
+      return timeMs >= todayStart && timeMs <= todayEnd;
+    }
+
+    if (dateRangePreset === 'yesterday') {
+      const yestStart = todayStart - 86400000;
+      const yestEnd = todayStart - 1;
+      return timeMs >= yestStart && timeMs <= yestEnd;
+    }
+
+    if (dateRangePreset === 'last7') {
+      const sevenDaysAgo = todayStart - (6 * 86400000);
+      return timeMs >= sevenDaysAgo && timeMs <= todayEnd;
+    }
+
+    if (dateRangePreset === 'thisMonth') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      return timeMs >= monthStart && timeMs <= todayEnd;
+    }
+
+    if (dateRangePreset === 'lastMonth') {
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).getTime();
+      return timeMs >= lastMonthStart && timeMs <= lastMonthEnd;
+    }
+
+    if (dateRangePreset === 'custom' || startDate || endDate) {
+      let startMs = startDate ? new Date(startDate + 'T00:00:00').getTime() : 0;
+      let endMs = endDate ? new Date(endDate + 'T23:59:59').getTime() : Infinity;
+      return timeMs >= startMs && timeMs <= endMs;
+    }
+
+    return true;
+  };
+
+  const renderDateRangeFilter = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+      <select
+        className="form-control"
+        style={{
+          width: 'auto',
+          minWidth: '130px',
+          fontSize: '12px',
+          padding: '6px 12px',
+          background: 'var(--bg3)',
+          borderColor: 'var(--line)',
+          color: 'var(--text)',
+          borderRadius: '8px',
+          cursor: 'pointer'
+        }}
+        value={dateRangePreset}
+        onChange={(e) => {
+          setDateRangePreset(e.target.value);
+          if (e.target.value !== 'custom') {
+            setStartDate('');
+            setEndDate('');
+          }
+        }}
+      >
+        <option value="all">{isRTL ? 'جميع الأوقات' : 'All Time'}</option>
+        <option value="today">{isRTL ? 'اليوم' : 'Today'}</option>
+        <option value="yesterday">{isRTL ? 'أمس' : 'Yesterday'}</option>
+        <option value="last7">{isRTL ? 'آخر 7 أيام' : 'Last 7 Days'}</option>
+        <option value="thisMonth">{isRTL ? 'هذا الشهر' : 'This Month'}</option>
+        <option value="lastMonth">{isRTL ? 'الشهر الماضي' : 'Last Month'}</option>
+        <option value="custom">{isRTL ? 'فترة مخصصة...' : 'Custom Period...'}</option>
+      </select>
+
+      {(dateRangePreset === 'custom' || startDate || endDate) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <input
+            type="date"
+            className="form-control"
+            style={{
+              fontSize: '12px',
+              padding: '4px 8px',
+              background: 'var(--bg3)',
+              borderColor: 'var(--line)',
+              color: 'var(--text)',
+              borderRadius: '8px',
+              width: '135px'
+            }}
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              if (dateRangePreset !== 'custom') setDateRangePreset('custom');
+            }}
+          />
+          <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{isRTL ? 'إلى' : 'to'}</span>
+          <input
+            type="date"
+            className="form-control"
+            style={{
+              fontSize: '12px',
+              padding: '4px 8px',
+              background: 'var(--bg3)',
+              borderColor: 'var(--line)',
+              color: 'var(--text)',
+              borderRadius: '8px',
+              width: '135px'
+            }}
+            value={endDate}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              if (dateRangePreset !== 'custom') setDateRangePreset('custom');
+            }}
+          />
+          {(startDate || endDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setDateRangePreset('all');
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text3)',
+                fontSize: '12px',
+                cursor: 'pointer',
+                padding: '2px 6px'
+              }}
+              title={isRTL ? 'إلغاء الفلتر' : 'Clear Filter'}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   const filteredUsers = users.filter(u => {
-    const matchesSearch = (u.email || u.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (u.email || u.name || u.phoneNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
+
+    if (!isDateInSelectedRange(u.createdAt || u.trialStartedAt)) return false;
     
     if (activityFilter === 'all' || activityFilter === 'time_desc') return true;
     
@@ -1185,10 +1415,52 @@ const AdminDashboard = () => {
       const statsB = getUserUsageStats(b);
       return statsB.timeSpent - statsA.timeSpent;
     }
-    return 0;
+    return getJoinMs(b) - getJoinMs(a);
   });
 
+  const [userPage, setUserPage] = useState(1);
+  const USERS_PER_PAGE = 10;
+
+  const [salesPage, setSalesPage] = useState(1);
+  const SALES_PER_PAGE = 10;
+
   const dateLocale = isRTL ? 'ar-EG' : 'en-US';
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [searchTerm, activityFilter, dateRangePreset, startDate, endDate]);
+
+  useEffect(() => {
+    setSalesPage(1);
+  }, [paymentSearchTerm, paymentStatusFilter]);
+
+  const filteredPayments = allPayments.filter(pay => {
+    const matchesSearch = 
+      (pay.userName || '').toLowerCase().includes(paymentSearchTerm.toLowerCase()) ||
+      (pay.userEmail || '').toLowerCase().includes(paymentSearchTerm.toLowerCase());
+    const matchesStatus = 
+      paymentStatusFilter === 'all' || pay.status === paymentStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalSalesPages = Math.ceil(filteredPayments.length / SALES_PER_PAGE) || 1;
+  const paginatedSales = filteredPayments.slice((salesPage - 1) * SALES_PER_PAGE, salesPage * SALES_PER_PAGE);
+
+  const formatJoinDate = (user) => {
+    const ts = user.createdAt || user.trialStartedAt;
+    if (!ts) return '—';
+    let dateObj = null;
+    if (typeof ts === 'string') dateObj = new Date(ts);
+    else if (typeof ts === 'number') dateObj = new Date(ts);
+    else if (ts?.toDate) dateObj = ts.toDate();
+    else if (ts?.seconds) dateObj = new Date(ts.seconds * 1000);
+
+    if (!dateObj || isNaN(dateObj.getTime())) return '—';
+    return dateObj.toLocaleDateString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  const totalUserPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE) || 1;
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   const phoneSpanStyle = {
     position: 'absolute',
@@ -1480,23 +1752,26 @@ const AdminDashboard = () => {
 
           {/* Sales Record Card */}
           <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{t('admin.salesRecord')}</h3>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
-                <Search size={16} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-                <input
-                  className="form-control"
-                  style={{ [isRTL ? 'paddingRight' : 'paddingLeft']: '36px' }}
-                  placeholder={t('admin.searchClient')}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {renderDateRangeFilter()}
+                <div style={{ position: 'relative', width: '200px' }}>
+                  <Search size={14} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+                  <input
+                    className="form-control"
+                    style={{ [isRTL ? 'paddingRight' : 'paddingLeft']: '30px', fontSize: '12px', padding: '6px 12px' }}
+                    placeholder={t('admin.searchClient')}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                 <div style={{ textAlign: 'start' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text3)', fontWeight: '800' }}>{t('admin.totalSalesLabel')}</div>
                   <div style={{ fontSize: '16px', fontWeight: '900', color: 'var(--green)' }}>
-                    {sales.reduce((acc, s) => acc + Number(s.amount), 0)} {t('admin.currency')}
+                    {sales.filter(s => isDateInSelectedRange(s.createdAt)).reduce((acc, s) => acc + Number(s.amount), 0)} {t('admin.currency')}
                   </div>
                 </div>
               </div>
@@ -1513,12 +1788,12 @@ const AdminDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sales.filter(s => (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
+                  {sales.filter(s => (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) && isDateInSelectedRange(s.createdAt)).length === 0 ? (
                     <tr>
                       <td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: 'var(--text3)' }}>{t('admin.noSalesFound')}</td>
                     </tr>
                   ) : (
-                    sales.filter(s => (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase())).map(sale => (
+                    sales.filter(s => (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) && isDateInSelectedRange(s.createdAt)).map(sale => (
                       <tr key={sale.id} style={{ borderBottom: '1px solid var(--line)' }}>
                         <td style={{ padding: '16px 20px', fontWeight: '700' }}>{sale.customerName}</td>
                         <td style={{ padding: '16px 20px', color: 'var(--green)', fontWeight: '800' }}>{sale.amount} {t('admin.currency')}</td>
@@ -1559,6 +1834,7 @@ const AdminDashboard = () => {
                 <p style={{ fontSize: '12px', color: 'var(--text3)', margin: '4px 0 0 0' }}>{t('branding.allPaymentsDesc') || 'Track subscriber registration payments and activations.'}</p>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {renderDateRangeFilter()}
                 <div style={{ position: 'relative', width: '200px' }}>
                   <Search size={14} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
                   <input
@@ -1612,16 +1888,7 @@ const AdminDashboard = () => {
                 </thead>
                 <tbody>
                   {(() => {
-                    const filtered = allPayments.filter(pay => {
-                      const matchesSearch = 
-                        (pay.userName || '').toLowerCase().includes(paymentSearchTerm.toLowerCase()) ||
-                        (pay.userEmail || '').toLowerCase().includes(paymentSearchTerm.toLowerCase());
-                      const matchesStatus = 
-                        paymentStatusFilter === 'all' || pay.status === paymentStatusFilter;
-                      return matchesSearch && matchesStatus;
-                    });
-
-                    if (filtered.length === 0) {
+                    if (filteredPayments.length === 0) {
                       return (
                         <tr>
                           <td colSpan="7" style={{ padding: '30px', textAlign: 'center', color: 'var(--text3)', fontSize: '12px' }}>
@@ -1631,7 +1898,7 @@ const AdminDashboard = () => {
                       );
                     }
 
-                    return filtered.map((pay) => (
+                    return paginatedSales.map((pay) => (
                       <tr key={pay.id} style={{ borderBottom: '1px solid var(--line)' }}>
                         <td style={{ padding: '12px 20px' }}>
                           <div style={{ fontWeight: '700', color: 'var(--text)' }}>{pay.userName}</div>
@@ -1710,6 +1977,74 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Sales Pagination Controls */}
+            {filteredPayments.length > 0 && (
+              <div style={{
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                padding: '16px 20px',
+                borderTop: '1px solid var(--line)',
+                background: 'var(--bg2)',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '13px', color: 'var(--text3)' }}>
+                  {isRTL
+                    ? `عرض ${(salesPage - 1) * SALES_PER_PAGE + 1} - ${Math.min(salesPage * SALES_PER_PAGE, filteredPayments.length)} من إجمالي ${filteredPayments.length} عملية دفع`
+                    : `Showing ${(salesPage - 1) * SALES_PER_PAGE + 1}-${Math.min(salesPage * SALES_PER_PAGE, filteredPayments.length)} of ${filteredPayments.length} transactions`}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    disabled={salesPage <= 1}
+                    onClick={() => setSalesPage(prev => Math.max(prev - 1, 1))}
+                    className="btn btn-ghost btn-sm"
+                    style={{ opacity: salesPage <= 1 ? 0.4 : 1, cursor: salesPage <= 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    {isRTL ? 'السابق' : 'Previous'}
+                  </button>
+
+                  {Array.from({ length: totalSalesPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalSalesPages || Math.abs(p - salesPage) <= 1)
+                    .map((p, i, arr) => (
+                      <React.Fragment key={p}>
+                        {i > 0 && arr[i - 1] !== p - 1 && (
+                          <span style={{ fontSize: '12px', color: 'var(--text3)', padding: '0 4px' }}>...</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSalesPage(p)}
+                          className="btn btn-ghost btn-sm"
+                          style={{
+                            fontWeight: salesPage === p ? '800' : '500',
+                            background: salesPage === p ? 'var(--orange)' : 'transparent',
+                            color: salesPage === p ? '#fff' : 'var(--text2)',
+                            borderRadius: '8px',
+                            minWidth: '32px',
+                            height: '32px',
+                            padding: '0'
+                          }}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    ))}
+
+                  <button
+                    type="button"
+                    disabled={salesPage >= totalSalesPages}
+                    onClick={() => setSalesPage(prev => Math.min(prev + 1, totalSalesPages))}
+                    className="btn btn-ghost btn-sm"
+                    style={{ opacity: salesPage >= totalSalesPages ? 0.4 : 1, cursor: salesPage >= totalSalesPages ? 'not-allowed' : 'pointer' }}
+                  >
+                    {isRTL ? 'التالي' : 'Next'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : activeTab === 'plans' && userData?.role === 'admin' ? (
@@ -1726,28 +2061,64 @@ const AdminDashboard = () => {
         <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
-          <div className="flex-responsive" style={{ padding: '20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+          {/* Summary Stats Bar */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: '10px',
+            padding: '16px 20px',
+            background: 'rgba(255,255,255,0.015)',
+            borderBottom: '1px solid var(--line)'
+          }}>
+            <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700' }}>{isRTL ? '👥 إجمالي المستخدمين' : '👥 Total Users'}</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', marginTop: '2px' }}>{users.length}</div>
+            </div>
+            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--green)', fontWeight: '700' }}>{isRTL ? '🆕 جدد (آخر 48h)' : '🆕 New (48h)'}</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--green)', marginTop: '2px' }}>{users.filter(u => isUserNew(u)).length}</div>
+            </div>
+            <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--amber)', fontWeight: '700' }}>{isRTL ? '⏰ تجربة مجانية نشطة' : '⏰ Active Trial'}</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--amber)', marginTop: '2px' }}>{users.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length}</div>
+            </div>
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--red)', fontWeight: '700' }}>{isRTL ? '❌ تجربة منتهية' : '❌ Expired Trial'}</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--red)', marginTop: '2px' }}>{users.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length}</div>
+            </div>
+            <div style={{ background: 'rgba(168, 85, 247, 0.08)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--purple)', fontWeight: '700' }}>{isRTL ? '👑 باقات مدفوعة' : '👑 Paid Plans'}</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--purple)', marginTop: '2px' }}>{users.filter(u => getTrialStatusDetailed(u).type.startsWith('paid') || getTrialStatusDetailed(u).type === 'lifetime').length}</div>
+            </div>
+          </div>
+
+          <div className="flex-responsive" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>{t('admin.myUsersTitle') || 'My Users List'}</h3>
-            <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '550px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '820px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+              {renderDateRangeFilter()}
               <select
                 className="form-control"
-                style={{ width: '100%', maxWidth: '220px', cursor: 'pointer', fontSize: '13px' }}
+                style={{ width: 'auto', minWidth: '170px', cursor: 'pointer', fontSize: '12px', padding: '6px 12px' }}
                 value={activityFilter}
                 onChange={(e) => setActivityFilter(e.target.value)}
               >
-                <option value="all">{isRTL ? 'جميع التصنيفات' : 'All Classifications'}</option>
-                <option value="time_desc">{isRTL ? 'العملاء الأكثر نشاطاً (الأعلى وقتاً)' : 'Most Active Users (Top Time)'}</option>
+                <option value="all">{isRTL ? 'جميع الحالات والأنشطة' : 'All Statuses & Activity'}</option>
+                <option value="new_users">{isRTL ? '🆕 جدد مؤخراً (آخر 48 ساعة)' : '🆕 New Users (Last 48h)'}</option>
+                <option value="active_trial">{isRTL ? '⏰ فترة تجريبية نشطة' : '⏰ Active Trial'}</option>
+                <option value="expired_trial">{isRTL ? '❌ تجربة منتهية' : '❌ Expired Trial'}</option>
+                <option value="paid">{isRTL ? '👑 باقات مدفوعة' : '👑 Paid Subscribers'}</option>
+                <option value="time_desc">{isRTL ? 'الأكثر نشاطاً (الأعلى وقتاً)' : 'Most Active Users (Top Time)'}</option>
                 <option value="power">{isRTL ? 'العملاء الخارقين (Power Users)' : 'Power Users only'}</option>
                 <option value="active">{isRTL ? 'العملاء النشطين (Active)' : 'Active Users only'}</option>
                 <option value="moderate">{isRTL ? 'العملاء المتوسطين (Moderate)' : 'Moderate Users only'}</option>
                 <option value="inactive">{isRTL ? 'العملاء غير النشطين (Inactive)' : 'Inactive Users only'}</option>
               </select>
-              <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
-                <Search size={16} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+              <div style={{ position: 'relative', width: '180px' }}>
+                <Search size={14} style={{ position: 'absolute', [isRTL ? 'right' : 'left']: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
                 <input
                   className="form-control"
-                  style={{ [isRTL ? 'paddingRight' : 'paddingLeft']: '36px' }}
-                  placeholder={t('admin.searchUser') || 'Search email/name...'}
+                  style={{ [isRTL ? 'paddingRight' : 'paddingLeft']: '30px', fontSize: '12px', padding: '6px 12px' }}
+                  placeholder={t('admin.searchUser') || 'Search email/name/phone...'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1765,9 +2136,9 @@ const AdminDashboard = () => {
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)' }}>
                       <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.userCol') || 'User'}</th>
-                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.statusCode') || 'Subscription & Device Status'}</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{isRTL ? 'حالة الاشتراك والفترة التجريبية' : 'Subscription & Trial Status'}</th>
                       <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.phoneCol') || 'Phone'}</th>
-                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.joinDateCol') || 'Join Date'}</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'start', fontSize: '12px', color: 'var(--text2)' }}>{isRTL ? 'تاريخ الانضمام' : 'Join Date'}</th>
                       <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: '12px', color: 'var(--text2)' }}>{t('admin.operationsCol') || 'Actions'}</th>
                     </tr>
                   </thead>
@@ -1777,17 +2148,38 @@ const AdminDashboard = () => {
                         <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text3)' }}>{t('admin.noUsers') || 'No users found.'}</td>
                       </tr>
                     ) : (
-                      filteredUsers.map(user => {
+                      paginatedUsers.map(user => {
                         const uStats = getUserUsageStats(user);
+                        const trialDet = getTrialStatusDetailed(user);
+                        const isNew = isUserNew(user);
+                        const relativeTime = getRelativeTimeStr(user);
+                        const cleanPhone = (user.phoneNumber || '').replace(/[^0-9+]/g, '');
+
                         return (
                           <tr key={user.id} style={{ borderBottom: '1px solid var(--line)' }}>
                             <td style={{ padding: '16px 20px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div className="user-avatar" style={{ width: '30px', height: '30px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%' }}>
+                                <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg4)', borderRadius: '50%', fontWeight: '700' }}>
                                   {(user.name || user.email).charAt(0).toUpperCase()}
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: '700' }}>{user.name || t('admin.newUser')}</span>
+                                    {isNew && (
+                                      <span style={{
+                                        background: 'rgba(16, 185, 129, 0.15)',
+                                        color: 'var(--green)',
+                                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                                        padding: '1px 7px',
+                                        borderRadius: '12px',
+                                        fontSize: '10px',
+                                        fontWeight: '800',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        🆕 {isRTL ? 'جديد' : 'NEW'}
+                                      </span>
+                                    )}
+                                  </div>
                                   <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{user.email}</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 'bold' }}>
@@ -1813,42 +2205,64 @@ const AdminDashboard = () => {
                               </div>
                             </td>
                             <td style={{ padding: '16px 20px' }}>
-                              {user.isTrial ? (() => {
-                                const ts = getTrialStatus(user);
-                                if (!ts) return <span style={{ fontSize: '12px', color: 'var(--text3)' }}>{t('admin.freeTrial')}</span>;
-                                if (ts.expired) return (
-                                  <span style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--red)', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                                    ❌ {t('admin.trialExpired') || 'Trial Expired'}
-                                  </span>
-                                );
-                                return (
-                                  <span style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                                    ⏰ {t('admin.daysLeft', { count: ts.daysLeft }) || `${ts.daysLeft} days left`}
-                                  </span>
-                                );
-                              })() : (
-                                <div>
-                                  <code style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: 'var(--accent)' }}>
-                                    {user.licenseKey || t('admin.noCode')}
-                                  </code>
-                                  {user.expiresAt && (() => {
-                                    const ss = getSubscriptionStatus(user);
-                                    if (ss.expired) return <div style={{ color: 'var(--red)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>❌ {t('admin.expired')}</div>;
-                                    return <div style={{ color: 'var(--green)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ss.daysLeft })}</div>;
-                                  })()}
-                                  {!user.expiresAt && <div style={{ color: 'var(--accent)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>♾ {t('admin.lifetimeStatus') || 'Lifetime'}</div>}
-                                  <div style={{ fontSize: '10px', color: (user.devices?.length || 0) >= 2 ? 'var(--amber)' : 'var(--text3)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                    <Smartphone size={9} />
-                                    {t('admin.devicesCount', { count: user.devices?.length || 0 }) || `Devices: ${user.devices?.length || 0}`}
-                                  </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                <span style={{
+                                  background: trialDet.type === 'trial_active' ? 'rgba(245,158,11,0.12)' : trialDet.type === 'trial_expired' ? 'rgba(239,68,68,0.12)' : 'rgba(168,85,247,0.12)',
+                                  color: trialDet.type === 'trial_active' ? '#f59e0b' : trialDet.type === 'trial_expired' ? 'var(--red)' : 'var(--purple)',
+                                  border: `1px solid ${trialDet.type === 'trial_active' ? 'rgba(245,158,11,0.25)' : trialDet.type === 'trial_expired' ? 'rgba(239,68,68,0.25)' : 'rgba(168,85,247,0.25)'}`,
+                                  padding: '4px 12px',
+                                  borderRadius: '20px',
+                                  fontSize: '11px',
+                                  fontWeight: '800',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {trialDet.text}
+                                </span>
+                                <div style={{ fontSize: '10px', color: (user.devices?.length || 0) >= 2 ? 'var(--amber)' : 'var(--text3)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  <Smartphone size={9} />
+                                  {t('admin.devicesCount', { count: user.devices?.length || 0 }) || `Devices: ${user.devices?.length || 0}`}
                                 </div>
-                              )}
+                              </div>
                             </td>
-                            <td style={{ padding: '16px 20px', color: 'var(--text2)', fontSize: '13px' }}>
-                              {user.phoneNumber || '—'}
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ color: 'var(--text2)', fontSize: '13px', direction: 'ltr', textAlign: isRTL ? 'right' : 'left' }}>
+                                  {user.phoneNumber || '—'}
+                                </span>
+                                {cleanPhone && (
+                                  <a
+                                    href={`https://wa.me/${cleanPhone.replace('+', '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-ghost btn-sm"
+                                    style={{
+                                      color: '#25D366',
+                                      background: 'rgba(37, 211, 102, 0.1)',
+                                      border: '1px solid rgba(37, 211, 102, 0.25)',
+                                      padding: '2px 8px',
+                                      fontSize: '11px',
+                                      borderRadius: '12px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      width: 'fit-content',
+                                      textDecoration: 'none'
+                                    }}
+                                  >
+                                    💬 {isRTL ? 'واتساب' : 'WhatsApp'}
+                                  </a>
+                                )}
+                              </div>
                             </td>
-                            <td style={{ padding: '16px 20px', color: 'var(--text2)', fontSize: '13px' }}>
-                              {user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString(dateLocale) : ''}
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>
+                                  {relativeTime}
+                                </span>
+                                <span style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                                  {formatJoinDate(user)}
+                                </span>
+                              </div>
                             </td>
                             <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                               <button
@@ -1905,12 +2319,16 @@ const AdminDashboard = () => {
                     {t('admin.noUsers') || 'No users found.'}
                   </div>
                 ) : (
-                  filteredUsers.map(user => {
+                  paginatedUsers.map(user => {
                     const uStats = getUserUsageStats(user);
+                    const trialDet = getTrialStatusDetailed(user);
+                    const isNew = isUserNew(user);
+                    const relativeTime = getRelativeTimeStr(user);
                     const name = user.name || t('admin.newUser');
                     const email = user.email;
                     const phone = user.phoneNumber || '—';
-                    const joinedDate = user.createdAt?.toDate ? user.createdAt.toDate().toLocaleDateString(dateLocale) : '';
+                    const cleanPhone = (user.phoneNumber || '').replace(/[^0-9+]/g, '');
+                    const joinedDate = formatJoinDate(user);
                     
                     return (
                       <div key={user.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', margin: 0, border: '1px solid var(--line)', background: 'var(--bg2)' }}>
@@ -1920,7 +2338,23 @@ const AdminDashboard = () => {
                             {(name || email).charAt(0).toUpperCase()}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                              {isNew && (
+                                <span style={{
+                                  background: 'rgba(16, 185, 129, 0.15)',
+                                  color: 'var(--green)',
+                                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  fontSize: '9px',
+                                  fontWeight: '800',
+                                  flexShrink: 0
+                                }}>
+                                  🆕 {isRTL ? 'جديد' : 'NEW'}
+                                </span>
+                              )}
+                            </div>
                             <span style={{ fontSize: '11px', color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</span>
                           </div>
                           <span style={{
@@ -1942,28 +2376,19 @@ const AdminDashboard = () => {
 
                         {/* Details */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--text3)' }}>{t('admin.statusCode') || 'Subscription'}:</span>
-                            <div style={{ textAlign: 'end' }}>
-                              {user.isTrial ? (() => {
-                                const ts = getTrialStatus(user);
-                                if (!ts) return <span style={{ color: 'var(--text3)' }}>{t('admin.freeTrial')}</span>;
-                                if (ts.expired) return <span style={{ color: 'var(--red)', fontWeight: '700' }}>❌ {t('admin.trialExpired') || 'Expired'}</span>;
-                                return <span style={{ color: '#f59e0b', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ts.daysLeft }) || `${ts.daysLeft} days left`}</span>;
-                              })() : (
-                                <div>
-                                  <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: 'var(--accent)' }}>
-                                    {user.licenseKey || t('admin.noCode')}
-                                  </code>
-                                  {user.expiresAt && (() => {
-                                    const ss = getSubscriptionStatus(user);
-                                    if (ss.expired) return <div style={{ color: 'var(--red)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>❌ {t('admin.expired')}</div>;
-                                    return <div style={{ color: 'var(--green)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>⏰ {t('admin.daysLeft', { count: ss.daysLeft })}</div>;
-                                  })()}
-                                  {!user.expiresAt && <div style={{ color: 'var(--accent)', fontSize: '10px', marginTop: '2px', fontWeight: '700' }}>♾ {t('admin.lifetimeStatus') || 'Lifetime'}</div>}
-                                </div>
-                              )}
-                            </div>
+                            <span style={{
+                              background: trialDet.type === 'trial_active' ? 'rgba(245,158,11,0.12)' : trialDet.type === 'trial_expired' ? 'rgba(239,68,68,0.12)' : 'rgba(168,85,247,0.12)',
+                              color: trialDet.type === 'trial_active' ? '#f59e0b' : trialDet.type === 'trial_expired' ? 'var(--red)' : 'var(--purple)',
+                              border: `1px solid ${trialDet.type === 'trial_active' ? 'rgba(245,158,11,0.25)' : trialDet.type === 'trial_expired' ? 'rgba(239,68,68,0.25)' : 'rgba(168,85,247,0.25)'}`,
+                              padding: '2px 10px',
+                              borderRadius: '16px',
+                              fontSize: '11px',
+                              fontWeight: '800'
+                            }}>
+                              {trialDet.text}
+                            </span>
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1978,12 +2403,33 @@ const AdminDashboard = () => {
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--text3)' }}>{t('admin.phoneCol') || 'Phone'}:</span>
-                            <span style={{ color: 'var(--text2)' }}>{phone}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ color: 'var(--text2)', direction: 'ltr' }}>{phone}</span>
+                              {cleanPhone && (
+                                <a
+                                  href={`https://wa.me/${cleanPhone.replace('+', '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    color: '#25D366',
+                                    background: 'rgba(37, 211, 102, 0.1)',
+                                    border: '1px solid rgba(37, 211, 102, 0.25)',
+                                    padding: '1px 6px',
+                                    fontSize: '10px',
+                                    borderRadius: '10px',
+                                    textDecoration: 'none',
+                                    fontWeight: 'bold'
+                                  }}
+                                >
+                                  💬 واتساب
+                                </a>
+                              )}
+                            </div>
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--text3)' }}>{t('admin.joinDateCol') || 'Joined'}:</span>
-                            <span style={{ color: 'var(--text2)' }}>{joinedDate}</span>
+                            <span style={{ color: 'var(--text)', fontWeight: '700' }}>{relativeTime} <span style={{ fontSize: '10px', color: 'var(--text3)', fontWeight: 'normal' }}>({joinedDate})</span></span>
                           </div>
 
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2043,6 +2489,64 @@ const AdminDashboard = () => {
                   })
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredUsers.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px 20px',
+                  borderTop: '1px solid var(--line)',
+                  background: 'var(--bg2)',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text3)' }}>
+                    {isRTL
+                      ? `عرض ${(userPage - 1) * USERS_PER_PAGE + 1} - ${Math.min(userPage * USERS_PER_PAGE, filteredUsers.length)} من إجمالي ${filteredUsers.length} مستخدم`
+                      : `Showing ${(userPage - 1) * USERS_PER_PAGE + 1}-${Math.min(userPage * USERS_PER_PAGE, filteredUsers.length)} of ${filteredUsers.length} users`}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      disabled={userPage <= 1}
+                      onClick={() => setUserPage(prev => Math.max(prev - 1, 1))}
+                      className="btn btn-ghost btn-sm"
+                      style={{ opacity: userPage <= 1 ? 0.4 : 1, cursor: userPage <= 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                      {isRTL ? 'السابق' : 'Previous'}
+                    </button>
+
+                    {Array.from({ length: totalUserPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalUserPages || Math.abs(p - userPage) <= 1)
+                      .map((p, i, arr) => (
+                        <React.Fragment key={p}>
+                          {i > 0 && arr[i - 1] !== p - 1 && <span style={{ color: 'var(--text3)', fontSize: '12px' }}>...</span>}
+                          <button
+                            type="button"
+                            onClick={() => setUserPage(p)}
+                            className={`btn btn-sm ${userPage === p ? 'btn-primary' : 'btn-ghost'}`}
+                            style={{ minWidth: '32px', height: '32px', padding: '0 8px', fontSize: '12px' }}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      ))}
+
+                    <button
+                      type="button"
+                      disabled={userPage >= totalUserPages}
+                      onClick={() => setUserPage(prev => Math.min(prev + 1, totalUserPages))}
+                      className="btn btn-ghost btn-sm"
+                      style={{ opacity: userPage >= totalUserPages ? 0.4 : 1, cursor: userPage >= totalUserPages ? 'not-allowed' : 'pointer' }}
+                    >
+                      {isRTL ? 'التالي' : 'Next'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -2272,22 +2776,27 @@ const AdminDashboard = () => {
                   <label className="field-label">{t('admin.planNameLabel') || 'Plan Name'}</label>
                   <select
                     className="form-control"
-                    value={['starter', 'growth', 'pro'].includes(editingUser.planName?.toLowerCase()) ? editingUser.planName.toLowerCase() : (editingUser.planName ? 'custom' : 'starter')}
+                    value={['starter', 'growth', 'pro'].includes((editingUser.planName || '').toLowerCase()) ? (editingUser.planName || '').toLowerCase() : 'custom'}
                     onChange={e => {
-                      if (e.target.value !== 'custom') {
-                        setEditingUser({ ...editingUser, planName: e.target.value });
+                      const val = e.target.value;
+                      if (val === 'starter') {
+                        setEditingUser({ ...editingUser, planName: 'Starter', plan: 'Starter' });
+                      } else if (val === 'growth') {
+                        setEditingUser({ ...editingUser, planName: 'Growth', plan: 'Growth' });
+                      } else if (val === 'pro') {
+                        setEditingUser({ ...editingUser, planName: 'Pro', plan: 'Pro' });
                       } else {
-                        setEditingUser({ ...editingUser, planName: 'Enterprise' });
+                        setEditingUser({ ...editingUser, planName: 'Enterprise', plan: 'Enterprise' });
                       }
                     }}
                   >
-                    <option value="starter">{isRTL ? 'ستارتر' : 'Starter'}</option>
-                    <option value="growth">{isRTL ? 'جروث' : 'Growth'}</option>
-                    <option value="pro">{isRTL ? 'برو' : 'Pro'}</option>
-                    <option value="custom">{isRTL ? 'باقة مخصصة' : 'Custom Plan'}</option>
+                    <option value="starter">{isRTL ? 'ستارتر (Starter)' : 'Starter'}</option>
+                    <option value="growth">{isRTL ? 'جروث (Growth)' : 'Growth'}</option>
+                    <option value="pro">{isRTL ? 'برو (Pro)' : 'Pro'}</option>
+                    <option value="custom">{isRTL ? 'باقة مخصصة (Custom Plan)' : 'Custom Plan'}</option>
                   </select>
                 </div>
-                {(!['starter', 'growth', 'pro'].includes(editingUser.planName?.toLowerCase())) && (
+                {(!['starter', 'growth', 'pro'].includes((editingUser.planName || '').toLowerCase())) && (
                   <div className="field">
                     <label className="field-label">{isRTL ? 'اسم الباقة المخصصة' : 'Custom Plan Name'}</label>
                     <input
@@ -2295,7 +2804,7 @@ const AdminDashboard = () => {
                       type="text"
                       required
                       value={editingUser.planName || ''}
-                      onChange={e => setEditingUser({ ...editingUser, planName: e.target.value })}
+                      onChange={e => setEditingUser({ ...editingUser, planName: e.target.value, plan: e.target.value })}
                       placeholder={isRTL ? 'أدخل اسم الباقة المخصصة' : 'Enter custom plan name'}
                     />
                   </div>
@@ -2315,34 +2824,6 @@ const AdminDashboard = () => {
                     />
                   </div>
                 )}
-              </div>
-
-              <div className="field" style={{ marginBottom: '20px' }}>
-                <label className="field-label">{t('common.licenseKey') || 'License Key'}</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    className="form-control"
-                    type="text"
-                    required
-                    readOnly
-                    value={editingUser.licenseKey || ''}
-                    placeholder="GS-XXXX-XXXX-XXXX"
-                    style={{ background: 'rgba(255,255,255,0.03)', cursor: 'default' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                      const segment = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-                      const key = `GS-${segment()}-${segment()}-${segment()}`;
-                      setEditingUser(prev => ({ ...prev, licenseKey: key }));
-                    }}
-                    className="btn btn-sm"
-                    style={{ whiteSpace: 'nowrap' }}
-                  >
-                    <Zap size={14} /> {t('common.updateCode') || 'Generate New'}
-                  </button>
-                </div>
               </div>
 
               <div className="field" style={{ marginBottom: '12px' }}>
@@ -2489,24 +2970,6 @@ const AdminDashboard = () => {
                     />
                   </div>
                 )}
-              </div>
-
-              <div className="field" style={{ marginBottom: '20px' }}>
-                <label className="field-label">{t('common.licenseKey') || 'License Key'}</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    className="form-control"
-                    type="text"
-                    required
-                    readOnly
-                    value={newUser.licenseKey}
-                    placeholder="GS-XXXX-XXXX-XXXX"
-                    style={{ background: 'rgba(255,255,255,0.03)', cursor: 'default' }}
-                  />
-                  <button type="button" onClick={generateLicenseKey} className="btn btn-sm" style={{ whiteSpace: 'nowrap' }}>
-                    <Zap size={14} /> {t('common.generateCode') || 'Generate'}
-                  </button>
-                </div>
               </div>
 
               <div className="field" style={{ marginBottom: '12px' }}>

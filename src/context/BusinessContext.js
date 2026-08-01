@@ -1105,6 +1105,12 @@ export function BusinessProvider({ children }) {
 
   const processedTenantConfig = {
     ...tenantConfig,
+    freeTrial: tenantConfig?.freeTrial || {
+      enabled: true,
+      days: 15,
+      credits: 500,
+      allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key)
+    },
     planStarterConfig: tenantConfig?.planStarterConfig || null,
     planGrowthConfig: tenantConfig?.planGrowthConfig || null,
     planProConfig: tenantConfig?.planProConfig || null,
@@ -1167,6 +1173,14 @@ export function BusinessProvider({ children }) {
   const isToolAllowedForUser = (toolKey) => {
     if (userData?.role === 'admin' || userData?.role === 'super_admin') return true;
     if (['home', 'profile', 'billing', 'support'].includes(toolKey)) return true;
+
+    // Check if user is in trial mode
+    if (userData?.isTrial) {
+      const trialTools = processedTenantConfig?.freeTrial?.allowedTools;
+      if (Array.isArray(trialTools)) {
+        return trialTools.includes(toolKey);
+      }
+    }
 
     const userPlan = (userData?.plan || 'Starter').toLowerCase();
 

@@ -178,6 +178,33 @@ export default function LoginPage() {
   return (
     <div style={{ ...styles.container, ...(tenantConfig?.bgColor ? { backgroundColor: tenantConfig.bgColor } : {}) }}>
       <div style={{ ...styles.card, ...(tenantConfig?.panelColor ? { backgroundColor: tenantConfig.panelColor } : {}) }}>
+        {/* Close / Back button to Home */}
+        <a
+          href="/"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#a0a0c0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '15px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            zIndex: 10
+          }}
+          title="إغلاق والرجوع للصفحة الرئيسية"
+        >
+          ✕
+        </a>
         {(() => {
           const isDefaultLogo = !tenantConfig?.logoUrl;
           return isDefaultLogo ? (
@@ -513,6 +540,7 @@ const styles = {
     zIndex: 9999,
   },
   card: {
+    position: 'relative',
     width: '100%',
     maxWidth: '400px',
     backgroundColor: '#181825',

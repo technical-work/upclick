@@ -6,6 +6,31 @@ import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { ALL_SYSTEM_TOOLS } from '../../context/BusinessContext';
 
+const DEFAULT_FREE_TRIAL = {
+  enabled: true,
+  days: 15,
+  credits: 500,
+  name: 'الباقة التجريبية المجانية',
+  nameEn: 'Free Trial Plan',
+  badge: 'تجربة مجانية 15 يوم',
+  badgeEn: '15-Day Free Trial',
+  ctaText: 'ابدأ التجربة المجانية',
+  ctaTextEn: 'Start Free Trial',
+  features: [
+    '15 يوم فترة تجريبية مجانية بالكامل',
+    '500 كريديت مجاناً لتجربة كافة أدوات الذكاء الاصطناعي',
+    'وصول لجميع الأدوات المحددة بالأسفل',
+    'بدون الحاجة لإدخال بطاقة إئتمان'
+  ],
+  featuresEn: [
+    '15 days full free trial',
+    '500 free credits for AI tools',
+    'Access to allowed tools selected below',
+    'No credit card required'
+  ],
+  allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key)
+};
+
 const DEFAULT_PLAN_STARTER = {
   visible: true,
   name: 'باقة المبتدئين',
@@ -77,8 +102,8 @@ const DEFAULT_PLAN_PRO = {
   currencyEn: 'EGP',
   period: 'شهرياً',
   periodEn: 'monthly',
-  ctaText: 'ابدأ تجربة مجانية لمدة 15 يوم',
-  ctaTextEn: 'Start 15-Day Free Trial',
+  ctaText: 'ترقية إلى باقة المحترفين',
+  ctaTextEn: 'Upgrade to Pro',
   credits: 10000,
   features: [
     'كل شيء في باقة النمو',
@@ -115,6 +140,7 @@ const PlansSettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [freeTrial, setFreeTrial] = useState(DEFAULT_FREE_TRIAL);
   const [planStarter, setPlanStarter] = useState(DEFAULT_PLAN_STARTER);
   const [planGrowth, setPlanGrowth] = useState(DEFAULT_PLAN_GROWTH);
   const [planPro, setPlanPro] = useState(DEFAULT_PLAN_PRO);
@@ -130,6 +156,10 @@ const PlansSettingsPage = () => {
     const unsub = onSnapshot(doc(db, 'tenants', 'global'), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
+        if (data.freeTrial) {
+          setFreeTrial({ ...DEFAULT_FREE_TRIAL, ...data.freeTrial });
+        }
+
         if (data.planStarterConfig) setPlanStarter({ ...DEFAULT_PLAN_STARTER, ...data.planStarterConfig });
         else if (data.planStarterName) {
           setPlanStarter(prev => ({
@@ -177,6 +207,8 @@ const PlansSettingsPage = () => {
     setSaving(true);
     try {
       await setDoc(doc(db, 'tenants', 'global'), {
+        freeTrial: freeTrial,
+
         planStarterConfig: planStarter,
         planStarterName: planStarter.nameEn || planStarter.name,
         planStarterPrice: Number(planStarter.price),
@@ -305,6 +337,294 @@ const PlansSettingsPage = () => {
     fontSize: '12.5px',
     boxSizing: 'border-box'
   };
+
+  const renderFreeTrialEditor = () => (
+    <div className="card" style={{ padding: '20px', marginBottom: '24px', border: '1px solid var(--accent)', borderRadius: '16px', background: 'var(--card-bg)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
+          <span>🎁</span>
+          {isRTL ? 'إعدادات الفترة التجريبية المجانية (Free Trial)' : 'Free Trial Package Settings'}
+        </h3>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--accent)', fontWeight: 'bold' }}>
+          <input
+            type="checkbox"
+            checked={freeTrial.enabled !== false}
+            onChange={e => setFreeTrial(prev => ({ ...prev, enabled: e.target.checked }))}
+            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+          />
+          {isRTL ? 'تفعيل الفترة التجريبية للمستخدمين الجدد' : 'Enable Free Trial for New Users'}
+        </label>
+      </div>
+
+      <p style={{ fontSize: '12.5px', color: 'var(--text2)', marginBottom: '16px', marginTop: '-4px' }}>
+        {isRTL
+          ? 'منح المستخدمين الجدد فترة تجريبية مجانية عند التسجيل، مع تحديد عدد الأيام والكريديت المتاح والأدوات المسموحة.'
+          : 'Grant new registered users a free trial period with full control over days, credits, and tool permissions.'}
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+        {/* Days & Credits */}
+        <div>
+          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+            ⏱️ {isRTL ? 'عدد أيام الفترة التجريبية' : 'Trial Duration (Days)'}
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="365"
+            value={freeTrial.days || 15}
+            onChange={e => setFreeTrial(prev => ({ ...prev, days: Math.max(1, parseInt(e.target.value) || 15) }))}
+            style={inputStyle}
+          />
+        </div>
+
+        <div>
+          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
+            ⚡ {isRTL ? 'عدد الكريديتس المتاحة في الفترة التجريبية' : 'Free Trial Credits'}
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={freeTrial.credits !== undefined ? freeTrial.credits : 500}
+            onChange={e => setFreeTrial(prev => ({ ...prev, credits: Math.max(0, parseInt(e.target.value) || 0) }))}
+            style={inputStyle}
+          />
+        </div>
+
+        {/* Plan Name AR & EN */}
+        <div>
+          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
+            {isRTL ? 'اسم الباقة التجريبية (عربي)' : 'Trial Plan Name (AR)'}
+          </label>
+          <input
+            type="text"
+            value={freeTrial.name || ''}
+            onChange={e => setFreeTrial(prev => ({ ...prev, name: e.target.value }))}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
+            {isRTL ? 'اسم الباقة التجريبية (EN)' : 'Trial Plan Name (EN)'}
+          </label>
+          <input
+            type="text"
+            value={freeTrial.nameEn || ''}
+            onChange={e => setFreeTrial(prev => ({ ...prev, nameEn: e.target.value }))}
+            style={inputStyle}
+          />
+        </div>
+
+        {/* Badge AR & EN */}
+        <div>
+          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
+            {isRTL ? 'شارة التمييز (Badge AR)' : 'Badge (AR)'}
+          </label>
+          <input
+            type="text"
+            value={freeTrial.badge || ''}
+            onChange={e => setFreeTrial(prev => ({ ...prev, badge: e.target.value }))}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
+            {isRTL ? 'شارة التمييز (Badge EN)' : 'Badge (EN)'}
+          </label>
+          <input
+            type="text"
+            value={freeTrial.badgeEn || ''}
+            onChange={e => setFreeTrial(prev => ({ ...prev, badgeEn: e.target.value }))}
+            style={inputStyle}
+          />
+        </div>
+
+        {/* CTA Text AR & EN */}
+        <div style={{ gridColumn: 'span 2' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
+                {isRTL ? 'نص زر الإجراء (CTA AR)' : 'CTA Button Text (AR)'}
+              </label>
+              <input
+                type="text"
+                value={freeTrial.ctaText || ''}
+                onChange={e => setFreeTrial(prev => ({ ...prev, ctaText: e.target.value }))}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '4px' }}>
+                {isRTL ? 'نص زر الإجراء (CTA EN)' : 'CTA Button Text (EN)'}
+              </label>
+              <input
+                type="text"
+                value={freeTrial.ctaTextEn || ''}
+                onChange={e => setFreeTrial(prev => ({ ...prev, ctaTextEn: e.target.value }))}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Lists */}
+      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed var(--line)' }}>
+        <h4 style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
+          {isRTL ? 'ميزات الباقة التجريبية (Trial Features)' : 'Trial Package Features List'}
+        </h4>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {/* Features AR */}
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+              {isRTL ? 'الميزات بالعربية' : 'Features (Arabic)'}
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(freeTrial.features || []).map((feat, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="text"
+                    value={feat}
+                    onChange={e => {
+                      const next = [...(freeTrial.features || [])];
+                      next[idx] = e.target.value;
+                      setFreeTrial(prev => ({ ...prev, features: next }));
+                    }}
+                    placeholder={isRTL ? `ميزة ${idx + 1}` : `Feature ${idx + 1}`}
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = (freeTrial.features || []).filter((_, i) => i !== idx);
+                      setFreeTrial(prev => ({ ...prev, features: next }));
+                    }}
+                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: 'none', borderRadius: '6px', padding: '0 10px', cursor: 'pointer' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setFreeTrial(prev => ({ ...prev, features: [...(prev.features || []), ''] }))}
+                style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent)', border: '1px dashed var(--accent)', borderRadius: '6px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px' }}
+              >
+                ➕ {isRTL ? 'إضافة ميزة تجريبية جديدة' : 'Add Trial Feature'}
+              </button>
+            </div>
+          </div>
+
+          {/* Features EN */}
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+              {isRTL ? 'الميزات بالإنجليزية' : 'Features (English)'}
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(freeTrial.featuresEn || []).map((feat, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="text"
+                    value={feat}
+                    onChange={e => {
+                      const next = [...(freeTrial.featuresEn || [])];
+                      next[idx] = e.target.value;
+                      setFreeTrial(prev => ({ ...prev, featuresEn: next }));
+                    }}
+                    placeholder={isRTL ? `Feature ${idx + 1}` : `Feature ${idx + 1}`}
+                    style={inputStyle}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = (freeTrial.featuresEn || []).filter((_, i) => i !== idx);
+                      setFreeTrial(prev => ({ ...prev, featuresEn: next }));
+                    }}
+                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: 'none', borderRadius: '6px', padding: '0 10px', cursor: 'pointer' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setFreeTrial(prev => ({ ...prev, featuresEn: [...(prev.featuresEn || []), ''] }))}
+                style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent)', border: '1px dashed var(--accent)', borderRadius: '6px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px' }}
+              >
+                ➕ {isRTL ? 'إضافة ميزة بالإنجليزية' : 'Add English Feature'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tool Permissions Matrix for Trial Users */}
+      <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed var(--line)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--orange)', margin: 0 }}>
+            🔒 {isRTL ? 'تحديد الأدوات المتاحة للمستخدمين في الفترة التجريبية' : 'Allowed Tools for Free Trial Users'}
+          </h4>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setFreeTrial(prev => ({ ...prev, allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key) }))}
+              style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}
+            >
+              ✓ {isRTL ? 'تحديد الكل' : 'Select All'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFreeTrial(prev => ({ ...prev, allowedTools: [] }))}
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', border: '1px solid #EF4444', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}
+            >
+              ✕ {isRTL ? 'إلغاء الكل' : 'Deselect All'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px', background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+          {ALL_SYSTEM_TOOLS.map((tool) => {
+            const isChecked = (freeTrial.allowedTools || ALL_SYSTEM_TOOLS.map(t => t.key)).includes(tool.key);
+            return (
+              <label
+                key={tool.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '12px',
+                  color: isChecked ? 'var(--text)' : 'var(--text3)',
+                  cursor: 'pointer',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  background: isChecked ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                  border: isChecked ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid transparent'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => {
+                    setFreeTrial(prev => {
+                      const current = prev.allowedTools || ALL_SYSTEM_TOOLS.map(t => t.key);
+                      const updated = current.includes(tool.key)
+                        ? current.filter(k => k !== tool.key)
+                        : [...current, tool.key];
+                      return { ...prev, allowedTools: updated };
+                    });
+                  }}
+                  style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                />
+                <span>{tool.icon}</span>
+                <span>{isRTL ? tool.labelAr : tool.labelEn}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderPlanEditor = (planState, planSetter, titleAr, titleEn, defaultEmoji) => (
     <div className="card" style={{ padding: '20px', marginBottom: '24px', border: '1px solid var(--line)', borderRadius: '16px', background: 'var(--card-bg)' }}>
@@ -625,6 +945,9 @@ const PlansSettingsPage = () => {
           ✓ {isRTL ? 'تم حفظ التعديلات بنجاح وتحديث الباقات في الموقع!' : 'Plan settings saved successfully!'}
         </div>
       )}
+
+      {/* Free Trial Package Settings Section */}
+      {renderFreeTrialEditor()}
 
       {/* Main Standard Subscription Plans */}
       {renderPlanEditor(planStarter, setPlanStarter, 'إعدادات باقة المبتدئين (Starter Plan)', 'Starter Plan Settings', '🌱')}

@@ -1,106 +1,114 @@
 import { auth } from '@/lib/firebase';
 
+const activeRequestsMap = new Map();
+
 export async function callClaudeAPI(prompt, systemPrompt, lang = 'en', businessContext = {}, toolName = 'General', onChunk = null, creditsCost = null) {
-  let gc = businessContext;
-  if (!gc || !gc.integrations) {
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('ba_context');
-        if (saved) gc = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Error loading ba_context from localStorage in callClaudeAPI:", e);
-    }
+  const reqKey = `${toolName}_${auth?.currentUser?.uid || ''}_${prompt.slice(0, 80)}`;
+  if (activeRequestsMap.has(reqKey)) {
+    console.warn('[callClaudeAPI] Deduplicating identical in-flight request:', toolName);
+    return activeRequestsMap.get(reqKey);
   }
 
-  // Determine credentials to use
-  const defaultKey = "sk-nry-sCBhTqkDeBcp8fp53eO5OQIJ96ztTuNCat9lorftjm4";
-  const defaultEndpoint = "https://router.bynara.id/v1/chat/completions";
-  const defaultModel = "glm-5";
-
-  const customKey = gc?.integrations?.bynaraKey;
-  const customEndpoint = gc?.integrations?.bynaraEndpoint;
-  const customModel = gc?.integrations?.bynaraModel;
-  const isCustomConnected = gc?.integrations?.bynaraConnected;
-
-  const API_KEY = isCustomConnected ? (customKey || undefined) : undefined;
-  const ENDPOINT = isCustomConnected ? (customEndpoint || undefined) : undefined;
-  const MODEL_NAME = isCustomConnected ? (customModel || undefined) : undefined;
-
-  try {
-    let finalSystemPrompt = systemPrompt || "You are a helpful assistant.";
-    let finalPrompt = prompt;
-
-    if (lang === 'ar') {
-      finalSystemPrompt = `[معلومة هامة جداً]: لغة واجهة المستخدم هي اللغة العربية. يجب عليك كتابة الرد بالكامل (العناوين، النصوص، التفاصيل، الجداول، الملاحظات) باللغة العربية الفصحى فقط. يمنع منعاً باتاً استخدام اللغة الإنجليزية إلا للمصطلحات التقنية التي لا يمكن تعريبها. حتى وإن كان نص الطلب التالي مكتوباً بالإنجليزية، قم بترجمته ذهنياً وصياغة الإجابة كاملة باللغة العربية.\n\n${finalSystemPrompt}`;
-      finalPrompt = `[طلب هام]: يرجى صياغة الإجابة كاملة باللغة العربية الفصحى وبشكل احترافي.\n---\n${prompt}`;
-    } else {
-      finalSystemPrompt = `${finalSystemPrompt}\n\n[SYSTEM NOTE]: Please write the response in English because the user interface is in English.`;
-    }
-
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        endpoint: ENDPOINT,
-        apiKey: API_KEY,
-        model: MODEL_NAME,
-        userId: auth?.currentUser?.uid || '',
-        tool: toolName,
-        creditsCost: creditsCost,
-        messages: [
-          { role: 'system', content: finalSystemPrompt },
-          { role: 'user', content: finalPrompt }
-        ]
-      })
-    });
-    
-    if (!res.ok) {
-      const text = await res.text();
-      let errorMsg = 'AI request failed';
+  const executeCall = async () => {
+    let gc = businessContext;
+    if (!gc || !gc.integrations) {
       try {
-        const parsed = JSON.parse(text);
-        errorMsg = parsed.error || errorMsg;
-      } catch (e) {}
-      throw new Error(errorMsg);
+        if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('ba_context');
+          if (saved) gc = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error("Error loading ba_context from localStorage in callClaudeAPI:", e);
+      }
     }
 
-    if (onChunk) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const text = decoder.decode(value, { stream: true });
-        accumulated += text;
-        onChunk(text);
+    const customKey = gc?.integrations?.bynaraKey;
+    const customEndpoint = gc?.integrations?.bynaraEndpoint;
+    const customModel = gc?.integrations?.bynaraModel;
+    const isCustomConnected = gc?.integrations?.bynaraConnected;
+
+    const API_KEY = isCustomConnected ? (customKey || undefined) : undefined;
+    const ENDPOINT = isCustomConnected ? (customEndpoint || undefined) : undefined;
+    const MODEL_NAME = isCustomConnected ? (customModel || undefined) : undefined;
+
+    try {
+      let finalSystemPrompt = systemPrompt || "You are a helpful assistant.";
+      let finalPrompt = prompt;
+
+      if (lang === 'ar') {
+        finalSystemPrompt = `[معلومة هامة جداً]: لغة واجهة المستخدم هي اللغة العربية. يجب عليك كتابة الرد بالكامل (العناوين، النصوص، التفاصيل، الجداول، الملاحظات) باللغة العربية الفصحى فقط. يمنع منعاً باتاً استخدام اللغة الإنجليزية إلا للمصطلحات التقنية التي لا يمكن تعريبها. حتى وإن كان نص الطلب التالي مكتوباً بالإنجليزية، قم بترجمته ذهنياً وصياغة الإجابة كاملة باللغة العربية.\n\n${finalSystemPrompt}`;
+        finalPrompt = `[طلب هام]: يرجى صياغة الإجابة كاملة باللغة العربية الفصحى وبشكل احترافي.\n---\n${prompt}`;
+      } else {
+        finalSystemPrompt = `${finalSystemPrompt}\n\n[SYSTEM NOTE]: Please write the response in English because the user interface is in English.`;
       }
-      return accumulated;
-    } else {
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          endpoint: ENDPOINT,
+          apiKey: API_KEY,
+          model: MODEL_NAME,
+          userId: auth?.currentUser?.uid || '',
+          tool: toolName,
+          creditsCost: creditsCost,
+          messages: [
+            { role: 'system', content: finalSystemPrompt },
+            { role: 'user', content: finalPrompt }
+          ]
+        })
+      });
+      
+      if (!res.ok) {
+        const text = await res.text();
+        let errorMsg = 'AI request failed';
+        try {
+          const parsed = JSON.parse(text);
+          errorMsg = parsed.error || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
+      }
+
+      if (onChunk) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value, { stream: true });
+          accumulated += text;
+          onChunk(text);
+        }
+        return accumulated;
+      }
+
       const text = await res.text();
       return text;
+    } catch (error) {
+      console.warn('AI API request failed:', error);
+      if (error.message && (error.message.includes('رصيد') || error.message.includes('كافٍ') || error.message.includes('not configured') || error.message.includes('User ID'))) {
+        return `❌ ${error.message}`;
+      }
+      try {
+        return generateSmartFallback(prompt, lang, gc);
+      } catch (fallbackError) {
+        console.warn('Fallback engine error:', fallbackError);
+        const isArabic = lang === 'ar';
+        return isArabic
+          ? `### ✦ استشارة ذكاء الأعمال\nنعمل على تحليل طلبك. يرجى التأكد من ملء بيانات البزنس في الملف الشخصي لتحسين جودة النتائج.`
+          : `### ✦ Business Intelligence\nWe are processing your request. Please fill in your business profile details to improve the quality of AI recommendations.`;
+      }
+    } finally {
+      activeRequestsMap.delete(reqKey);
     }
-  } catch (error) {
-    console.warn('Custom API request failed:', error);
-    if (error.message && (error.message.includes('رصيد') || error.message.includes('كافٍ') || error.message.includes('not configured') || error.message.includes('User ID'))) {
-      return `❌ ${error.message}`;
-    }
-  }
+  };
 
-  // Fallback engine
-
-  try {
-    return generateSmartFallback(prompt, lang, gc);
-  } catch (fallbackError) {
-    console.warn('Fallback engine error:', fallbackError);
-    const isArabic = lang === 'ar';
-    return isArabic
-      ? `### ✦ استشارة ذكاء الأعمال\nنعمل على تحليل طلبك. يرجى التأكد من ملء بيانات البزنس في الملف الشخصي لتحسين جودة النتائج.`
-      : `### ✦ Business Intelligence\nWe are processing your request. Please fill in your business profile details to improve the quality of AI recommendations.`;
-  }
+  const promise = executeCall();
+  activeRequestsMap.set(reqKey, promise);
+  return promise;
 }
 
 function extract(prompt, key, fallback = '') {

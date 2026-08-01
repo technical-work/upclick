@@ -142,19 +142,24 @@ export async function POST(request) {
     } else if (creditsCost !== undefined && creditsCost !== null) {
       finalCreditsDeduction = Number(creditsCost);
     } else {
-      const toolLower = String(tool || '').toLowerCase();
-      if (toolLower.includes('script')) {
-        finalCreditsDeduction = globalData.costGenerateScript !== undefined ? Number(globalData.costGenerateScript) : 5;
-      } else if (toolLower.includes('logo') || toolLower.includes('design') || toolLower.includes('banner')) {
-        finalCreditsDeduction = globalData.costGenerateLogo !== undefined ? Number(globalData.costGenerateLogo) : 40;
-      } else if (toolLower.includes('swot')) {
-        finalCreditsDeduction = globalData.costSwotAnalysis !== undefined ? Number(globalData.costSwotAnalysis) : 15;
-      } else if (toolLower.includes('competitor')) {
-        finalCreditsDeduction = globalData.costCompetitorAnalysis !== undefined ? Number(globalData.costCompetitorAnalysis) : 30;
-      } else if (toolLower.includes('strategy') || toolLower.includes('roadmap')) {
-        finalCreditsDeduction = globalData.costStrategyBuilder !== undefined ? Number(globalData.costStrategyBuilder) : 50;
+      const toolMatch = DEFAULT_AI_TOOLS.find(t => t.id === tool || t.name === tool || (tool && t.id.includes(tool)));
+      if (toolMatch && toolMatch.cost) {
+        finalCreditsDeduction = toolMatch.cost;
       } else {
-        finalCreditsDeduction = 0;
+        const toolLower = String(tool || '').toLowerCase();
+        if (toolLower.includes('script')) {
+          finalCreditsDeduction = globalData.costGenerateScript !== undefined ? Number(globalData.costGenerateScript) : 5;
+        } else if (toolLower.includes('logo') || toolLower.includes('design') || toolLower.includes('banner')) {
+          finalCreditsDeduction = globalData.costGenerateLogo !== undefined ? Number(globalData.costGenerateLogo) : 40;
+        } else if (toolLower.includes('swot')) {
+          finalCreditsDeduction = globalData.costSwotAnalysis !== undefined ? Number(globalData.costSwotAnalysis) : 15;
+        } else if (toolLower.includes('competitor')) {
+          finalCreditsDeduction = globalData.costCompetitorAnalysis !== undefined ? Number(globalData.costCompetitorAnalysis) : 30;
+        } else if (toolLower.includes('strategy') || toolLower.includes('roadmap')) {
+          finalCreditsDeduction = globalData.costStrategyBuilder !== undefined ? Number(globalData.costStrategyBuilder) : 50;
+        } else {
+          finalCreditsDeduction = 1;
+        }
       }
     }
 
@@ -284,9 +289,10 @@ export async function POST(request) {
           if (promptTokens > 0 || completionTokens > 0) {
             const rates = getModelRates(configuredModel);
             const cost = (promptTokens * rates.input) + (completionTokens * rates.output);
+            const actualDeduction = finalCreditsDeduction > 0 ? finalCreditsDeduction : Math.max(1, Math.ceil(cost * creditsPerDollar));
 
             await userRef.update({
-              aiCredits: FieldValue.increment(-finalCreditsDeduction)
+              aiCredits: FieldValue.increment(-actualDeduction)
             });
 
             await adminDb.collection('ai_logs').add({
@@ -297,7 +303,7 @@ export async function POST(request) {
               inputTokens: promptTokens,
               outputTokens: completionTokens,
               cost: cost,
-              creditsDeducted: finalCreditsDeduction,
+              creditsDeducted: actualDeduction,
               tool: tool || 'General',
               timestamp: new Date()
             });

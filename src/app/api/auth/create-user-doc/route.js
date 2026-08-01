@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
-    const { uid, email, name, userGC, isTrial, trialStartedAt, cleanUsername, initialGC } = await req.json();
+    const { uid, email, name, phoneNumber, country, userGC, isTrial, trialStartedAt, trialCredits, cleanUsername, initialGC } = await req.json();
 
     if (!uid || !email) {
       return NextResponse.json({ error: 'Missing required user parameters' }, { status: 400 });
@@ -24,6 +24,8 @@ export async function POST(req) {
       uid: uid,
       name: name || '',
       email: email,
+      phoneNumber: phoneNumber || '',
+      country: country || 'EG',
       role: 'user',
       lang: 'ar',
       theme: 'dark',
@@ -31,6 +33,7 @@ export async function POST(req) {
       GC: userGC || {},
       isTrial: !!isTrial,
       trialStartedAt: trialStartedAt || null,
+      aiCredits: isTrial ? (trialCredits !== undefined ? Number(trialCredits) : 500) : 0,
       adminId: 'global',
       createdAt: new Date().toISOString()
     }, { merge: true });
