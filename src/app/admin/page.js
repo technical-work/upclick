@@ -1308,19 +1308,27 @@ const AdminDashboard = () => {
   };
 
   const handleEditClick = (user) => {
-    const activePlan = user.planName || user.plan || 'Starter';
+    const activePlan = user.planName || user.plan || (user.isTrial ? 'Free Trial' : 'Starter');
+    const onFreeTrial = !!(user.isTrial || String(activePlan).toLowerCase() === 'free trial' || String(activePlan).includes('مجاني') || String(activePlan).includes('تجريب'));
     setEditingUser({
       ...user,
       phoneNumber: user.phoneNumber?.replace(countryData[user.country || 'EG'].code, '') || '',
       aiCredits: user.aiCredits !== undefined ? Number(user.aiCredits) : globalDefaultCredits,
       allowedTools: user.allowedTools || AVAILABLE_TOOLS.map(t => t.key),
-      subscriptionType: user.subscriptionType || 'months',
-      subscriptionDuration: user.subscriptionDuration || '1',
-      planName: activePlan,
-      plan: activePlan,
+      subscriptionType: onFreeTrial ? 'days' : (user.subscriptionType || 'months'),
+      subscriptionDuration: onFreeTrial ? String(tenantFreeTrial.days || 15) : (user.subscriptionDuration || '1'),
+      planName: onFreeTrial ? 'Free Trial' : activePlan,
+      plan: onFreeTrial ? 'Free Trial' : activePlan,
+      isTrial: onFreeTrial,
       newPassword: ''
     });
     setShowEditModal(true);
+  };
+
+  const isFreeTrialPlan = (planName, extra = {}) => {
+    const p = String(planName || '').toLowerCase().trim();
+    if (extra.isTrial) return true;
+    return p === 'free trial' || p === 'free' || p.includes('مجاني') || p.includes('تجريب');
   };
 
   const handleUpdateUser = async (e) => {
@@ -1348,39 +1356,70 @@ const AdminDashboard = () => {
         console.warn("Auth update fetch warning:", authErr);
       }
 
-      const subType = editingUser.subscriptionType || 'months';
-      const subDuration = editingUser.subscriptionDuration || '1';
+      const assigningFreeTrial = isFreeTrialPlan(editingUser.planName || editingUser.plan, editingUser);
 
-      let expiresAt = null;
-      if (subType === 'days') {
-        expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + parseInt(subDuration));
-      } else if (subType === 'months') {
-        expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + parseInt(subDuration));
-      } else if (subType === 'lifetime') {
-        expiresAt = null;
+      if (assigningFreeTrial) {
+        const trialDays = Number(tenantFreeTrial.days || 15);
+        const trialCredits = tenantFreeTrial.credits !== undefined
+          ? Number(tenantFreeTrial.credits)
+          : Number(editingUser.aiCredits || 500);
+        const trialTools = Array.isArray(tenantFreeTrial.allowedTools) && tenantFreeTrial.allowedTools.length
+          ? tenantFreeTrial.allowedTools
+          : (editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key));
+
+        await setDoc(doc(db, 'users', editingUser.id), {
+          name: editingUser.name || '',
+          email: editingUser.email || '',
+          phoneNumber: `${countryData[editingUser.country || 'EG'].code}${editingUser.phoneNumber || ''}`,
+          licenseKey: editingUser.licenseKey || '',
+          country: editingUser.country || 'EG',
+          subscriptionType: 'days',
+          subscriptionDuration: String(trialDays),
+          expiresAt: null,
+          planName: 'Free Trial',
+          plan: 'Free Trial',
+          isTrial: true,
+          trialStartedAt: new Date().toISOString(),
+          roleCategory: editingUser.roleCategory || 'user',
+          isTeamMember: editingUser.roleCategory === 'team',
+          aiCredits: trialCredits,
+          allowedTools: trialTools
+        }, { merge: true });
+      } else {
+        const subType = editingUser.subscriptionType || 'months';
+        const subDuration = editingUser.subscriptionDuration || '1';
+
+        let expiresAt = null;
+        if (subType === 'days') {
+          expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + parseInt(subDuration));
+        } else if (subType === 'months') {
+          expiresAt = new Date();
+          expiresAt.setMonth(expiresAt.getMonth() + parseInt(subDuration));
+        } else if (subType === 'lifetime') {
+          expiresAt = null;
+        }
+
+        const activePlan = editingUser.planName || editingUser.plan || 'Starter';
+
+        await setDoc(doc(db, 'users', editingUser.id), {
+          name: editingUser.name || '',
+          email: editingUser.email || '',
+          phoneNumber: `${countryData[editingUser.country || 'EG'].code}${editingUser.phoneNumber || ''}`,
+          licenseKey: editingUser.licenseKey || '',
+          country: editingUser.country || 'EG',
+          subscriptionType: subType,
+          subscriptionDuration: subType === 'lifetime' ? null : subDuration,
+          expiresAt: expiresAt,
+          planName: activePlan,
+          plan: activePlan,
+          isTrial: false,
+          roleCategory: editingUser.roleCategory || 'user',
+          isTeamMember: editingUser.roleCategory === 'team',
+          aiCredits: Number(editingUser.aiCredits || 0),
+          allowedTools: editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
+        }, { merge: true });
       }
-
-      const activePlan = editingUser.planName || editingUser.plan || 'Starter';
-
-      await setDoc(doc(db, 'users', editingUser.id), {
-        name: editingUser.name || '',
-        email: editingUser.email || '',
-        phoneNumber: `${countryData[editingUser.country || 'EG'].code}${editingUser.phoneNumber || ''}`,
-        licenseKey: editingUser.licenseKey || '',
-        country: editingUser.country || 'EG',
-        subscriptionType: subType,
-        subscriptionDuration: subType === 'lifetime' ? null : subDuration,
-        expiresAt: expiresAt,
-        planName: activePlan,
-        plan: activePlan,
-        isTrial: false,
-        roleCategory: editingUser.roleCategory || 'user',
-        isTeamMember: editingUser.roleCategory === 'team',
-        aiCredits: Number(editingUser.aiCredits || 0),
-        allowedTools: editingUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
-      }, { merge: true });
 
       setShowEditModal(false);
       setEditingUser(null);
@@ -3754,6 +3793,7 @@ const AdminDashboard = () => {
                   <select
                     className="form-control"
                     value={editingUser.subscriptionType || 'months'}
+                    disabled={!!editingUser.isTrial}
                     onChange={e => setEditingUser({ ...editingUser, subscriptionType: e.target.value, subscriptionDuration: e.target.value === 'lifetime' ? '' : '1' })}
                   >
                     <option value="days">{isRTL ? 'أيام' : 'Days'}</option>
@@ -3766,27 +3806,70 @@ const AdminDashboard = () => {
                   <label className="field-label">{t('admin.planNameLabel') || 'Plan Name'}</label>
                   <select
                     className="form-control"
-                    value={['starter', 'growth', 'pro'].includes((editingUser.planName || '').toLowerCase()) ? (editingUser.planName || '').toLowerCase() : 'custom'}
+                    value={(() => {
+                      const p = (editingUser.planName || '').toLowerCase();
+                      if (editingUser.isTrial || p === 'free trial' || p === 'free' || p.includes('مجاني') || p.includes('تجريب')) return 'free-trial';
+                      if (['starter', 'growth', 'pro'].includes(p)) return p;
+                      return 'custom';
+                    })()}
                     onChange={e => {
                       const val = e.target.value;
-                      if (val === 'starter') {
-                        setEditingUser({ ...editingUser, planName: 'Starter', plan: 'Starter' });
+                      if (val === 'free-trial') {
+                        const trialDays = String(tenantFreeTrial.days || 15);
+                        const trialCredits = tenantFreeTrial.credits !== undefined ? Number(tenantFreeTrial.credits) : 500;
+                        const trialTools = Array.isArray(tenantFreeTrial.allowedTools) && tenantFreeTrial.allowedTools.length
+                          ? tenantFreeTrial.allowedTools
+                          : AVAILABLE_TOOLS.map(t => t.key);
+                        setEditingUser({
+                          ...editingUser,
+                          planName: 'Free Trial',
+                          plan: 'Free Trial',
+                          isTrial: true,
+                          subscriptionType: 'days',
+                          subscriptionDuration: trialDays,
+                          aiCredits: trialCredits,
+                          allowedTools: trialTools
+                        });
+                      } else if (val === 'starter') {
+                        setEditingUser({ ...editingUser, planName: 'Starter', plan: 'Starter', isTrial: false });
                       } else if (val === 'growth') {
-                        setEditingUser({ ...editingUser, planName: 'Growth', plan: 'Growth' });
+                        setEditingUser({ ...editingUser, planName: 'Growth', plan: 'Growth', isTrial: false });
                       } else if (val === 'pro') {
-                        setEditingUser({ ...editingUser, planName: 'Pro', plan: 'Pro' });
+                        setEditingUser({ ...editingUser, planName: 'Pro', plan: 'Pro', isTrial: false });
                       } else {
-                        setEditingUser({ ...editingUser, planName: 'Enterprise', plan: 'Enterprise' });
+                        setEditingUser({ ...editingUser, planName: 'Enterprise', plan: 'Enterprise', isTrial: false });
                       }
                     }}
                   >
+                    <option value="free-trial">
+                      {isRTL
+                        ? `الباقة المجانية (تجربة ${tenantFreeTrial.days || 15} يوم)`
+                        : `Free Trial (${tenantFreeTrial.days || 15} days)`}
+                    </option>
                     <option value="starter">{isRTL ? 'ستارتر (Starter)' : 'Starter'}</option>
                     <option value="growth">{isRTL ? 'جروث (Growth)' : 'Growth'}</option>
                     <option value="pro">{isRTL ? 'برو (Pro)' : 'Pro'}</option>
                     <option value="custom">{isRTL ? 'باقة مخصصة (Custom Plan)' : 'Custom Plan'}</option>
                   </select>
                 </div>
-                {(!['starter', 'growth', 'pro'].includes((editingUser.planName || '').toLowerCase())) && (
+                {editingUser.isTrial && (
+                  <div style={{
+                    gridColumn: '1 / -1',
+                    marginBottom: '4px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    fontSize: '12px',
+                    color: 'var(--text2)',
+                    lineHeight: 1.5
+                  }}>
+                    {isRTL
+                      ? `سيتم تفعيل التجربة المجانية لمدة ${tenantFreeTrial.days || 15} يوم، مع ${tenantFreeTrial.credits !== undefined ? tenantFreeTrial.credits : 500} كريديت والأدوات المحددة في إعدادات الباقات.`
+                      : `Free trial will be applied for ${tenantFreeTrial.days || 15} days, with ${tenantFreeTrial.credits !== undefined ? tenantFreeTrial.credits : 500} credits and the tools configured in Plans settings.`}
+                  </div>
+                )}
+                {(!editingUser.isTrial && !['starter', 'growth', 'pro', 'free trial'].includes((editingUser.planName || '').toLowerCase())) && (
                   <div className="field">
                     <label className="field-label">{isRTL ? 'اسم الباقة المخصصة' : 'Custom Plan Name'}</label>
                     <input
@@ -3800,7 +3883,7 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {(editingUser.subscriptionType || 'months') !== 'lifetime' && (
+                {!editingUser.isTrial && (editingUser.subscriptionType || 'months') !== 'lifetime' && (
                   <div className="field">
                     <label className="field-label">{t('common.duration') || 'Duration'}</label>
                     <input
