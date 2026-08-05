@@ -2940,16 +2940,26 @@ const AdminDashboard = () => {
         <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
-          {/* Summary Stats Bar (Dynamically updated based on Date Filter) */}
+          {/* Summary Stats Bar (Dynamically updated based on Date & Role Category Filters) */}
           {(() => {
-            const dateFilteredUsers = users.filter(u => isDateInSelectedRange(getUserCreatedDate(u), dateRangePreset, startDate, endDate));
+            const dateFilteredUsers = users.filter(u => {
+              if (!isDateInSelectedRange(getUserCreatedDate(u), dateRangePreset, startDate, endDate)) return false;
+              if (roleCategoryFilter !== 'all') {
+                const catKey = getUserCategory(u).key;
+                if (catKey !== roleCategoryFilter) return false;
+              }
+              return true;
+            });
             const totalCount = dateFilteredUsers.length;
             const newCount = dateFilteredUsers.filter(u => isUserNew(u)).length;
-            const activeTrialCount = dateFilteredUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_active').length;
+            const activeTrialCount = dateFilteredUsers.filter(u => {
+              const trialDet = getTrialStatusDetailed(u);
+              return trialDet && (trialDet.type === 'trial_active' || trialDet.type === 'starter') && !trialDet.expired;
+            }).length;
             const expiredTrialCount = dateFilteredUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length;
             const paidCount = dateFilteredUsers.filter(u => {
               const st = getTrialStatusDetailed(u);
-              return st.type.startsWith('paid') || st.type === 'lifetime';
+              return st && (st.type.startsWith('paid') || st.type === 'lifetime');
             }).length;
 
             return (
@@ -2963,7 +2973,7 @@ const AdminDashboard = () => {
               }}>
                 <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700' }}>
-                    {isRTL ? (dateRangePreset === 'all' ? '👥 إجمالي المستخدمين' : '👥 مستخدمي الفترة') : '👥 Period Users'}
+                    {isRTL ? (dateRangePreset === 'all' && roleCategoryFilter === 'all' ? '👥 إجمالي المستخدمين' : '👥 مستخدمي الفلتر') : '👥 Period Users'}
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', marginTop: '2px' }}>{totalCount}</div>
                 </div>
