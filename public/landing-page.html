@@ -1617,6 +1617,120 @@
       position: relative
     }
 
+    /* ═══ SOCIAL COMMUNITY ═══ */
+    #social-community {
+      padding: 70px 5%;
+      background: linear-gradient(180deg, rgba(8, 8, 15, 0), rgba(108, 53, 255, .05), rgba(255, 107, 53, .05), rgba(8, 8, 15, 0));
+      border-top: 1px solid var(--edge);
+    }
+
+    .social-community-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .social-head {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .social-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+
+    .social-card {
+      background: var(--s1);
+      border: 1px solid var(--edge);
+      border-radius: var(--r2);
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .social-card.fb-page:hover { border-color: #1877F2; transform: translateY(-5px); box-shadow: 0 12px 30px rgba(24, 119, 242, 0.25); }
+    .social-card.fb-group:hover { border-color: #00C6FF; transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0, 198, 255, 0.25); }
+    .social-card.instagram:hover { border-color: #E4405F; transform: translateY(-5px); box-shadow: 0 12px 30px rgba(228, 64, 95, 0.25); }
+    .social-card.youtube:hover { border-color: #FF0000; transform: translateY(-5px); box-shadow: 0 12px 30px rgba(255, 0, 0, 0.25); }
+    .social-card.tiktok:hover { border-color: #00F2FE; transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0, 242, 254, 0.25); }
+
+    .social-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: var(--s2);
+      border: 1px solid var(--edge);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      color: var(--t1);
+      transition: all 0.3s ease;
+    }
+
+    .social-card.fb-page .social-icon-box { color: #1877F2; }
+    .social-card.fb-group .social-icon-box { color: #00C6FF; }
+    .social-card.instagram .social-icon-box { color: #E4405F; }
+    .social-card.youtube .social-icon-box { color: #FF0000; }
+    .social-card.tiktok .social-icon-box { color: #00F2FE; }
+
+    .social-card:hover .social-icon-box {
+      transform: scale(1.1);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .social-card-title {
+      font-family: var(--ff);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--t1);
+      margin-bottom: 4px;
+    }
+
+    .social-card-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--s2);
+      color: var(--t2);
+      margin-bottom: 10px;
+      border: 1px solid var(--edge);
+    }
+
+    .social-card-desc {
+      font-size: 12px;
+      color: var(--t2);
+      line-height: 1.5;
+      margin-bottom: 16px;
+      flex-grow: 1;
+    }
+
+    .social-card-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--or);
+      transition: gap 0.2s ease;
+    }
+
+    .social-card:hover .social-card-action {
+      gap: 10px;
+      color: var(--t1);
+    }
+
+    html[dir="rtl"] .social-card-action span:last-child {
+      transform: rotate(180deg);
+    }
+
     /* ═══ FOOTER ═══ */
     #footer {
       padding: 60px 5% 30px;
@@ -2645,6 +2759,41 @@
         justify-content: center
       }
 
+      /* Social Community Mobile */
+      #social-community {
+        padding: 40px 4%;
+      }
+
+      .social-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .social-card {
+        padding: 16px 12px;
+      }
+
+      .social-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+      }
+
+      .social-icon-box svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .social-card-title {
+        font-size: 13px;
+      }
+
+      .social-card-desc {
+        font-size: 11px;
+        margin-bottom: 10px;
+      }
+
       /* Footer */
       .footer-top {
         grid-template-columns: 1fr;
@@ -2794,6 +2943,7 @@
         <a href="#tools" data-t="landing-nav-tools">Tools</a>
         <a href="#who" data-t="landing-nav-forwho">For Who</a>
         <a href="#pricing" data-t="landing-nav-pricing">Pricing</a>
+        <a href="#social-community" data-t="landing-nav-community">Community</a>
         <a href="#roadmap" data-t="landing-nav-roadmap">Roadmap</a>
       </nav>
       <div class="hdr-btns"><button class="btn btn-ghost" onclick="toggleLang(this)"
@@ -2829,6 +2979,10 @@
       <a href="#pricing" onclick="toggleMobNav(false)">
         <span class="mob-nav-icon">💳</span>
         <span data-t="landing-nav-pricing">Pricing</span>
+      </a>
+      <a href="#social-community" onclick="toggleMobNav(false)">
+        <span class="mob-nav-icon">🌐</span>
+        <span data-t="landing-nav-community">Community</span>
       </a>
       <a href="#roadmap" onclick="toggleMobNav(false)">
         <span class="mob-nav-icon">🗺️</span>
@@ -3571,6 +3725,74 @@
     </div>
   </section>
 
+  <!-- ══════════════ SOCIAL COMMUNITY ══════════════ -->
+  <section id="social-community">
+    <div class="social-community-wrap reveal">
+      <div class="social-head">
+        <div class="eyebrow" data-t="landing-social-eyebrow">🌐 تواصل معنا</div>
+        <h2 class="sec-h2" data-t="landing-social-title">تابعنا على <span class="grd">منصاتنا الرسمية</span></h2>
+        <p class="sec-sub" data-t="landing-social-sub">كن على تواصل معنا لمتابعة الشروحات والتحديثات اليومية والانضمام لمجتمع رواد الأعمال</p>
+      </div>
+
+      <div class="social-grid">
+        <!-- Facebook Page -->
+        <a href="https://www.facebook.com/share/1HTzsrK8Ur/" target="_blank" rel="noopener noreferrer" class="social-card fb-page">
+          <div class="social-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </div>
+          <div class="social-card-title" data-t="landing-social-fb-page-title">صفحة فيسبوك</div>
+          <div class="social-card-badge">Facebook Page</div>
+          <div class="social-card-desc" data-t="landing-social-fb-page-desc">الصفحة الرسمية للتحديثات والإعلانات</div>
+          <div class="social-card-action"><span data-t="landing-social-btn-follow">متابعة</span> <span>←</span></div>
+        </a>
+
+        <!-- Facebook Group -->
+        <a href="https://www.facebook.com/groups/963841463139798" target="_blank" rel="noopener noreferrer" class="social-card fb-group">
+          <div class="social-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="social-card-title" data-t="landing-social-fb-group-title">مجتمع فيسبوك</div>
+          <div class="social-card-badge">Facebook Group</div>
+          <div class="social-card-desc" data-t="landing-social-fb-group-desc">انضم لجروب المناقشات وتبادل الخبرات</div>
+          <div class="social-card-action"><span data-t="landing-social-btn-join">انضمام</span> <span>←</span></div>
+        </a>
+
+        <!-- Instagram -->
+        <a href="https://www.instagram.com/upklickapp?igsh=cXpxd2JyYm84YXAy" target="_blank" rel="noopener noreferrer" class="social-card instagram">
+          <div class="social-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </div>
+          <div class="social-card-title" data-t="landing-social-ig-title">إنستغرام</div>
+          <div class="social-card-badge">@upklickapp</div>
+          <div class="social-card-desc" data-t="landing-social-ig-desc">شروحات سريعة، نصائح وقصص يومية</div>
+          <div class="social-card-action"><span data-t="landing-social-btn-follow">متابعة</span> <span>←</span></div>
+        </a>
+
+        <!-- YouTube -->
+        <a href="https://youtube.com/@upklick?si=NILmLzFek8kpXgW_" target="_blank" rel="noopener noreferrer" class="social-card youtube">
+          <div class="social-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          </div>
+          <div class="social-card-title" data-t="landing-social-yt-title">قناة يوتيوب</div>
+          <div class="social-card-badge">@upklick</div>
+          <div class="social-card-desc" data-t="landing-social-yt-desc">شروحات تفصيلية وفيديوهات تعليمية</div>
+          <div class="social-card-action"><span data-t="landing-social-btn-sub">اشترك</span> <span>←</span></div>
+        </a>
+
+        <!-- TikTok -->
+        <a href="https://www.tiktok.com/@upklick?_r=1&_d=f28fc0h8i66add&sec_uid=MS4wLjABAAAAkMBZKkIRbgEAmM_xK-wY2Wl6jAL8r0bPFVLYT_AU9HwujwMzA1UEtqaV0hbNGF41&share_author_id=7648736388909319188&sharer_language=ar&source=h5_m&u_code=df2ghc9fek61e6&timestamp=1786028372&user_id=6883792107636442114&sec_user_id=MS4wLjABAAAATsammY7w2ghuC6k_bxplJ73oc7oJaYLJLh8yJpdEHOyYsem72AQdWbiJgPoAFgZ5&item_author_type=2&utm_source=copy&utm_campaign=client_share&utm_medium=android&share_iid=7667201040627025684&share_link_id=c55ac5be-9206-424e-b7bb-7c4db635085a&share_app_id=1233&ugbiz_name=ACCOUNT&ug_btm=b6880%2Cb5836&social_share_type=5&share_enter_from=others_homepage&item_author_type=2&enable_checksum=1" target="_blank" rel="noopener noreferrer" class="social-card tiktok">
+          <div class="social-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.33a6.33 6.33 0 0 0-1-.08 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.05a8.28 8.28 0 0 0 4.88 1.58V7.18a4.85 4.85 0 0 1-1-.49z"/></svg>
+          </div>
+          <div class="social-card-title" data-t="landing-social-tt-title">تيك توك</div>
+          <div class="social-card-badge">@upklick</div>
+          <div class="social-card-desc" data-t="landing-social-tt-desc">فيديوهات قصيرة وأفكار نمو سريعة</div>
+          <div class="social-card-action"><span data-t="landing-social-btn-follow">متابعة</span> <span>←</span></div>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <!-- ══════════════ CTA FINAL ══════════════ -->
   <section id="cta-final">
     <div class="container reveal">
@@ -3606,11 +3828,21 @@
           <p class="footer-tagline" data-t="landing-footer-tagline">The AI Operating System for Arab creators, coaches,
             and entrepreneurs. Build, grow, and manage everything from one dashboard.</p>
           <div class="footer-socials">
-            <a class="social-btn" href="#" title="Instagram">📸</a>
-            <a class="social-btn" href="#" title="TikTok">🎵</a>
-            <a class="social-btn" href="#" title="YouTube">▶️</a>
-            <a class="social-btn" href="#" title="Telegram">✈️</a>
-            <a class="social-btn" href="#" title="X">🐦</a>
+            <a class="social-btn" href="https://www.facebook.com/share/1HTzsrK8Ur/" target="_blank" rel="noopener noreferrer" title="Facebook Page">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+            <a class="social-btn" href="https://www.facebook.com/groups/963841463139798" target="_blank" rel="noopener noreferrer" title="Facebook Group">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </a>
+            <a class="social-btn" href="https://www.instagram.com/upklickapp?igsh=cXpxd2JyYm84YXAy" target="_blank" rel="noopener noreferrer" title="Instagram">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </a>
+            <a class="social-btn" href="https://youtube.com/@upklick?si=NILmLzFek8kpXgW_" target="_blank" rel="noopener noreferrer" title="YouTube">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            </a>
+            <a class="social-btn" href="https://www.tiktok.com/@upklick?_r=1&_d=f28fc0h8i66add&sec_uid=MS4wLjABAAAAkMBZKkIRbgEAmM_xK-wY2Wl6jAL8r0bPFVLYT_AU9HwujwMzA1UEtqaV0hbNGF41&share_author_id=7648736388909319188&sharer_language=ar&source=h5_m&u_code=df2ghc9fek61e6&timestamp=1786028372&user_id=6883792107636442114&sec_user_id=MS4wLjABAAAATsammY7w2ghuC6k_bxplJ73oc7oJaYLJLh8yJpdEHOyYsem72AQdWbiJgPoAFgZ5&item_author_type=2&utm_source=copy&utm_campaign=client_share&utm_medium=android&share_iid=7667201040627025684&share_link_id=c55ac5be-9206-424e-b7bb-7c4db635085a&share_app_id=1233&ugbiz_name=ACCOUNT&ug_btm=b6880%2Cb5836&social_share_type=5&share_enter_from=others_homepage&item_author_type=2&enable_checksum=1" target="_blank" rel="noopener noreferrer" title="TikTok">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.33a6.33 6.33 0 0 0-1-.08 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V9.05a8.28 8.28 0 0 0 4.88 1.58V7.18a4.85 4.85 0 0 1-1-.49z"/></svg>
+            </a>
           </div>
         </div>
         <div class="footer-col">
@@ -4103,6 +4335,25 @@
       'landing-final-cta-talk': '💬 Talk to Us',
       'landing-final-note': '✓ Free forever plan available &nbsp;&nbsp; ✓ No credit card &nbsp;&nbsp; ✓ Arabic & English',
 
+      // Social section translations
+      'landing-nav-community': 'Community',
+      'landing-social-eyebrow': '🌐 Connect With Us',
+      'landing-social-title': 'Follow Us On Our <span class="grd">Official Channels</span>',
+      'landing-social-sub': 'Join the UpKlick community across all social networks to stay updated with daily tips, tutorials, and system updates.',
+      'landing-social-fb-page-title': 'Facebook Page',
+      'landing-social-fb-page-desc': 'Official page for updates & announcements',
+      'landing-social-fb-group-title': 'Facebook Community',
+      'landing-social-fb-group-desc': 'Join our community group for strategy & networking',
+      'landing-social-ig-title': 'Instagram',
+      'landing-social-ig-desc': 'Daily reels, tips & interactive stories',
+      'landing-social-yt-title': 'YouTube Channel',
+      'landing-social-yt-desc': 'In-depth tutorials & video guides',
+      'landing-social-tt-title': 'TikTok',
+      'landing-social-tt-desc': 'Shorts & viral growth hacks',
+      'landing-social-btn-follow': 'Follow',
+      'landing-social-btn-join': 'Join',
+      'landing-social-btn-sub': 'Subscribe',
+
       // Footer
       'landing-footer-col-product': 'Product',
       'landing-footer-link-tools': 'All Tools',
@@ -4130,6 +4381,7 @@
       'landing-nav-tools': 'الأدوات',
       'landing-nav-forwho': 'لمن',
       'landing-nav-pricing': 'الأسعار',
+      'landing-nav-community': 'مجتمعنا',
       'landing-nav-roadmap': 'خارطة الطريق',
       'landing-nav-signin': 'تسجيل الدخول',
       'landing-nav-startfree': 'ابدأ مجاناً ←',
@@ -4160,6 +4412,24 @@
       'landing-final-title': 'جاهز لإدارة عملك<br><span class="grd">كمدير تنفيذي؟</span>',
       'landing-final-sub': 'انضم إلى أكثر من 2,400 رائد أعمال عربي يستخدمون UpKlick بالفعل.<br>ابدأ مجاناً — بدون بطاقة، بدون التزامات.',
       'landing-footer-tagline': 'نظام التشغيل بالذكاء الاصطناعي للمبدعين والكوتشز وروادالأعمال . ابنِ، انمُ، وأدر كل شيء من لوحة تحكم واحدة.',
+
+      // Social section translations (Arabic)
+      'landing-social-eyebrow': '🌐 تواصل معنا',
+      'landing-social-title': 'تابعنا على <span class="grd">منصاتنا الرسمية</span>',
+      'landing-social-sub': 'كن على تواصل معنا لمتابعة الشروحات والتحديثات اليومية والانضمام لمجتمع رواد الأعمال',
+      'landing-social-fb-page-title': 'صفحة الفيسبوك',
+      'landing-social-fb-page-desc': 'الصفحة الرسمية للتحديثات والإعلانات',
+      'landing-social-fb-group-title': 'مجتمع الفيسبوك',
+      'landing-social-fb-group-desc': 'انضم لجروب المناقشات وتبادل الخبرات',
+      'landing-social-ig-title': 'إنستغرام',
+      'landing-social-ig-desc': 'شروحات سريعة، نصائح وقصص يومية',
+      'landing-social-yt-title': 'قناة اليوتيوب',
+      'landing-social-yt-desc': 'شروحات تفصيلية وفيديوهات تعليمية',
+      'landing-social-tt-title': 'تيك توك',
+      'landing-social-tt-desc': 'فيديوهات قصيرة وأفكار نمو سريعة',
+      'landing-social-btn-follow': 'متابعة',
+      'landing-social-btn-join': 'انضمام',
+      'landing-social-btn-sub': 'اشترك',
       'landing-ss-dashboard': 'لوحة التحكم الرئيسية',
       'landing-ss-crm': 'مطور السيرة الذاتية',
       'landing-ss-marketing': 'مولد صفحة الهبوط',
