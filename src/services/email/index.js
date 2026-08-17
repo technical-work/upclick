@@ -3,7 +3,10 @@ import {
   getVerificationEmailTemplate,
   getResetPasswordEmailTemplate,
   getWelcomeEmailTemplate,
-  getNotificationEmailTemplate
+  getNotificationEmailTemplate,
+  getTrialWelcomeEmailTemplate,
+  getTrial7DaysLeftEmailTemplate,
+  getTrialEndedEmailTemplate
 } from './templates';
 
 /**
@@ -44,7 +47,7 @@ class EmailService {
   }
 
   /**
-   * Send Welcome Email (Future extensibility)
+   * Send Welcome Email
    */
   async sendWelcomeEmail({ to, name, dashboardUrl }) {
     const html = getWelcomeEmailTemplate({ name, dashboardUrl });
@@ -53,7 +56,34 @@ class EmailService {
   }
 
   /**
-   * Send Generic / Notification Email (Future extensibility)
+   * Send Trial Email 1 — Welcome (Start of 15-day Free Trial)
+   */
+  async sendTrialWelcomeEmail({ to, name, dashboardUrl }) {
+    const html = getTrialWelcomeEmailTemplate({ name, dashboardUrl });
+    const subject = 'أهلاً بيك في UpKlick 👋 | Welcome to UpKlick';
+    return this.provider.sendEmail({ to, subject, html });
+  }
+
+  /**
+   * Send Trial Email 2 — 7 Days Remaining
+   */
+  async sendTrial7DaysLeftEmail({ to, name, dashboardUrl }) {
+    const html = getTrial7DaysLeftEmailTemplate({ name, dashboardUrl });
+    const subject = 'فاضل 7 أيام على انتهاء تجربتك المجانية ⏳ | 7 Days Left in Your Free Trial';
+    return this.provider.sendEmail({ to, subject, html });
+  }
+
+  /**
+   * Send Trial Email 3 — Trial Ended (15 Days Finished)
+   */
+  async sendTrialEndedEmail({ to, name, pricingUrl }) {
+    const html = getTrialEndedEmailTemplate({ name, pricingUrl });
+    const subject = 'انتهت تجربتك المجانية على UpKlick | Your UpKlick Free Trial Has Ended';
+    return this.provider.sendEmail({ to, subject, html });
+  }
+
+  /**
+   * Send Generic / Notification Email
    */
   async sendNotificationEmail({ to, name, title, message, actionUrl, actionText }) {
     const html = getNotificationEmailTemplate({ name, title, message, actionUrl, actionText });
@@ -64,3 +94,4 @@ class EmailService {
 
 export const emailService = new EmailService();
 export default emailService;
+
