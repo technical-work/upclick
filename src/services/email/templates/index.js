@@ -3,6 +3,18 @@
  * Designed with modern responsive styles, dark/purple accent palette, and RTL Arabic support.
  */
 
+const getLogoHeader = () => {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
+  const logoUrl = `${baseUrl.replace(/\/$/, '')}/best_logo_dark.png`;
+  return `
+    <div class="logo-header">
+      <a href="${baseUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+        <img src="${logoUrl}" alt="UpKlick" class="logo-img" style="max-height: 48px; width: auto; max-width: 220px; display: block; margin: 0 auto; border: 0;" />
+      </a>
+    </div>
+  `;
+};
+
 const baseEmailStyle = `
   body {
     margin: 0;
@@ -28,17 +40,13 @@ const baseEmailStyle = `
     text-align: center;
     margin-bottom: 28px;
   }
-  .logo-title {
-    color: #ffffff;
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    margin: 0;
-  }
-  .logo-gradient {
-    background: linear-gradient(135deg, #FF6B35, #6C35FF);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .logo-img {
+    max-height: 48px;
+    height: auto;
+    width: auto;
+    max-width: 220px;
+    display: inline-block;
+    border: 0;
   }
   .title {
     color: #ffffff;
@@ -119,9 +127,7 @@ export function getVerificationEmailTemplate({ name, code, verificationLink }) {
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
       <h2 class="title">مرحباً ${recipientName} 👋</h2>
       <p class="text">
         شكراً لتسجيلك في منصة UpKlick! رمز تفعيل حسابك المكون من 6 أرقام هو:
@@ -185,9 +191,7 @@ export function getResetPasswordEmailTemplate({ name, code }) {
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
       <h2 class="title">طلب إعادة تعيين كلمة المرور 🔐</h2>
       <p class="text">
         مرحباً ${recipientName}، لقد تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك في UpKlick.
@@ -226,9 +230,7 @@ export function getWelcomeEmailTemplate({ name, dashboardUrl }) {
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
       <h2 class="title">أهلاً بك في عائلة UpKlick! 🚀</h2>
       <p class="text">
         مرحباً ${recipientName}، يسعدنا وجودك معنا. يمكنك الآن البدء في بناء وتنمية أعمالك وتسهيل عملياتك باستخدام أدوات UpKlick الذكية.
@@ -260,9 +262,7 @@ export function getNotificationEmailTemplate({ name, title, message, actionUrl, 
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
       <h2 class="title">${title || 'إشعار جديد'}</h2>
       <p class="text">مرحباً ${recipientName}،</p>
       <p class="text">${message}</p>
@@ -284,7 +284,6 @@ export function getNotificationEmailTemplate({ name, title, message, actionUrl, 
  * Trial Email 1 — Welcome (Start of 15-day Free Trial)
  */
 export function getTrialWelcomeEmailTemplate({ name, dashboardUrl }) {
-  const recipientName = name ? name : '';
   const targetUrl = dashboardUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net/dashboard';
 
   return `
@@ -321,9 +320,7 @@ export function getTrialWelcomeEmailTemplate({ name, dashboardUrl }) {
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
 
       <!-- Arabic Version -->
       <div class="lang-section-ar">
@@ -409,9 +406,7 @@ export function getTrial7DaysLeftEmailTemplate({ name, dashboardUrl }) {
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
 
       <!-- Arabic Version -->
       <div class="lang-section-ar">
@@ -491,9 +486,7 @@ export function getTrialEndedEmailTemplate({ name, pricingUrl }) {
 <body>
   <div class="container">
     <div class="card">
-      <div class="logo-header">
-        <h1 class="logo-title"><span class="logo-gradient">UpKlick</span></h1>
-      </div>
+      ${getLogoHeader()}
 
       <!-- Arabic Version -->
       <div class="lang-section-ar">
@@ -538,4 +531,5 @@ export function getTrialEndedEmailTemplate({ name, pricingUrl }) {
 </html>
   `;
 }
+
 
