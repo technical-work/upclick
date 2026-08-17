@@ -5,21 +5,19 @@
 
 const getLogoHeader = () => {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
-  const logoUrl = `${baseUrl.replace(/\/$/, '')}/best_logo_dark.png`;
   return `
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td align="center">
-          <a href="${baseUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-            <div style="height: 80px; width: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-              <img src="${logoUrl}" alt="UpKlick" style="height: 280px; object-fit: contain; margin-top: 10px; border: 0; outline: none; text-decoration: none;" />
-            </div>
+          <a href="${baseUrl}" target="_blank" style="text-decoration: none;">
+            <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #FF6B35, #6C35FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: #FF6B35;">UpKlick</h1>
           </a>
         </td>
       </tr>
     </table>
   `;
 };
+
 
 
 const baseEmailStyle = `
