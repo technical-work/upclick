@@ -10,7 +10,7 @@ const getLogoHeader = () => {
       <tr>
         <td align="center">
           <a href="${baseUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #FF6B35, #6C35FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: #FF6B35;">UpKlick</h1>
+            <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: #FF6B35;">UpKlick</h1>
           </a>
         </td>
       </tr>
