@@ -7,17 +7,20 @@ const getLogoHeader = () => {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
   const logoUrl = `${baseUrl.replace(/\/$/, '')}/best_logo_dark.png`;
   return `
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 28px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
       <tr>
         <td align="center">
           <a href="${baseUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-            <img src="${logoUrl}" alt="UpKlick" width="240" style="width: 240px; max-width: 85%; height: auto; display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none;" />
+            <div style="height: 80px; width: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+              <img src="${logoUrl}" alt="UpKlick" style="height: 280px; object-fit: contain; margin-top: 10px; border: 0; outline: none; text-decoration: none;" />
+            </div>
           </a>
         </td>
       </tr>
     </table>
   `;
 };
+
 
 const baseEmailStyle = `
   body {
