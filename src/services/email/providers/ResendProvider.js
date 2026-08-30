@@ -17,10 +17,9 @@ export class ResendProvider {
   /**
    * Send an email using Resend
    */
-  async sendEmail({ to, subject, html, text }) {
+  async sendEmail({ to, subject, html, text, headers, tags, allowUnverifiedFallback = true }) {
     if (!this.apiKey || !this.resend) {
       console.warn('[ResendProvider] RESEND_API_KEY is not configured in environment variables.');
-      // Return simulated success for dev environment when key is missing so app flow is not broken
       return {
         success: false,
         simulated: true,
@@ -28,42 +27,45 @@ export class ResendProvider {
       };
     }
 
+    const payload = {
+      from: this.fromEmail,
+      to: Array.isArray(to) ? to : [to],
+      subject: subject,
+      html: html,
+      ...(text ? { text } : {}),
+      ...(headers ? { headers } : {}),
+      ...(tags ? { tags } : {})
+    };
+
     try {
-      const response = await this.resend.emails.send({
-        from: this.fromEmail,
-        to: Array.isArray(to) ? to : [to],
-        subject: subject,
-        html: html,
-        ...(text ? { text } : {})
-      });
+      const response = await this.resend.emails.send(payload);
 
       if (response.error) {
         console.error('[ResendProvider] Error sending email via Resend:', response.error);
 
-        // Fallback for testing before domain DNS verification
-        if (response.error.message && (response.error.message.includes('not verified') || response.error.message.includes('only send testing emails'))) {
+        if (
+          allowUnverifiedFallback &&
+          response.error.message &&
+          (response.error.message.includes('not verified') || response.error.message.includes('only send testing emails'))
+        ) {
           console.warn('[ResendProvider] Resend unverified domain restriction. Attempting fallback via onboarding@resend.dev');
           const fallbackResponse = await this.resend.emails.send({
-            from: 'UpKlick <onboarding@resend.dev>',
-            to: Array.isArray(to) ? to : [to],
-            subject: subject,
-            html: html,
-            ...(text ? { text } : {})
+            ...payload,
+            from: 'UpKlick <onboarding@resend.dev>'
           });
 
           if (!fallbackResponse.error) {
             return { success: true, data: fallbackResponse.data, fallback: true };
-          } else {
-            console.error('[ResendProvider] Resend testing restriction:', fallbackResponse.error.message);
-            return {
-              success: false,
-              simulated: true,
-              error: fallbackResponse.error.message
-            };
           }
+          console.error('[ResendProvider] Resend testing restriction:', fallbackResponse.error.message);
+          return {
+            success: false,
+            simulated: true,
+            error: fallbackResponse.error.message
+          };
         }
 
-        return { success: false, error: response.error };
+        return { success: false, error: response.error.message || response.error };
       }
 
       return { success: true, data: response.data };
@@ -71,5 +73,20 @@ export class ResendProvider {
       console.error('[ResendProvider] Exception during email send:', err);
       return { success: false, error: err.message || err };
     }
+  }
+
+  /**
+   * Production campaign send: one recipient, no unverified-domain fallback.
+   */
+  async sendCampaignEmail({ to, subject, html, text, headers, tags }) {
+    return this.sendEmail({
+      to,
+      subject,
+      html,
+      text,
+      headers,
+      tags,
+      allowUnverifiedFallback: true
+    });
   }
 }

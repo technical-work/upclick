@@ -56,7 +56,28 @@ export async function POST(req) {
       const session = event.data.object;
 
       if (session.payment_status === 'paid') {
-        const { userId, planDuration, amount, currency, adminId, creditsToAdd, planName } = session.metadata || {};
+        const { userId, planDuration, amount, currency, adminId, creditsToAdd, planName, kind, domainOrderId } = session.metadata || {};
+
+        if (kind === 'domain' && domainOrderId) {
+          const orderRef = adminDb.collection('domain_orders').doc(domainOrderId);
+          const orderSnap = await orderRef.get();
+          if (orderSnap.exists) {
+            await orderRef.set({
+              status: orderSnap.data().status === 'completed' ? 'completed' : 'paid',
+              payment_id: session.id,
+              stripeSessionId: session.id,
+              paid_at: FieldValue.serverTimestamp(),
+              updated_at: FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+          const { fulfillDomainOrder } = await import('@/lib/domains/fulfillOrder');
+          await fulfillDomainOrder(adminDb, {
+            orderId: domainOrderId,
+            paymentId: session.id,
+            stripeSessionId: session.id
+          });
+          return NextResponse.json({ received: true, kind: 'domain' });
+        }
 
         if (!userId) {
           console.error('❌ Webhook error: Missing userId in session metadata');

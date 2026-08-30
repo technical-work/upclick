@@ -865,4 +865,268 @@
 
 .trend-music-icon {
   transition: transform 0.2s ease;
+}
+
+@keyframes outreachFadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes outreachPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 217, 139, 0.35); }
+  50% { opacity: 0.85; box-shadow: 0 0 0 6px rgba(0, 217, 139, 0); }
+}
+
+@keyframes outreachSpin {
+  to { transform: rotate(360deg); }
+}
+
+.admin-dashboard-theme .outreach-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-dashboard-theme .outreach-page .outreach-enter {
+  animation: outreachFadeUp 0.45s ease both;
+}
+
+.admin-dashboard-theme .outreach-page .outreach-enter-2 { animation-delay: 0.06s; }
+.admin-dashboard-theme .outreach-page .outreach-enter-3 { animation-delay: 0.12s; }
+.admin-dashboard-theme .outreach-page .outreach-enter-4 { animation-delay: 0.18s; }
+
+.admin-dashboard-theme .outreach-pill-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.admin-dashboard-theme .outreach-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg3);
+  min-height: 52px;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.admin-dashboard-theme .outreach-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--line2);
+}
+
+.admin-dashboard-theme .outreach-pill-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text3);
+}
+
+.admin-dashboard-theme .outreach-pill.is-ok .outreach-pill-dot {
+  background: var(--green);
+  animation: outreachPulse 2s ease infinite;
+}
+
+.admin-dashboard-theme .outreach-pill.is-warn .outreach-pill-dot { background: var(--amber); }
+.admin-dashboard-theme .outreach-pill.is-off .outreach-pill-dot { background: var(--text3); }
+.admin-dashboard-theme .outreach-pill.is-ok { border-color: rgba(0, 217, 139, 0.28); }
+.admin-dashboard-theme .outreach-pill.is-warn { border-color: rgba(255, 184, 0, 0.28); }
+
+.admin-dashboard-theme .outreach-pill-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.admin-dashboard-theme .outreach-pill-sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 1px;
+}
+
+.admin-dashboard-theme .outreach-banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  animation: outreachFadeUp 0.35s ease;
+}
+
+.admin-dashboard-theme .outreach-banner.warn {
+  background: rgba(255, 184, 0, 0.08);
+  border: 1px solid rgba(255, 184, 0, 0.22);
+  color: var(--amber);
+}
+
+.admin-dashboard-theme .outreach-banner.ok {
+  background: rgba(0, 217, 139, 0.1);
+  border: 1px solid rgba(0, 217, 139, 0.22);
+  color: var(--green);
+}
+
+.admin-dashboard-theme .outreach-banner.err {
+  background: rgba(255, 61, 110, 0.1);
+  border: 1px solid rgba(255, 61, 110, 0.22);
+  color: var(--red);
+}
+
+.admin-dashboard-theme .outreach-banner-close {
+  margin-inline-start: auto;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.admin-dashboard-theme .outreach-seg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.admin-dashboard-theme .outreach-seg-card {
+  text-align: start;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-dashboard-theme .outreach-seg-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--line2);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.admin-dashboard-theme .outreach-seg-card.is-active {
+  background: linear-gradient(180deg, rgba(236, 92, 49, 0.16), rgba(236, 92, 49, 0.05));
+  border-color: var(--accent);
+  box-shadow: 0 8px 22px rgba(236, 92, 49, 0.18);
+}
+
+.admin-dashboard-theme .outreach-seg-count {
+  font-size: 26px;
+  font-weight: 900;
+  margin-top: 8px;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-dashboard-theme .outreach-steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.admin-dashboard-theme .outreach-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+}
+
+.admin-dashboard-theme .outreach-step.is-on {
+  color: var(--text);
+  border-color: rgba(236, 92, 49, 0.4);
+  background: rgba(236, 92, 49, 0.12);
+}
+
+.admin-dashboard-theme .outreach-step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  background: var(--bg4);
+}
+
+.admin-dashboard-theme .outreach-step.is-on .outreach-step-num {
+  background: var(--accent);
+  color: #fff;
+}
+
+.admin-dashboard-theme .outreach-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.admin-dashboard-theme .outreach-check.is-done {
+  color: var(--green);
+}
+
+.admin-dashboard-theme .outreach-launch {
+  border: 1px solid rgba(236, 92, 49, 0.28);
+  background: linear-gradient(180deg, rgba(236, 92, 49, 0.1), rgba(108, 53, 255, 0.06));
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.admin-dashboard-theme .outreach-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.admin-dashboard-theme .outreach-status-badge.draft { background: rgba(255,255,255,0.06); color: var(--text2); }
+.admin-dashboard-theme .outreach-status-badge.sending { background: rgba(6, 182, 212, 0.15); color: var(--cyan); }
+.admin-dashboard-theme .outreach-status-badge.scheduled { background: rgba(108, 53, 255, 0.18); color: #c4b5fd; }
+.admin-dashboard-theme .outreach-status-badge.completed { background: rgba(0, 217, 139, 0.14); color: var(--green); }
+.admin-dashboard-theme .outreach-status-badge.cancelled { background: rgba(255, 61, 110, 0.12); color: var(--red); }
+.admin-dashboard-theme .outreach-status-badge.paused { background: rgba(255, 184, 0, 0.14); color: var(--amber); }
+
+.admin-dashboard-theme .outreach-progress {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.admin-dashboard-theme .outreach-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  transition: width 0.4s ease;
+}
+
+.admin-dashboard-theme .outreach-spin {
+  animation: outreachSpin 0.8s linear infinite;
+}
+
+@media (max-width: 800px) {
+  .admin-dashboard-theme .outreach-compose-grid {
+    grid-template-columns: 1fr !important;
+  }
 }

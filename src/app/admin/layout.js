@@ -49,6 +49,12 @@ const LayoutContent = ({ children }) => {
       ]
     },
     {
+      label: i18n.language === 'ar' ? 'التسويق والتواصل' : 'Outreach',
+      items: [
+        { path: '/admin?tab=outreach', label: i18n.language === 'ar' ? 'جدولة الإيميل والواتساب' : 'Email & WhatsApp', step: 1, roles: ['admin'] }
+      ]
+    },
+    {
       label: t('nav.contentMgmt'),
       items: [
         { path: '/admin?tab=sales', label: t('nav.salesMgmt'), step: 1, roles: ['admin'] },
@@ -56,7 +62,8 @@ const LayoutContent = ({ children }) => {
         { path: '/admin?tab=branding', label: t('nav.brandingSettings'), step: 3, roles: ['admin'] },
         { path: '/admin?tab=payments', label: t('nav.paymentSettings'), step: 4, roles: ['admin'] },
         { path: '/admin?tab=ai', label: i18n.language === 'ar' ? 'إعدادات الذكاء الاصطناعي' : 'AI Settings', step: 5, roles: ['admin'] },
-        { path: '/admin?tab=tracking', label: t('nav.trackingSettings'), step: 6, roles: ['admin'] }
+        { path: '/admin?tab=domains', label: i18n.language === 'ar' ? 'النطاقات والمسجّل' : 'Domains & Registrar', step: 6, roles: ['admin'] },
+        { path: '/admin?tab=tracking', label: t('nav.trackingSettings'), step: 7, roles: ['admin'] }
       ]
     },
     {

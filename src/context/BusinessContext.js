@@ -7,6 +7,7 @@ import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
 import { DEFAULT_AI_TOOLS } from '../constants/aiTools';
 import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { sitesFromAccountDocument } from '../lib/sites/userSitesScope';
 
 export const ALL_SYSTEM_TOOLS = [
   { key: 'crm', labelAr: 'إدارة العملاء (Smart CRM)', labelEn: 'Smart CRM', icon: '🎯' },
@@ -20,6 +21,8 @@ export const ALL_SYSTEM_TOOLS = [
   { key: 'social', labelAr: 'الحسابات الاجتماعية (Social Accounts)', labelEn: 'Social Accounts', icon: '🌐' },
   { key: 'tiktok-trends', labelAr: 'الترندات الاجتماعية (Social Trends)', labelEn: 'Social Trends', icon: '🔥' },
   { key: 'bio', labelAr: 'رابط السيرة الذاتية (Bio Link)', labelEn: 'Bio Link', icon: '🔗' },
+  { key: 'sites', labelAr: 'المواقع والفانلز (Sites & Funnels)', labelEn: 'Sites & Funnels', icon: '🌐' },
+  { key: 'domains', labelAr: 'النطاقات (Domains)', labelEn: 'Domains', icon: '🌍' },
   { key: 'landing', labelAr: 'إنشاء صفحة هبوط بـ AI (Landing Page AI)', labelEn: 'Landing Page AI', icon: '🌐' },
   { key: 'courses', labelAr: 'الكورسات والدورات (Courses)', labelEn: 'Courses', icon: '📚' },
   { key: 'digital', labelAr: 'المنتجات الرقمية (Digital Products)', labelEn: 'Digital Products', icon: '📦' },
@@ -36,6 +39,30 @@ export const ALL_SYSTEM_TOOLS = [
 ];
 
 const BusinessContext = createContext();
+
+function reuseUnchangedSiteLists(prev, next) {
+  if (!prev || !next) return next;
+  let sameFunnels = false;
+  let sameStores = false;
+  try {
+    sameFunnels = JSON.stringify(prev.upclickFunnels?.funnels || []) === JSON.stringify(next.upclickFunnels?.funnels || []);
+    sameStores = JSON.stringify(prev.upclickStores?.stores || []) === JSON.stringify(next.upclickStores?.stores || []);
+  } catch {
+    return next;
+  }
+  if (sameFunnels && sameStores && prev._accountUid === next._accountUid) {
+    return {
+      ...next,
+      upclickFunnels: prev.upclickFunnels,
+      upclickStores: prev.upclickStores
+    };
+  }
+  return {
+    ...next,
+    upclickFunnels: sameFunnels ? prev.upclickFunnels : next.upclickFunnels,
+    upclickStores: sameStores ? prev.upclickStores : next.upclickStores
+  };
+}
 
 const initialGC = {
   profile: {
@@ -351,13 +378,6 @@ export function BusinessProvider({ children }) {
         } catch (e) {}
       }
 
-      const savedGC = localStorage.getItem('ba_context');
-      if (savedGC) {
-        try {
-          setGC(JSON.parse(savedGC));
-        } catch (e) {}
-      }
-
       const savedNotesData = localStorage.getItem('ba_notes');
       if (savedNotesData) {
         try {
@@ -456,17 +476,44 @@ export function BusinessProvider({ children }) {
     }
   }, [tenantConfig]);
 
+  // Drop the previous account's workspace as soon as the signed-in user changes
+  useEffect(() => {
+    const uid = authContext?.user?.uid;
+    if (!uid) {
+      setGC(initialGC);
+      return;
+    }
+    setGC((prev) => {
+      if (prev?._accountUid === uid) return prev;
+      return { ...initialGC, _accountUid: uid };
+    });
+  }, [authContext?.user?.uid]);
+
   // Sync GC from Firebase if available
   // For team members, load the OWNER's GC so they share the same workspace
   useEffect(() => {
+    const uid = authContext?.user?.uid || '';
     if (isTeamMember && ownerUid) {
-      // Real-time listener on the owner's user document for GC data
       const unsub = onSnapshot(doc(db, 'users', ownerUid), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data.GC) {
-            setGC(data.GC);
-            localStorage.setItem('ba_context', JSON.stringify(data.GC));
+            const nextGC = {
+              ...initialGC,
+              ...data.GC,
+              upclickFunnels: {
+                funnels: sitesFromAccountDocument(data.GC?.upclickFunnels?.funnels, uid)
+              },
+              upclickStores: {
+                stores: sitesFromAccountDocument(data.GC?.upclickStores?.stores, uid)
+              },
+              _accountUid: uid
+            };
+            setGC((prev) => reuseUnchangedSiteLists(prev, nextGC));
+            if (uid) localStorage.setItem(`ba_context_${uid}`, JSON.stringify(nextGC));
+            localStorage.removeItem('ba_context');
+          } else {
+            setGC({ ...initialGC, _accountUid: uid });
           }
           if (data.onboardingDone) {
             setOnboardingDone(true);
@@ -481,11 +528,23 @@ export function BusinessProvider({ children }) {
       });
       return () => unsub();
     } else if (userData) {
-      if (userData.GC) {
-        setGC(userData.GC);
-        localStorage.setItem('ba_context', JSON.stringify(userData.GC));
+      const incoming = userData.GC && typeof userData.GC === 'object' ? userData.GC : initialGC;
+      const nextGC = {
+        ...initialGC,
+        ...incoming,
+        upclickFunnels: {
+          funnels: sitesFromAccountDocument(incoming?.upclickFunnels?.funnels, uid)
+        },
+        upclickStores: {
+          stores: sitesFromAccountDocument(incoming?.upclickStores?.stores, uid)
+        },
+        _accountUid: uid
+      };
+      setGC((prev) => reuseUnchangedSiteLists(prev, nextGC));
+      if (uid) localStorage.setItem(`ba_context_${uid}`, JSON.stringify(nextGC));
+      localStorage.removeItem('ba_context');
 
-        // Auto-create missing public bio link/CV in Firestore
+      if (userData.GC) {
         const bio = userData.GC.bioLink;
         if (bio && bio.username) {
           const cleanUsername = bio.username.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
@@ -523,7 +582,7 @@ export function BusinessProvider({ children }) {
         localStorage.setItem('ba_onboard_done', '0');
       }
     }
-  }, [userData, isTeamMember, ownerUid]);
+  }, [userData, isTeamMember, ownerUid, authContext?.user?.uid]);
 
   // Sync language attributes to HTML
   useEffect(() => {
@@ -601,13 +660,30 @@ export function BusinessProvider({ children }) {
   // Sync GC to localStorage and Firebase
   // For team members, save to the OWNER's document so the workspace stays shared
   const saveGC = (updatedGC) => {
-    const gcWithSaved = { ...updatedGC, _lastSaved: new Date().toISOString() };
+    const uid = authContext?.user?.uid || '';
+    const gcWithSaved = {
+      ...updatedGC,
+      _lastSaved: new Date().toISOString(),
+      _accountUid: uid || updatedGC?._accountUid || ''
+    };
     setGC(gcWithSaved);
-    localStorage.setItem('ba_context', JSON.stringify(gcWithSaved));
-    
-    const targetUid = isTeamMember && ownerUid ? ownerUid : authContext?.user?.uid;
+    if (uid) localStorage.setItem(`ba_context_${uid}`, JSON.stringify(gcWithSaved));
+    localStorage.removeItem('ba_context');
+
+    let gcForCloud = gcWithSaved;
+    try {
+      gcForCloud = JSON.parse(JSON.stringify({
+        ...gcWithSaved,
+        _accountUid: undefined
+      }));
+      delete gcForCloud._accountUid;
+    } catch (err) {
+      console.error('Error serializing workspace for Firebase:', err);
+      return;
+    }
+    const targetUid = isTeamMember && ownerUid ? ownerUid : uid;
     if (targetUid) {
-      setDoc(doc(db, 'users', targetUid), { GC: gcWithSaved }, { merge: true }).catch((err) => {
+      setDoc(doc(db, 'users', targetUid), { GC: gcForCloud }, { merge: true }).catch((err) => {
         console.error("Error saving GC to Firebase:", err);
       });
     }
@@ -1172,7 +1248,7 @@ export function BusinessProvider({ children }) {
 
   const isToolAllowedForUser = (toolKey) => {
     if (userData?.role === 'admin' || userData?.role === 'super_admin') return true;
-    if (['home', 'profile', 'billing', 'support'].includes(toolKey)) return true;
+    if (['home', 'profile', 'billing', 'support', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(toolKey)) return true;
 
     // Check if user is in trial mode
     if (userData?.isTrial) {

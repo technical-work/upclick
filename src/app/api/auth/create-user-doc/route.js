@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import emailService from '@/services/email';
+import { creditFieldsForNewUser } from '@/lib/credits/buckets';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,10 @@ export async function POST(req) {
 
     const now = new Date().toISOString();
     const effectiveTrialStartedAt = trialStartedAt || now;
+    const startingCredits = isTrial
+      ? (trialCredits !== undefined ? Number(trialCredits) : 500)
+      : 500;
+    const creditFields = creditFieldsForNewUser(startingCredits);
 
     // 1. Create/Update User document safely using Admin SDK
     await adminDb.collection('users').doc(uid).set({
@@ -42,7 +47,8 @@ export async function POST(req) {
       trialWelcomeEmailSent: true,
       trial7DaysEmailSent: false,
       trialEndedEmailSent: false,
-      aiCredits: isTrial ? (trialCredits !== undefined ? Number(trialCredits) : 500) : 500,
+      aiCredits: startingCredits,
+      ...creditFields,
       adminId: 'global',
       createdAt: now
     }, { merge: true });
