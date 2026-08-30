@@ -215,9 +215,23 @@ const validateEmail = (email) => {
   return true;
 };
 
+const countryData = {
+  EG: { code: '+20', name: 'مصر', flag: '🇪🇬', placeholder: '1012345678' },
+  SA: { code: '+966', name: 'السعودية', flag: '🇸🇦', placeholder: '512345678' },
+  AE: { code: '+971', name: 'الإمارات', flag: '🇦🇪', placeholder: '501234567' },
+  KW: { code: '+965', name: 'الكويت', flag: '🇰🇼', placeholder: '91234567' },
+  QA: { code: '+974', name: 'قطر', flag: '🇶🇦', placeholder: '51234567' },
+  JO: { code: '+962', name: 'الأردن', flag: '🇯🇴', placeholder: '791234567' },
+  MA: { code: '+212', name: 'المغرب', flag: '🇲🇦', placeholder: '612345678' },
+  TN: { code: '+216', name: 'تونس', flag: '🇹🇳', placeholder: '21234567' },
+  OTHER: { code: '+', name: 'أخرى', flag: '🌐', placeholder: '123456789' }
+};
+
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [country, setCountry] = useState('EG');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -282,6 +296,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    if (!phoneNumber || phoneNumber.trim().length < 6) {
+      setError('يرجى إدخال رقم الهاتف بشكل صحيح للمتابعة.');
+      return;
+    }
+
     if (!validateEmail(email)) {
       setError('البريد الإلكتروني المدخل غير صالح. يرجى التأكد من كتابة البريد والنطاق بشكل صحيح (مثال: .com).');
       return;
@@ -299,8 +318,11 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    const countryCode = countryData[country]?.code || '+20';
+    const formattedPhone = `${countryCode}${phoneNumber.trim().replace(/^0+/, '')}`;
+
     try {
-      Tracking.custom('SignupAttempt', { email, name });
+      Tracking.custom('SignupAttempt', { email, name, phone: formattedPhone });
       // 1. Create User in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
@@ -310,13 +332,13 @@ export default function RegisterPage() {
         await userCredential.user.getIdToken(true);
       } catch (tErr) { }
 
-      Tracking.identify(uid, { email, name });
+      Tracking.identify(uid, { email, name, phone: formattedPhone });
       if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
         window.fbq('track', 'CompleteRegistration', { email, name });
         window.fbq('track', 'Lead', { email, name });
       }
       Tracking.track('CompleteRegistration', { email, name });
-      Tracking.lead({ source: 'registration_page', name, email });
+      Tracking.lead({ source: 'registration_page', name, email, phone: formattedPhone });
 
       // Send Verification Email via Resend
       try {
@@ -358,8 +380,9 @@ export default function RegisterPage() {
         }
       };
 
-      const isTrial = tenantConfig?.freeTrial?.enabled || false;
+      const isTrial = tenantConfig?.freeTrial?.enabled !== false;
       const trialStartedAt = isTrial ? new Date().toISOString() : null;
+      const trialCredits = isTrial ? (tenantConfig?.freeTrial?.credits !== undefined ? Number(tenantConfig.freeTrial.credits) : 500) : 0;
 
       // 3. Save User document and Bio Link document via Server Admin SDK with client fallback
       try {
@@ -370,9 +393,12 @@ export default function RegisterPage() {
             uid,
             email,
             name,
+            phoneNumber: formattedPhone,
+            country: country,
             userGC,
             isTrial,
             trialStartedAt,
+            trialCredits,
             cleanUsername,
             initialGC
           })
@@ -388,6 +414,8 @@ export default function RegisterPage() {
             uid: uid,
             name: name,
             email: email,
+            phoneNumber: formattedPhone,
+            country: country,
             role: 'user',
             lang: 'ar',
             theme: 'dark',
@@ -395,6 +423,7 @@ export default function RegisterPage() {
             GC: userGC,
             isTrial: isTrial,
             trialStartedAt: trialStartedAt,
+            aiCredits: trialCredits,
             adminId: 'global',
             createdAt: new Date().toISOString()
           });
@@ -423,6 +452,33 @@ export default function RegisterPage() {
   return (
     <div style={{ ...styles.container, ...(tenantConfig?.bgColor ? { backgroundColor: tenantConfig.bgColor } : {}) }}>
       <div style={{ ...styles.card, ...(tenantConfig?.panelColor ? { backgroundColor: tenantConfig.panelColor } : {}) }}>
+        {/* Close / Back button to Home */}
+        <a
+          href="/"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#a0a0c0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '15px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            zIndex: 10
+          }}
+          title="إغلاق والرجوع للصفحة الرئيسية"
+        >
+          ✕
+        </a>
         {(() => {
           const isDefaultLogo = !tenantConfig?.logoUrl;
           return isDefaultLogo ? (
@@ -503,6 +559,43 @@ export default function RegisterPage() {
               required
               dir="ltr"
             />
+          </div>
+          <div style={styles.inputGroup}>
+            <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>رقم الهاتف (مطلوب)</label>
+            <div style={{ display: 'flex', gap: '8px', direction: 'ltr' }}>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                style={{
+                  ...styles.input,
+                  width: '110px',
+                  padding: '10px 8px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <option value="EG" style={{ background: '#111' }}>🇪🇬 +20</option>
+                <option value="SA" style={{ background: '#111' }}>🇸🇦 +966</option>
+                <option value="AE" style={{ background: '#111' }}>🇦🇪 +971</option>
+                <option value="KW" style={{ background: '#111' }}>🇰🇼 +965</option>
+                <option value="QA" style={{ background: '#111' }}>🇶🇦 +974</option>
+                <option value="JO" style={{ background: '#111' }}>🇯🇴 +962</option>
+                <option value="MA" style={{ background: '#111' }}>🇲🇦 +212</option>
+                <option value="TN" style={{ background: '#111' }}>🇹🇳 +216</option>
+                <option value="OTHER" style={{ background: '#111' }}>🌐 +</option>
+              </select>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                style={{ ...styles.input, flex: 1, textAlign: 'left' }}
+                placeholder={countryData[country]?.placeholder || '1012345678'}
+                required
+              />
+            </div>
           </div>
           <div style={styles.inputGroup}>
             <label style={{ ...styles.label, ...(tenantConfig?.textColor ? { color: tenantConfig.textColor } : {}) }}>كلمة المرور</label>
@@ -593,6 +686,7 @@ const styles = {
     padding: '20px 0'
   },
   card: {
+    position: 'relative',
     width: '100%',
     maxWidth: '420px',
     backgroundColor: '#181825',

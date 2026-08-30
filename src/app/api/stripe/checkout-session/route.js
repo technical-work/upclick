@@ -5,8 +5,7 @@ import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Fallback Sandbox Key (provided by user)
-const FALLBACK_SECRET_KEY = "sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH";
+// No fallback key for security. Must be configured in Firestore or environment variables.
 
 function mapCurrency(currencyInput) {
   if (!currencyInput) return 'egp';
@@ -36,10 +35,10 @@ export async function POST(req) {
       }, { status: 500 });
     }
 
-    let secretKey = FALLBACK_SECRET_KEY;
+    let secretKey = '';
 
     // Fetch custom secret key from tenant config if configured
-    if (adminId) {
+    if (adminId && adminId !== 'global') {
       const tenantDoc = await adminDb.collection('tenants').doc(adminId).get();
       if (tenantDoc.exists) {
         const data = tenantDoc.data();
@@ -48,6 +47,27 @@ export async function POST(req) {
           secretKey = stripeConfig.secretKey;
         }
       }
+    }
+
+    // Fallback to global config if no tenant key is found or adminId is global/missing
+    if (!secretKey) {
+      const globalDoc = await adminDb.collection('tenants').doc('global').get();
+      if (globalDoc.exists) {
+        const data = globalDoc.data();
+        const stripeConfig = data.paymentMethods?.stripe;
+        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
+          secretKey = stripeConfig.secretKey;
+        }
+      }
+    }
+
+    // Fallback to environment variables if still not found
+    if (!secretKey && process.env.STRIPE_SECRET_KEY) {
+      secretKey = process.env.STRIPE_SECRET_KEY;
+    }
+
+    if (!secretKey) {
+      return NextResponse.json({ error: 'Stripe API key is not configured. Please set it in the admin panel.' }, { status: 400 });
     }
 
     const stripe = new Stripe(secretKey, {

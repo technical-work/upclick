@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
+import emailService from '@/services/email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
-    const { uid, email, name, userGC, isTrial, trialStartedAt, cleanUsername, initialGC } = await req.json();
+    const { uid, email, name, phoneNumber, country, userGC, isTrial, trialStartedAt, trialCredits, cleanUsername, initialGC } = await req.json();
 
     if (!uid || !email) {
       return NextResponse.json({ error: 'Missing required user parameters' }, { status: 400 });
@@ -19,20 +20,31 @@ export async function POST(req) {
       return NextResponse.json({ success: false, fallbackRequired: true, warning: 'Admin DB not initialized' }, { status: 200 });
     }
 
+    const now = new Date().toISOString();
+    const effectiveTrialStartedAt = trialStartedAt || now;
+
     // 1. Create/Update User document safely using Admin SDK
     await adminDb.collection('users').doc(uid).set({
       uid: uid,
       name: name || '',
       email: email,
+      phoneNumber: phoneNumber || '',
+      country: country || 'EG',
       role: 'user',
+      roleCategory: 'user',
+      isTeamMember: false,
       lang: 'ar',
       theme: 'dark',
       onboardingDone: false,
       GC: userGC || {},
-      isTrial: !!isTrial,
-      trialStartedAt: trialStartedAt || null,
+      isTrial: isTrial !== undefined ? !!isTrial : true,
+      trialStartedAt: effectiveTrialStartedAt,
+      trialWelcomeEmailSent: true,
+      trial7DaysEmailSent: false,
+      trialEndedEmailSent: false,
+      aiCredits: isTrial ? (trialCredits !== undefined ? Number(trialCredits) : 500) : 500,
       adminId: 'global',
-      createdAt: new Date().toISOString()
+      createdAt: now
     }, { merge: true });
 
     // 2. Create Bio Link document safely using Admin SDK
@@ -51,13 +63,25 @@ export async function POST(req) {
         cvEnabled: false,
         lang: 'ar',
         cvSections: { experience: [], education: [], skills: [] },
-        updatedAt: new Date().toISOString()
+        updatedAt: now
       }, { merge: true });
     }
 
-    return NextResponse.json({ success: true, message: 'User document initialized successfully' });
+    // 3. Send Trial Email 1 — Welcome Email via Resend asynchronously
+    try {
+      await emailService.sendTrialWelcomeEmail({
+        to: email,
+        name: name || ''
+      });
+      console.log(`[create-user-doc] Trial Welcome Email successfully sent to ${email}`);
+    } catch (emailErr) {
+      console.error('[create-user-doc] Error sending Trial Welcome Email:', emailErr);
+    }
+
+    return NextResponse.json({ success: true, message: 'User document initialized and Welcome email sent successfully' });
   } catch (error) {
     console.error('[create-user-doc] Error initializing user doc:', error);
     return NextResponse.json({ success: false, fallbackRequired: true, error: error.message || 'Server error' }, { status: 200 });
   }
 }
+

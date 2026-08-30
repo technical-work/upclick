@@ -5,7 +5,35 @@ import { Tr, ARTEXT, ENTEXT } from '../data/translations';
 import { CURRENCIES, PAGE_META } from '../data/mockData';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
+import { DEFAULT_AI_TOOLS } from '../constants/aiTools';
 import { doc, setDoc, onSnapshot, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+
+export const ALL_SYSTEM_TOOLS = [
+  { key: 'crm', labelAr: 'إدارة العملاء (Smart CRM)', labelEn: 'Smart CRM', icon: '🎯' },
+  { key: 'telegram', labelAr: 'مركز التليجرام (Telegram Hub)', labelEn: 'Telegram Hub', icon: '💬' },
+  { key: 'strategy', labelAr: 'مختبر الاستراتيجية (Strategy Lab)', labelEn: 'Strategy Lab', icon: '🧠' },
+  { key: 'marketing', labelAr: 'نظام التسويق الذكي (Marketing OS)', labelEn: 'Marketing OS', icon: '📣' },
+  { key: 'content', labelAr: 'مركز المحتوى (Content Hub)', labelEn: 'Content Hub', icon: '✨' },
+  { key: 'automation', labelAr: 'مركز الأتمتة (Automation Hub)', labelEn: 'Automation Hub', icon: '⚡' },
+  { key: 'ai-growth', labelAr: 'رادار استخبارات النمو (AI Growth Intel)', labelEn: 'AI Growth Intel', icon: '📈' },
+  { key: 'revenue', labelAr: 'مركز صناع المحتوى (Creator Hub)', labelEn: 'Creator Hub', icon: '🥞' },
+  { key: 'social', labelAr: 'الحسابات الاجتماعية (Social Accounts)', labelEn: 'Social Accounts', icon: '🌐' },
+  { key: 'tiktok-trends', labelAr: 'الترندات الاجتماعية (Social Trends)', labelEn: 'Social Trends', icon: '🔥' },
+  { key: 'bio', labelAr: 'رابط السيرة الذاتية (Bio Link)', labelEn: 'Bio Link', icon: '🔗' },
+  { key: 'landing', labelAr: 'إنشاء صفحة هبوط بـ AI (Landing Page AI)', labelEn: 'Landing Page AI', icon: '🌐' },
+  { key: 'courses', labelAr: 'الكورسات والدورات (Courses)', labelEn: 'Courses', icon: '📚' },
+  { key: 'digital', labelAr: 'المنتجات الرقمية (Digital Products)', labelEn: 'Digital Products', icon: '📦' },
+  { key: 'niche', labelAr: 'استوديو النيش والبراند (Niche Studio)', labelEn: 'Niche Studio', icon: '🧭' },
+  { key: 'community', labelAr: 'مركز المجتمع (Community Hub)', labelEn: 'Community Hub', icon: '👥' },
+  { key: 'design', labelAr: 'استوديو التصميم (Design Studio)', labelEn: 'Design Studio', icon: '🎨' },
+  { key: 'tasks', labelAr: 'لوحة المهام (Task Board)', labelEn: 'Task Board', icon: '✅' },
+  { key: 'calendar', labelAr: 'التقويم والأحداث (Calendar)', labelEn: 'Calendar', icon: '📅' },
+  { key: 'finance', labelAr: 'المالية والمصروفات (Finance)', labelEn: 'Finance', icon: '💳' },
+  { key: 'ops', labelAr: 'مركز العمليات (Ops Hub)', labelEn: 'Ops Hub', icon: '⚙️' },
+  { key: 'team', labelAr: 'إدارة الفريق والعمليات (Team Hub)', labelEn: 'Team Hub', icon: '👥' },
+  { key: 'integrations', labelAr: 'التكاملات والربط (Integrations)', labelEn: 'Integrations', icon: '🔗' },
+  { key: 'analytics', labelAr: 'التحليلات المتقدمة (Analytics)', labelEn: 'Analytics', icon: '📊' },
+];
 
 const BusinessContext = createContext();
 
@@ -1030,6 +1058,29 @@ export function BusinessProvider({ children }) {
     }
   };
 
+  
+  const getToolConfig = (toolId) => {
+    const baseTool = DEFAULT_AI_TOOLS.find(t => t.id === toolId);
+    if (!baseTool) return { cost: 0, isAllowed: true, tag: '' }; // Fallback
+
+    const customTools = processedTenantConfig?.aiToolsConfig || [];
+    const customTool = customTools.find(t => t.id === toolId);
+    
+    let cost = customTool && customTool.cost !== undefined ? customTool.cost : baseTool.cost;
+    let allowedPlans = customTool && customTool.allowedPlans ? customTool.allowedPlans : ['starter', 'growth', 'pro'];
+    let tag = customTool && customTool.tag ? customTool.tag : '';
+
+    const userPlan = userData?.planName ? userData.planName.toLowerCase() : 'starter';
+    const standardPlans = ['starter', 'growth', 'pro'];
+    let isAllowed = true;
+    if (standardPlans.includes(userPlan)) {
+      isAllowed = allowedPlans.includes(userPlan);
+    }
+
+    return { cost, isAllowed, tag, allowedPlans };
+  };
+
+
   const checkCredits = (cost) => {
     const cpd = tenantConfig?.creditsPerDollar !== undefined ? Number(tenantConfig.creditsPerDollar) : 100;
     const defCredits = (tenantConfig?.defaultUserCredit !== undefined ? Number(tenantConfig.defaultUserCredit) : 5.00) * cpd;
@@ -1054,36 +1105,160 @@ export function BusinessProvider({ children }) {
 
   const processedTenantConfig = {
     ...tenantConfig,
-    planStarterName: tenantConfig?.planStarterName || 'Starter',
-    planStarterPrice: tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 499,
-    planStarterCredits: tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 200,
-    planGrowthName: tenantConfig?.planGrowthName || 'Growth',
-    planGrowthPrice: tenantConfig?.planGrowthPrice !== undefined ? Number(tenantConfig.planGrowthPrice) : 799,
-    planGrowthCredits: tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 600,
-    planProName: tenantConfig?.planProName || 'Pro',
-    planProPrice: tenantConfig?.planProPrice !== undefined ? Number(tenantConfig.planProPrice) : 1497,
-    planProCredits: tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 2000,
+    freeTrial: tenantConfig?.freeTrial || {
+      enabled: true,
+      days: 15,
+      credits: 500,
+      allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key)
+    },
+    planStarterConfig: tenantConfig?.planStarterConfig || null,
+    planGrowthConfig: tenantConfig?.planGrowthConfig || null,
+    planProConfig: tenantConfig?.planProConfig || null,
+
+    planStarterName: tenantConfig?.planStarterConfig?.name || tenantConfig?.planStarterName || 'Starter',
+    planStarterPrice: tenantConfig?.planStarterConfig?.price !== undefined ? Number(tenantConfig.planStarterConfig.price) : (tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 299),
+    planStarterCredits: tenantConfig?.planStarterConfig?.credits !== undefined ? Number(tenantConfig.planStarterConfig.credits) : (tenantConfig?.planStarterCredits !== undefined ? Number(tenantConfig.planStarterCredits) : 2000),
+
+    planGrowthName: tenantConfig?.planGrowthConfig?.name || tenantConfig?.planGrowthName || 'Growth',
+    planGrowthPrice: tenantConfig?.planGrowthConfig?.price !== undefined ? Number(tenantConfig.planGrowthConfig.price) : (tenantConfig?.planGrowthPrice !== undefined ? Number(tenantConfig.planGrowthPrice) : 499),
+    planGrowthCredits: tenantConfig?.planGrowthConfig?.credits !== undefined ? Number(tenantConfig.planGrowthConfig.credits) : (tenantConfig?.planGrowthCredits !== undefined ? Number(tenantConfig.planGrowthCredits) : 5000),
+
+    planProName: tenantConfig?.planProConfig?.name || tenantConfig?.planProName || 'Pro',
+    planProPrice: tenantConfig?.planProConfig?.price !== undefined ? Number(tenantConfig.planProConfig.price) : (tenantConfig?.planProPrice !== undefined ? Number(tenantConfig.planProPrice) : 799),
+    planProCredits: tenantConfig?.planProConfig?.credits !== undefined ? Number(tenantConfig.planProConfig.credits) : (tenantConfig?.planProCredits !== undefined ? Number(tenantConfig.planProCredits) : 10000),
     
-    recharge1Credits: tenantConfig?.recharge1Credits !== undefined ? Number(tenantConfig.recharge1Credits) : 100,
-    recharge1Price: tenantConfig?.recharge1Price !== undefined ? Number(tenantConfig.recharge1Price) : 299,
-    recharge2Credits: tenantConfig?.recharge2Credits !== undefined ? Number(tenantConfig.recharge2Credits) : 250,
-    recharge2Price: tenantConfig?.recharge2Price !== undefined ? Number(tenantConfig.recharge2Price) : 599,
-    recharge3Credits: tenantConfig?.recharge3Credits !== undefined ? Number(tenantConfig.recharge3Credits) : 500,
-    recharge3Price: tenantConfig?.recharge3Price !== undefined ? Number(tenantConfig.recharge3Price) : 999,
+    recharge1Credits: tenantConfig?.recharge1Credits !== undefined ? Number(tenantConfig.recharge1Credits) : 1000,
+    recharge1Price: tenantConfig?.recharge1Price !== undefined ? Number(tenantConfig.recharge1Price) : 26,
+    recharge2Credits: tenantConfig?.recharge2Credits !== undefined ? Number(tenantConfig.recharge2Credits) : 3500,
+    recharge2Price: tenantConfig?.recharge2Price !== undefined ? Number(tenantConfig.recharge2Price) : 399,
+    recharge3Credits: tenantConfig?.recharge3Credits !== undefined ? Number(tenantConfig.recharge3Credits) : 6000,
+    recharge3Price: tenantConfig?.recharge3Price !== undefined ? Number(tenantConfig.recharge3Price) : 699,
 
     creditsPerDollar: tenantConfig?.creditsPerDollar !== undefined ? Number(tenantConfig.creditsPerDollar) : 100,
     defaultUserCredit: tenantConfig?.defaultUserCredit !== undefined ? Number(tenantConfig.defaultUserCredit) : 5.00,
 
-    costGenerateScript: tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 5,
-    costGenerateLogo: tenantConfig?.costGenerateLogo !== undefined ? Number(tenantConfig.costGenerateLogo) : 40,
-    costSwotAnalysis: tenantConfig?.costSwotAnalysis !== undefined ? Number(tenantConfig.costSwotAnalysis) : 15,
-    costCompetitorAnalysis: tenantConfig?.costCompetitorAnalysis !== undefined ? Number(tenantConfig.costCompetitorAnalysis) : 30,
-    costStrategyBuilder: tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 50,
+    costGenerateScript: tenantConfig?.costGenerateScript !== undefined ? Number(tenantConfig.costGenerateScript) : 15,
+    costGenerateLogo: tenantConfig?.costGenerateLogo !== undefined ? Number(tenantConfig.costGenerateLogo) : 30,
+    costSwotAnalysis: tenantConfig?.costSwotAnalysis !== undefined ? Number(tenantConfig.costSwotAnalysis) : 30,
+    costCompetitorAnalysis: tenantConfig?.costCompetitorAnalysis !== undefined ? Number(tenantConfig.costCompetitorAnalysis) : 50,
+    costStrategyBuilder: tenantConfig?.costStrategyBuilder !== undefined ? Number(tenantConfig.costStrategyBuilder) : 70,
+    costCrmLeadInsight: tenantConfig?.costCrmLeadInsight !== undefined ? Number(tenantConfig.costCrmLeadInsight) : 10,
+    costTelegramAgent: tenantConfig?.costTelegramAgent !== undefined ? Number(tenantConfig.costTelegramAgent) : 5,
+    costTelegramBroadcast: tenantConfig?.costTelegramBroadcast !== undefined ? Number(tenantConfig.costTelegramBroadcast) : 15,
+    costIcpAnalysis: tenantConfig?.costIcpAnalysis !== undefined ? Number(tenantConfig.costIcpAnalysis) : 25,
+    costMarketingFunnel: tenantConfig?.costMarketingFunnel !== undefined ? Number(tenantConfig.costMarketingFunnel) : 35,
+    costMarketingOffer: tenantConfig?.costMarketingOffer !== undefined ? Number(tenantConfig.costMarketingOffer) : 25,
+    costContentIdeas: tenantConfig?.costContentIdeas !== undefined ? Number(tenantConfig.costContentIdeas) : 20,
+    costContentHook: tenantConfig?.costContentHook !== undefined ? Number(tenantConfig.costContentHook) : 10,
+    costAutomationExecution: tenantConfig?.costAutomationExecution !== undefined ? Number(tenantConfig.costAutomationExecution) : 15,
+    costGrowthIntelReport: tenantConfig?.costGrowthIntelReport !== undefined ? Number(tenantConfig.costGrowthIntelReport) : 40,
+    costCreatorMonetization: tenantConfig?.costCreatorMonetization !== undefined ? Number(tenantConfig.costCreatorMonetization) : 30,
+    costSocialTrendAnalysis: tenantConfig?.costSocialTrendAnalysis !== undefined ? Number(tenantConfig.costSocialTrendAnalysis) : 20,
+    costBioLinkAi: tenantConfig?.costBioLinkAi !== undefined ? Number(tenantConfig.costBioLinkAi) : 15,
+    costLandingPageAi: tenantConfig?.costLandingPageAi !== undefined ? Number(tenantConfig.costLandingPageAi) : 50,
+    costCourseOutline: tenantConfig?.costCourseOutline !== undefined ? Number(tenantConfig.costCourseOutline) : 45,
+    costDigitalProductGenerator: tenantConfig?.costDigitalProductGenerator !== undefined ? Number(tenantConfig.costDigitalProductGenerator) : 40,
+    costNicheBrandIdentity: tenantConfig?.costNicheBrandIdentity !== undefined ? Number(tenantConfig.costNicheBrandIdentity) : 35,
+    costCommunityAiReply: tenantConfig?.costCommunityAiReply !== undefined ? Number(tenantConfig.costCommunityAiReply) : 5,
+    costDesignBanner: tenantConfig?.costDesignBanner !== undefined ? Number(tenantConfig.costDesignBanner) : 25,
+    costTaskAiBreakdown: tenantConfig?.costTaskAiBreakdown !== undefined ? Number(tenantConfig.costTaskAiBreakdown) : 10,
+    costCalendarSchedule: tenantConfig?.costCalendarSchedule !== undefined ? Number(tenantConfig.costCalendarSchedule) : 10,
+    costOpsFinanceInsight: tenantConfig?.costOpsFinanceInsight !== undefined ? Number(tenantConfig.costOpsFinanceInsight) : 20,
+    customPlans: Array.isArray(tenantConfig?.customPlans) ? tenantConfig.customPlans : [],
+    customRechargePacks: Array.isArray(tenantConfig?.customRechargePacks) ? tenantConfig.customRechargePacks : [],
+  };
+
+  const [lockedToolModal, setLockedToolModal] = useState({ isOpen: false, toolKey: '', toolInfo: null, targetPlans: [] });
+
+  const isToolAllowedForUser = (toolKey) => {
+    if (userData?.role === 'admin' || userData?.role === 'super_admin') return true;
+    if (['home', 'profile', 'billing', 'support'].includes(toolKey)) return true;
+
+    // Check if user is in trial mode
+    if (userData?.isTrial) {
+      const trialTools = processedTenantConfig?.freeTrial?.allowedTools;
+      if (Array.isArray(trialTools)) {
+        return trialTools.includes(toolKey);
+      }
+    }
+
+    const userPlan = (userData?.plan || 'Starter').toLowerCase();
+
+    // Check custom plans
+    const matchedCustom = processedTenantConfig.customPlans?.find(p => (p.name || '').toLowerCase() === userPlan);
+    if (matchedCustom && Array.isArray(matchedCustom.allowedTools)) {
+      return matchedCustom.allowedTools.includes(toolKey);
+    }
+
+    // Check Pro
+    if (userPlan.includes('pro')) {
+      const cfg = processedTenantConfig.planProConfig;
+      if (cfg && Array.isArray(cfg.allowedTools)) return cfg.allowedTools.includes(toolKey);
+      return true;
+    }
+
+    // Check Growth
+    if (userPlan.includes('growth')) {
+      const cfg = processedTenantConfig.planGrowthConfig;
+      if (cfg && Array.isArray(cfg.allowedTools)) return cfg.allowedTools.includes(toolKey);
+      return ['crm', 'telegram', 'strategy', 'marketing', 'content', 'ai-growth', 'social', 'tiktok-trends', 'bio', 'landing', 'courses', 'digital', 'niche', 'design', 'tasks', 'calendar', 'finance', 'analytics', 'integrations'].includes(toolKey);
+    }
+
+    // Check Starter
+    const starterCfg = processedTenantConfig.planStarterConfig;
+    if (starterCfg && Array.isArray(starterCfg.allowedTools)) return starterCfg.allowedTools.includes(toolKey);
+    return ['crm', 'landing', 'tasks', 'calendar', 'bio', 'courses', 'social', 'design'].includes(toolKey);
+  };
+
+  const openUpgradeModalForTool = (toolKey) => {
+    const toolInfo = ALL_SYSTEM_TOOLS.find(t => t.key === toolKey) || { key: toolKey, labelAr: toolKey, labelEn: toolKey, icon: '🔒' };
+    const plansWithTool = [];
+
+    // Check Growth
+    const growthCfg = processedTenantConfig.planGrowthConfig;
+    const growthTools = (growthCfg && Array.isArray(growthCfg.allowedTools))
+      ? growthCfg.allowedTools
+      : ['crm', 'telegram', 'strategy', 'marketing', 'content', 'ai-growth', 'social', 'tiktok-trends', 'bio', 'landing', 'courses', 'digital', 'niche', 'design', 'tasks', 'calendar', 'finance', 'analytics', 'integrations'];
+    if (growthTools.includes(toolKey)) {
+      plansWithTool.push({
+        name: lang === 'ar' ? (growthCfg?.name || 'باقة النمو') : (growthCfg?.nameEn || 'Growth Plan'),
+        price: processedTenantConfig.planGrowthPrice || 499,
+        currency: growthCfg?.currency || 'ج.م',
+        credits: processedTenantConfig.planGrowthCredits || 5000
+      });
+    }
+
+    // Check Pro
+    const proCfg = processedTenantConfig.planProConfig;
+    const proTools = (proCfg && Array.isArray(proCfg.allowedTools)) ? proCfg.allowedTools : ALL_SYSTEM_TOOLS.map(t => t.key);
+    if (proTools.includes(toolKey)) {
+      plansWithTool.push({
+        name: lang === 'ar' ? (proCfg?.name || 'باقة المحترفين') : (proCfg?.nameEn || 'Pro Plan'),
+        price: processedTenantConfig.planProPrice || 799,
+        currency: proCfg?.currency || 'ج.م',
+        credits: processedTenantConfig.planProCredits || 10000
+      });
+    }
+
+    setLockedToolModal({
+      isOpen: true,
+      toolKey,
+      toolInfo,
+      targetPlans: plansWithTool
+    });
+  };
+
+  const closeUpgradeModal = () => {
+    setLockedToolModal({ isOpen: false, toolKey: '', toolInfo: null, targetPlans: [] });
   };
 
   return (
     <BusinessContext.Provider
       value={{
+        isToolAllowedForUser,
+        openUpgradeModalForTool,
+        closeUpgradeModal,
+        lockedToolModal,
         lang,
         setLang: changeLang,
         theme,
@@ -1166,7 +1341,8 @@ export function BusinessProvider({ children }) {
         confirmAction,
         promptAction,
         rates,
-        checkCredits
+        checkCredits,
+        getToolConfig
       }}
     >
       {children}

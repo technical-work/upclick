@@ -146,7 +146,7 @@ const DEFAULT_PLAN_PRO = {
   currency: 'ج.م',
   period: 'شهرياً',
   badge: 'الأكثر شعبية',
-  ctaText: 'ابدأ تجربة مجانية لمدة 14 يوم',
+  ctaText: 'ترقية إلى باقة المحترفين',
   features: [
     'كل شيء في باقة النمو',
     'مساعد الذكاء الاصطناعي (غير محدود)',
@@ -201,9 +201,7 @@ const DEFAULTS = {
   domain: '',
   planStarter: DEFAULT_PLAN_STARTER,
   planGrowth: DEFAULT_PLAN_GROWTH,
-  planPro: DEFAULT_PLAN_PRO,
   telegramNumber: '',
-  freeTrial: { enabled: false, days: 7 },
   i18nOverrides: { ar: {}, en: {} },
 };
 
@@ -643,18 +641,18 @@ const BrandingSettings = () => {
           </div>
         </div>
 
-        {/* Free Trial & Telegram */}
+        {/* Telegram & Support */}
         <div className="card" style={{ marginBottom: '12px' }}>
           <div style={sectionHeader}>
             <MessageCircle size={16} />
-            <span>{t('branding.trialTelegram')}</span>
+            <span>{isRTL ? 'تواصل التليجرام والدعم المباشر' : 'Telegram & Direct Support'}</span>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
+          <div>
             <label style={labelStyle}>{t('branding.telegramLabel')}</label>
             <input
               type="tel"
-              value={config.telegramNumber}
+              value={config.telegramNumber || ''}
               onChange={e => handleChange('telegramNumber', e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="201xxxxxxxx"
               dir="ltr"
@@ -664,40 +662,6 @@ const BrandingSettings = () => {
               {t('branding.telegramHint')}
             </div>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg3)', borderRadius: '10px', border: '1px solid var(--line2)', marginBottom: config.freeTrial?.enabled ? '12px' : '0' }}>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Clock size={14} />
-                {t('branding.freeTrialLabel')}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '3px' }}>
-                {t('branding.freeTrialHint')}
-              </div>
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={config.freeTrial?.enabled || false}
-                onChange={e => handleChange('freeTrial', { ...config.freeTrial, enabled: e.target.checked })}
-                style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'pointer' }}
-              />
-            </label>
-          </div>
-
-          {config.freeTrial?.enabled && (
-            <div>
-              <label style={labelStyle}>{t('branding.trialDays')}</label>
-              <input
-                type="number"
-                min="1"
-                max="365"
-                value={config.freeTrial?.days || 7}
-                onChange={e => handleChange('freeTrial', { ...config.freeTrial, days: Math.max(1, parseInt(e.target.value) || 7) })}
-                style={{ ...inputStyle, width: '140px' }}
-              />
-            </div>
-          )}
         </div>
 
         {/* Colors */}
@@ -809,15 +773,6 @@ const BrandingSettings = () => {
             <input type="file" accept="image/*" onChange={handleLogoUpload} disabled={uploading} style={{ display: 'none' }} />
           </label>
         </div>
-
-        {/* Starter Plan & Pricing */}
-        {renderPlanSection('planStarter', isRTL ? 'إعدادات باقة المبتدئين (Starter Plan)' : 'Starter Plan Settings')}
-
-        {/* Growth Plan & Pricing */}
-        {renderPlanSection('planGrowth', isRTL ? 'إعدادات باقة النمو (Growth Plan)' : 'Growth Plan Settings')}
-
-        {/* Pro Plan & Pricing */}
-        {renderPlanSection('planPro', isRTL ? 'إعدادات باقة المحترفين (Pro Plan)' : 'Pro Plan Settings')}
 
 
         {/* Advanced Overrides */}

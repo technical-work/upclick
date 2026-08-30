@@ -6,12 +6,11 @@ import { FieldValue } from 'firebase-admin/firestore';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_SECRET_KEY = "sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH";
+// No fallback key for security. Must be configured in Firestore or environment variables.
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(req) {
-  let secretKey = FALLBACK_SECRET_KEY;
-  let stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
+  let secretKey = process.env.STRIPE_SECRET_KEY || '';
 
   try {
     const body = await req.text();
@@ -26,6 +25,21 @@ export async function POST(req) {
     if (!adminDb) {
       return NextResponse.json({ error: 'Firebase Admin SDK not initialized' }, { status: 500 });
     }
+
+    // Try to load the global secretKey if not loaded from env
+    if (!secretKey) {
+      const globalDoc = await adminDb.collection('tenants').doc('global').get();
+      if (globalDoc.exists) {
+        const data = globalDoc.data();
+        const stripeConfig = data.paymentMethods?.stripe;
+        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
+          secretKey = stripeConfig.secretKey;
+        }
+      }
+    }
+
+    // Use a placeholder if no key is configured to construct Stripe instance safely
+    let stripe = new Stripe(secretKey || 'no_key_configured', { apiVersion: '2023-10-16' });
 
     let event;
 
@@ -50,7 +64,7 @@ export async function POST(req) {
         }
 
         // Fetch custom key if adminId is provided
-        if (adminId) {
+        if (adminId && adminId !== 'global') {
           const tenantDoc = await adminDb.collection('tenants').doc(adminId).get();
           if (tenantDoc.exists) {
             const data = tenantDoc.data();
@@ -60,6 +74,25 @@ export async function POST(req) {
               stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
             }
           }
+        }
+
+        // Fallback to global config if no tenant key is found or adminId is global/missing
+        if (!secretKey) {
+          const globalDoc = await adminDb.collection('tenants').doc('global').get();
+          if (globalDoc.exists) {
+            const data = globalDoc.data();
+            const stripeConfig = data.paymentMethods?.stripe;
+            if (stripeConfig?.enabled && stripeConfig?.secretKey) {
+              secretKey = stripeConfig.secretKey;
+              stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
+            }
+          }
+        }
+
+        // Fallback to environment variables if still not found
+        if (!secretKey && process.env.STRIPE_SECRET_KEY) {
+          secretKey = process.env.STRIPE_SECRET_KEY;
+          stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
         }
 
         // Fetch user details
