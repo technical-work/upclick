@@ -62,28 +62,6 @@ export async function POST(req) {
 
       if (session.payment_status === 'paid' || session.payment_status === 'no_payment_required' || session.status === 'complete') {
         const metadata = session.metadata || {};
-        const { kind, domainOrderId } = metadata;
-
-        if (kind === 'domain' && domainOrderId) {
-          const orderRef = adminDb.collection('domain_orders').doc(domainOrderId);
-          const orderSnap = await orderRef.get();
-          if (orderSnap.exists) {
-            await orderRef.set({
-              status: orderSnap.data().status === 'completed' ? 'completed' : 'paid',
-              payment_id: session.id,
-              stripeSessionId: session.id,
-              paid_at: FieldValue.serverTimestamp(),
-              updated_at: FieldValue.serverTimestamp()
-            }, { merge: true });
-          }
-          const { fulfillDomainOrder } = await import('@/lib/domains/fulfillOrder');
-          await fulfillDomainOrder(adminDb, {
-            orderId: domainOrderId,
-            paymentId: session.id,
-            stripeSessionId: session.id
-          });
-          return NextResponse.json({ received: true, kind: 'domain' });
-        }
 
         // 1. Resolve userId from session metadata, client_reference_id, subscription metadata, or customer email
         let userId = metadata.userId || metadata.user_id || metadata.uid || session.client_reference_id || '';
