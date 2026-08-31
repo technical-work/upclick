@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { resolveStripeSecret, stripeClient } from '@/lib/stripe/secret';
+import { fulfillDomainOrder } from '@/lib/domains/fulfillOrder';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const FALLBACK_SECRET_KEY = "sk_test_51Tn0TnBiA9baLpm0Afb3XXZe8XSpPj4tlDAbpNEZl2cS2LXwHYy0xbtD1w13t92tJXw12Hm2wQPkDE2P95z6kEOm00lESlqpTH";
+// No fallback key for security. Must be configured in Firestore or environment variables.
 
 export async function GET(req) {
   try {
@@ -26,31 +27,18 @@ export async function GET(req) {
       }, { status: 500 });
     }
 
-    // Check if this session has already been verified to prevent double activations
     const alreadyVerifiedSnap = await adminDb.collection('payments')
       .where('stripeSessionId', '==', sessionId)
       .get();
-      
-    if (!alreadyVerifiedSnap.empty) {
-      return NextResponse.json({ success: true, message: 'Already verified' });
+    const alreadyVerified = !alreadyVerifiedSnap.empty;
+
+    let secretKey = await resolveStripeSecret(adminDb, adminId);
+
+    if (!secretKey) {
+      return NextResponse.json({ error: 'Stripe API key is not configured' }, { status: 400 });
     }
 
-    let secretKey = FALLBACK_SECRET_KEY;
-
-    if (adminId) {
-      const tenantDoc = await adminDb.collection('tenants').doc(adminId).get();
-      if (tenantDoc.exists) {
-        const data = tenantDoc.data();
-        const stripeConfig = data.paymentMethods?.stripe;
-        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
-          secretKey = stripeConfig.secretKey;
-        }
-      }
-    }
-
-    const stripe = new Stripe(secretKey, {
-      apiVersion: '2023-10-16',
-    });
+    const stripe = stripeClient(secretKey);
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
@@ -58,9 +46,75 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Payment not completed' }, { status: 400 });
     }
 
-    const { userId, planDuration, amount, currency, creditsToAdd, planName } = session.metadata || {};
+    const metadata = session.metadata || {};
+    if (metadata.kind === 'domain' && metadata.domainOrderId) {
+      const orderRef = adminDb.collection('domain_orders').doc(metadata.domainOrderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) {
+        return NextResponse.json({ error: 'Domain order not found' }, { status: 404 });
+      }
+      await orderRef.set({
+        status: orderSnap.data().status === 'completed' ? 'completed' : 'paid',
+        payment_id: session.id,
+        stripeSessionId: sessionId,
+        paid_at: FieldValue.serverTimestamp(),
+        updated_at: FieldValue.serverTimestamp()
+      }, { merge: true });
 
-    // Fetch user details from Firestore
+      const result = await fulfillDomainOrder(adminDb, {
+        orderId: metadata.domainOrderId,
+        paymentId: session.id,
+        stripeSessionId: sessionId
+      });
+
+      if (!alreadyVerified) {
+        const userId = metadata.userId || orderSnap.data().user_id;
+        const userSnap = userId ? await adminDb.collection('users').doc(userId).get() : null;
+        const userData = userSnap?.exists ? userSnap.data() : {};
+        await adminDb.collection('payments').add({
+          userId,
+          userName: userData.name || userData.email?.split('@')[0] || 'User',
+          userEmail: userData.email || '',
+          adminId: userData.adminId || null,
+          amount: parseFloat(metadata.amount || session.amount_total / 100),
+          currency: metadata.currency || 'USD',
+          paymentMethod: 'stripe',
+          planDuration: 'domain',
+          kind: 'domain',
+          domainOrderId: metadata.domainOrderId,
+          domain: metadata.domain || '',
+          status: 'approved',
+          approvedAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          stripeSessionId: sessionId
+        });
+      }
+
+      return NextResponse.json({
+        success: result.ok,
+        kind: 'domain',
+        error: result.ok ? undefined : result.error
+      });
+    }
+
+    if (alreadyVerified) {
+      return NextResponse.json({ success: true, message: 'Already verified' });
+    }
+
+    let userId = metadata.userId || metadata.user_id || metadata.uid || session.client_reference_id || '';
+    if (!userId && (session.customer_details?.email || session.customer_email)) {
+      const email = (session.customer_details?.email || session.customer_email || '').trim().toLowerCase();
+      const userEmailSnap = await adminDb.collection('users').where('email', '==', email).limit(1).get();
+      if (!userEmailSnap.empty) {
+        userId = userEmailSnap.docs[0].id;
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User not found in session metadata' }, { status: 400 });
+    }
+
+    const { planDuration, amount, currency, creditsToAdd, planName } = metadata;
     const userRef = adminDb.collection('users').doc(userId);
     const userSnap = await userRef.get();
 
