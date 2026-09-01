@@ -101,7 +101,20 @@ export async function GET(req) {
       return NextResponse.json({ success: true, message: 'Already verified' });
     }
 
-    const { userId, planDuration, amount, currency, creditsToAdd, planName } = metadata;
+    let userId = metadata.userId || metadata.user_id || metadata.uid || session.client_reference_id || '';
+    if (!userId && (session.customer_details?.email || session.customer_email)) {
+      const email = (session.customer_details?.email || session.customer_email || '').trim().toLowerCase();
+      const userEmailSnap = await adminDb.collection('users').where('email', '==', email).limit(1).get();
+      if (!userEmailSnap.empty) {
+        userId = userEmailSnap.docs[0].id;
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User not found in session metadata' }, { status: 400 });
+    }
+
+    const { planDuration, amount, currency, creditsToAdd, planName } = metadata;
     const userRef = adminDb.collection('users').doc(userId);
     const userSnap = await userRef.get();
 

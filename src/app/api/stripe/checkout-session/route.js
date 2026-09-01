@@ -21,9 +21,21 @@ function mapCurrency(currencyInput) {
 
 export async function POST(req) {
   try {
-    const { amount, currency, planName, planDuration, userId, adminId, creditsToAdd } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const {
+      amount,
+      currency,
+      planName,
+      planDuration,
+      userId,
+      adminId,
+      creditsToAdd,
+      mode: explicitMode,
+      customer_email
+    } = body;
 
-    if (!userId) {
+    const cleanUserId = String(userId || '').trim();
+    if (!cleanUserId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
@@ -75,8 +87,32 @@ export async function POST(req) {
     });
 
     const targetCurrency = mapCurrency(currency);
+    const sessionMode = explicitMode || (planDuration === 'one-time' || planDuration === 'recharge' ? 'payment' : 'payment');
 
-    const session = await stripe.checkout.sessions.create({
+    // Fetch user email if not provided directly
+    let userEmail = customer_email || '';
+    if (!userEmail && cleanUserId) {
+      try {
+        const userSnap = await adminDb.collection('users').doc(cleanUserId).get();
+        if (userSnap.exists) {
+          userEmail = userSnap.data()?.email || '';
+        }
+      } catch (e) {
+        console.warn('Could not fetch user email for Stripe checkout:', e.message);
+      }
+    }
+
+    const metadata = {
+      userId: cleanUserId,
+      adminId: String(adminId || ''),
+      amount: String(amount || ''),
+      currency: targetCurrency.toUpperCase(),
+      planDuration: String(planDuration || 'monthly'),
+      creditsToAdd: creditsToAdd ? String(creditsToAdd) : '0',
+      planName: String(planName || '')
+    };
+
+    const sessionParams = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -84,26 +120,48 @@ export async function POST(req) {
             currency: targetCurrency,
             product_data: {
               name: planName || `${planDuration === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
-              description: `Subscription renewal - ${planDuration}`,
+              description: `Subscription renewal - ${planDuration || 'monthly'}`,
             },
-            unit_amount: Math.round(amount * 100), // Stripe expects amount in cents/piastres
+            unit_amount: Math.round(Number(amount) * 100), // Stripe expects amount in cents/piastres
+            ...(sessionMode === 'subscription' ? { recurring: { interval: planDuration === 'annual' ? 'year' : 'month' } } : {})
           },
           quantity: 1,
         },
       ],
-      mode: 'payment',
-      success_url: `${req.headers.get('origin')}/dashboard?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/dashboard?stripe=cancel`,
-      metadata: {
-        userId,
-        adminId: adminId || '',
-        amount: String(amount),
-        currency: targetCurrency.toUpperCase(),
-        planDuration: planDuration || 'monthly',
-        creditsToAdd: creditsToAdd ? String(creditsToAdd) : '0',
-        planName: planName || ''
-      },
-    });
+      mode: sessionMode,
+      client_reference_id: cleanUserId,
+      success_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net'}/dashboard?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net'}/dashboard?stripe=cancel`,
+      metadata: metadata,
+    };
+
+    if (userEmail) {
+      sessionParams.customer_email = userEmail;
+    }
+
+    if (sessionMode === 'subscription') {
+      sessionParams.subscription_data = {
+        metadata: {
+          userId: cleanUserId,
+          adminId: String(adminId || ''),
+          planDuration: String(planDuration || 'monthly'),
+          creditsToAdd: creditsToAdd ? String(creditsToAdd) : '0',
+          planName: String(planName || '')
+        }
+      };
+    } else {
+      sessionParams.payment_intent_data = {
+        metadata: {
+          userId: cleanUserId,
+          adminId: String(adminId || ''),
+          planDuration: String(planDuration || 'monthly'),
+          creditsToAdd: creditsToAdd ? String(creditsToAdd) : '0',
+          planName: String(planName || '')
+        }
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (error) {

@@ -320,14 +320,11 @@ export default function StorePagesTab({
                 onClick={() => onOpenBuilder(idx)}
                 style={{
                   height: '165px',
-                  background: '#f8fafc',
+                  background: page.page?.bg || '#0f172a',
                   borderBottom: '1px solid var(--edge)',
                   overflow: 'hidden',
                   position: 'relative',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  cursor: 'pointer'
                 }}
               >
                 {page.thumbnail ? (
@@ -344,15 +341,22 @@ export default function StorePagesTab({
                   />
                 ) : (
                   <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '285.7%',
+                    minHeight: '471px',
                     transform: 'scale(0.35)',
-                    transformOrigin: 'top center',
-                    width: '280%',
-                    marginLeft: '-90%',
+                    transformOrigin: 'top left',
                     pointerEvents: 'none',
-                    padding: '20px'
+                    padding: 0,
+                    boxSizing: 'border-box',
+                    direction: 'ltr',
+                    textAlign: 'left',
+                    background: page.page?.bg || 'transparent'
                   }}>
                     {(page.canvas || []).slice(0, 3).map((el) => (
-                      <div key={el.id} style={{ marginBottom: 12 }}>
+                      <div key={el.id} style={{ marginBottom: el.type === 'code' || el.type === 'custom_html' ? 0 : 12 }}>
                         <ElementRenderer el={el} interactive={false} />
                       </div>
                     ))}

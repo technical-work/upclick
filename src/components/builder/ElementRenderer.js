@@ -760,26 +760,21 @@ export default function ElementRenderer({ el, interactive = true }) {
           style={{
             position: 'relative',
             overflow: 'hidden',
-            minHeight: contained ? 280 : 80,
-            maxHeight: 420,
-            borderRadius: 12,
-            border: '1px dashed #94a3b8',
-            background: '#0f172a',
+            minHeight: contained ? 520 : 80,
+            maxHeight: contained ? 600 : 420,
+            borderRadius: 0,
+            border: 'none',
+            background: 'transparent',
             transform: 'translateZ(0)',
             isolation: 'isolate',
             contain: 'layout paint'
           }}
         >
           <div
-            style={{ pointerEvents: 'none', minHeight: contained ? 280 : undefined }}
+            style={{ pointerEvents: 'none', minHeight: contained ? 520 : undefined }}
             dangerouslySetInnerHTML={{ __html: sanitizeCustomHtmlForBuilder(html) }}
           />
           <div style={{ position: 'absolute', inset: 0, zIndex: 2 }} />
-          {contained && (
-            <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 3, background: 'rgba(15,23,42,0.88)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 8px', borderRadius: 4, pointerEvents: 'none' }}>
-              Contained in builder · fullscreen HTML still works on Preview / Publish
-            </div>
-          )}
         </div>
       );
     }

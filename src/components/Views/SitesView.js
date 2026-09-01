@@ -786,10 +786,24 @@ export default function SitesView() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                             <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                               <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--a)', letterSpacing: '0.5px' }}>🚩 CONTROL</span>
-                              <div onClick={() => { setBuilderStoreMode(false); setIsBuilderOpen(true); }} style={{ height: '220px', border: '1px solid var(--a)', borderRadius: '10px', background: '#fff', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
-                                <div style={{ transform: 'scale(0.42)', transformOrigin: 'top center', width: '238%', marginLeft: '-69%', pointerEvents: 'none', padding: '20px 16px' }}>
+                              <div onClick={() => { setBuilderStoreMode(false); setIsBuilderOpen(true); }} style={{ height: '220px', border: '1px solid var(--edge)', borderRadius: '10px', background: currentStep.page?.bg || '#0f172a', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
+                                <div style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '238.1%',
+                                  minHeight: '524px',
+                                  transform: 'scale(0.42)',
+                                  transformOrigin: 'top left',
+                                  pointerEvents: 'none',
+                                  padding: 0,
+                                  boxSizing: 'border-box',
+                                  direction: 'ltr',
+                                  textAlign: 'left',
+                                  background: currentStep.page?.bg || 'transparent'
+                                }}>
                                   {(currentStep.canvas || []).slice(0, 4).map((el) => (
-                                    <div key={el.id} style={{ marginBottom: 12 }}>
+                                    <div key={el.id} style={{ marginBottom: el.type === 'code' || el.type === 'custom_html' ? 0 : 12 }}>
                                       <ElementRenderer el={el} interactive={false} />
                                     </div>
                                   ))}
@@ -797,8 +811,8 @@ export default function SitesView() {
                                     <div style={{ textAlign: 'center', color: '#64748b', padding: 40 }}>Empty page — click to add elements</div>
                                   )}
                                 </div>
-                                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(15,23,42,0.55))', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 16 }}>
-                                  <span style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', padding: '10px 22px', borderRadius: 8, fontWeight: 700, fontSize: 13 }}>Edit page in builder</span>
+                                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 40%, rgba(15,23,42,0.7))', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 16 }}>
+                                  <span style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', padding: '10px 22px', borderRadius: 8, fontWeight: 700, fontSize: 13, boxShadow: '0 4px 14px rgba(0,0,0,0.35)' }}>Edit page in builder</span>
                                 </div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

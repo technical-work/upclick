@@ -44,6 +44,16 @@ export async function POST(req) {
       ? `Domain renewal: ${order.domain}`
       : `Domain registration: ${order.domain}`;
 
+    const domainMetadata = {
+      kind: 'domain',
+      domainOrderId: orderId,
+      userId: String(auth.uid),
+      adminId: String(auth.userData.adminId || ''),
+      domain: order.domain,
+      amount: String(order.customer_price),
+      currency: currency.toUpperCase()
+    };
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
@@ -58,17 +68,14 @@ export async function POST(req) {
         quantity: 1
       }],
       mode: 'payment',
+      client_reference_id: String(auth.uid),
+      customer_email: auth.userData.email || undefined,
+      payment_intent_data: {
+        metadata: domainMetadata
+      },
       success_url: `${origin}/dashboard?stripe=success&kind=domain&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/dashboard?stripe=cancel&kind=domain`,
-      metadata: {
-        kind: 'domain',
-        domainOrderId: orderId,
-        userId: auth.uid,
-        adminId: auth.userData.adminId || '',
-        domain: order.domain,
-        amount: String(order.customer_price),
-        currency: currency.toUpperCase()
-      }
+      metadata: domainMetadata
     });
 
     await orderRef.set({

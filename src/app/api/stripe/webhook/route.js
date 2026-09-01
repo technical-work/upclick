@@ -45,7 +45,12 @@ export async function POST(req) {
 
     // Verify webhook signature in production if secret is provided
     if (WEBHOOK_SECRET) {
-      event = stripe.webhooks.constructEvent(body, sig, WEBHOOK_SECRET);
+      try {
+        event = stripe.webhooks.constructEvent(body, sig, WEBHOOK_SECRET);
+      } catch (err) {
+        console.error('❌ Webhook signature verification failed:', err.message);
+        return NextResponse.json({ error: `Webhook signature verification failed: ${err.message}` }, { status: 400 });
+      }
     } else {
       // Direct parse for local testing if STRIPE_WEBHOOK_SECRET is empty
       event = JSON.parse(body);
@@ -55,8 +60,9 @@ export async function POST(req) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
 
-      if (session.payment_status === 'paid') {
-        const { userId, planDuration, amount, currency, adminId, creditsToAdd, planName, kind, domainOrderId } = session.metadata || {};
+      if (session.payment_status === 'paid' || session.payment_status === 'no_payment_required' || session.status === 'complete') {
+        const metadata = session.metadata || {};
+        const { kind, domainOrderId } = metadata;
 
         if (kind === 'domain' && domainOrderId) {
           const orderRef = adminDb.collection('domain_orders').doc(domainOrderId);
@@ -79,10 +85,50 @@ export async function POST(req) {
           return NextResponse.json({ received: true, kind: 'domain' });
         }
 
+        // 1. Resolve userId from session metadata, client_reference_id, subscription metadata, or customer email
+        let userId = metadata.userId || metadata.user_id || metadata.uid || session.client_reference_id || '';
+
+        // 2. If not found and subscription exists, try reading subscription metadata
+        if (!userId && session.subscription) {
+          if (typeof session.subscription === 'object' && session.subscription?.metadata) {
+            userId = session.subscription.metadata.userId || session.subscription.metadata.user_id || session.subscription.metadata.uid || '';
+          } else if (typeof session.subscription === 'string' && secretKey) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(session.subscription);
+              userId = sub?.metadata?.userId || sub?.metadata?.user_id || sub?.metadata?.uid || '';
+            } catch (e) {
+              console.warn('Could not retrieve subscription metadata for user lookup:', e.message);
+            }
+          }
+        }
+
+        // 3. If still not found, try fallback lookup by customer email in Firestore
         if (!userId) {
-          console.error('❌ Webhook error: Missing userId in session metadata');
+          const customerEmail = (session.customer_details?.email || session.customer_email || '').trim().toLowerCase();
+          if (customerEmail) {
+            try {
+              const userEmailSnap = await adminDb.collection('users').where('email', '==', customerEmail).limit(1).get();
+              if (!userEmailSnap.empty) {
+                userId = userEmailSnap.docs[0].id;
+                console.log(`ℹ️ Resolved userId ${userId} from customer email ${customerEmail}`);
+              }
+            } catch (e) {
+              console.warn('Could not query user by email:', e.message);
+            }
+          }
+        }
+
+        if (!userId) {
+          console.error('❌ Webhook error: Missing userId in session metadata, subscription metadata, and client_reference_id');
           return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
         }
+
+        const adminId = metadata.adminId || '';
+        const planDuration = metadata.planDuration || (session.mode === 'subscription' ? 'monthly' : 'monthly');
+        const creditsToAdd = metadata.creditsToAdd || '0';
+        const planName = metadata.planName || '';
+        const amount = parseFloat(metadata.amount || (session.amount_total ? session.amount_total / 100 : 0));
+        const currency = (metadata.currency || session.currency || 'USD').toUpperCase();
 
         // Fetch custom key if adminId is provided
         if (adminId && adminId !== 'global') {
@@ -118,13 +164,18 @@ export async function POST(req) {
 
         // Fetch user details
         const userRef = adminDb.collection('users').doc(userId);
-        const webhookRef = adminDb.collection('processed_webhooks').doc(event.id || 'missing_event_id');
+        const webhookRef = adminDb.collection('processed_webhooks').doc(event.id || `evt_${session.id}`);
+        const sessionLockRef = adminDb.collection('processed_webhooks').doc(`session_${session.id}`);
 
         try {
           await adminDb.runTransaction(async (transaction) => {
-            // 1. Check if Stripe Webhook event was already processed
-            const webhookSnap = await transaction.get(webhookRef);
-            if (webhookSnap.exists) {
+            // 1. Check if Stripe Webhook event or session was already processed (strict idempotency)
+            const [webhookSnap, sessionLockSnap] = await Promise.all([
+              transaction.get(webhookRef),
+              transaction.get(sessionLockRef)
+            ]);
+
+            if (webhookSnap.exists || sessionLockSnap.exists) {
               throw new Error('already_processed');
             }
 
@@ -135,9 +186,6 @@ export async function POST(req) {
             }
             const userData = userSnap.data();
 
-            // 3. Check if Stripe session payment has already been credited
-            // Since queries are not allowed in transaction reads directly without locks,
-            // the primary lock is done on the webhookRef event.id. We can do a final double-check here.
             // Calculate new expiration date
             let baseDate = Date.now();
             let currentExpires = userData.expiresAt;
@@ -200,7 +248,14 @@ export async function POST(req) {
             transaction.set(webhookRef, {
               processedAt: FieldValue.serverTimestamp(),
               stripeSessionId: session.id,
-              userId: userId
+              userId: userId,
+              eventId: event.id
+            });
+            transaction.set(sessionLockRef, {
+              processedAt: FieldValue.serverTimestamp(),
+              stripeSessionId: session.id,
+              userId: userId,
+              eventId: event.id
             });
 
             // Add payment document to collection inside transaction
@@ -210,10 +265,10 @@ export async function POST(req) {
               userName: userData.name || userData.email?.split('@')[0] || 'User',
               userEmail: userData.email || '',
               adminId: userData.adminId || null,
-              amount: parseFloat(amount || 0),
-              currency: currency || 'EGP',
+              amount: amount,
+              currency: currency,
               paymentMethod: 'stripe',
-              planDuration: planDuration || 'monthly',
+              planDuration: planDuration,
               receiptUrl: session.invoice ? `https://billing.stripe.com/p/invoices/${session.invoice}` : '',
               status: 'approved',
               approvedAt: FieldValue.serverTimestamp(),
@@ -226,7 +281,7 @@ export async function POST(req) {
             transaction.set(salesRef, {
               userId,
               customerName: userData.name || userData.email?.split('@')[0] || 'User',
-              amount: parseFloat(amount || 0),
+              amount: amount,
               adminId: userData.adminId || null,
               createdAt: FieldValue.serverTimestamp()
             });
@@ -235,7 +290,7 @@ export async function POST(req) {
           console.log(`✅ Webhook success: User ${userId} subscription activated successfully via Stripe.`);
         } catch (txError) {
           if (txError.message === 'already_processed') {
-            console.log(`ℹ️ Webhook event ${event.id} (Session ${session.id}) already processed. Skipping webhook activation.`);
+            console.log(`ℹ️ Webhook event ${event.id} (Session ${session.id}) already processed. Skipping duplicate activation.`);
             return NextResponse.json({ success: true, message: 'Already processed' });
           }
           if (txError.message === 'user_not_found') {
@@ -243,6 +298,62 @@ export async function POST(req) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
           }
           throw txError;
+        }
+      }
+    } else if (event.type === 'invoice.payment_succeeded') {
+      // Handle automatic recurring subscription renewal
+      const invoice = event.data.object;
+      if (invoice.billing_reason === 'subscription_cycle') {
+        const subId = invoice.subscription;
+        let userId = invoice.subscription_details?.metadata?.userId || invoice.lines?.data?.[0]?.metadata?.userId || '';
+
+        if (!userId && subId && secretKey) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subId);
+            userId = sub?.metadata?.userId || '';
+          } catch (e) {
+            console.warn('Could not retrieve subscription for recurring invoice:', e.message);
+          }
+        }
+
+        if (userId) {
+          const userRef = adminDb.collection('users').doc(userId);
+          const webhookRef = adminDb.collection('processed_webhooks').doc(event.id);
+
+          try {
+            await adminDb.runTransaction(async (transaction) => {
+              const webhookSnap = await transaction.get(webhookRef);
+              if (webhookSnap.exists) throw new Error('already_processed');
+
+              const userSnap = await transaction.get(userRef);
+              if (!userSnap.exists) throw new Error('user_not_found');
+              const userData = userSnap.data();
+
+              let baseDate = Date.now();
+              if (userData.expiresAt) {
+                const currentMs = userData.expiresAt.toDate ? userData.expiresAt.toDate().getTime() : new Date(userData.expiresAt).getTime();
+                if (currentMs > Date.now()) baseDate = currentMs;
+              }
+              const newExpiresDate = new Date(baseDate);
+              newExpiresDate.setDate(newExpiresDate.getDate() + 30);
+
+              transaction.set(userRef, {
+                expiresAt: newExpiresDate,
+                isTrial: false
+              }, { merge: true });
+
+              transaction.set(webhookRef, {
+                processedAt: FieldValue.serverTimestamp(),
+                invoiceId: invoice.id,
+                userId: userId
+              });
+            });
+            console.log(`✅ Webhook success: User ${userId} subscription renewed via invoice ${invoice.id}.`);
+          } catch (err) {
+            if (err.message !== 'already_processed') {
+              console.error('❌ Error renewing subscription on invoice.payment_succeeded:', err);
+            }
+          }
         }
       }
     }
