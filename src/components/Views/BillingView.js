@@ -14,8 +14,8 @@ export default function BillingView() {
 
   const isRTL = lang === 'ar';
 
-  
-  
+
+
   // Dynamic values from tenantConfig or defaults
   const planStarterName = tenantConfig?.planStarterName || 'Starter';
   const planStarterPrice = tenantConfig?.planStarterPrice !== undefined ? Number(tenantConfig.planStarterPrice) : 499;
@@ -40,6 +40,13 @@ export default function BillingView() {
 
   const currencySymbol = tenantConfig?.currency || 'EGP';
 
+  const customPlans = tenantConfig?.customPlans || [];
+  const customRechargePacks = tenantConfig?.customRechargePacks || [];
+
+  const planStarterConfig = tenantConfig?.planStarterConfig || {};
+  const planGrowthConfig = tenantConfig?.planGrowthConfig || {};
+  const planProConfig = tenantConfig?.planProConfig || {};
+
   // User details
   const currentPlanName = userData?.plan || 'Starter';
   const userCredits = userData?.aiCredits !== undefined ? Number(userData.aiCredits) : planStarterCredits;
@@ -61,9 +68,25 @@ export default function BillingView() {
   }
 
   // Active sub-tab under Billing & Credits page
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'credit-history', 'manual-transfer'
-  
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'credit-history'
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+
   // Manual transfer state
+
+  const handleOpenPaymentModal = (pkg) => {
+    setSelectedPackage(pkg);
+    setAmount(pkg.amount);
+    setDuration(pkg.planDuration);
+    setPaymentModalOpen(true);
+    setSubmitted(false);
+    setError('');
+    setFile(null);
+    if (!selectedMethod && activeMethods.length > 0) {
+      setSelectedMethod(activeMethods[0]);
+    }
+  };
+
   const [selectedMethod, setSelectedMethod] = useState('');
   const [amount, setAmount] = useState('');
   const [duration, setDuration] = useState('monthly');
@@ -72,7 +95,7 @@ export default function BillingView() {
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Real-time collections
   const [recentPayments, setRecentPayments] = useState([]);
   const [creditLogs, setCreditLogs] = useState([]);
@@ -234,7 +257,7 @@ export default function BillingView() {
         recommendedPrice = planGrowthPrice;
         recommendedCredits = planGrowthCredits;
       }
-      recommendationText = isRTL 
+      recommendationText = isRTL
         ? `بناءً على استهلاكك، فإن باقة (${recommendedPlan}) هي الأنسب لتغطية احتياجاتك التشغيلية وتوفير تكاليف الشحن الإضافي.`
         : `Based on your usage, the (${recommendedPlan}) plan represents the best value for your operational needs.`;
     } else {
@@ -328,7 +351,7 @@ export default function BillingView() {
         },
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          
+
           await addDoc(collection(db, 'payments'), {
             userId: currentUser.uid,
             userName: userData?.name || currentUser.email.split('@')[0],
@@ -476,31 +499,26 @@ export default function BillingView() {
 
       {/* Tabs Menu */}
       <div className="billing-nav">
-        <button 
+        <button
           onClick={() => setActiveTab('overview')}
           className={`btn ${activeTab === 'overview' ? 'btn-prime' : 'btn-ghost'}`}
         >
           💳 {L('Overview & Recharge', 'لوحة التحكم والشحن')}
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('credit-history')}
           className={`btn ${activeTab === 'credit-history' ? 'btn-prime' : 'btn-ghost'}`}
         >
           🕒 {L('Credit Deductions Log', 'سجل استهلاك الكريديت')}
         </button>
-        <button 
-          onClick={() => setActiveTab('manual-transfer')}
-          className={`btn ${activeTab === 'manual-transfer' ? 'btn-prime' : 'btn-ghost'}`}
-        >
-          📱 {L('Bank & Cash Transfer', 'التحويل البنكي والكاش')}
-        </button>
+
       </div>
 
       {activeTab === 'overview' && (
         <div className="billing-grid">
           {/* Left Column: Credits and Packages */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
+
             {/* Credits Usage Progress */}
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -513,8 +531,8 @@ export default function BillingView() {
                 <div className="credit-bar-fill" style={{ width: `${creditProgress}%` }}></div>
               </div>
               <p style={{ fontSize: '12px', color: 'var(--t3)', margin: '4px 0 0 0' }}>
-                {isRTL 
-                  ? 'يتم الخصم فقط عند اكتمال العمليات بنجاح. إذا فشل النظام، لن يتم خصم أي رصيد.' 
+                {isRTL
+                  ? 'يتم الخصم فقط عند اكتمال العمليات بنجاح. إذا فشل النظام، لن يتم خصم أي رصيد.'
                   : 'Credits are only deducted after successful operations. No charge if the operation fails.'}
               </p>
             </div>
@@ -525,71 +543,140 @@ export default function BillingView() {
                 <div className="sec-title">⭐ {L('Upgrade or Renew Your Plan', 'ترقية أو تجديد باقة الاشتراك')}</div>
               </div>
               <p style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '14px' }}>
-                {isRTL 
-                  ? 'اختر باقة الاشتراك الشهرية المناسبة لأعمالك. ستحصل على رصيد كريديت فوري متجدد شهرياً.' 
+                {isRTL
+                  ? 'اختر باقة الاشتراك الشهرية المناسبة لأعمالك. ستحصل على رصيد كريديت فوري متجدد شهرياً.'
                   : 'Choose the subscription plan that fits your business needs. Credits renew every month.'}
               </p>
 
               <div className="recharge-grid">
                 {/* Starter Plan */}
-                <div className="recharge-card" style={currentPlanName.toLowerCase().includes('starter') ? { borderColor: 'var(--accent)' } : {}}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>🌱</div>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{planStarterName}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planStarterCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planStarterPrice} {currencySymbol}</div>
-                  <StripePaymentButton
-                    amount={planStarterPrice}
-                    currency={currencySymbol}
-                    planName={planStarterName}
-                    planDuration="monthly"
-                    creditsToAdd={planStarterCredits}
-                    userId={currentUser?.uid}
-                    adminId={userData?.adminId}
-                    buttonText={currentPlanName.toLowerCase().includes('starter') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'اشتراك' : 'Subscribe')}
-                    disabled={currentPlanName.toLowerCase().includes('starter')}
-                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                  />
-                </div>
+                {planStarterConfig.visible !== false && (
+                  <div className="recharge-card" style={currentPlanName.toLowerCase().includes('starter') ? { borderColor: 'var(--accent)' } : {}}>
+                    {planStarterConfig.badge && (
+                      <span style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: 'var(--accent)', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '2px', display: 'inline-block' }}>
+                        {isRTL ? planStarterConfig.badge : (planStarterConfig.badgeEn || planStarterConfig.badge)}
+                      </span>
+                    )}
+                    <div style={{ fontSize: '22px', margin: '1px 0' }}>🌱</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', margin: '1px 0' }}>{isRTL ? (planStarterConfig.name || planStarterName) : (planStarterConfig.nameEn || planStarterName)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', margin: '1px 0' }}>{planStarterCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '4px 0 6px' }}>{planStarterPrice} {planStarterConfig.currency || currencySymbol}</div>
+                    
+                    {/* Features Bullet List */}
+                    {((isRTL ? planStarterConfig.features : planStarterConfig.featuresEn) || []).length > 0 && (
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '4px 0 8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        {((isRTL ? planStarterConfig.features : planStarterConfig.featuresEn) || []).map((feat, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ color: 'var(--green)' }}>✓</span>
+                            <span>{feat}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => handleOpenPaymentModal({ planName: planStarterName, amount: planStarterPrice, currency: planStarterConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planStarterCredits })}
+                      disabled={currentPlanName.toLowerCase().includes('starter')}
+                      className="btn btn-prime"
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
+                    >
+                      {currentPlanName.toLowerCase().includes('starter') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planStarterConfig.ctaText || 'اشتراك') : (planStarterConfig.ctaTextEn || 'Subscribe'))}
+                    </button>
+                  </div>
+                )}
 
                 {/* Growth Plan */}
-                <div className="recharge-card" style={currentPlanName.toLowerCase().includes('growth') ? { borderColor: 'var(--accent)' } : {}}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>📈</div>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{planGrowthName}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planGrowthCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planGrowthPrice} {currencySymbol}</div>
-                  <StripePaymentButton
-                    amount={planGrowthPrice}
-                    currency={currencySymbol}
-                    planName={planGrowthName}
-                    planDuration="monthly"
-                    creditsToAdd={planGrowthCredits}
-                    userId={currentUser?.uid}
-                    adminId={userData?.adminId}
-                    buttonText={currentPlanName.toLowerCase().includes('growth') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'ترقية' : 'Subscribe')}
-                    disabled={currentPlanName.toLowerCase().includes('growth')}
-                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                  />
-                </div>
+                {planGrowthConfig.visible !== false && (
+                  <div className="recharge-card" style={currentPlanName.toLowerCase().includes('growth') ? { borderColor: 'var(--accent)' } : {}}>
+                    {planGrowthConfig.badge && (
+                      <span style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: 'var(--accent)', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '2px', display: 'inline-block' }}>
+                        {isRTL ? planGrowthConfig.badge : (planGrowthConfig.badgeEn || planGrowthConfig.badge)}
+                      </span>
+                    )}
+                    <div style={{ fontSize: '22px', margin: '1px 0' }}>📈</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', margin: '1px 0' }}>{isRTL ? (planGrowthConfig.name || planGrowthName) : (planGrowthConfig.nameEn || planGrowthName)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', margin: '1px 0' }}>{planGrowthCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '4px 0 6px' }}>{planGrowthPrice} {planGrowthConfig.currency || currencySymbol}</div>
+                    
+                    {/* Features Bullet List */}
+                    {((isRTL ? planGrowthConfig.features : planGrowthConfig.featuresEn) || []).length > 0 && (
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '4px 0 8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        {((isRTL ? planGrowthConfig.features : planGrowthConfig.featuresEn) || []).map((feat, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ color: 'var(--green)' }}>✓</span>
+                            <span>{feat}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => handleOpenPaymentModal({ planName: planGrowthName, amount: planGrowthPrice, currency: planGrowthConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planGrowthCredits })}
+                      disabled={currentPlanName.toLowerCase().includes('growth')}
+                      className="btn btn-prime"
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
+                    >
+                      {currentPlanName.toLowerCase().includes('growth') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planGrowthConfig.ctaText || 'ترقية') : (planGrowthConfig.ctaTextEn || 'Upgrade'))}
+                    </button>
+                  </div>
+                )}
 
                 {/* Pro Plan */}
-                <div className="recharge-card" style={currentPlanName.toLowerCase().includes('pro') ? { borderColor: 'var(--accent)' } : {}}>
-                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>👑</div>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{planProName}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{planProCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
-                  <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{planProPrice} {currencySymbol}</div>
-                  <StripePaymentButton
-                    amount={planProPrice}
-                    currency={currencySymbol}
-                    planName={planProName}
-                    planDuration="monthly"
-                    creditsToAdd={planProCredits}
-                    userId={currentUser?.uid}
-                    adminId={userData?.adminId}
-                    buttonText={currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'ترقية' : 'Subscribe')}
-                    disabled={currentPlanName.toLowerCase().includes('pro')}
-                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                  />
-                </div>
+                {planProConfig.visible !== false && (
+                  <div className="recharge-card" style={currentPlanName.toLowerCase().includes('pro') ? { borderColor: 'var(--accent)' } : {}}>
+                    {planProConfig.badge && (
+                      <span style={{ fontSize: '10px', background: 'rgba(249,115,22,0.15)', color: 'var(--orange)', padding: '1px 8px', borderRadius: '10px', fontWeight: 'bold', marginBottom: '2px', display: 'inline-block' }}>
+                        {isRTL ? planProConfig.badge : (planProConfig.badgeEn || planProConfig.badge)}
+                      </span>
+                    )}
+                    <div style={{ fontSize: '22px', margin: '1px 0' }}>👑</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)', margin: '1px 0' }}>{isRTL ? (planProConfig.name || planProName) : (planProConfig.nameEn || planProName)}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', margin: '1px 0' }}>{planProCredits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '4px 0 6px' }}>{planProPrice} {planProConfig.currency || currencySymbol}</div>
+                    
+                    {/* Features Bullet List */}
+                    {((isRTL ? planProConfig.features : planProConfig.featuresEn) || []).length > 0 && (
+                      <div style={{ fontSize: '11px', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left', width: '100%', margin: '4px 0 8px 0', borderTop: '1px dashed var(--brd)', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        {((isRTL ? planProConfig.features : planProConfig.featuresEn) || []).map((feat, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ color: 'var(--green)' }}>✓</span>
+                            <span>{feat}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => handleOpenPaymentModal({ planName: planProName, amount: planProPrice, currency: planProConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planProCredits })}
+                      disabled={currentPlanName.toLowerCase().includes('pro')}
+                      className="btn btn-prime"
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
+                    >
+                      {currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? ((planProConfig.ctaText && !planProConfig.ctaText.includes('تجربة')) ? planProConfig.ctaText : 'ترقية الآن') : ((planProConfig.ctaTextEn && !planProConfig.ctaTextEn.includes('Trial')) ? planProConfig.ctaTextEn : 'Upgrade Now'))}
+                    </button>
+                  </div>
+                )}
+
+                {/* Dynamic Custom Subscription Plans */}
+                {customPlans.map((plan, idx) => {
+                  const isCurrent = currentPlanName.toLowerCase() === (plan.name || '').toLowerCase();
+                  return (
+                    <div key={plan.id || idx} className="recharge-card" style={isCurrent ? { borderColor: 'var(--accent)' } : {}}>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>{plan.icon || '🚀'}</div>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{plan.name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{plan.credits} {L('Credits/mo', 'كريديت شهرياً')}</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{plan.price} {currencySymbol}</div>
+                      <button
+                        onClick={() => handleOpenPaymentModal({ planName: plan.name, amount: Number(plan.price), currency: currencySymbol, planDuration: 'monthly', creditsToAdd: Number(plan.credits) })}
+                        disabled={isCurrent}
+                        className="btn btn-prime"
+                        style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                      >
+                        {isCurrent ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'اشتراك' : 'Subscribe')}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -599,8 +686,8 @@ export default function BillingView() {
                 <div className="sec-title">🚀 {L('Recharge Credits instantly', 'شحن رصيد إضافي فوري')}</div>
               </div>
               <p style={{ fontSize: '12px', color: 'var(--t2)', marginBottom: '14px' }}>
-                {isRTL 
-                  ? 'اختر باقة الشحن المناسبة لك لإضافة رصيد لحسابك مباشرة والدفع بشكل آمن.' 
+                {isRTL
+                  ? 'اختر باقة الشحن المناسبة لك لإضافة رصيد لحسابك مباشرة والدفع بشكل آمن.'
                   : 'Choose a recharge option to add credits directly to your balance.'}
               </p>
 
@@ -609,52 +696,57 @@ export default function BillingView() {
                   <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎁</div>
                   <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{recharge1Credits} Credits</div>
                   <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{recharge1Price} {currencySymbol}</div>
-                  <StripePaymentButton
-                    amount={recharge1Price}
-                    currency={currencySymbol}
-                    planName={`${recharge1Credits} Credits Pack`}
-                    planDuration="recharge"
-                    creditsToAdd={recharge1Credits}
-                    userId={currentUser?.uid}
-                    adminId={userData?.adminId}
-                    buttonText={isRTL ? 'شراء' : 'Buy Now'}
-                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                  />
+                  <button
+                    onClick={() => handleOpenPaymentModal({ planName: `${recharge1Credits} Credits Pack`, amount: recharge1Price, currency: currencySymbol, planDuration: 'recharge', creditsToAdd: recharge1Credits })}
+                    className="btn btn-prime"
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                  >
+                    {isRTL ? 'شراء' : 'Buy Now'}
+                  </button>
                 </div>
 
                 <div className="recharge-card" style={{ borderColor: 'var(--orange)' }}>
                   <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔥</div>
                   <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{recharge2Credits} Credits</div>
                   <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{recharge2Price} {currencySymbol}</div>
-                  <StripePaymentButton
-                    amount={recharge2Price}
-                    currency={currencySymbol}
-                    planName={`${recharge2Credits} Credits Pack`}
-                    planDuration="recharge"
-                    creditsToAdd={recharge2Credits}
-                    userId={currentUser?.uid}
-                    adminId={userData?.adminId}
-                    buttonText={isRTL ? 'شراء' : 'Buy Now'}
-                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                  />
+                  <button
+                    onClick={() => handleOpenPaymentModal({ planName: `${recharge2Credits} Credits Pack`, amount: recharge2Price, currency: currencySymbol, planDuration: 'recharge', creditsToAdd: recharge2Credits })}
+                    className="btn btn-prime"
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                  >
+                    {isRTL ? 'شراء' : 'Buy Now'}
+                  </button>
                 </div>
 
                 <div className="recharge-card">
                   <div style={{ fontSize: '24px', marginBottom: '4px' }}>💎</div>
                   <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{recharge3Credits} Credits</div>
                   <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{recharge3Price} {currencySymbol}</div>
-                  <StripePaymentButton
-                    amount={recharge3Price}
-                    currency={currencySymbol}
-                    planName={`${recharge3Credits} Credits Pack`}
-                    planDuration="recharge"
-                    creditsToAdd={recharge3Credits}
-                    userId={currentUser?.uid}
-                    adminId={userData?.adminId}
-                    buttonText={isRTL ? 'شراء' : 'Buy Now'}
-                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                  />
+                  <button
+                    onClick={() => handleOpenPaymentModal({ planName: `${recharge3Credits} Credits Pack`, amount: recharge3Price, currency: currencySymbol, planDuration: 'recharge', creditsToAdd: recharge3Credits })}
+                    className="btn btn-prime"
+                    style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                  >
+                    {isRTL ? 'شراء' : 'Buy Now'}
+                  </button>
                 </div>
+
+                {/* Dynamic Custom Recharge Packages */}
+                {customRechargePacks.map((pack, idx) => (
+                  <div key={pack.id || idx} className="recharge-card">
+                    <div style={{ fontSize: '24px', marginBottom: '4px' }}>{pack.icon || '⚡'}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--t1)' }}>{pack.name || `${pack.credits} Credits`}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--t3)', marginTop: '2px' }}>{pack.credits} {L('Credits', 'كريديت')}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{pack.price} {currencySymbol}</div>
+                    <button
+                      onClick={() => handleOpenPaymentModal({ planName: pack.name || `${pack.credits} Credits Pack`, amount: Number(pack.price), currency: currencySymbol, planDuration: 'recharge', creditsToAdd: Number(pack.credits) })}
+                      className="btn btn-prime"
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                    >
+                      {isRTL ? 'شراء' : 'Buy Now'}
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -663,7 +755,7 @@ export default function BillingView() {
               <div className="sec-hd">
                 <div className="sec-title">🕒 {L('Billing & Payments History', 'سجل الفواتير والدفع')}</div>
               </div>
-              
+
               {loadingHistory ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: 'var(--t3)' }}>{L('Loading history...', 'جاري التحميل...')}</div>
               ) : recentPayments.length === 0 ? (
@@ -689,15 +781,15 @@ export default function BillingView() {
                         if (pay.status === 'approved') { statusColor = 'var(--green)'; statusLbl = L('Paid', 'تم الدفع'); }
                         if (pay.status === 'rejected') { statusColor = 'var(--red)'; statusLbl = L('Rejected', 'مرفوض'); }
 
-                        const payDate = pay.createdAt?.toDate 
-                          ? pay.createdAt.toDate().toLocaleDateString(isRTL ? 'ar-EG' : 'en-US') 
+                        const payDate = pay.createdAt?.toDate
+                          ? pay.createdAt.toDate().toLocaleDateString(isRTL ? 'ar-EG' : 'en-US')
                           : '—';
 
                         return (
                           <tr key={pay.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                             <td style={{ padding: '10px 6px', fontWeight: '600', color: 'var(--t1)' }}>
-                              {pay.planDuration === 'recharge' 
-                                ? L('Credits Recharge', 'شحن رصيد كريديت') 
+                              {pay.planDuration === 'recharge'
+                                ? L('Credits Recharge', 'شحن رصيد كريديت')
                                 : L(pay.planDuration, pay.planDuration === 'annual' ? 'خطة سنوية' : 'خطة شهرية')
                               }
                             </td>
@@ -730,7 +822,7 @@ export default function BillingView() {
 
           {/* Right Column: Plan Card & Card Info & Usage Analytics */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
+
             {/* Plan Info Card */}
             <div className="card" style={{ borderTop: '4px solid var(--orange)' }}>
               <div className="sec-hd" style={{ marginBottom: '8px' }}>
@@ -795,18 +887,14 @@ export default function BillingView() {
                     {recommendationText}
                   </p>
                   {showRecommendButton && (
-                    <StripePaymentButton
-                      amount={recommendedPrice}
-                      currency={currencySymbol}
-                      planName={recommendedPlan}
-                      planDuration="monthly"
-                      creditsToAdd={recommendedCredits}
-                      userId={currentUser?.uid}
-                      adminId={userData?.adminId}
-                      buttonText={isRTL ? `ترقية إلى ${recommendedPlan}` : `Upgrade to ${recommendedPlan}`}
+                    <button
+                      onClick={() => handleOpenPaymentModal({ planName: recommendedPlan, amount: recommendedPrice, currency: currencySymbol, planDuration: 'monthly', creditsToAdd: recommendedCredits })}
                       disabled={currentPlanName.toLowerCase() === recommendedPlan.toLowerCase()}
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px' }}
-                    />
+                      className="btn btn-prime"
+                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                    >
+                      {isRTL ? `ترقية إلى ${recommendedPlan}` : `Upgrade to ${recommendedPlan}`}
+                    </button>
                   )}
                 </div>
               </div>
@@ -821,7 +909,7 @@ export default function BillingView() {
           <div className="sec-hd">
             <div className="sec-title">🕒 {L('Detailed Credit History log', 'سجل تفاصيل استهلاك الرصيد')}</div>
           </div>
-          
+
           {loadingCredits ? (
             <div style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)' }}>{L('Loading credit history...', 'جاري التحميل...')}</div>
           ) : creditLogs.length === 0 ? (
@@ -835,7 +923,6 @@ export default function BillingView() {
                   <tr style={{ borderBottom: '1px solid var(--brd)', opacity: 0.8 }}>
                     <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Date & Time', 'الوقت والتاريخ')}</th>
                     <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('AI Tool Used', 'الأداة المستخدمة')}</th>
-                    <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Model', 'نموذج الذكاء الاصطناعي')}</th>
                     <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Credits Used', 'رصيد مستهلك')}</th>
                   </tr>
                 </thead>
@@ -851,7 +938,8 @@ export default function BillingView() {
                     });
 
                     // Deduct credit indicator
-                    const consumedCredits = Number(log.creditsDeducted || log.cost || 0);
+                    const rawVal = Number(log.creditsDeducted !== undefined ? log.creditsDeducted : (log.cost || 0));
+                    const displayCredits = rawVal > 0 ? (rawVal % 1 === 0 ? Math.round(rawVal) : rawVal.toFixed(2)) : '1.00';
 
                     return (
                       <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
@@ -861,11 +949,8 @@ export default function BillingView() {
                             {log.tool || 'General AI Query'}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <code style={{ color: 'var(--orange)', fontSize: '11px' }}>{log.model || 'gpt-4o-mini'}</code>
-                        </td>
                         <td style={{ padding: '12px 8px', fontWeight: '800', color: 'var(--red)', fontFamily: 'var(--mono)' }}>
-                          -{consumedCredits.toFixed(2)} Credits
+                          -{displayCredits} Credits
                         </td>
                       </tr>
                     );
@@ -877,34 +962,51 @@ export default function BillingView() {
         </div>
       )}
 
-      {activeTab === 'manual-transfer' && (
-        <div className="g21">
-          {/* Form */}
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">📱 {L('Manual Wallet or Bank Transfer', 'إثبات تحويل بنكي / محفظة كاش')}</div>
+
+      {/* Payment Modal */}
+      {paymentModalOpen && selectedPackage && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button
+              onClick={() => setPaymentModalOpen(false)}
+              style={{ position: 'absolute', top: '15px', right: isRTL ? 'auto' : '15px', left: isRTL ? '15px' : 'auto', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--t2)' }}
+            >
+              ×
+            </button>
+            <div className="sec-hd" style={{ marginBottom: '15px' }}>
+              <div className="sec-title">💳 {L('Complete Your Payment', 'إتمام عملية الدفع')}</div>
             </div>
-            
+
+            <div style={{ background: 'var(--surface2)', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid var(--brd)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: 'var(--t2)', fontSize: '13px' }}>{L('Selected Plan', 'الباقة المختارة')}</span>
+                <span style={{ fontWeight: 'bold', color: 'var(--orange)' }}>{selectedPackage.planName}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--t2)', fontSize: '13px' }}>{L('Amount to Pay', 'المبلغ المطلوب')}</span>
+                <span style={{ fontWeight: 'bold', color: 'var(--t1)' }}>{selectedPackage.amount} {selectedPackage.currency}</span>
+              </div>
+            </div>
+
             {activeMethods.length === 0 ? (
               <p style={{ color: 'var(--t3)', fontSize: '12.5px', textAlign: 'center', padding: '15px' }}>
                 {L('No payment methods configured by administrator. Please contact support.', 'لم يقم مسؤول النظام بتكوين أي طرق دفع بعد. يرجى التواصل مع الدعم.')}
               </p>
             ) : (
-              <form onSubmit={handleSubmitManual} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '6px' }}>
-                    {L('Choose Payment Gateway', 'اختر طريقة الدفع')}
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--t1)', display: 'block', marginBottom: '10px' }}>
+                    {L('Choose Payment Method', 'اختر وسيلة الدفع')}
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px' }}>
                     {activeMethods.map((method) => {
                       const isActive = selectedMethod === method;
                       let label = '';
                       let icon = '';
+                      if (method === 'stripe') { label = L('Credit Card', 'بطاقة ائتمان'); icon = '💳'; }
                       if (method === 'instapay') { label = L('Instapay', 'انستاباي'); icon = '⚡'; }
                       if (method === 'vodafoneCash') { label = L('Vodafone Cash', 'فودافون كاش'); icon = '📱'; }
                       if (method === 'paypal') { label = L('PayPal', 'بايبال'); icon = '🌐'; }
-
-                      if (method === 'stripe') return null; // credit card handled by Stripe button directly
 
                       return (
                         <button
@@ -913,17 +1015,17 @@ export default function BillingView() {
                           onClick={() => setSelectedMethod(method)}
                           className={`btn ${isActive ? 'btn-prime' : 'btn-ghost'}`}
                           style={{
-                            padding: '10px 6px',
-                            fontSize: '11px',
+                            padding: '12px 6px',
+                            fontSize: '11.5px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '4px',
+                            gap: '6px',
                             justifyContent: 'center',
                             borderRadius: '10px'
                           }}
                         >
-                          <span style={{ fontSize: '16px' }}>{icon}</span>
+                          <span style={{ fontSize: '20px' }}>{icon}</span>
                           <span>{label}</span>
                         </button>
                       );
@@ -931,165 +1033,126 @@ export default function BillingView() {
                   </div>
                 </div>
 
-                {/* Gateway Transfer instruction details */}
-                <div style={{ background: 'var(--surface2)', border: '1px solid var(--brd)', borderRadius: '12px', padding: '14px', fontSize: '12.5px', color: 'var(--t1)' }}>
-                  {selectedMethod === 'instapay' && (
-                    <div>
-                      <div style={{ fontWeight: '700', color: 'var(--a)', marginBottom: '4px' }}>⚡ {L('Instapay Transfer Details', 'تفاصيل التحويل عبر انستاباي')}</div>
-                      <div>{L('Please transfer the amount to the address below:', 'يرجى تحويل قيمة الاشتراك إلى العنوان التالي:')}</div>
-                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{paymentMethods.instapay?.address}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(paymentMethods.instapay?.address);
-                            showToast(L('Address copied!', 'تم نسخ العنوان!'));
-                          }}
-                          style={{ background: 'none', border: 'none', color: 'var(--a)', cursor: 'pointer' }}
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedMethod === 'vodafoneCash' && (
-                    <div>
-                      <div style={{ fontWeight: '700', color: '#EF4444', marginBottom: '4px' }}>📱 {L('Vodafone Cash Transfer Details', 'تفاصيل التحويل عبر فودافون كاش')}</div>
-                      <div>{L('Please transfer the amount to the wallet number below:', 'يرجى تحويل قيمة الاشتراك إلى رقم المحفظة التالي:')}</div>
-                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{paymentMethods.vodafoneCash?.number}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(paymentMethods.vodafoneCash?.number);
-                            showToast(L('Number copied!', 'تم نسخ الرقم!'));
-                          }}
-                          style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedMethod === 'paypal' && (
-                    <div>
-                      <div style={{ fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>🌐 {L('PayPal Transfer Details', 'تفاصيل التحويل عبر بايبال')}</div>
-                      <div>{L('Please send payment to the PayPal address below:', 'يرجى إرسال الدفع إلى عنوان بايبال التالي:')}</div>
-                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{paymentMethods.paypal?.email}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(paymentMethods.paypal?.email);
-                            showToast(L('Email copied!', 'تم نسخ الإيميل!'));
-                          }}
-                          style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer' }}
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Paid Amount', 'المبلغ المدفوع')}</label>
-                    <input
-                      className="inp"
-                      type="number"
-                      placeholder="0.00"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      required
+                {selectedMethod === 'stripe' && (
+                  <div style={{ marginTop: '10px' }}>
+                    <StripePaymentButton
+                      amount={selectedPackage.amount}
+                      currency={selectedPackage.currency}
+                      planName={selectedPackage.planName}
+                      planDuration={selectedPackage.planDuration}
+                      creditsToAdd={selectedPackage.creditsToAdd}
+                      userId={currentUser?.uid}
+                      adminId={userData?.adminId}
+                      buttonText={isRTL ? 'الدفع الآن باستخدام البطاقة' : 'Pay Now with Card'}
+                      style={{ padding: '12px', fontSize: '13px', borderRadius: '8px', width: '100%', fontWeight: 'bold' }}
                     />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Plan Duration / Type', 'الخطة / النوع')}</label>
-                    <select className="inp" value={duration} onChange={(e) => setDuration(e.target.value)}>
-                      <option value="monthly">{L('Monthly Plan Renewal', 'تجديد خطة شهرية')}</option>
-                      <option value="annual">{L('Annual Plan Renewal', 'تجديد خطة سنوية')}</option>
-                      <option value="recharge">{L('Credits Recharge', 'شحن رصيد كريديت إضافي')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Screenshot Proof of Payment', 'إرفاق لقطة شاشة لإثبات التحويل')}</label>
-                  <div style={{ border: '1px dashed var(--brd)', borderRadius: '10px', padding: '14px', textAlign: 'center', position: 'relative', cursor: 'pointer' }}>
-                    <input type="file" accept="image/*" onChange={handleFileChange} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                    <div style={{ fontSize: '20px', marginBottom: '4px' }}>📷</div>
-                    <div style={{ fontSize: '12px', color: 'var(--t1)', fontWeight: '600' }}>
-                      {file ? file.name : L('Choose transfer receipt screenshot', 'اضغط هنا لرفع إيصال التحويل')}
-                    </div>
-                  </div>
-                </div>
-
-                {uploading && (
-                  <div style={{ width: '100%', background: 'var(--surface2)', borderRadius: '10px', height: '6px', overflow: 'hidden' }}>
-                    <div style={{ width: `${uploadProgress}%`, background: 'var(--a)', height: '100%', transition: 'width 0.2s' }}></div>
                   </div>
                 )}
 
-                {error && <div style={{ color: 'var(--red)', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' }}>⚠️ {error}</div>}
-                {submitted && <div style={{ color: 'var(--green)', fontSize: '12px', background: 'rgba(16,185,129,0.1)', padding: '8px 12px', borderRadius: '8px', textAlign: 'center' }}>✓ {L('Receipt uploaded successfully. Awaiting admin review.', 'تم إرسال إثبات الدفع! بانتظار مراجعة الإدارة.')}</div>}
+                {selectedMethod !== 'stripe' && selectedMethod !== '' && (
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSubmitManual(e).then(() => {
+                      if (!error) {
+                        setTimeout(() => setPaymentModalOpen(false), 2000);
+                      }
+                    });
+                  }} style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
 
-                <button type="submit" disabled={uploading} className="btn btn-prime" style={{ width: '100%', padding: '12px', fontWeight: 'bold' }}>
-                  {uploading ? `${L('Uploading proof', 'جاري الإرسال')} (${uploadProgress}%)` : L('Submit Payment Receipt', 'تأكيد وإرسال إثبات الدفع')}
-                </button>
-              </form>
-            )}
-          </div>
+                    {/* Gateway Transfer instruction details */}
+                    <div style={{ background: 'var(--surface2)', border: '1px solid var(--brd)', borderRadius: '12px', padding: '14px', fontSize: '12.5px', color: 'var(--t1)' }}>
+                      {selectedMethod === 'instapay' && (
+                        <div>
+                          <div style={{ fontWeight: '700', color: 'var(--a)', marginBottom: '4px' }}>⚡ {L('Instapay Transfer Details', 'تفاصيل التحويل عبر انستاباي')}</div>
+                          <div>{L('Please transfer the amount to the address below:', 'يرجى تحويل قيمة الاشتراك إلى العنوان التالي:')}</div>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{paymentMethods.instapay?.address}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(paymentMethods.instapay?.address);
+                                showToast(L('Address copied!', 'تم نسخ العنوان!'));
+                              }}
+                              style={{ background: 'none', border: 'none', color: 'var(--a)', cursor: 'pointer' }}
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-          {/* Table history */}
-          <div className="card">
-            <div className="sec-hd">
-              <div className="sec-title">🕒 {L('Manual Payment Receipts Log', 'سجل إيصالات الدفع اليدوي')}</div>
-            </div>
-            {recentPayments.filter(p => p.paymentMethod !== 'stripe').length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--t3)', fontSize: '12.5px' }}>
-                {L('No manual receipts uploaded yet.', 'لا توجد إيصالات تحويل يدوية مرفوعة بعد.')}
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--brd)', opacity: 0.8 }}>
-                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Method', 'الطريقة')}</th>
-                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Amount', 'المبلغ')}</th>
-                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Status', 'الحالة')}</th>
-                      <th style={{ padding: '8px 6px', fontWeight: '700', color: 'var(--t2)', textAlign: isRTL ? 'right' : 'left' }}>{L('Receipt', 'الإيصال')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentPayments.filter(p => p.paymentMethod !== 'stripe').map((pay) => {
-                      let col = 'var(--amber)';
-                      let lbl = L('Pending', 'قيد المراجعة');
-                      if (pay.status === 'approved') { col = 'var(--green)'; lbl = L('Approved', 'مقبول'); }
-                      if (pay.status === 'rejected') { col = 'var(--red)'; lbl = L('Rejected', 'مرفوض'); }
+                      {selectedMethod === 'vodafoneCash' && (
+                        <div>
+                          <div style={{ fontWeight: '700', color: '#EF4444', marginBottom: '4px' }}>📱 {L('Vodafone Cash Transfer Details', 'تفاصيل التحويل عبر فودافون كاش')}</div>
+                          <div>{L('Please transfer the amount to the wallet number below:', 'يرجى تحويل قيمة الاشتراك إلى رقم المحفظة التالي:')}</div>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{paymentMethods.vodafoneCash?.number}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(paymentMethods.vodafoneCash?.number);
+                                showToast(L('Number copied!', 'تم نسخ الرقم!'));
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer' }}
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-                      return (
-                        <tr key={pay.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                          <td style={{ padding: '10px 6px', fontWeight: '600', color: 'var(--t1)' }}>{pay.paymentMethod === 'instapay' ? 'Instapay' : 'Vodafone Cash'}</td>
-                          <td style={{ padding: '10px 6px', fontWeight: '700' }}>{pay.amount} {pay.currency}</td>
-                          <td style={{ padding: '10px 6px' }}>
-                            <span style={{ color: col, background: `${col}10`, padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px' }}>{lbl}</span>
-                          </td>
-                          <td style={{ padding: '10px 6px' }}>
-                            <a href={pay.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--orange)', textDecoration: 'underline' }}>{L('View Image', 'عرض الإيصال')}</a>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      {selectedMethod === 'paypal' && (
+                        <div>
+                          <div style={{ fontWeight: '700', color: '#3b82f6', marginBottom: '4px' }}>🌐 {L('PayPal Transfer Details', 'تفاصيل التحويل عبر بايبال')}</div>
+                          <div>{L('Please send payment to the PayPal address below:', 'يرجى إرسال الدفع إلى عنوان بايبال التالي:')}</div>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', marginTop: '8px', border: '1px dashed var(--brd)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{paymentMethods.paypal?.email}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(paymentMethods.paypal?.email);
+                                showToast(L('Email copied!', 'تم نسخ الإيميل!'));
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer' }}
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '11.5px', color: 'var(--t2)', display: 'block', marginBottom: '4px' }}>{L('Screenshot Proof of Payment', 'إرفاق لقطة شاشة لإثبات التحويل')}</label>
+                      <div style={{ border: '1px dashed var(--brd)', borderRadius: '10px', padding: '14px', textAlign: 'center', position: 'relative', cursor: 'pointer' }}>
+                        <input type="file" accept="image/*" onChange={handleFileChange} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+                        <div style={{ fontSize: '20px', marginBottom: '4px' }}>📷</div>
+                        <div style={{ fontSize: '12px', color: 'var(--t1)', fontWeight: '600' }}>
+                          {file ? file.name : L('Choose transfer receipt screenshot', 'اضغط هنا لرفع إيصال التحويل')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {uploading && (
+                      <div style={{ width: '100%', background: 'var(--surface2)', borderRadius: '10px', height: '6px', overflow: 'hidden' }}>
+                        <div style={{ width: `${uploadProgress}%`, background: 'var(--a)', height: '100%', transition: 'width 0.2s' }}></div>
+                      </div>
+                    )}
+
+                    {error && <div style={{ color: 'var(--red)', fontSize: '12px', background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: '8px' }}>⚠️ {error}</div>}
+                    {submitted && <div style={{ color: 'var(--green)', fontSize: '12px', background: 'rgba(16,185,129,0.1)', padding: '8px 12px', borderRadius: '8px', textAlign: 'center' }}>✓ {L('Receipt uploaded successfully. Awaiting admin review.', 'تم إرسال إثبات الدفع! بانتظار مراجعة الإدارة.')}</div>}
+
+                    <button type="submit" disabled={uploading} className="btn btn-prime" style={{ width: '100%', padding: '12px', fontWeight: 'bold' }}>
+                      {uploading ? `${L('Uploading proof', 'جاري الإرسال')} (${uploadProgress}%)` : L('Submit Payment Receipt', 'تأكيد وإرسال إثبات الدفع')}
+                    </button>
+                  </form>
+                )}
               </div>
             )}
           </div>
         </div>
       )}
+
     </div>
   );
 }

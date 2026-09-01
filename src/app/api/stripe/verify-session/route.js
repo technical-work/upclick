@@ -42,6 +42,7 @@ export async function GET(req) {
       }
     }
 
+    // Fallback to global config if no tenant key is found or adminId is global/missing
     if (!secretKey) {
       const globalDoc = await adminDb.collection('tenants').doc('global').get();
       if (globalDoc.exists) {
@@ -53,6 +54,7 @@ export async function GET(req) {
       }
     }
 
+    // Fallback to environment variables if still not found
     if (!secretKey && process.env.STRIPE_SECRET_KEY) {
       secretKey = process.env.STRIPE_SECRET_KEY;
     }
@@ -61,7 +63,9 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Stripe API key is not configured' }, { status: 400 });
     }
 
-    const stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
+    const stripe = new Stripe(secretKey, {
+      apiVersion: '2023-10-16',
+    });
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 

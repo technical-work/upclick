@@ -35,7 +35,8 @@ export default function ActiveSessionTracker() {
     try {
       const userRef = doc(db, 'users', user.uid);
       const updates = {
-        totalTimeSpent: increment(totalSeconds)
+        totalTimeSpent: increment(totalSeconds),
+        lastActiveAt: new Date().toISOString()
       };
 
       // Add increments for each specific section

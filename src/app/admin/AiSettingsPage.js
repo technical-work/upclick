@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
-import { Key, DollarSign, Cpu, Save, RefreshCw, BarChart2, List, Settings, Search } from 'lucide-react';
+import { Key, DollarSign, Cpu, Save, RefreshCw, BarChart2, List, Settings, Search, Download } from 'lucide-react';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_AI_TOOLS } from '../../constants/aiTools';
 
 const DEFAULTS = {
   openaiApiKey: '',
@@ -39,11 +40,36 @@ const DEFAULTS = {
   recharge3Credits: 500,
   recharge3Price: 999,
 
-  costGenerateScript: 5,
-  costGenerateLogo: 40,
-  costSwotAnalysis: 15,
-  costCompetitorAnalysis: 30,
-  costStrategyBuilder: 50
+  costGenerateScript: 15,
+  costGenerateLogo: 30,
+  costSwotAnalysis: 30,
+  costCompetitorAnalysis: 50,
+  costStrategyBuilder: 70,
+  costCrmLeadInsight: 10,
+  costTelegramAgent: 5,
+  costTelegramBroadcast: 15,
+  costIcpAnalysis: 25,
+  costMarketingFunnel: 35,
+  costMarketingOffer: 25,
+  costContentIdeas: 20,
+  costContentHook: 10,
+  costAutomationExecution: 15,
+  costGrowthIntelReport: 40,
+  costCreatorMonetization: 30,
+  costSocialTrendAnalysis: 20,
+  costBioLinkAi: 15,
+  costLandingPageAi: 50,
+  costCourseOutline: 45,
+  costDigitalProductGenerator: 40,
+  costNicheBrandIdentity: 35,
+  costCommunityAiReply: 5,
+  costDesignBanner: 25,
+  costTaskAiBreakdown: 10,
+  costCalendarSchedule: 10,
+  costOpsFinanceInsight: 20,
+  aiToolsConfig: [],
+  customPlans: [],
+  customRechargePacks: []
 };
 
 const AiSettingsPage = () => {
@@ -75,8 +101,17 @@ const AiSettingsPage = () => {
   const [logPage, setLogPage] = useState(1);
   const [logsPerPage, setLogsPerPage] = useState(25);
 
+  // Pagination State for Analytics Dashboard Tables
+  const [analyticsUsersPage, setAnalyticsUsersPage] = useState(1);
+  const [analyticsUsersPerPage] = useState(6);
+
+  const [analyticsToolsPage, setAnalyticsToolsPage] = useState(1);
+  const [analyticsToolsPerPage] = useState(6);
+
   useEffect(() => {
     setLogPage(1);
+    setAnalyticsUsersPage(1);
+    setAnalyticsToolsPage(1);
   }, [searchTerm, filterTool, filterModel, timeRange, startDate, endDate]);
 
   // Refill Modal state
@@ -120,7 +155,7 @@ const AiSettingsPage = () => {
           planProName: data.planProName || 'Pro',
           planProPrice: data.planProPrice !== undefined ? Number(data.planProPrice) : 1497,
           planProCredits: data.planProCredits !== undefined ? Number(data.planProCredits) : 2000,
-          
+
           recharge1Credits: data.recharge1Credits !== undefined ? Number(data.recharge1Credits) : 100,
           recharge1Price: data.recharge1Price !== undefined ? Number(data.recharge1Price) : 299,
           recharge2Credits: data.recharge2Credits !== undefined ? Number(data.recharge2Credits) : 250,
@@ -128,11 +163,36 @@ const AiSettingsPage = () => {
           recharge3Credits: data.recharge3Credits !== undefined ? Number(data.recharge3Credits) : 500,
           recharge3Price: data.recharge3Price !== undefined ? Number(data.recharge3Price) : 999,
 
-          costGenerateScript: data.costGenerateScript !== undefined ? Number(data.costGenerateScript) : 5,
-          costGenerateLogo: data.costGenerateLogo !== undefined ? Number(data.costGenerateLogo) : 40,
-          costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 15,
-          costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 30,
-          costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 50
+          costGenerateScript: data.costGenerateScript !== undefined ? Number(data.costGenerateScript) : 15,
+          costGenerateLogo: data.costGenerateLogo !== undefined ? Number(data.costGenerateLogo) : 30,
+          costSwotAnalysis: data.costSwotAnalysis !== undefined ? Number(data.costSwotAnalysis) : 30,
+          costCompetitorAnalysis: data.costCompetitorAnalysis !== undefined ? Number(data.costCompetitorAnalysis) : 50,
+          costStrategyBuilder: data.costStrategyBuilder !== undefined ? Number(data.costStrategyBuilder) : 70,
+          costCrmLeadInsight: data.costCrmLeadInsight !== undefined ? Number(data.costCrmLeadInsight) : 10,
+          costTelegramAgent: data.costTelegramAgent !== undefined ? Number(data.costTelegramAgent) : 5,
+          costTelegramBroadcast: data.costTelegramBroadcast !== undefined ? Number(data.costTelegramBroadcast) : 15,
+          costIcpAnalysis: data.costIcpAnalysis !== undefined ? Number(data.costIcpAnalysis) : 25,
+          costMarketingFunnel: data.costMarketingFunnel !== undefined ? Number(data.costMarketingFunnel) : 35,
+          costMarketingOffer: data.costMarketingOffer !== undefined ? Number(data.costMarketingOffer) : 25,
+          costContentIdeas: data.costContentIdeas !== undefined ? Number(data.costContentIdeas) : 20,
+          costContentHook: data.costContentHook !== undefined ? Number(data.costContentHook) : 10,
+          costAutomationExecution: data.costAutomationExecution !== undefined ? Number(data.costAutomationExecution) : 15,
+          costGrowthIntelReport: data.costGrowthIntelReport !== undefined ? Number(data.costGrowthIntelReport) : 40,
+          costCreatorMonetization: data.costCreatorMonetization !== undefined ? Number(data.costCreatorMonetization) : 30,
+          costSocialTrendAnalysis: data.costSocialTrendAnalysis !== undefined ? Number(data.costSocialTrendAnalysis) : 20,
+          costBioLinkAi: data.costBioLinkAi !== undefined ? Number(data.costBioLinkAi) : 15,
+          costLandingPageAi: data.costLandingPageAi !== undefined ? Number(data.costLandingPageAi) : 50,
+          costCourseOutline: data.costCourseOutline !== undefined ? Number(data.costCourseOutline) : 45,
+          costDigitalProductGenerator: data.costDigitalProductGenerator !== undefined ? Number(data.costDigitalProductGenerator) : 40,
+          costNicheBrandIdentity: data.costNicheBrandIdentity !== undefined ? Number(data.costNicheBrandIdentity) : 35,
+          costCommunityAiReply: data.costCommunityAiReply !== undefined ? Number(data.costCommunityAiReply) : 5,
+          costDesignBanner: data.costDesignBanner !== undefined ? Number(data.costDesignBanner) : 25,
+          costTaskAiBreakdown: data.costTaskAiBreakdown !== undefined ? Number(data.costTaskAiBreakdown) : 10,
+          costCalendarSchedule: data.costCalendarSchedule !== undefined ? Number(data.costCalendarSchedule) : 10,
+          costOpsFinanceInsight: data.costOpsFinanceInsight !== undefined ? Number(data.costOpsFinanceInsight) : 20,
+          aiToolsConfig: data.aiToolsConfig || [],
+          customPlans: Array.isArray(data.customPlans) ? data.customPlans : [],
+          customRechargePacks: Array.isArray(data.customRechargePacks) ? data.customRechargePacks : []
         });
         setGlobalStats({
           totalAiSpend: data.totalAiSpend !== undefined ? Number(data.totalAiSpend) : 0,
@@ -173,48 +233,129 @@ const AiSettingsPage = () => {
     }));
   };
 
+  const handleAddCustomPlan = () => {
+    const newPlan = {
+      id: 'custom_plan_' + Date.now(),
+      name: isRTL ? 'باقة مخصصة جديدة' : 'New Custom Plan',
+      price: 999,
+      credits: 15000,
+      icon: '🚀'
+    };
+    setSettings(prev => ({
+      ...prev,
+      customPlans: [...(prev.customPlans || []), newPlan]
+    }));
+  };
+
+  const handleUpdateCustomPlan = (id, field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      customPlans: (prev.customPlans || []).map(p => p.id === id ? { ...p, [field]: value } : p)
+    }));
+  };
+
+  const handleDeleteCustomPlan = (id) => {
+    setSettings(prev => ({
+      ...prev,
+      customPlans: (prev.customPlans || []).filter(p => p.id !== id)
+    }));
+  };
+
+  const handleAddCustomRechargePack = () => {
+    const newPack = {
+      id: 'custom_recharge_' + Date.now(),
+      name: isRTL ? 'حزمة شحن مخصصة' : 'Custom Recharge Pack',
+      price: 499,
+      credits: 5000,
+      icon: '⚡'
+    };
+    setSettings(prev => ({
+      ...prev,
+      customRechargePacks: [...(prev.customRechargePacks || []), newPack]
+    }));
+  };
+
+  const handleUpdateCustomRechargePack = (id, field, value) => {
+    setSettings(prev => ({
+      ...prev,
+      customRechargePacks: (prev.customRechargePacks || []).map(p => p.id === id ? { ...p, [field]: value } : p)
+    }));
+  };
+
+  const handleDeleteCustomRechargePack = (id) => {
+    setSettings(prev => ({
+      ...prev,
+      customRechargePacks: (prev.customRechargePacks || []).filter(p => p.id !== id)
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await setDoc(doc(db, 'tenants', 'global'), {
-          openaiApiKey: settings.openaiApiKey,
-          defaultUserCredit: Number(settings.defaultUserCredit),
-          creditsPerDollar: Number(settings.creditsPerDollar || 100),
-          openaiModel: settings.openaiModel,
-          aiEnabled: settings.aiEnabled,
-          aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
-          creditMonthlyPlan: Number(settings.creditMonthlyPlan),
-          creditAnnualPlan: Number(settings.creditAnnualPlan),
-          creditLifetimePlan: Number(settings.creditLifetimePlan),
-          aiTemperature: Number(settings.aiTemperature),
-          aiMaxTokens: Number(settings.aiMaxTokens),
-          aiSystemInstruction: settings.aiSystemInstruction,
-          aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
+        openaiApiKey: settings.openaiApiKey,
+        defaultUserCredit: Number(settings.defaultUserCredit),
+        creditsPerDollar: Number(settings.creditsPerDollar || 100),
+        openaiModel: settings.openaiModel,
+        aiEnabled: settings.aiEnabled,
+        aiMarkupMultiplier: Number(settings.aiMarkupMultiplier),
+        creditMonthlyPlan: Number(settings.creditMonthlyPlan),
+        creditAnnualPlan: Number(settings.creditAnnualPlan),
+        creditLifetimePlan: Number(settings.creditLifetimePlan),
+        aiTemperature: Number(settings.aiTemperature),
+        aiMaxTokens: Number(settings.aiMaxTokens),
+        aiSystemInstruction: settings.aiSystemInstruction,
+        aiMaxMonthlyBudget: Number(settings.aiMaxMonthlyBudget || 100.00),
 
-          planStarterName: settings.planStarterName,
-          planStarterPrice: Number(settings.planStarterPrice),
-          planStarterCredits: Number(settings.planStarterCredits),
-          planGrowthName: settings.planGrowthName,
-          planGrowthPrice: Number(settings.planGrowthPrice),
-          planGrowthCredits: Number(settings.planGrowthCredits),
-          planProName: settings.planProName,
-          planProPrice: Number(settings.planProPrice),
-          planProCredits: Number(settings.planProCredits),
+        planStarterName: settings.planStarterName,
+        planStarterPrice: Number(settings.planStarterPrice),
+        planStarterCredits: Number(settings.planStarterCredits),
+        planGrowthName: settings.planGrowthName,
+        planGrowthPrice: Number(settings.planGrowthPrice),
+        planGrowthCredits: Number(settings.planGrowthCredits),
+        planProName: settings.planProName,
+        planProPrice: Number(settings.planProPrice),
+        planProCredits: Number(settings.planProCredits),
 
-          recharge1Credits: Number(settings.recharge1Credits),
-          recharge1Price: Number(settings.recharge1Price),
-          recharge2Credits: Number(settings.recharge2Credits),
-          recharge2Price: Number(settings.recharge2Price),
-          recharge3Credits: Number(settings.recharge3Credits),
-          recharge3Price: Number(settings.recharge3Price),
+        recharge1Credits: Number(settings.recharge1Credits),
+        recharge1Price: Number(settings.recharge1Price),
+        recharge2Credits: Number(settings.recharge2Credits),
+        recharge2Price: Number(settings.recharge2Price),
+        recharge3Credits: Number(settings.recharge3Credits),
+        recharge3Price: Number(settings.recharge3Price),
 
-          costGenerateScript: Number(settings.costGenerateScript),
-          costGenerateLogo: Number(settings.costGenerateLogo),
-          costSwotAnalysis: Number(settings.costSwotAnalysis),
-          costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
-          costStrategyBuilder: Number(settings.costStrategyBuilder),
+        costGenerateScript: Number(settings.costGenerateScript),
+        costGenerateLogo: Number(settings.costGenerateLogo),
+        costSwotAnalysis: Number(settings.costSwotAnalysis),
+        costCompetitorAnalysis: Number(settings.costCompetitorAnalysis),
+        costStrategyBuilder: Number(settings.costStrategyBuilder),
+        costCrmLeadInsight: Number(settings.costCrmLeadInsight),
+        costTelegramAgent: Number(settings.costTelegramAgent),
+        costTelegramBroadcast: Number(settings.costTelegramBroadcast),
+        costIcpAnalysis: Number(settings.costIcpAnalysis),
+        costMarketingFunnel: Number(settings.costMarketingFunnel),
+        costMarketingOffer: Number(settings.costMarketingOffer),
+        costContentIdeas: Number(settings.costContentIdeas),
+        costContentHook: Number(settings.costContentHook),
+        costAutomationExecution: Number(settings.costAutomationExecution),
+        costGrowthIntelReport: Number(settings.costGrowthIntelReport),
+        costCreatorMonetization: Number(settings.costCreatorMonetization),
+        costSocialTrendAnalysis: Number(settings.costSocialTrendAnalysis),
+        costBioLinkAi: Number(settings.costBioLinkAi),
+        costLandingPageAi: Number(settings.costLandingPageAi),
+        costCourseOutline: Number(settings.costCourseOutline),
+        costDigitalProductGenerator: Number(settings.costDigitalProductGenerator),
+        costNicheBrandIdentity: Number(settings.costNicheBrandIdentity),
+        costCommunityAiReply: Number(settings.costCommunityAiReply),
+        costDesignBanner: Number(settings.costDesignBanner),
+        costTaskAiBreakdown: Number(settings.costTaskAiBreakdown),
+        costCalendarSchedule: Number(settings.costCalendarSchedule),
+        costOpsFinanceInsight: Number(settings.costOpsFinanceInsight),
+        aiToolsConfig: settings.aiToolsConfig || [],
+        customPlans: settings.customPlans || [],
+        customRechargePacks: settings.customRechargePacks || [],
 
-          updatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       }, { merge: true });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -265,7 +406,7 @@ const AiSettingsPage = () => {
     return logList.filter(log => {
       const ts = log.timestamp;
       const dateObj = ts?.toDate ? ts.toDate() : (ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts));
-      
+
       if (timeRange === 'today') {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         return dateObj >= todayStart;
@@ -305,11 +446,22 @@ const AiSettingsPage = () => {
       // User Aggregates
       const userKey = log.userEmail || log.userId || 'Unknown User';
       if (!userStats[userKey]) {
-        userStats[userKey] = { email: userKey, name: log.userName || '', cost: 0, credits: 0, calls: 0, userId: log.userId };
+        userStats[userKey] = {
+          email: userKey,
+          name: log.userName || '',
+          cost: 0,
+          credits: 0,
+          calls: 0,
+          userId: log.userId,
+          toolCounts: {}
+        };
       }
       userStats[userKey].cost += (log.cost || 0);
       userStats[userKey].credits += (log.creditsDeducted || 0);
       userStats[userKey].calls += 1;
+
+      const tName = log.tool || 'General';
+      userStats[userKey].toolCounts[tName] = (userStats[userKey].toolCounts[tName] || 0) + 1;
 
       // Tool Aggregates
       const toolKey = log.tool || 'General';
@@ -321,25 +473,32 @@ const AiSettingsPage = () => {
       toolStats[toolKey].calls += 1;
     });
 
-    const topUsers = Object.values(userStats)
-      .sort((a, b) => b.cost - a.cost)
-      .slice(0, 5);
+    const allUserList = Object.values(userStats).map(u => {
+      let topTool = 'General';
+      let maxToolCalls = 0;
+      Object.entries(u.toolCounts || {}).forEach(([tool, count]) => {
+        if (count > maxToolCalls) {
+          maxToolCalls = count;
+          topTool = tool;
+        }
+      });
+      return { ...u, topTool };
+    }).sort((a, b) => b.cost - a.cost);
 
     const topTools = Object.values(toolStats)
-      .sort((a, b) => b.calls - a.calls)
-      .slice(0, 5);
+      .sort((a, b) => b.calls - a.calls);
 
-    return { topUsers, topTools };
+    return { allUserList, topTools };
   };
 
-  const { topUsers, topTools } = getAnalytics();
+  const { allUserList, topTools } = getAnalytics();
 
   // Compute dynamic stats for the selected period
   const getPeriodStats = () => {
     let spend = 0;
     let tokens = 0;
     let calls = dateFilteredLogs.length;
-    
+
     dateFilteredLogs.forEach(l => {
       spend += (l.cost || 0);
       tokens += ((l.inputTokens || 0) + (l.outputTokens || 0));
@@ -375,7 +534,7 @@ const AiSettingsPage = () => {
   // Export filtered logs to CSV file
   const exportLogsToCSV = () => {
     if (filteredLogs.length === 0) return;
-    const headers = isRTL 
+    const headers = isRTL
       ? ['المستخدم', 'البريد الإلكتروني', 'الأداة', 'النموذج', 'المدخلات (Tokens)', 'المخرجات (Tokens)', 'التكلفة ($)', 'الوقت']
       : ['User', 'Email', 'Tool', 'Model', 'Input Tokens', 'Output Tokens', 'Cost ($)', 'Timestamp'];
     const rows = filteredLogs.map(log => {
@@ -393,12 +552,12 @@ const AiSettingsPage = () => {
         dateStr
       ];
     });
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
       + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ai_usage_logs_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `ai_usage_logs_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -622,7 +781,7 @@ const AiSettingsPage = () => {
           }
         }
       `}</style>
-      
+
       {/* Sub Tabs Navigation */}
       <div className="ai-settings-subtabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '10px' }}>
         <button
@@ -842,7 +1001,7 @@ const AiSettingsPage = () => {
                     borderColor: testResult.success ? 'rgba(40, 200, 64, 0.2)' : 'rgba(255, 95, 87, 0.2)',
                     color: testResult.success ? 'var(--green, #28c840)' : 'var(--red, #ff5f57)'
                   }}>
-                    {testResult.success 
+                    {testResult.success
                       ? (isRTL ? `✓ المفتاح يعمل بنجاح! تم استيراد عدد النماذج المتوفرة: ${testResult.modelsCount}` : `✓ Key verified! Successfully loaded ${testResult.modelsCount} models.`)
                       : (isRTL ? `⚠️ خطأ في التحقق: ${testResult.error}` : `⚠️ Verification failed: ${testResult.error}`)
                     }
@@ -853,73 +1012,7 @@ const AiSettingsPage = () => {
                 </div>
               </div>
 
-              {/* Grid: Financial & Conversion configurations */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {/* Default User Credit */}
-                <div>
-                  <label style={labelStyle}>
-                    <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                    {isRTL ? 'الرصيد الافتراضي للمستخدمين الجدد ($)' : 'Default Starting Balance for New Users ($)'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="5.00"
-                    value={settings.defaultUserCredit}
-                    onChange={e => handleFieldChange('defaultUserCredit', e.target.value)}
-                    style={inputStyle}
-                  />
-                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                    {isRTL ? 'قيمة الرصيد المالي الافتراضي الذي يحصل عليه المستخدم الجديد.' : 'The default starting dollar balance for new accounts.'}
-                  </div>
-                </div>
 
-                {/* Credits Per Dollar */}
-                <div>
-                  <label style={labelStyle}>
-                    <RefreshCw size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                    {isRTL ? 'عدد الكريديت مقابل الدولار الواحد' : 'Credits Per One Dollar ($1)'}
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    placeholder="100"
-                    value={settings.creditsPerDollar || 100}
-                    onChange={e => handleFieldChange('creditsPerDollar', e.target.value)}
-                    style={inputStyle}
-                  />
-                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                    {isRTL 
-                      ? `معدل التحويل: $1 دولار يساوي ${settings.creditsPerDollar || 100} كريديت.`
-                      : `Conversion rate: $1 equals ${settings.creditsPerDollar || 100} credits.`
-                    }
-                  </div>
-                </div>
-
-                {/* Pricing Markup Multiplier */}
-                <div>
-                  <label style={labelStyle}>
-                    <DollarSign size={12} style={{ marginInlineEnd: '4px', verticalAlign: 'middle' }} />
-                    {isRTL ? 'مضاعف تسعير الاستهلاك للمستخدمين' : 'Usage Markup Cost Multiplier'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    placeholder="1.0"
-                    value={settings.aiMarkupMultiplier}
-                    onChange={e => handleFieldChange('aiMarkupMultiplier', e.target.value)}
-                    style={inputStyle}
-                  />
-                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                    {isRTL 
-                      ? 'يتم ضرب تكلفة الاستهلاك الحقيقية بهذا الرقم عند الخصم.'
-                      : 'Deducted credits are multiplied by this factor.'}
-                  </div>
-                </div>
-              </div>
 
               {/* Grid: Execution & Status configurations */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
@@ -957,7 +1050,7 @@ const AiSettingsPage = () => {
                       style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <label htmlFor="aiEnabledSwitch" style={{ fontSize: '13px', color: 'var(--text)', cursor: 'pointer', userSelect: 'none', fontWeight: 'bold' }}>
-                      {settings.aiEnabled 
+                      {settings.aiEnabled
                         ? (isRTL ? '🟢 مفعّل بالكامل لجميع المستخدمين' : '🟢 Fully Enabled for all users')
                         : (isRTL ? '🔴 معطّل وموقوف بالكامل للمنصة' : '🔴 Fully Disabled globally')
                       }
@@ -966,167 +1059,160 @@ const AiSettingsPage = () => {
                 </div>
               </div>
 
-              {/* Divider: Subscription Packages Settings */}
-              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px', marginTop: '8px' }}>
-                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
-                  {isRTL ? 'إعدادات باقات الاشتراك الأساسية (Subscription Plans)' : 'Subscription Plans Settings'}
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                  {/* Starter Plan */}
-                  <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', fontSize: '13px' }}>
-                      Starter Plan
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
-                        <input type="text" value={settings.planStarterName || ''} onChange={e => handleFieldChange('planStarterName', e.target.value)} style={inputStyle} />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
-                          <input type="number" value={settings.planStarterPrice || 0} onChange={e => handleFieldChange('planStarterPrice', e.target.value)} style={inputStyle} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
-                          <input type="number" value={settings.planStarterCredits || 0} onChange={e => handleFieldChange('planStarterCredits', e.target.value)} style={inputStyle} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Growth Plan */}
-                  <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', fontSize: '13px' }}>
-                      Growth Plan
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
-                        <input type="text" value={settings.planGrowthName || ''} onChange={e => handleFieldChange('planGrowthName', e.target.value)} style={inputStyle} />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
-                          <input type="number" value={settings.planGrowthPrice || 0} onChange={e => handleFieldChange('planGrowthPrice', e.target.value)} style={inputStyle} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
-                          <input type="number" value={settings.planGrowthCredits || 0} onChange={e => handleFieldChange('planGrowthCredits', e.target.value)} style={inputStyle} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Pro Plan */}
-                  <div style={{ background: 'var(--bg2)', padding: '14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--text)', fontSize: '13px' }}>
-                      Pro Plan
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'اسم الباقة' : 'Plan Name'}</label>
-                        <input type="text" value={settings.planProName || ''} onChange={e => handleFieldChange('planProName', e.target.value)} style={inputStyle} />
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <div>
-                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
-                          <input type="number" value={settings.planProPrice || 0} onChange={e => handleFieldChange('planProPrice', e.target.value)} style={inputStyle} />
-                        </div>
-                        <div>
-                          <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
-                          <input type="number" value={settings.planProCredits || 0} onChange={e => handleFieldChange('planProCredits', e.target.value)} style={inputStyle} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Divider: Recharge Packages Settings */}
-              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
-                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
-                  {isRTL ? 'إعدادات حزم شحن الرصيد الإضافية (Refill / Recharge Packages)' : 'Credits Recharge Packages Settings'}
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                  {/* Package 1 */}
-                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)', fontSize: '12px' }}>
-                      Recharge Pack 1
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
-                        <input type="number" value={settings.recharge1Credits || 0} onChange={e => handleFieldChange('recharge1Credits', e.target.value)} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
-                        <input type="number" value={settings.recharge1Price || 0} onChange={e => handleFieldChange('recharge1Price', e.target.value)} style={inputStyle} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Package 2 */}
-                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)', fontSize: '12px' }}>
-                      Recharge Pack 2
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
-                        <input type="number" value={settings.recharge2Credits || 0} onChange={e => handleFieldChange('recharge2Credits', e.target.value)} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
-                        <input type="number" value={settings.recharge2Price || 0} onChange={e => handleFieldChange('recharge2Price', e.target.value)} style={inputStyle} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Package 3 */}
-                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)', fontSize: '12px' }}>
-                      Recharge Pack 3
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'الكريديت' : 'Credits'}</label>
-                        <input type="number" value={settings.recharge3Credits || 0} onChange={e => handleFieldChange('recharge3Credits', e.target.value)} style={inputStyle} />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text2)', display: 'block', marginBottom: '2px' }}>{isRTL ? 'السعر (ج.م)' : 'Price (EGP)'}</label>
-                        <input type="number" value={settings.recharge3Price || 0} onChange={e => handleFieldChange('recharge3Price', e.target.value)} style={inputStyle} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Divider: AI Tool Cost Settings */}
               <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
-                <h4 style={{ fontSize: '13.5px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '12px' }}>
-                  {isRTL ? 'تسعير استهلاك أدوات الذكاء الاصطناعي بالكريديت' : 'AI Tools Credits Cost Settings'}
+                <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚡</span>
+                  <span>{isRTL ? 'تسعير استهلاك الكريديت لجميع أدوات الذكاء الاصطناعي في المنصة' : 'All AI Tools Credits Cost Settings'}</span>
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'توليد السكربت (أفكار / محتوى)' : 'Generate Script'}</label>
-                    <input type="number" value={settings.costGenerateScript || 0} onChange={e => handleFieldChange('costGenerateScript', e.target.value)} style={inputStyle} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                  {/* Strategy Lab */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: 'var(--orange)', marginBottom: '8px' }}>🧠 مختبر الاستراتيجية (Strategy Lab)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'بناء خطة الاستراتيجية الكاملة' : 'Strategy Builder Cost'}</label>
+                        <input type="number" value={settings.costStrategyBuilder || 0} onChange={e => handleFieldChange('costStrategyBuilder', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل المنافسين والفجوات' : 'Competitor Analysis Cost'}</label>
+                        <input type="number" value={settings.costCompetitorAnalysis || 0} onChange={e => handleFieldChange('costCompetitorAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل SWOT الاستراتيجي' : 'SWOT Analysis Cost'}</label>
+                        <input type="number" value={settings.costSwotAnalysis || 0} onChange={e => handleFieldChange('costSwotAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل العميل المثالي (ICP Profile)' : 'ICP Profile Cost'}</label>
+                        <input type="number" value={settings.costIcpAnalysis || 0} onChange={e => handleFieldChange('costIcpAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'تصميم اللوجو / البانر بالـ AI' : 'Generate Logo / Image'}</label>
-                    <input type="number" value={settings.costGenerateLogo || 0} onChange={e => handleFieldChange('costGenerateLogo', e.target.value)} style={inputStyle} />
+
+                  {/* Marketing OS & Content */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: 'var(--accent)', marginBottom: '8px' }}>📣 التسويق والمحتوى (Marketing & Content)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد السكربت والمنشورات' : 'Generate Script & Post'}</label>
+                        <input type="number" value={settings.costGenerateScript || 0} onChange={e => handleFieldChange('costGenerateScript', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد قمع المبيعات (Sales Funnel)' : 'Sales Funnel Cost'}</label>
+                        <input type="number" value={settings.costMarketingFunnel || 0} onChange={e => handleFieldChange('costMarketingFunnel', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء العرض التسويقي (Offer)' : 'Offer Generator Cost'}</label>
+                        <input type="number" value={settings.costMarketingOffer || 0} onChange={e => handleFieldChange('costMarketingOffer', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد خطة المحتوى (Content Ideas)' : 'Content Ideas Cost'}</label>
+                        <input type="number" value={settings.costContentIdeas || 0} onChange={e => handleFieldChange('costContentIdeas', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'صياغة الهوك والافتتاحية (Hooks)' : 'Content Hooks Cost'}</label>
+                        <input type="number" value={settings.costContentHook || 0} onChange={e => handleFieldChange('costContentHook', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'تحليل SWOT الاستراتيجي' : 'SWOT Analysis Cost'}</label>
-                    <input type="number" value={settings.costSwotAnalysis || 0} onChange={e => handleFieldChange('costSwotAnalysis', e.target.value)} style={inputStyle} />
+
+                  {/* Landing & Web Tools */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#10B981', marginBottom: '8px' }}>🌐 صفحات الهبوط والبايو (Landing & Bio)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء صفحة هبوط بالذكاء (Landing Page)' : 'Landing Page AI Cost'}</label>
+                        <input type="number" value={settings.costLandingPageAi || 0} onChange={e => handleFieldChange('costLandingPageAi', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'توليد محتوى رابط البايو (Bio Link AI)' : 'Bio Link AI Cost'}</label>
+                        <input type="number" value={settings.costBioLinkAi || 0} onChange={e => handleFieldChange('costBioLinkAi', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء المنتجات الرقمية (Digital Products)' : 'Digital Products Cost'}</label>
+                        <input type="number" value={settings.costDigitalProductGenerator || 0} onChange={e => handleFieldChange('costDigitalProductGenerator', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'إنشاء هياكل الكورسات (Courses AI)' : 'Courses AI Cost'}</label>
+                        <input type="number" value={settings.costCourseOutline || 0} onChange={e => handleFieldChange('costCourseOutline', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'تحليل المنافسين والفجوات' : 'Competitor Analysis Cost'}</label>
-                    <input type="number" value={settings.costCompetitorAnalysis || 0} onChange={e => handleFieldChange('costCompetitorAnalysis', e.target.value)} style={inputStyle} />
+
+                  {/* Design & Media */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#EC4899', marginBottom: '8px' }}>🎨 استوديو التصميم والصور (Design Studio)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تصميم اللوجو بالـ AI (Logo Generator)' : 'Generate Logo Cost'}</label>
+                        <input type="number" value={settings.costGenerateLogo || 0} onChange={e => handleFieldChange('costGenerateLogo', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تصميم البانر والسوشيال ميديا' : 'Design Banner Cost'}</label>
+                        <input type="number" value={settings.costDesignBanner || 0} onChange={e => handleFieldChange('costDesignBanner', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'هوية النيش والبراند (Brand Studio)' : 'Niche Brand Studio Cost'}</label>
+                        <input type="number" value={settings.costNicheBrandIdentity || 0} onChange={e => handleFieldChange('costNicheBrandIdentity', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={labelStyle}>{isRTL ? 'بناء خطة الاستراتيجية الكاملة' : 'Strategy Builder Cost'}</label>
-                    <input type="number" value={settings.costStrategyBuilder || 0} onChange={e => handleFieldChange('costStrategyBuilder', e.target.value)} style={inputStyle} />
+
+                  {/* Automation & Telegram */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#8B5CF6', marginBottom: '8px' }}>💬 التليجرام والأتمتة (Telegram & Automation)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'رد وكيل التليجرام الآلي (Telegram Agent)' : 'Telegram Agent Reply'}</label>
+                        <input type="number" value={settings.costTelegramAgent || 0} onChange={e => handleFieldChange('costTelegramAgent', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'حملات التليجرام الجماعية (Broadcast)' : 'Telegram Broadcast Cost'}</label>
+                        <input type="number" value={settings.costTelegramBroadcast || 0} onChange={e => handleFieldChange('costTelegramBroadcast', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تنفيذ مسارات الأتمتة (Automation AI)' : 'Automation Execution Cost'}</label>
+                        <input type="number" value={settings.costAutomationExecution || 0} onChange={e => handleFieldChange('costAutomationExecution', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل صفقات CRM الذكي (Smart CRM)' : 'Smart CRM Lead Insight'}</label>
+                        <input type="number" value={settings.costCrmLeadInsight || 0} onChange={e => handleFieldChange('costCrmLeadInsight', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Intelligence & Operations */}
+                  <div style={{ background: 'var(--bg2)', padding: '12px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#F59E0B', marginBottom: '8px' }}>📈 الاستخبارات والعمليات (Intel & Ops)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'رادار استخبارات النمو (Growth Intel)' : 'Growth Intel Report'}</label>
+                        <input type="number" value={settings.costGrowthIntelReport || 0} onChange={e => handleFieldChange('costGrowthIntelReport', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل ترندات السوشيال (Social Trends)' : 'Social Trends Analysis'}</label>
+                        <input type="number" value={settings.costSocialTrendAnalysis || 0} onChange={e => handleFieldChange('costSocialTrendAnalysis', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحقيق دخل المبدع (Creator Monetization)' : 'Creator Monetization Cost'}</label>
+                        <input type="number" value={settings.costCreatorMonetization || 0} onChange={e => handleFieldChange('costCreatorMonetization', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تفكيك وترتيب المهام (Task AI Breakdown)' : 'Task AI Breakdown Cost'}</label>
+                        <input type="number" value={settings.costTaskAiBreakdown || 0} onChange={e => handleFieldChange('costTaskAiBreakdown', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'جدولة الأحداث الذكية (Calendar AI)' : 'Calendar Schedule Cost'}</label>
+                        <input type="number" value={settings.costCalendarSchedule || 0} onChange={e => handleFieldChange('costCalendarSchedule', e.target.value)} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>{isRTL ? 'تحليل تقارير العمليات والمالية (Ops AI)' : 'Ops & Finance Insight Cost'}</label>
+                        <input type="number" value={settings.costOpsFinanceInsight || 0} onChange={e => handleFieldChange('costOpsFinanceInsight', e.target.value)} style={inputStyle} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1207,7 +1293,7 @@ const AiSettingsPage = () => {
                   }}
                 />
                 <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '4px' }}>
-                  {isRTL 
+                  {isRTL
                     ? 'اكتب التعليمات التي ترغب في توجيهها للذكاء الاصطناعي لتخصيص إجاباته وجعله يمثل علامتك التجارية بحرفية.'
                     : 'System-level instructions injected at the start of all chat conversations to brand your AI and tailor its responses.'}
                 </div>
@@ -1225,17 +1311,17 @@ const AiSettingsPage = () => {
             >
               <Save size={16} />
               <span>
-                {saving 
-                  ? (isRTL ? 'جاري الحفظ...' : 'Saving...') 
-                  : saved 
-                    ? (isRTL ? 'تم الحفظ بنجاح! ✓' : 'Saved Successfully! ✓') 
+                {saving
+                  ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                  : saved
+                    ? (isRTL ? 'تم الحفظ بنجاح! ✓' : 'Saved Successfully! ✓')
                     : (isRTL ? 'حفظ إعدادات الذكاء الاصطناعي' : 'Save AI Settings')
                 }
               </span>
             </button>
-            <button 
-              onClick={handleReset} 
-              className="btn" 
+            <button
+              onClick={handleReset}
+              className="btn"
               style={{ background: 'var(--bg3)', border: '1px solid var(--line)', color: 'var(--text2)' }}
             >
               <RefreshCw size={16} />
@@ -1253,7 +1339,7 @@ const AiSettingsPage = () => {
               <List size={16} style={{ color: 'var(--orange)' }} />
               <span>{isRTL ? 'سجلات استهلاك الذكاء الاصطناعي الفورية' : 'Live AI Transactions Logs'}</span>
             </div>
-            
+
             {/* Search, Filters & Export controls */}
             <div className="ai-settings-filter-bar" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
               {/* Tool Filter */}
@@ -1301,13 +1387,13 @@ const AiSettingsPage = () => {
               </select>
 
               {/* Export Button */}
-              <button 
+              <button
                 onClick={exportLogsToCSV}
                 className="btn"
-                style={{ 
-                  background: 'var(--bg3)', 
-                  border: '1px solid var(--line2)', 
-                  color: 'var(--text)', 
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line2)',
+                  color: 'var(--text)',
                   padding: '9px 14px',
                   borderRadius: '10px',
                   fontSize: '12.5px',
@@ -1421,19 +1507,19 @@ const AiSettingsPage = () => {
 
               {/* Pagination Controls */}
               {filteredLogs.length > logsPerPage && (
-                <div className="ai-settings-pagination" style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '16px 20px', 
-                  borderTop: '1px solid var(--line2)', 
+                <div className="ai-settings-pagination" style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px 20px',
+                  borderTop: '1px solid var(--line2)',
                   background: 'var(--bg3)',
                   flexWrap: 'wrap',
                   gap: '12px',
                   borderRadius: '0 0 10px 10px'
                 }}>
                   <div style={{ fontSize: '13px', color: 'var(--text3)', fontWeight: '600' }}>
-                    {isRTL 
+                    {isRTL
                       ? `عرض ${Math.min(filteredLogs.length, (logPage - 1) * logsPerPage + 1)}-${Math.min(filteredLogs.length, logPage * logsPerPage)} من أصل ${filteredLogs.length} سجل`
                       : `Showing ${Math.min(filteredLogs.length, (logPage - 1) * logsPerPage + 1)}-${Math.min(filteredLogs.length, logPage * logsPerPage)} of ${filteredLogs.length} entries`
                     }
@@ -1443,10 +1529,10 @@ const AiSettingsPage = () => {
                       onClick={() => setLogPage(prev => Math.max(prev - 1, 1))}
                       disabled={logPage === 1}
                       className="btn"
-                      style={{ 
-                        padding: '6px 12px', 
-                        fontSize: '12px', 
-                        background: logPage === 1 ? 'transparent' : 'var(--bg2)', 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        background: logPage === 1 ? 'transparent' : 'var(--bg2)',
                         borderColor: 'var(--line2)',
                         color: logPage === 1 ? 'var(--text3)' : 'var(--text)',
                         cursor: logPage === 1 ? 'not-allowed' : 'pointer'
@@ -1459,7 +1545,7 @@ const AiSettingsPage = () => {
                       const pageNumbers = [];
                       const startPage = Math.max(1, logPage - 2);
                       const endPage = Math.min(totalPages, logPage + 2);
-                      
+
                       for (let i = startPage; i <= endPage; i++) {
                         pageNumbers.push(i);
                       }
@@ -1529,10 +1615,10 @@ const AiSettingsPage = () => {
                       onClick={() => setLogPage(prev => Math.min(prev + 1, Math.ceil(filteredLogs.length / logsPerPage)))}
                       disabled={logPage === Math.ceil(filteredLogs.length / logsPerPage)}
                       className="btn"
-                      style={{ 
-                        padding: '6px 12px', 
-                        fontSize: '12px', 
-                        background: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'transparent' : 'var(--bg2)', 
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        background: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'transparent' : 'var(--bg2)',
                         borderColor: 'var(--line2)',
                         color: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'var(--text3)' : 'var(--text)',
                         cursor: logPage === Math.ceil(filteredLogs.length / logsPerPage) ? 'not-allowed' : 'pointer'
@@ -1551,7 +1637,7 @@ const AiSettingsPage = () => {
       {/* SUB TAB 3: ANALYTICS DASHBOARD */}
       {activeSubTab === 'analytics' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           {/* Global Aggregates Cards */}
           <div className="ai-settings-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             {/* Spend Card */}
@@ -1595,115 +1681,317 @@ const AiSettingsPage = () => {
           </div>
 
           {/* Detailed Analytics Tables */}
-          <div className="ai-settings-detailed-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
-            
-            {/* Top Users Card */}
-            <div className="card ai-settings-table-card" style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                <DollarSign size={15} style={{ color: 'var(--green)' }} />
-                <span>{isRTL ? 'المستخدمين الأكثر استهلاكاً للرصيد' : 'Top 5 Most Active Users (Cost)'}</span>
-              </div>
-              
-              {topUsers.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px 0' }}>
-                  {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
-                </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الطلبات' : 'Calls'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'إجمالي الاستهلاك ($)' : 'Spend ($)'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topUsers.map((user, index) => (
-                      <tr key={index} style={tableRowStyle}>
-                        <td style={tableCellStyle}>
-                          <div style={{ fontWeight: 'bold' }}>{user.name || 'Anonymous'}</div>
-                          <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{user.email}</div>
-                        </td>
-                        <td style={tableCellStyle}>{user.calls}</td>
-                        <td style={tableCellStyle}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                                ${user.cost.toFixed(5)}
-                              </span>
-                              <span style={{ fontSize: '10.5px', color: 'var(--text3)' }}>
-                                {user.credits || 0} Credits
-                              </span>
-                            </div>
-                            {user.userId && (
-                              <button
-                                onClick={() => openRefillModal(user.userId, user.email, user.name)}
-                                className="btn"
-                                style={{
-                                  padding: '4px 10px',
-                                  fontSize: '11px',
-                                  background: 'rgba(255, 107, 53, 0.12)',
-                                  border: '1px solid var(--orange)',
-                                  color: 'var(--orange)',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                {isRTL ? 'شحن رصيد' : 'Refill'}
-                              </button>
-                            )}
+          {(() => {
+            const totalAnalyticsUsersPages = Math.ceil(allUserList.length / analyticsUsersPerPage) || 1;
+            const paginatedAnalyticsUsers = allUserList.slice((analyticsUsersPage - 1) * analyticsUsersPerPage, analyticsUsersPage * analyticsUsersPerPage);
+
+            const totalAnalyticsToolsPages = Math.ceil(topTools.length / analyticsToolsPerPage) || 1;
+            const paginatedAnalyticsTools = topTools.slice((analyticsToolsPage - 1) * analyticsToolsPerPage, analyticsToolsPage * analyticsToolsPerPage);
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                {/* Top Users Card */}
+                <div className="card ai-settings-table-card" style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '800', color: 'var(--text)' }}>
+                      <DollarSign size={16} style={{ color: 'var(--green)' }} />
+                      <span>{isRTL ? 'تحليل استهلاك ونشاط جميع المستخدمين (الأكثر نشاطاً)' : 'All Active Users Activity & Consumption Breakdown'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const headers = [
+                            isRTL ? 'المستخدم' : 'User',
+                            isRTL ? 'البريد الإلكتروني' : 'Email',
+                            isRTL ? 'الرصيد المتبقي' : 'Remaining Credits',
+                            isRTL ? 'الأداة الأكثر استخداماً' : 'Top Tool',
+                            isRTL ? 'التكلفة الإجمالية ($)' : 'Total Cost ($)'
+                          ];
+                          const rows = allUserList.map(u => [
+                            u.name || 'Anonymous',
+                            u.email || '—',
+                            u.credits || 0,
+                            u.topTool || '—',
+                            `$${(u.cost || 0).toFixed(5)}`
+                          ]);
+                          const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+                            + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+                          const encodedUri = encodeURI(csvContent);
+                          const link = document.createElement("a");
+                          link.setAttribute("href", encodedUri);
+                          link.setAttribute("download", `ai_user_analytics_${new Date().toISOString().slice(0, 10)}.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        title={isRTL ? 'تحميل كملف CSV' : 'Export as CSV'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: 'var(--green)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          padding: '3px 10px',
+                          fontWeight: 'bold',
+                          fontSize: '11px',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <Download size={13} />
+                        <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+                      </button>
+                      <span style={{ fontSize: '11px', color: 'var(--text3)', background: 'var(--bg3)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                        {allUserList.length} {isRTL ? 'مستخدم نشط' : 'active users'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {allUserList.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '24px 0' }}>
+                      {isRTL ? 'لا توجد عمليات استهلاك في هذه الفترة الزمنية.' : 'No consumption logs in this period.'}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={tableHeaderStyle}>{isRTL ? '#' : '#'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'المستخدم' : 'User'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الطلبات' : 'Calls'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الكريديت المستهلك' : 'Credits Used'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الأداة الأكثر استخداماً' : 'Top Tool'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'التكلفة ($)' : 'Cost ($)'}</th>
+                              <th style={{ ...tableHeaderStyle, textAlign: 'center' }}>{isRTL ? 'الإجراء' : 'Action'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedAnalyticsUsers.map((user, index) => {
+                              const globalRank = ((analyticsUsersPage - 1) * analyticsUsersPerPage) + index + 1;
+                              return (
+                                <tr key={index} style={tableRowStyle}>
+                                  <td style={{ ...tableCellStyle, width: '30px', fontWeight: '800', color: 'var(--text3)' }}>
+                                    #{globalRank}
+                                  </td>
+                                  <td style={tableCellStyle}>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--text)' }}>{user.name || (isRTL ? 'مستخدم' : 'User')}</div>
+                                    <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{user.email}</div>
+                                  </td>
+                                  <td style={{ ...tableCellStyle, fontWeight: 'bold' }}>{user.calls}</td>
+                                  <td style={tableCellStyle}>
+                                    <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>
+                                      ⚡ {user.credits || 0} Cr
+                                    </span>
+                                  </td>
+                                  <td style={tableCellStyle}>
+                                    <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: '600', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                                      {user.topTool}
+                                    </span>
+                                  </td>
+                                  <td style={tableCellStyle}>
+                                    <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                      ${user.cost.toFixed(5)}
+                                    </span>
+                                  </td>
+                                  <td style={{ ...tableCellStyle, textAlign: 'center' }}>
+                                    {user.userId ? (
+                                      <button
+                                        onClick={() => openRefillModal(user.userId, user.email, user.name)}
+                                        className="btn"
+                                        style={{
+                                          padding: '4px 12px',
+                                          fontSize: '11px',
+                                          background: 'rgba(255, 107, 53, 0.12)',
+                                          border: '1px solid var(--orange)',
+                                          color: 'var(--orange)',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontWeight: 'bold',
+                                          whiteSpace: 'nowrap'
+                                        }}
+                                      >
+                                        {isRTL ? 'شحن رصيد' : 'Refill'}
+                                      </button>
+                                    ) : '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {allUserList.length > analyticsUsersPerPage && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                            {isRTL
+                              ? `عرض ${((analyticsUsersPage - 1) * analyticsUsersPerPage) + 1} - ${Math.min(analyticsUsersPage * analyticsUsersPerPage, allUserList.length)} من إجمالي ${allUserList.length} مستخدم`
+                              : `Showing ${((analyticsUsersPage - 1) * analyticsUsersPerPage) + 1} - ${Math.min(analyticsUsersPage * analyticsUsersPerPage, allUserList.length)} of ${allUserList.length} users`}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Top Features Card */}
-            <div className="card ai-settings-table-card" style={cardStyle}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '800', color: 'var(--text)', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                <Cpu size={15} style={{ color: 'var(--orange)' }} />
-                <span>{isRTL ? 'الأدوات الأكثر استخداماً' : 'Top 5 Used AI Features (Calls)'}</span>
-              </div>
-
-              {topTools.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '20px 0' }}>
-                  {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              disabled={analyticsUsersPage <= 1}
+                              onClick={() => setAnalyticsUsersPage(prev => Math.max(prev - 1, 1))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsUsersPage <= 1 ? 0.4 : 1, cursor: analyticsUsersPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'السابق' : 'Prev'}
+                            </button>
+                            <span style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 'bold', padding: '0 4px' }}>
+                              {analyticsUsersPage} / {totalAnalyticsUsersPages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={analyticsUsersPage >= totalAnalyticsUsersPages}
+                              onClick={() => setAnalyticsUsersPage(prev => Math.min(prev + 1, totalAnalyticsUsersPages))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsUsersPage >= totalAnalyticsUsersPages ? 0.4 : 1, cursor: analyticsUsersPage >= totalAnalyticsUsersPages ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'التالي' : 'Next'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الأداة / الميزة' : 'Tool / Feature'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'الاستخدامات' : 'Uses'}</th>
-                      <th style={tableHeaderStyle}>{isRTL ? 'تكلفة التشغيل ($)' : 'Incurred Cost ($)'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topTools.map((tool, index) => (
-                      <tr key={index} style={tableRowStyle}>
-                        <td style={tableCellStyle}>
-                          <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '12px', fontWeight: '600' }}>
-                            {tool.tool}
-                          </span>
-                        </td>
-                        <td style={tableCellStyle}>{tool.calls}</td>
-                        <td style={tableCellStyle}>
-                          <span style={{ color: 'var(--green)', fontWeight: '600' }}>
-                            ${tool.cost.toFixed(5)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
 
-          </div>
+                {/* Top Features Card */}
+                <div className="card ai-settings-table-card" style={cardStyle}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '8px', borderBottom: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: '800', color: 'var(--text)' }}>
+                      <Cpu size={16} style={{ color: 'var(--orange)' }} />
+                      <span>{isRTL ? 'الأدوات الأكثر استخداماً' : 'Top Used AI Features'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const headers = [
+                            isRTL ? 'الأداة / الميزة' : 'Tool / Feature',
+                            isRTL ? 'عدد الاستخدامات' : 'Uses Count',
+                            isRTL ? 'تكلفة التشغيل ($)' : 'Incurred Cost ($)'
+                          ];
+                          const rows = topTools.map(t => [
+                            t.tool,
+                            t.calls || 0,
+                            `$${(t.cost || 0).toFixed(5)}`
+                          ]);
+                          const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
+                            + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+                          const encodedUri = encodeURI(csvContent);
+                          const link = document.createElement("a");
+                          link.setAttribute("href", encodedUri);
+                          link.setAttribute("download", `ai_top_tools_${new Date().toISOString().slice(0, 10)}.csv`);
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        title={isRTL ? 'تحميل كملف CSV' : 'Export as CSV'}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: 'var(--green)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          padding: '3px 10px',
+                          fontWeight: 'bold',
+                          fontSize: '11px',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <Download size={13} />
+                        <span>{isRTL ? 'تصدير Excel' : 'Export Excel'}</span>
+                      </button>
+                      <span style={{ fontSize: '11px', color: 'var(--text3)', background: 'var(--bg3)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                        {topTools.length} {isRTL ? 'أداة مستخدمة' : 'used tools'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {topTools.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text3)', padding: '24px 0' }}>
+                      {isRTL ? 'لا توجد بيانات كافية للحساب حالياً.' : 'Insufficient data to compute.'}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                        <table style={{ width: '100%', minWidth: '450px', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الأداة / الميزة' : 'Tool / Feature'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'الاستخدامات' : 'Uses'}</th>
+                              <th style={tableHeaderStyle}>{isRTL ? 'تكلفة التشغيل ($)' : 'Incurred Cost ($)'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedAnalyticsTools.map((tool, index) => (
+                              <tr key={index} style={tableRowStyle}>
+                                <td style={tableCellStyle}>
+                                  <span style={{ background: 'var(--bg3)', border: '1px solid var(--line2)', borderRadius: '6px', padding: '3px 8px', fontSize: '11.5px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                                    {tool.tool}
+                                  </span>
+                                </td>
+                                <td style={{ ...tableCellStyle, fontWeight: 'bold' }}>{tool.calls}</td>
+                                <td style={tableCellStyle}>
+                                  <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
+                                    ${tool.cost.toFixed(5)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {topTools.length > analyticsToolsPerPage && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--line)', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)' }}>
+                            {isRTL
+                              ? `عرض ${((analyticsToolsPage - 1) * analyticsToolsPerPage) + 1} - ${Math.min(analyticsToolsPage * analyticsToolsPerPage, topTools.length)} من إجمالي ${topTools.length} أداة`
+                              : `Showing ${((analyticsToolsPage - 1) * analyticsToolsPerPage) + 1} - ${Math.min(analyticsToolsPage * analyticsToolsPerPage, topTools.length)} of ${topTools.length} tools`}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              disabled={analyticsToolsPage <= 1}
+                              onClick={() => setAnalyticsToolsPage(prev => Math.max(prev - 1, 1))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsToolsPage <= 1 ? 0.4 : 1, cursor: analyticsToolsPage <= 1 ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'السابق' : 'Prev'}
+                            </button>
+                            <span style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 'bold', padding: '0 4px' }}>
+                              {analyticsToolsPage} / {totalAnalyticsToolsPages}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={analyticsToolsPage >= totalAnalyticsToolsPages}
+                              onClick={() => setAnalyticsToolsPage(prev => Math.min(prev + 1, totalAnalyticsToolsPages))}
+                              className="btn btn-ghost btn-sm"
+                              style={{ opacity: analyticsToolsPage >= totalAnalyticsToolsPages ? 0.4 : 1, cursor: analyticsToolsPage >= totalAnalyticsToolsPages ? 'not-allowed' : 'pointer', fontSize: '11px', padding: '4px 10px' }}
+                            >
+                              {isRTL ? 'التالي' : 'Next'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1786,7 +2074,6 @@ const AiSettingsPage = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

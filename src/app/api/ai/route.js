@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { DEFAULT_AI_TOOLS } from '@/constants/aiTools';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -112,24 +113,53 @@ export async function POST(request) {
     const userData = userDoc.data();
     const aiCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : defaultUserCredit;
 
-    // Determine credit unit cost
+    // Determine tool configuration from dynamic aiToolsConfig or DEFAULT_AI_TOOLS
+    const aiToolsConfig = globalData.aiToolsConfig || [];
+    const baseTool = DEFAULT_AI_TOOLS.find(t => t.id === tool || t.name === tool);
+    const customTool = aiToolsConfig.find(t => t.id === tool || t.name === tool);
+
+    let configuredCost = customTool && customTool.cost !== undefined 
+      ? customTool.cost 
+      : (baseTool ? baseTool.cost : null);
+    
+    let allowedPlans = customTool && customTool.allowedPlans 
+      ? customTool.allowedPlans 
+      : ['starter', 'growth', 'pro'];
+
+    // Check Plan Authorization
+    const userPlan = (userData.planName || 'starter').toLowerCase();
+    const standardPlans = ['starter', 'growth', 'pro'];
+    if (standardPlans.includes(userPlan) && !allowedPlans.includes(userPlan)) {
+      return NextResponse.json({ 
+        error: 'هذه الأداة غير متاحة في باقتك الحالية. يمكنك ترقية الباقة لاستخدامها.' 
+      }, { status: 403 });
+    }
+
+    // Determine final credit unit cost
     let finalCreditsDeduction = 0;
-    if (creditsCost !== undefined && creditsCost !== null) {
+    if (configuredCost !== null && configuredCost !== undefined) {
+      finalCreditsDeduction = Number(configuredCost);
+    } else if (creditsCost !== undefined && creditsCost !== null) {
       finalCreditsDeduction = Number(creditsCost);
     } else {
-      const toolLower = String(tool || '').toLowerCase();
-      if (toolLower.includes('script')) {
-        finalCreditsDeduction = globalData.costGenerateScript !== undefined ? Number(globalData.costGenerateScript) : 5;
-      } else if (toolLower.includes('logo') || toolLower.includes('design') || toolLower.includes('banner')) {
-        finalCreditsDeduction = globalData.costGenerateLogo !== undefined ? Number(globalData.costGenerateLogo) : 40;
-      } else if (toolLower.includes('swot')) {
-        finalCreditsDeduction = globalData.costSwotAnalysis !== undefined ? Number(globalData.costSwotAnalysis) : 15;
-      } else if (toolLower.includes('competitor')) {
-        finalCreditsDeduction = globalData.costCompetitorAnalysis !== undefined ? Number(globalData.costCompetitorAnalysis) : 30;
-      } else if (toolLower.includes('strategy') || toolLower.includes('roadmap')) {
-        finalCreditsDeduction = globalData.costStrategyBuilder !== undefined ? Number(globalData.costStrategyBuilder) : 50;
+      const toolMatch = DEFAULT_AI_TOOLS.find(t => t.id === tool || t.name === tool || (tool && t.id.includes(tool)));
+      if (toolMatch && toolMatch.cost) {
+        finalCreditsDeduction = toolMatch.cost;
       } else {
-        finalCreditsDeduction = 0; // default catch-all: no deduction for unrecognized tools
+        const toolLower = String(tool || '').toLowerCase();
+        if (toolLower.includes('script')) {
+          finalCreditsDeduction = globalData.costGenerateScript !== undefined ? Number(globalData.costGenerateScript) : 5;
+        } else if (toolLower.includes('logo') || toolLower.includes('design') || toolLower.includes('banner')) {
+          finalCreditsDeduction = globalData.costGenerateLogo !== undefined ? Number(globalData.costGenerateLogo) : 40;
+        } else if (toolLower.includes('swot')) {
+          finalCreditsDeduction = globalData.costSwotAnalysis !== undefined ? Number(globalData.costSwotAnalysis) : 15;
+        } else if (toolLower.includes('competitor')) {
+          finalCreditsDeduction = globalData.costCompetitorAnalysis !== undefined ? Number(globalData.costCompetitorAnalysis) : 30;
+        } else if (toolLower.includes('strategy') || toolLower.includes('roadmap')) {
+          finalCreditsDeduction = globalData.costStrategyBuilder !== undefined ? Number(globalData.costStrategyBuilder) : 50;
+        } else {
+          finalCreditsDeduction = 1;
+        }
       }
     }
 
@@ -259,9 +289,10 @@ export async function POST(request) {
           if (promptTokens > 0 || completionTokens > 0) {
             const rates = getModelRates(configuredModel);
             const cost = (promptTokens * rates.input) + (completionTokens * rates.output);
+            const actualDeduction = finalCreditsDeduction > 0 ? finalCreditsDeduction : Math.max(1, Math.ceil(cost * creditsPerDollar));
 
             await userRef.update({
-              aiCredits: FieldValue.increment(-finalCreditsDeduction)
+              aiCredits: FieldValue.increment(-actualDeduction)
             });
 
             await adminDb.collection('ai_logs').add({
@@ -272,7 +303,7 @@ export async function POST(request) {
               inputTokens: promptTokens,
               outputTokens: completionTokens,
               cost: cost,
-              creditsDeducted: finalCreditsDeduction,
+              creditsDeducted: actualDeduction,
               tool: tool || 'General',
               timestamp: new Date()
             });

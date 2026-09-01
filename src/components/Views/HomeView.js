@@ -21,6 +21,7 @@ export default function HomeView() {
     setAiPanelOpen,
     toggleTask,
     theme,
+    showToast,
     setSocialConnectModalOpen,
     setActiveWorkspace,
     setCrmActiveTab
@@ -32,6 +33,7 @@ export default function HomeView() {
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefStreaming, setBriefStreaming] = useState(false);
   const latestLangRef = useRef(lang);
+  const isBriefFetchingRef = useRef(false);
 
   const monthlyIncome = GC.finance.entries
     .filter(e => e.type === 'income')
@@ -160,7 +162,9 @@ export default function HomeView() {
   const maxBarVal = Math.max(...chartData.map(d => Math.max(d[0], d[1]))) || 100;
 
   // Generate AI Daily Brief
-  const generateDailyBrief = async (force = false) => {
+  const generateDailyBrief = async (manualTrigger = false) => {
+    if (isBriefFetchingRef.current && !manualTrigger) return;
+
     const targetLang = lang;
     const todayStr = new Date().toDateString();
 
@@ -174,28 +178,33 @@ export default function HomeView() {
     const pName = userData?.name || user?.displayName || L('Sara', 'سارة');
     const bName = GC.profile.name || L('your business', 'عملك التجاري');
 
-    // Unique cache key based on state, date, and user details
-    const currentCacheKey = `lang_${targetLang}|date_${todayStr}|tasks_${openTasks}_hp_${highPri}|leads_${allLeads.length}_od_${overdueLeads}|income_${monthlyIncome}_exp_${monthlyExpenses}|name_${pName}_biz_${bName}|niche_${GC.profile.niche || ''}_stage_${GC.profile.stage || ''}`;
+    // Unique cache key based on user, state, date, and business details
+    const userIdKey = user?.uid || 'guest';
+    const cacheStorageKey = `upklick_daily_brief_cache_${userIdKey}`;
+    const currentCacheKey = `uid_${userIdKey}|lang_${targetLang}|date_${todayStr}|tasks_${openTasks}_hp_${highPri}|leads_${allLeads.length}_od_${overdueLeads}|income_${monthlyIncome}_exp_${monthlyExpenses}|name_${pName}_biz_${bName}|niche_${GC.profile.niche || ''}_stage_${GC.profile.stage || ''}`;
 
     // 1. Check local cache
-    if (!force) {
-      const cached = localStorage.getItem('upklick_daily_brief_cache');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed.cacheKey === currentCacheKey && parsed.brief) {
-            setDailyBrief(parsed.brief);
-            setBriefLoading(false);
-            setBriefStreaming(false);
-            return;
+    const cached = localStorage.getItem(cacheStorageKey) || localStorage.getItem('upklick_daily_brief_cache');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.cacheKey === currentCacheKey && parsed.brief) {
+          setDailyBrief(parsed.brief);
+          setBriefLoading(false);
+          setBriefStreaming(false);
+
+          if (manualTrigger && showToast) {
+            showToast(L('Your daily brief is already up to date with your latest business data!', 'البيانات الحالية محدثة بالفعل! لم تتغير بيانات أعمالك لاستدعاء ملخص جديد.'));
           }
-        } catch (e) {
-          console.error("Error reading cached daily brief:", e);
+          return;
         }
+      } catch (e) {
+        console.error("Error reading cached daily brief:", e);
       }
     }
 
     // 2. Generate with AI streaming
+    isBriefFetchingRef.current = true;
     setBriefLoading(true);
     setBriefStreaming(false);
     setDailyBrief('');
@@ -233,22 +242,35 @@ Address the user directly by their personal name (${pName}) and refer to their b
         setBriefStreaming(false);
 
         // Cache the completed brief
-        localStorage.setItem('upklick_daily_brief_cache', JSON.stringify({
+        const cachePayload = JSON.stringify({
           brief,
           cacheKey: currentCacheKey
-        }));
+        });
+        localStorage.setItem(cacheStorageKey, cachePayload);
+        localStorage.setItem('upklick_daily_brief_cache', cachePayload);
+
+        if (manualTrigger && showToast) {
+          showToast(L('Daily brief updated with your latest business data! ✨', 'تم تحديث الملخص اليومي بناءً على أحدث بياناتك! ✨'));
+        }
       }
     } catch (err) {
       console.error("Failed to generate daily brief:", err);
       setBriefLoading(false);
       setBriefStreaming(false);
+    } finally {
+      isBriefFetchingRef.current = false;
     }
   };
 
   useEffect(() => {
     latestLangRef.current = lang;
-    generateDailyBrief(false);
+    const timer = setTimeout(() => {
+      generateDailyBrief(false);
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [
+    user?.uid,
     allLeads.length,
     GC.tasks?.items?.length,
     monthlyIncome,
