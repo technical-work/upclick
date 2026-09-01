@@ -81,23 +81,21 @@ export async function POST(req) {
         }
 
         // 3. If still not found, try fallback lookup by customer email in Firestore
-        if (!userId) {
-          const customerEmail = (session.customer_details?.email || session.customer_email || '').trim().toLowerCase();
-          if (customerEmail) {
-            try {
-              const userEmailSnap = await adminDb.collection('users').where('email', '==', customerEmail).limit(1).get();
-              if (!userEmailSnap.empty) {
-                userId = userEmailSnap.docs[0].id;
-                console.log(`ℹ️ Resolved userId ${userId} from customer email ${customerEmail}`);
-              }
-            } catch (e) {
-              console.warn('Could not query user by email:', e.message);
+        const customerEmail = (session.customer_details?.email || session.customer_email || '').trim().toLowerCase();
+        if (!userId && customerEmail) {
+          try {
+            const userEmailSnap = await adminDb.collection('users').where('email', '==', customerEmail).limit(1).get();
+            if (!userEmailSnap.empty) {
+              userId = userEmailSnap.docs[0].id;
+              console.log(`ℹ️ Resolved userId ${userId} from customer email ${customerEmail}`);
             }
+          } catch (e) {
+            console.warn('Could not query user by email:', e.message);
           }
         }
 
-        if (!userId) {
-          console.error('❌ Webhook error: Missing userId in session metadata, subscription metadata, and client_reference_id');
+        if (!userId && !customerEmail) {
+          console.error('❌ Webhook error: Missing userId and customer email in session payload');
           return NextResponse.json({ error: 'Missing userId in metadata' }, { status: 400 });
         }
 
@@ -140,8 +138,6 @@ export async function POST(req) {
           stripe = new Stripe(secretKey, { apiVersion: '2023-10-16' });
         }
 
-        // Fetch user details
-        const userRef = adminDb.collection('users').doc(userId);
         const webhookRef = adminDb.collection('processed_webhooks').doc(event.id || `evt_${session.id}`);
         const sessionLockRef = adminDb.collection('processed_webhooks').doc(`session_${session.id}`);
 
@@ -157,44 +153,14 @@ export async function POST(req) {
               throw new Error('already_processed');
             }
 
-            // 2. Fetch user details inside transaction
-            const userSnap = await transaction.get(userRef);
-            if (!userSnap.exists) {
-              throw new Error('user_not_found');
-            }
-            const userData = userSnap.data();
-
-            // Calculate new expiration date
-            let baseDate = Date.now();
-            let currentExpires = userData.expiresAt;
-            
-            if (currentExpires) {
-              const currentMs = currentExpires.toDate 
-                ? currentExpires.toDate().getTime() 
-                : (currentExpires.seconds 
-                    ? currentExpires.seconds * 1000 
-                    : new Date(currentExpires).getTime());
-                    
-              if (currentMs > Date.now()) {
-                baseDate = currentMs;
-              }
-            }
-
-            let isRecharge = planDuration === 'recharge';
             let daysToAdd = 30;
             if (planDuration === 'annual') daysToAdd = 365;
             else if (planDuration === 'one-time') daysToAdd = 9999;
-
-            const newExpiresDate = new Date(baseDate);
-            if (!isRecharge) {
-              newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
-            }
 
             let creditToAdd = 0;
             if (creditsToAdd && Number(creditsToAdd) > 0) {
               creditToAdd = Number(creditsToAdd);
             } else {
-              // Fallback to global configurations
               const globalDocRef = adminDb.collection('tenants').doc('global');
               const globalSnap = await transaction.get(globalDocRef);
               const globalData = globalSnap.exists ? globalSnap.data() : {};
@@ -208,61 +174,117 @@ export async function POST(req) {
               }
             }
 
-            const currentUserCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : 0;
+            const effectivePlan = planName || (planDuration === 'annual' ? 'Pro Annual' : (planDuration === 'one-time' ? 'Pro Lifetime' : 'Pro Monthly'));
 
-            const userUpdates = {
-              aiCredits: currentUserCredits + creditToAdd
-            };
-            if (!isRecharge) {
-              userUpdates.expiresAt = newExpiresDate;
-              userUpdates.isTrial = false;
-              userUpdates.plan = planName || (planDuration === 'annual' ? 'Pro Annual' : (planDuration === 'one-time' ? 'Pro Lifetime' : 'Pro Monthly'));
+            // 2. If user exists in Firestore, update their document
+            let userData = {};
+            let isRecharge = planDuration === 'recharge';
+            let newExpiresDate = new Date();
+
+            if (userId) {
+              const userRef = adminDb.collection('users').doc(userId);
+              const userSnap = await transaction.get(userRef);
+              if (userSnap.exists) {
+                userData = userSnap.data();
+                let baseDate = Date.now();
+                let currentExpires = userData.expiresAt;
+                if (currentExpires) {
+                  const currentMs = currentExpires.toDate 
+                    ? currentExpires.toDate().getTime() 
+                    : (currentExpires.seconds 
+                        ? currentExpires.seconds * 1000 
+                        : new Date(currentExpires).getTime());
+                  if (currentMs > Date.now()) {
+                    baseDate = currentMs;
+                  }
+                }
+                newExpiresDate = new Date(baseDate);
+                if (!isRecharge) {
+                  newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
+                }
+
+                const currentUserCredits = userData.aiCredits !== undefined ? Number(userData.aiCredits) : 0;
+                const userUpdates = {
+                  aiCredits: currentUserCredits + creditToAdd
+                };
+                if (!isRecharge) {
+                  userUpdates.expiresAt = newExpiresDate;
+                  userUpdates.isTrial = false;
+                  userUpdates.plan = effectivePlan;
+                  userUpdates.stripeCustomerId = session.customer || null;
+                  userUpdates.stripeSubscriptionId = session.subscription || null;
+                }
+                transaction.set(userRef, userUpdates, { merge: true });
+              }
             }
 
-            // Update user subscription state inside transaction
-            transaction.set(userRef, userUpdates, { merge: true });
+            // 3. If user doc not yet created (Payment Link external buyer), save to pending_subscriptions
+            if (!userId || !userData.email) {
+              newExpiresDate = new Date();
+              newExpiresDate.setDate(newExpiresDate.getDate() + daysToAdd);
+              const pendingRef = adminDb.collection('pending_subscriptions').doc(customerEmail);
+              transaction.set(pendingRef, {
+                email: customerEmail,
+                name: session.customer_details?.name || 'Customer',
+                stripeCustomerId: session.customer || null,
+                stripeSubscriptionId: session.subscription || null,
+                stripeSessionId: session.id,
+                plan: effectivePlan,
+                planDuration,
+                amount,
+                currency,
+                creditsToAdd: creditToAdd,
+                expiresAt: newExpiresDate,
+                status: 'pending_registration',
+                createdAt: FieldValue.serverTimestamp()
+              }, { merge: true });
+            }
 
-            // Record webhook event to processed_webhooks collection to ensure idempotency
-            transaction.set(webhookRef, {
-              processedAt: FieldValue.serverTimestamp(),
-              stripeSessionId: session.id,
-              userId: userId,
-              eventId: event.id
-            });
-            transaction.set(sessionLockRef, {
-              processedAt: FieldValue.serverTimestamp(),
-              stripeSessionId: session.id,
-              userId: userId,
-              eventId: event.id
-            });
-
-            // Add payment document to collection inside transaction
+            // 4. Log the payment in the 'payments' collection
             const paymentRef = adminDb.collection('payments').doc();
             transaction.set(paymentRef, {
-              userId,
-              userName: userData.name || userData.email?.split('@')[0] || 'User',
-              userEmail: userData.email || '',
+              userId: userId || null,
+              userName: userData.name || session.customer_details?.name || customerEmail.split('@')[0] || 'Customer',
+              userEmail: userData.email || customerEmail || '',
               adminId: userData.adminId || null,
-              amount: amount,
-              currency: currency,
+              amount: parseFloat(amount),
+              currency: currency || 'USD',
               paymentMethod: 'stripe',
-              planDuration: planDuration,
+              planDuration: planDuration || 'monthly',
+              plan: effectivePlan,
               receiptUrl: session.invoice ? `https://billing.stripe.com/p/invoices/${session.invoice}` : '',
               status: 'approved',
               approvedAt: FieldValue.serverTimestamp(),
               createdAt: FieldValue.serverTimestamp(),
-              stripeSessionId: session.id
+              stripeSessionId: session.id,
+              stripePaymentLink: session.payment_link || null
             });
 
-            // Add sale document to collection inside transaction
-            const salesRef = adminDb.collection('sales').doc();
-            transaction.set(salesRef, {
-              userId,
-              customerName: userData.name || userData.email?.split('@')[0] || 'User',
-              amount: amount,
+            // 5. Log the sale in the 'sales' collection
+            const saleRef = adminDb.collection('sales').doc();
+            transaction.set(saleRef, {
+              userId: userId || null,
+              customerName: userData.name || session.customer_details?.name || customerEmail.split('@')[0] || 'Customer',
+              customerEmail: userData.email || customerEmail || '',
+              amount: parseFloat(amount),
+              currency: currency || 'USD',
               adminId: userData.adminId || null,
               createdAt: FieldValue.serverTimestamp()
             });
+
+            // 6. Record idempotency markers
+            const idempotencyData = {
+              eventId: event.id || `evt_${session.id}`,
+              sessionId: session.id,
+              userId: userId || null,
+              userEmail: userData.email || customerEmail || '',
+              processedAt: FieldValue.serverTimestamp(),
+              amount,
+              currency,
+              status: 'success'
+            };
+            transaction.set(webhookRef, idempotencyData);
+            transaction.set(sessionLockRef, idempotencyData);
           });
 
           console.log(`✅ Webhook success: User ${userId} subscription activated successfully via Stripe.`);
