@@ -7,8 +7,6 @@ import { fulfillDomainOrder } from '@/lib/domains/fulfillOrder';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// No fallback key for security. Must be configured in Firestore or environment variables.
-
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);

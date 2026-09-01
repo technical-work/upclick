@@ -76,12 +76,16 @@ export async function POST(req) {
               updated_at: FieldValue.serverTimestamp()
             }, { merge: true });
           }
-          const { fulfillDomainOrder } = await import('@/lib/domains/fulfillOrder');
-          await fulfillDomainOrder(adminDb, {
-            orderId: domainOrderId,
-            paymentId: session.id,
-            stripeSessionId: session.id
-          });
+          try {
+            const { fulfillDomainOrder } = await import('@/lib/domains/fulfillOrder');
+            await fulfillDomainOrder(adminDb, {
+              orderId: domainOrderId,
+              paymentId: session.id,
+              stripeSessionId: session.id
+            });
+          } catch (e) {
+            console.warn('Optional domain fulfillOrder module not found:', e.message);
+          }
           return NextResponse.json({ received: true, kind: 'domain' });
         }
 
