@@ -424,6 +424,9 @@ export default function RegisterPage() {
             isTrial: isTrial,
             trialStartedAt: trialStartedAt,
             aiCredits: trialCredits,
+            initialCredits: trialCredits,
+            creditsUsed: 0,
+            creditBucket: 'unused',
             adminId: 'global',
             createdAt: new Date().toISOString()
           });

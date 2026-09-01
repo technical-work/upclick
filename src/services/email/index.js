@@ -6,7 +6,8 @@ import {
   getNotificationEmailTemplate,
   getTrialWelcomeEmailTemplate,
   getTrial7DaysLeftEmailTemplate,
-  getTrialEndedEmailTemplate
+  getTrialEndedEmailTemplate,
+  getCampaignEmailTemplate
 } from './templates';
 
 /**
@@ -89,6 +90,34 @@ class EmailService {
     const html = getNotificationEmailTemplate({ name, title, message, actionUrl, actionText });
     const subject = title || 'إشعار جديد - UpKlick';
     return this.provider.sendEmail({ to, subject, html });
+  }
+
+  async sendCampaignEmail({ to, name, subject, messageHtml, text, unsubscribeUrl, actionUrl, actionText, campaignId }) {
+    const html = getCampaignEmailTemplate({
+      name,
+      title: subject,
+      messageHtml,
+      unsubscribeUrl,
+      actionUrl,
+      actionText
+    });
+    const headers = unsubscribeUrl
+      ? {
+          'List-Unsubscribe': `<${unsubscribeUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+        }
+      : undefined;
+    const tags = campaignId
+      ? [{ name: 'campaign', value: String(campaignId).slice(0, 40) }]
+      : undefined;
+    return this.provider.sendCampaignEmail({
+      to,
+      subject: subject || 'رسالة من UpKlick',
+      html,
+      text,
+      headers,
+      tags
+    });
   }
 }
 

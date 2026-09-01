@@ -208,6 +208,27 @@ export function getNotificationEmailTemplate({ name, title, message, actionUrl, 
   return wrapEmailBody(content, title || 'إشعار جديد - UpKlick');
 }
 
+export function getCampaignEmailTemplate({ name, title, messageHtml, unsubscribeUrl, actionUrl, actionText }) {
+  const recipientName = name ? name : 'عزيزنا المستخدم';
+  const content = `
+    <div style="direction: rtl; text-align: right;">
+      <h2 class="title">${title || 'رسالة من UpKlick'}</h2>
+      <p class="text">مرحباً ${recipientName}،</p>
+      <div class="text">${messageHtml || ''}</div>
+      ${actionUrl ? `
+      <div style="text-align: center; margin-top: 32px;">
+        <a href="${actionUrl}" target="_blank" class="btn">${actionText || 'فتح UpKlick'}</a>
+      </div>` : ''}
+      ${unsubscribeUrl ? `
+      <p class="footer" style="margin-top: 28px;">
+        لا ترغب في رسائل التسويق؟
+        <a href="${unsubscribeUrl}" style="color: #a0aec0;">إلغاء الاشتراك</a>
+      </p>` : ''}
+    </div>
+  `;
+  return wrapEmailBody(content, title || 'رسالة من UpKlick');
+}
+
 /**
  * Trial Email 1 — Welcome (Start of 15-day Free Trial)
  */

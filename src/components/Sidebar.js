@@ -30,8 +30,12 @@ import {
   HelpCircle, 
   Clock, 
   Cpu, 
-  LogOut 
+  LogOut,
+  Earth,
+  Search,
+  Cog
 } from 'lucide-react';
+import ToolExplainerModal from './Modals/ToolExplainerModal';
 
 export default function Sidebar() {
   const {
@@ -63,6 +67,15 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const isRtl = lang === 'ar';
 
+  const [explainerToolKey, setExplainerToolKey] = useState(null);
+  const [isExplainerOpen, setIsExplainerOpen] = useState(false);
+
+  const openExplainer = (e, toolKey) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setExplainerToolKey(toolKey);
+    setIsExplainerOpen(true);
+  };
+
   const [openSections, setOpenSections] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sb_open_sections_v3');
@@ -78,6 +91,7 @@ export default function Sidebar() {
       'Marketing Lab': true,
       Creator: true,
       Build: true,
+      Domains: true,
       Manage: true,
       Settings: true
     };
@@ -154,12 +168,22 @@ export default function Sidebar() {
     {
       title: 'Build',
       items: [
+        { page: 'sites', label: 'Sites & Funnels', icon: Globe },
         { page: 'landing', label: 'Landing Page AI', icon: Globe },
         { page: 'courses', label: 'Courses', icon: BookOpen },
         { page: 'digital', label: 'Digital Products', icon: Package },
         { page: 'niche', label: 'Niche & Brand Studio', icon: Compass },
         { page: 'community', label: 'Community Hub', icon: Users },
         { page: 'design', label: 'Design Studio', icon: Palette }
+      ]
+    },
+    {
+      title: 'Domains',
+      items: [
+        { page: 'domains', label: 'Domain Search', icon: Search },
+        { page: 'my-domains', label: 'My Domains', icon: Earth },
+        { page: 'domain-pricing', label: 'Domain Pricing', icon: CreditCard },
+        { page: 'domain-settings', label: 'Domain Settings', icon: Cog }
       ]
     },
     {
@@ -249,7 +273,7 @@ export default function Sidebar() {
       })()}
 
       <div className="sb-sections">
-        <div style={{ padding: '5px 7px 3px' }}>
+        <div style={{ padding: '5px 7px 3px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <button
             className="sb-btn sidebar-ai-btn"
             onClick={() => {
@@ -282,6 +306,29 @@ export default function Sidebar() {
             <Sparkles size={16} />
             <span className="sb-lbl">{t('AI Assistant')}</span>
           </button>
+
+          {/* Quick Tools Explainer Button */}
+          {!collapsed && (
+            <button
+              className="sb-btn"
+              onClick={(e) => openExplainer(e, currentPage || 'home')}
+              style={{
+                background: 'rgba(56, 189, 248, 0.08)',
+                color: '#38bdf8',
+                borderRadius: '8px',
+                width: '100%',
+                justifyContent: 'center',
+                gap: '6px',
+                fontWeight: 600,
+                fontSize: '12px',
+                padding: '6px 8px',
+                border: '1px solid rgba(56, 189, 248, 0.2)'
+              }}
+            >
+              <HelpCircle size={14} />
+              <span className="sb-lbl">{isRtl ? '📚 شرح ودليل الأدوات' : '📚 Tools Guide & Video'}</span>
+            </button>
+          )}
         </div>
 
         {sections.map((sec, idx) => {
@@ -341,13 +388,47 @@ export default function Sidebar() {
                         <IconComponent size={16} />
                       </span>
                       <span className="sb-lbl">{t(item.label)}</span>
+
+                      {/* "الشرح" Explainer Button on item */}
+                      {!collapsed && (
+                        <span
+                          onClick={(e) => openExplainer(e, item.page)}
+                          title={isRtl ? 'شرح الأداة وفيديو توضيحي' : 'Tool Guide & Video'}
+                          style={{
+                            marginInlineStart: 'auto',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            color: 'var(--t2)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            transition: 'all 0.15s ease',
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#2563eb';
+                            e.currentTarget.style.color = '#ffffff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                            e.currentTarget.style.color = 'var(--t2)';
+                          }}
+                        >
+                          <HelpCircle size={11} />
+                          <span>{isRtl ? 'الشرح' : 'Guide'}</span>
+                        </span>
+                      )}
+
                       {!isAllowed ? (
-                        <span style={{ fontSize: '10px', background: 'rgba(249, 115, 22, 0.15)', color: 'var(--orange)', padding: '2px 5px', borderRadius: '6px', fontWeight: 'bold', marginInlineStart: 'auto', border: '1px solid rgba(249, 115, 22, 0.3)' }}>
+                        <span style={{ fontSize: '10px', background: 'rgba(249, 115, 22, 0.15)', color: 'var(--orange)', padding: '2px 5px', borderRadius: '6px', fontWeight: 'bold', marginInlineStart: collapsed ? 'auto' : '4px', border: '1px solid rgba(249, 115, 22, 0.3)' }}>
                           🔒 PRO
                         </span>
                       ) : (
                         item.badge !== undefined && item.badge > 0 && (
-                          <span className="sb-badge">{item.badge}</span>
+                          <span className="sb-badge" style={{ marginInlineStart: collapsed ? 'auto' : '4px' }}>{item.badge}</span>
                         )
                       )}
                     </button>
@@ -436,6 +517,13 @@ export default function Sidebar() {
           <span>{isRtl ? 'تسجيل الخروج' : 'Sign Out'}</span>
         </button>
       </div>
+
+      {/* Tool Explainer & Video Modal */}
+      <ToolExplainerModal
+        toolKey={explainerToolKey}
+        isOpen={isExplainerOpen}
+        onClose={() => setIsExplainerOpen(false)}
+      />
     </nav>
   );
 }

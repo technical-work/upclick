@@ -53,6 +53,8 @@ import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
 import BillingView from '@/components/Views/BillingView';
 import SupportView from '@/components/Views/SupportView';
+import SitesView from '@/components/Views/SitesView';
+import DomainsView from '@/components/Views/DomainsView';
 function DashboardShell() {
   const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
@@ -61,6 +63,7 @@ function DashboardShell() {
   const [verifyingStripe, setVerifyingStripe] = useState(false);
 
   const stripeStatus = searchParams?.get('stripe');
+  const stripeKind = searchParams?.get('kind');
   const sessionId = searchParams?.get('session_id');
 
   useEffect(() => {
@@ -73,6 +76,24 @@ function DashboardShell() {
           const data = await res.json();
           if (!res.ok) {
             throw new Error(data.error || 'Failed to verify session');
+          }
+          if (stripeKind === 'domain' || data.kind === 'domain') {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('upklick_current_page', 'my-domains');
+            }
+            if (data.success === false && data.error) {
+              alert(lang === 'ar'
+                ? `تم استلام الدفع لكن التسجيل لم يكتمل: ${data.error}`
+                : `Payment received, but registration is pending: ${data.error}`
+              );
+            } else {
+              alert(lang === 'ar'
+                ? 'تم دفع النطاق بنجاح. سيظهر في «نطاقاتي» بعد إتمام التسجيل.'
+                : 'Domain payment confirmed. It will appear under My Domains once registration finishes.'
+              );
+            }
+            window.location.href = '/dashboard';
+            return;
           }
           alert(lang === 'ar'
             ? 'تم تفعيل الاشتراك بنجاح! شكراً لك.'
@@ -92,7 +113,7 @@ function DashboardShell() {
           setVerifyingStripe(false);
         });
     }
-  }, [stripeStatus, sessionId, user?.uid, userData?.adminId, lang]);
+  }, [stripeStatus, stripeKind, sessionId, user?.uid, userData?.adminId, lang]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -300,7 +321,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses', 'sites', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -364,6 +385,13 @@ function DashboardShell() {
         return <BillingView />;
       case 'support':
         return <SupportView />;
+      case 'sites':
+        return <SitesView />;
+      case 'domains':
+      case 'my-domains':
+      case 'domain-pricing':
+      case 'domain-settings':
+        return <DomainsView />;
       default:
         return <HomeView />;
     }

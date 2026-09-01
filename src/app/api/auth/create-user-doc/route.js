@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import emailService from '@/services/email';
+import { creditFieldsForNewUser } from '@/lib/credits/buckets';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,8 @@ export async function POST(req) {
       console.warn('[create-user-doc] Error checking pending subscription:', pendingErr.message);
     }
 
+    const creditFields = creditFieldsForNewUser(startingCredits);
+
     // 1. Create/Update User document safely using Admin SDK
     await adminDb.collection('users').doc(uid).set({
       uid: uid,
@@ -75,6 +78,7 @@ export async function POST(req) {
       trial7DaysEmailSent: false,
       trialEndedEmailSent: false,
       aiCredits: startingCredits,
+      ...creditFields,
       ...pendingSubscriptionData,
       adminId: 'global',
       createdAt: now
