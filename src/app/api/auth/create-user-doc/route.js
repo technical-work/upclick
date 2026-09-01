@@ -23,9 +23,39 @@ export async function POST(req) {
 
     const now = new Date().toISOString();
     const effectiveTrialStartedAt = trialStartedAt || now;
-    const startingCredits = isTrial
+    let startingCredits = isTrial
       ? (trialCredits !== undefined ? Number(trialCredits) : 500)
       : 500;
+
+    let pendingSubscriptionData = {};
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const pendingSubSnap = await adminDb.collection('pending_subscriptions').doc(cleanEmail).get();
+      if (pendingSubSnap.exists) {
+        const sub = pendingSubSnap.data();
+        if (sub.status === 'pending_registration' || sub.expiresAt) {
+          pendingSubscriptionData = {
+            plan: sub.plan || 'Pro Monthly',
+            isTrial: false,
+            expiresAt: sub.expiresAt,
+            stripeCustomerId: sub.stripeCustomerId || null,
+            stripeSubscriptionId: sub.stripeSubscriptionId || null
+          };
+          if (sub.creditsToAdd && Number(sub.creditsToAdd) > 0) {
+            startingCredits += Number(sub.creditsToAdd);
+          }
+          await adminDb.collection('pending_subscriptions').doc(cleanEmail).set({
+            status: 'claimed',
+            claimedByUid: uid,
+            claimedAt: now
+          }, { merge: true });
+          console.log(`[create-user-doc] Successfully linked pending Stripe subscription for ${cleanEmail}`);
+        }
+      }
+    } catch (pendingErr) {
+      console.warn('[create-user-doc] Error checking pending subscription:', pendingErr.message);
+    }
+
     const creditFields = creditFieldsForNewUser(startingCredits);
 
     // 1. Create/Update User document safely using Admin SDK
@@ -42,13 +72,14 @@ export async function POST(req) {
       theme: 'dark',
       onboardingDone: false,
       GC: userGC || {},
-      isTrial: isTrial !== undefined ? !!isTrial : true,
+      isTrial: pendingSubscriptionData.isTrial !== undefined ? pendingSubscriptionData.isTrial : (isTrial !== undefined ? !!isTrial : true),
       trialStartedAt: effectiveTrialStartedAt,
       trialWelcomeEmailSent: true,
       trial7DaysEmailSent: false,
       trialEndedEmailSent: false,
       aiCredits: startingCredits,
       ...creditFields,
+      ...pendingSubscriptionData,
       adminId: 'global',
       createdAt: now
     }, { merge: true });
