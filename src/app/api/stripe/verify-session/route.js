@@ -6,8 +6,6 @@ import { FieldValue } from 'firebase-admin/firestore';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// No fallback key for security. Must be configured in Firestore or environment variables.
-
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -26,14 +24,10 @@ export async function GET(req) {
       }, { status: 500 });
     }
 
-    // Check if this session has already been verified to prevent double activations
     const alreadyVerifiedSnap = await adminDb.collection('payments')
       .where('stripeSessionId', '==', sessionId)
       .get();
-      
-    if (!alreadyVerifiedSnap.empty) {
-      return NextResponse.json({ success: true, message: 'Already verified' });
-    }
+    const alreadyVerified = !alreadyVerifiedSnap.empty;
 
     let secretKey = '';
 
@@ -79,9 +73,26 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Payment not completed' }, { status: 400 });
     }
 
-    const { userId, planDuration, amount, currency, creditsToAdd, planName } = session.metadata || {};
+    const metadata = session.metadata || {};
 
-    // Fetch user details from Firestore
+    if (alreadyVerified) {
+      return NextResponse.json({ success: true, message: 'Already verified' });
+    }
+
+    let userId = metadata.userId || metadata.user_id || metadata.uid || session.client_reference_id || '';
+    if (!userId && (session.customer_details?.email || session.customer_email)) {
+      const email = (session.customer_details?.email || session.customer_email || '').trim().toLowerCase();
+      const userEmailSnap = await adminDb.collection('users').where('email', '==', email).limit(1).get();
+      if (!userEmailSnap.empty) {
+        userId = userEmailSnap.docs[0].id;
+      }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User not found in session metadata' }, { status: 400 });
+    }
+
+    const { planDuration, amount, currency, creditsToAdd, planName } = metadata;
     const userRef = adminDb.collection('users').doc(userId);
     const userSnap = await userRef.get();
 
