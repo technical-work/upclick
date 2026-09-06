@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 const EXPECTED_A_IPS = [
   process.env.SITES_A_RECORD_IP,
   process.env.NEXT_PUBLIC_SITES_A_RECORD_IP,
-  '76.76.21.21'
+  '76.76.21.21',
+  '216.150.1.1'
 ].filter(Boolean);
 
 function expectedTargets() {
