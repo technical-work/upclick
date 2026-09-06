@@ -102,6 +102,18 @@ export default function DomainSettings({
         await publishFunnelPublic({ funnel: nextFunnel, ownerUid, defaultStepIdx: stepIdx });
       }
       setDns(null);
+      if (connected.host) {
+        // Auto-provision in background on Vercel
+        fetch('/api/sites/verify-domain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host: connected.host })
+        }).then(r => r.json()).then(data => {
+          if (data?.matched) {
+            onSaveFunnel({ domain: connected.host, domainStatus: 'connected' });
+          }
+        }).catch(() => {});
+      }
       showToast?.(connected.host
         ? (isRtl ? 'تم حفظ الدومين بنجاح. أضف سجلات DNS ثم افحص الاتصال.' : 'Domain saved. Configure your DNS records, then verify connection.')
         : (isRtl ? 'تمت إزالة الدومين' : 'Domain disconnected'));
@@ -113,8 +125,16 @@ export default function DomainSettings({
   };
 
   const handleConfirmRemove = async () => {
+    const prevDomain = funnel?.domain || host;
     setIsRemoveModalOpen(false);
     setDomainInput('');
+    if (prevDomain) {
+      fetch('/api/sites/verify-domain', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host: prevDomain })
+      }).catch(() => {});
+    }
     await saveDomain('');
   };
 

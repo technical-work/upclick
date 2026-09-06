@@ -27,6 +27,50 @@ function recordMatches(value, targets) {
   return targets.some((target) => host === target || host.endsWith(`.${target}`));
 }
 
+function getVercelQuery() {
+  const teamId = process.env.VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID;
+  return teamId ? `?teamId=${encodeURIComponent(teamId)}` : '';
+}
+
+async function addDomainToVercel(domainName) {
+  if (!process.env.VERCEL_TOKEN || !process.env.VERCEL_PROJECT_ID) {
+    return { configured: false, reason: 'Missing VERCEL_TOKEN or VERCEL_PROJECT_ID environment variables' };
+  }
+  const query = getVercelQuery();
+  const url = `https://api.vercel.com/v10/projects/${encodeURIComponent(process.env.VERCEL_PROJECT_ID)}/domains${query}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: domainName })
+    });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+async function removeDomainFromVercel(domainName) {
+  if (!process.env.VERCEL_TOKEN || !process.env.VERCEL_PROJECT_ID) return null;
+  const query = getVercelQuery();
+  const url = `https://api.vercel.com/v9/projects/${encodeURIComponent(process.env.VERCEL_PROJECT_ID)}/domains/${encodeURIComponent(domainName)}${query}`;
+  try {
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${process.env.VERCEL_TOKEN}`
+      }
+    });
+    return await res.json();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -56,21 +100,19 @@ export async function POST(req) {
     const matched = cnameMatched || aRecordMatched;
     const matchedType = cnameMatched ? 'cname' : (aRecordMatched ? 'a' : null);
 
+    // Auto-provision on Vercel
     let vercel = null;
     if (process.env.VERCEL_TOKEN && process.env.VERCEL_PROJECT_ID) {
-      try {
-        const res = await fetch(`https://api.vercel.com/v10/projects/${process.env.VERCEL_PROJECT_ID}/domains`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ name: host })
-        });
-        vercel = await res.json();
-      } catch (err) {
-        vercel = { error: err.message };
+      vercel = await addDomainToVercel(host);
+      // If apex domain without www, also register www on Vercel
+      const parts = host.split('.');
+      if (parts.length === 2) {
+        await addDomainToVercel(`www.${host}`).catch(() => {});
+      } else if (parts.length === 3 && parts[0] === 'www') {
+        await addDomainToVercel(parts.slice(1).join('.')).catch(() => {});
       }
+    } else {
+      vercel = { configured: false, reason: 'VERCEL_TOKEN and VERCEL_PROJECT_ID not set in env' };
     }
 
     return NextResponse.json({
@@ -86,5 +128,19 @@ export async function POST(req) {
     });
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Could not check DNS' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req) {
+  try {
+    const body = await req.json();
+    const host = normalizeHost(body?.host);
+    if (!host) {
+      return NextResponse.json({ error: 'Missing host' }, { status: 400 });
+    }
+    const vercel = await removeDomainFromVercel(host);
+    return NextResponse.json({ ok: true, host, vercel });
+  } catch (err) {
+    return NextResponse.json({ error: err.message || 'Could not remove domain from Vercel' }, { status: 500 });
   }
 }
