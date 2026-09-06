@@ -92,7 +92,12 @@ export default function LiveSiteView({
         const incomingHost = normalizeHost(host || (typeof window !== 'undefined' ? window.location.hostname : ''));
         const isCustomLookup = !resolvedId || resolvedId === '_custom_domain' || resolvedId === '_domain';
         if (incomingHost && isCustomLookup) {
-          const domainSnap = await getDoc(doc(db, SITE_DOMAINS, incomingHost));
+          let domainSnap = await getDoc(doc(db, SITE_DOMAINS, incomingHost));
+          if (!domainSnap.exists() && incomingHost.startsWith('www.')) {
+            domainSnap = await getDoc(doc(db, SITE_DOMAINS, incomingHost.replace(/^www\./, '')));
+          } else if (!domainSnap.exists() && !incomingHost.startsWith('www.')) {
+            domainSnap = await getDoc(doc(db, SITE_DOMAINS, `www.${incomingHost}`));
+          }
           if (domainSnap.exists()) {
             resolvedId = domainSnap.data().funnelId || resolvedId;
           }

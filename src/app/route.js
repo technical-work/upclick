@@ -5,7 +5,27 @@ import { adminDb } from '@/utils/firebaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = String(host || '').toLowerCase().split(':')[0].trim();
+  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  return false;
+}
+
+export async function GET(req) {
+  const host = req ? req.headers.get('host') : '';
+  const cleanHost = String(host || '').toLowerCase().split(':')[0].trim();
+
+  // If accessed on a custom domain, rewrite root / to live site
+  if (!isPlatformHostname(cleanHost)) {
+    const url = new URL('/preview-site', req.url);
+    url.searchParams.set('host', cleanHost);
+    url.searchParams.set('path', '/');
+    return NextResponse.rewrite(url);
+  }
+
   const filePath = path.join(process.cwd(), 'public', 'landing-page.html');
   let html = fs.readFileSync(filePath, 'utf8');
 

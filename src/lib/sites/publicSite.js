@@ -212,6 +212,10 @@ export async function connectFunnelDomain({ funnelId, ownerUid, host, previousHo
     throw new Error('This domain is already connected to another website.');
   }
 
+  const alternate = normalized.startsWith('www.')
+    ? normalized.replace(/^www\./, '')
+    : (normalized.split('.').length === 2 ? `www.${normalized}` : '');
+
   await setDoc(doc(db, SITE_DOMAINS, normalized), {
     host: normalized,
     funnelId,
@@ -219,6 +223,18 @@ export async function connectFunnelDomain({ funnelId, ownerUid, host, previousHo
     status: 'pending',
     updatedAt: new Date().toISOString()
   }, { merge: true });
+
+  if (alternate) {
+    try {
+      await setDoc(doc(db, SITE_DOMAINS, alternate), {
+        host: alternate,
+        funnelId,
+        ownerUid: ownerUid || '',
+        status: 'pending',
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch {}
+  }
 
   return { host: normalized };
 }
