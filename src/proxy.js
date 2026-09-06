@@ -50,3 +50,6 @@ export function proxy(request) {
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)']
 };
+
+export default proxy;
+

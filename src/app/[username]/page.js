@@ -15,7 +15,11 @@ function isPlatformHostname(host) {
   if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
   if (clean.endsWith('.vercel.app')) return true;
   if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
-  return false;
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return extras.includes(clean);
 }
 
 export default function PublicBioPage() {
@@ -24,8 +28,19 @@ export default function PublicBioPage() {
 
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('links'); // 'links' or 'cv'
-  const [isCustomDomain, setIsCustomDomain] = useState(false);
-  const [currentHost, setCurrentHost] = useState('');
+  const [isCustomDomain, setIsCustomDomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      return !isPlatformHostname(h);
+    }
+    return false;
+  });
+  const [currentHost, setCurrentHost] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return normalizeHost(window.location.hostname);
+    }
+    return '';
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
