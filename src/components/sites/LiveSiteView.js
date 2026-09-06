@@ -115,9 +115,12 @@ export default function LiveSiteView({
               const picked = pickPublishedStep(data, { stepIdx, path });
               if (!cancelled && picked) {
                 setStoreRecord(null);
+                const resolvedCanvas = (Array.isArray(picked.publishedCanvas) && picked.publishedCanvas.length > 0)
+                  ? picked.publishedCanvas
+                  : (Array.isArray(picked.canvas) ? picked.canvas : []);
                 setStep({
                   ...picked,
-                  canvas: picked.publishedCanvas || picked.canvas || [],
+                  canvas: resolvedCanvas,
                   page: picked.publishedPage || picked.page || {}
                 });
                 setMode(incomingHost ? 'custom' : 'live');

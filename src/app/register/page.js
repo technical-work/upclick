@@ -7,6 +7,21 @@ import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Tracking } from '@/lib/tracking';
+import LiveSiteView from '@/components/sites/LiveSiteView';
+import { normalizeHost } from '@/lib/sites/publicSite';
+
+function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = host.toLowerCase().split(':')[0].trim();
+  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return extras.includes(clean);
+}
 
 const initialGC = {
   profile: {
@@ -228,6 +243,20 @@ const countryData = {
 };
 
 export default function RegisterPage() {
+  const [isCustomDomain, setIsCustomDomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      return !isPlatformHostname(h);
+    }
+    return false;
+  });
+  const [currentHost, setCurrentHost] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return normalizeHost(window.location.hostname);
+    }
+    return '';
+  });
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [country, setCountry] = useState('EG');
@@ -238,6 +267,10 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const { user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  if (isCustomDomain && currentHost) {
+    return <LiveSiteView host={currentHost} path="/register" />;
+  }
 
   const [tenantConfig, setTenantConfig] = useState(null);
   const [theme, setTheme] = useState('dark');

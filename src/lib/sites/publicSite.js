@@ -67,11 +67,31 @@ export function getProductionUrls({ origin, funnel, stepIdx = 0 }) {
 export function pickPublishedStep(site, { stepIdx, path } = {}) {
   const steps = site?.steps || site?.pages || [];
   if (!steps.length) return null;
-  const wanted = path ? normalizePath(path) : '';
+  const rawWanted = String(path || '').trim();
+  const wanted = rawWanted ? normalizePath(rawWanted).toLowerCase() : '';
+  const cleanWanted = wanted.replace(/^\//, '');
+
   if (wanted && wanted !== '/') {
-    const byPath = steps.find((s) => normalizePath(s.path) === wanted);
+    // 1. Exact match on normalized path (case-insensitive)
+    let byPath = steps.find((s) => s.path && normalizePath(s.path).toLowerCase() === wanted);
+    if (byPath) return byPath;
+
+    // 2. Match without leading slash against s.path
+    byPath = steps.find((s) => {
+      const sp = String(s.path || '').trim().replace(/^\//, '').toLowerCase();
+      return sp && sp === cleanWanted;
+    });
+    if (byPath) return byPath;
+
+    // 3. Match against step name slug or id (e.g. name "admin", "ai-freelance")
+    byPath = steps.find((s) => {
+      const sName = String(s.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const sId = String(s.id || '').trim().toLowerCase();
+      return (sName && sName === cleanWanted) || (sId && sId === cleanWanted);
+    });
     if (byPath) return byPath;
   }
+
   if (Number.isFinite(stepIdx) && steps[stepIdx]) return steps[stepIdx];
   if (Number.isFinite(site?.defaultStepIdx) && steps[site.defaultStepIdx]) return steps[site.defaultStepIdx];
   return steps.find((s) => s.published) || steps[0] || null;
@@ -79,13 +99,15 @@ export function pickPublishedStep(site, { stepIdx, path } = {}) {
 
 export async function publishFunnelPublic({ funnel, ownerUid, defaultStepIdx = 0 }) {
   if (!funnel?.id) throw new Error('Missing funnel');
-  const steps = (funnel.steps || []).map((step) => ({
+  const steps = (funnel.steps || []).map((step, idx) => ({
     id: step.id,
     name: step.name || 'Page',
-    path: getStepPath(step),
+    path: getStepPath(step, idx),
     published: !!step.published,
     publishedAt: step.publishedAt || null,
-    publishedCanvas: step.publishedCanvas || [],
+    publishedCanvas: (Array.isArray(step.publishedCanvas) && step.publishedCanvas.length > 0)
+      ? step.publishedCanvas
+      : (Array.isArray(step.canvas) ? step.canvas : []),
     publishedPage: step.publishedPage || step.page || {}
   }));
 
