@@ -5,6 +5,12 @@ import { normalizeHost } from '@/lib/sites/publicSite';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const EXPECTED_A_IPS = [
+  process.env.SITES_A_RECORD_IP,
+  process.env.NEXT_PUBLIC_SITES_A_RECORD_IP,
+  '76.76.21.21'
+].filter(Boolean);
+
 function expectedTargets() {
   const raw = [
     process.env.NEXT_PUBLIC_SITES_CNAME,
@@ -26,7 +32,7 @@ export async function POST(req) {
     const body = await req.json();
     const host = normalizeHost(body?.host);
     if (!host || !host.includes('.')) {
-      return NextResponse.json({ error: 'Enter a valid domain like www.yourbrand.com' }, { status: 400 });
+      return NextResponse.json({ error: 'Enter a valid domain like www.yourbrand.com or yourbrand.com' }, { status: 400 });
     }
 
     const targets = expectedTargets();
@@ -45,7 +51,10 @@ export async function POST(req) {
       aRecords = [];
     }
 
-    const matched = cnames.some((value) => recordMatches(value, targets));
+    const cnameMatched = cnames.some((value) => recordMatches(value, targets));
+    const aRecordMatched = aRecords.some((ip) => EXPECTED_A_IPS.includes(ip));
+    const matched = cnameMatched || aRecordMatched;
+    const matchedType = cnameMatched ? 'cname' : (aRecordMatched ? 'a' : null);
 
     let vercel = null;
     if (process.env.VERCEL_TOKEN && process.env.VERCEL_PROJECT_ID) {
@@ -68,9 +77,11 @@ export async function POST(req) {
       ok: true,
       host,
       matched,
+      matchedType,
       cnames: cnames.map((value) => normalizeHost(value)),
       aRecords,
       targets,
+      expectedIps: EXPECTED_A_IPS,
       vercel
     });
   } catch (err) {

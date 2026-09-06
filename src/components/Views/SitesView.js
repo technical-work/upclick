@@ -487,9 +487,12 @@ export default function SitesView() {
     }
   };
 
-  const renderUrlCard = (label, url, key) => (
+  const renderUrlCard = (label, url, key, extraAction) => (
     <div style={{ background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: 10, padding: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--t2)', marginBottom: 8, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--t2)', textTransform: 'uppercase' }}>{label}</div>
+        {extraAction || null}
+      </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input readOnly value={url} className="inp" style={{ flex: 1, fontSize: 12, minWidth: 0 }} />
         <button type="button" onClick={() => copyUrl(key, url)} className="btn btn-ghost" style={{ padding: '8px 10px', color: copiedKey === key ? '#16a34a' : undefined }}>
@@ -688,6 +691,26 @@ export default function SitesView() {
                 <h2 style={{ fontSize: '20px', fontWeight: '800', margin: 0, color: 'var(--t1)' }}>{selectedFunnel.name}</h2>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {selectedFunnel.domain ? (
+                  <button
+                    type="button"
+                    onClick={() => setDetailTab('settings')}
+                    className="btn btn-ghost"
+                    style={{ fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', color: selectedFunnel.domainStatus === 'connected' ? '#16a34a' : '#f97316', background: 'var(--surface2)', border: '1px solid var(--edge)', borderRadius: '6px', padding: '6px 10px' }}
+                  >
+                    <Globe size={14} />
+                    <span style={{ fontWeight: 700 }}>{selectedFunnel.domain}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setDetailTab('settings')}
+                    style={{ background: 'rgba(37,99,235,0.1)', color: '#2563eb', border: '1px solid rgba(37,99,235,0.3)', borderRadius: '6px', padding: '6px 12px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Globe size={14} />
+                    <span>{isRtl ? 'ربط دومين' : 'Connect Domain'}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-ghost"
@@ -778,7 +801,37 @@ export default function SitesView() {
                             </div>
                             {renderUrlCard(isRtl ? 'الرابط المحفوظ (آخر تعديلات)' : 'Saved URL (latest edits)', urls.saved, 'saved')}
                             {renderUrlCard(isRtl ? 'رابط الإنتاج على UpKlick' : 'UpKlick production URL', urls.appPublished, 'app')}
-                            {urls.custom ? renderUrlCard(isRtl ? 'الدومين الخاص' : 'Custom domain URL', urls.custom, 'custom') : null}
+                            {urls.custom ? (
+                              renderUrlCard(
+                                isRtl ? 'الدومين الخاص' : 'Custom domain URL', 
+                                urls.custom, 
+                                'custom',
+                                <button 
+                                  type="button" 
+                                  onClick={() => setStepOverviewTab('publishing')} 
+                                  style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                                >
+                                  {isRtl ? '⚙️ إعدادات DNS' : '⚙️ DNS Settings'}
+                                </button>
+                              )
+                            ) : (
+                              <div style={{ background: 'rgba(37,99,235,0.05)', border: '1px dashed rgba(37,99,235,0.35)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <Globe size={16} style={{ color: '#2563eb' }} />
+                                  <div style={{ fontSize: 12.5, color: 'var(--t1)', fontWeight: 600 }}>
+                                    {isRtl ? 'هل تريد تشغيل هذا الفانل على دومينك الخاص؟ (مثل offers.yourbrand.com)' : 'Want to run this funnel on your own domain? (e.g. offers.yourbrand.com)'}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setStepOverviewTab('publishing')}
+                                  style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                >
+                                  <Globe size={13} />
+                                  <span>{isRtl ? 'ربط دومين حقيقي' : 'Connect Real Domain'}</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
 

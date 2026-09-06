@@ -22,10 +22,11 @@ export function normalizePath(input) {
 }
 
 export function getCnameTarget() {
-  return (
-    process.env.NEXT_PUBLIC_SITES_CNAME ||
-    (typeof window !== 'undefined' ? window.location.hostname : 'cname.vercel-dns.com')
-  );
+  return process.env.NEXT_PUBLIC_SITES_CNAME || 'cname.vercel-dns.com';
+}
+
+export function getApexIpTarget() {
+  return process.env.NEXT_PUBLIC_SITES_A_RECORD_IP || '76.76.21.21';
 }
 
 export function isApexDomain(host) {
