@@ -1,4 +1,4 @@
-import { ResendProvider } from './providers/ResendProvider';
+import { SESProvider } from './providers/SESProvider';
 import {
   getVerificationEmailTemplate,
   getResetPasswordEmailTemplate,
@@ -12,16 +12,10 @@ import {
 
 /**
  * Factory to get the active email provider.
- * Easily extendable by adding new provider classes (e.g. SendGridProvider, SESProvider).
+ * Uses Amazon SES (SMTP) Provider.
  */
 function getEmailProvider() {
-  const providerName = (process.env.EMAIL_PROVIDER || 'resend').toLowerCase();
-
-  switch (providerName) {
-    case 'resend':
-    default:
-      return new ResendProvider();
-  }
+  return new SESProvider();
 }
 
 class EmailService {

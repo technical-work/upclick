@@ -12,7 +12,7 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
-      emailConfigured: Boolean(process.env.RESEND_API_KEY),
+      emailConfigured: Boolean(process.env.RESEND_API_KEY || (process.env.SMTP_USER && process.env.SMTP_PASSWORD)),
       whatsapp: whatsappStatus(),
       cronConfigured: Boolean(String(process.env.CRON_SECRET || '').trim())
     });

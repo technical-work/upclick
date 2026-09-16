@@ -7,7 +7,7 @@ export const PAGE_META = {
   bio: { section: 'Create', page: 'Bio Link Builder' },
   growth: { section: 'Grow', page: 'Growth Hub' },
   landing: { section: 'Build', page: 'Landing Page AI' },
-  sites: { section: 'Build', page: 'Sites & Funnels' },
+  sites: { section: 'Build', page: 'Funnels' },
   domains: { section: 'Domains', page: 'Domain Search' },
   'my-domains': { section: 'Domains', page: 'My Domains' },
   'domain-pricing': { section: 'Domains', page: 'Domain Pricing' },

@@ -11,6 +11,19 @@ import { NamecheapService } from './namecheap';
 
 const COLLECTION = 'domain_pricing';
 
+let cachedSettings = null;
+let settingsCacheTime = 0;
+let cachedPricingList = null;
+let pricingCacheTime = 0;
+const CACHE_TTL_MS = 60 * 1000; // 1 minute in-memory cache
+
+export function invalidatePricingCache() {
+  cachedSettings = null;
+  settingsCacheTime = 0;
+  cachedPricingList = null;
+  pricingCacheTime = 0;
+}
+
 export function toPublicPricing(row) {
   if (!row || row.enabled === false) return null;
   return {
@@ -33,11 +46,12 @@ export function toAdminPricing(row) {
     registration_price: registration,
     renewal_price: roundMoney(row.renewal_price),
     transfer_price: roundMoney(row.transfer_price),
-    markup: Number(row.markup) || DEFAULT_MARKUP,
+    markup: Number(row.markup) != null && !isNaN(Number(row.markup)) ? Number(row.markup) : DEFAULT_MARKUP,
     markup_type: row.markup_type || DEFAULT_MARKUP_TYPE,
     enabled: row.enabled !== false,
     currency: row.currency || 'USD',
     profit: roundMoney(registration - registrar),
+    profit_margin_pct: registrar > 0 ? roundMoney(((registration - registrar) / registration) * 100) : 0,
     created_at: row.created_at || null,
     updated_at: row.updated_at || null
   };
@@ -66,10 +80,14 @@ function buildRow(tld, costs, settings = {}) {
   };
 }
 
-export async function getSettings(adminDb) {
+export async function getSettings(adminDb, { force = false } = {}) {
+  const now = Date.now();
+  if (!force && cachedSettings && now - settingsCacheTime < CACHE_TTL_MS) {
+    return cachedSettings;
+  }
   const snap = await adminDb.collection('domain_settings').doc('global').get();
   const data = snap.exists ? snap.data() : {};
-  return {
+  const res = {
     markup: data.markup != null ? Number(data.markup) : DEFAULT_MARKUP,
     markup_type: data.markup_type || DEFAULT_MARKUP_TYPE,
     suggested_tlds: Array.isArray(data.suggested_tlds) && data.suggested_tlds.length
@@ -78,36 +96,60 @@ export async function getSettings(adminDb) {
     currency: data.currency || 'USD',
     whois_guard: data.whois_guard !== false
   };
+  cachedSettings = res;
+  settingsCacheTime = now;
+  return res;
 }
 
 export async function ensureDefaultPricing(adminDb) {
-  const settings = await getSettings(adminDb);
   const existing = await adminDb.collection(COLLECTION).limit(1).get();
   if (!existing.empty) return;
 
+  const settings = await getSettings(adminDb);
   const batch = adminDb.batch();
   Object.entries(DEFAULT_TLD_COSTS).forEach(([tld, costs]) => {
     const ref = adminDb.collection(COLLECTION).doc(tld);
     batch.set(ref, buildRow(tld, costs, settings));
   });
   await batch.commit();
+  invalidatePricingCache();
 }
 
-export async function listPricing(adminDb, { enabledOnly = false } = {}) {
+export async function listPricing(adminDb, { enabledOnly = false, force = false } = {}) {
+  const now = Date.now();
+  if (!force && cachedPricingList && now - pricingCacheTime < CACHE_TTL_MS) {
+    let rows = [...cachedPricingList];
+    if (enabledOnly) rows = rows.filter((r) => r.enabled !== false);
+    return rows;
+  }
+
   await ensureDefaultPricing(adminDb);
   const snap = await adminDb.collection(COLLECTION).get();
   let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  if (enabledOnly) rows = rows.filter((r) => r.enabled !== false);
   rows.sort((a, b) => String(a.extension).localeCompare(String(b.extension)));
+  
+  cachedPricingList = rows;
+  pricingCacheTime = now;
+
+  if (enabledOnly) rows = rows.filter((r) => r.enabled !== false);
   return rows;
+}
+
+export async function getPricingMap(adminDb) {
+  const list = await listPricing(adminDb);
+  const map = new Map();
+  for (const item of list) {
+    map.set(item.extension.toLowerCase(), item);
+  }
+  return map;
 }
 
 export async function getPricingForTld(adminDb, tld) {
   const ext = String(tld || '').toLowerCase();
   if (!ext) return null;
-  await ensureDefaultPricing(adminDb);
-  const snap = await adminDb.collection(COLLECTION).doc(ext).get();
-  if (snap.exists) return { id: snap.id, ...snap.data() };
+  const map = await getPricingMap(adminDb);
+  if (map.has(ext)) return map.get(ext);
+
   const fallback = DEFAULT_TLD_COSTS[ext];
   if (!fallback) return null;
   const settings = await getSettings(adminDb);
@@ -154,15 +196,52 @@ export async function upsertPricing(adminDb, extension, patch = {}) {
   };
   if (!prevSnap.exists) next.created_at = FieldValue.serverTimestamp();
   await ref.set(next, { merge: true });
+  invalidatePricingCache();
   const saved = await ref.get();
   return { id: saved.id, ...saved.data() };
+}
+
+export async function applyBulkMarkup(adminDb, { markup, markup_type }) {
+  const m = Number(markup);
+  const mark = Number.isFinite(m) ? m : DEFAULT_MARKUP;
+  const type = markup_type === 'percent' ? 'percent' : 'fixed';
+
+  // Update global settings
+  await adminDb.collection('domain_settings').doc('global').set({
+    markup: mark,
+    markup_type: type,
+    updated_at: FieldValue.serverTimestamp()
+  }, { merge: true });
+
+  const rows = await listPricing(adminDb, { force: true });
+  const batch = adminDb.batch();
+
+  for (const row of rows) {
+    const registrar = Number(row.registrar_price) || 0;
+    const renewalCost = Number(row.renewal_cost ?? registrar) || 0;
+    const transferCost = Number(row.transfer_cost ?? registrar) || 0;
+    const ref = adminDb.collection(COLLECTION).doc(row.extension);
+
+    batch.set(ref, {
+      markup: mark,
+      markup_type: type,
+      registration_price: computeCustomerPrice(registrar, mark, type),
+      renewal_price: computeCustomerPrice(renewalCost, mark, type),
+      transfer_price: computeCustomerPrice(transferCost, mark, type),
+      updated_at: FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
+
+  await batch.commit();
+  invalidatePricingCache();
+  return await listPricing(adminDb, { force: true });
 }
 
 export async function refreshRegistrarCosts(adminDb) {
   if (!NamecheapService.isConfigured()) {
     throw new Error('Namecheap is not configured');
   }
-  const rows = await listPricing(adminDb);
+  const rows = await listPricing(adminDb, { force: true });
   const tlds = rows.map((r) => r.extension);
   const remote = await NamecheapService.getDomainPricing(tlds);
   const byTld = Object.fromEntries(remote.map((r) => [r.tld, r]));
@@ -170,19 +249,23 @@ export async function refreshRegistrarCosts(adminDb) {
   for (const row of rows) {
     const hit = byTld[row.extension];
     if (!hit) continue;
+    const regCost = hit.register || row.registrar_price;
+    const renewCost = hit.renew || row.renewal_cost;
+    const transCost = hit.transfer || row.transfer_cost;
     const saved = await upsertPricing(adminDb, row.extension, {
-      registrar_price: hit.register || row.registrar_price,
-      renewal_cost: hit.renew || row.renewal_cost,
-      transfer_cost: hit.transfer || row.transfer_cost,
-      registration_price: row.registration_price,
-      renewal_price: row.renewal_price,
-      transfer_price: row.transfer_price,
+      registrar_price: regCost,
+      renewal_cost: renewCost,
+      transfer_cost: transCost,
+      registration_price: computeCustomerPrice(regCost, row.markup, row.markup_type),
+      renewal_price: computeCustomerPrice(renewCost, row.markup, row.markup_type),
+      transfer_price: computeCustomerPrice(transCost, row.markup, row.markup_type),
       markup: row.markup,
       markup_type: row.markup_type,
       enabled: row.enabled
     });
     updated.push(saved);
   }
+  invalidatePricingCache();
   return updated;
 }
 
@@ -201,3 +284,4 @@ export function registrarCostFor(row, kind = 'registration', premiumPrice) {
   if (kind === 'transfer') return roundMoney(row?.transfer_cost ?? row?.registrar_price);
   return roundMoney(row?.registrar_price);
 }
+

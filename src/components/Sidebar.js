@@ -168,7 +168,7 @@ export default function Sidebar() {
     {
       title: 'Build',
       items: [
-        { page: 'sites', label: 'Sites & Funnels', icon: Globe },
+        { page: 'sites', label: 'Funnels', icon: Globe },
         { page: 'landing', label: 'Landing Page AI', icon: Globe },
         { page: 'courses', label: 'Courses', icon: BookOpen },
         { page: 'digital', label: 'Digital Products', icon: Package },
@@ -180,10 +180,7 @@ export default function Sidebar() {
     {
       title: 'Domains',
       items: [
-        { page: 'domains', label: 'Domain Search', icon: Search },
-        { page: 'my-domains', label: 'My Domains', icon: Earth },
-        { page: 'domain-pricing', label: 'Domain Pricing', icon: CreditCard },
-        { page: 'domain-settings', label: 'Domain Settings', icon: Cog }
+        { page: 'domains', label: 'Domains Hub', icon: Globe }
       ]
     },
     {

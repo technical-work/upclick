@@ -55,7 +55,7 @@ export async function POST(req) {
       }
     }
 
-    // 4. Send email with 6-digit OTP code using Resend
+    // 4. Send email with 6-digit OTP code
     const emailResult = await emailService.sendEmailVerification({
       to: email,
       name: name || '',
@@ -70,7 +70,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: 'Verification code sent successfully via Resend',
+      message: 'Verification code sent successfully',
       simulated: emailResult.simulated || false
     });
   } catch (error) {

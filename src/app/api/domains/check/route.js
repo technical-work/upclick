@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { verifyUserRequest } from '@/lib/auth/verifyUserRequest';
 import { parseDomainInput, SUGGESTED_TLDS } from '@/lib/domains/constants';
 import { NamecheapError, NamecheapService } from '@/lib/domains/namecheap';
-import { customerPriceFor, getPricingForTld, getSettings } from '@/lib/domains/pricing';
+import { customerPriceFor, getPricingMap, getSettings } from '@/lib/domains/pricing';
 import { publicRegistrarError } from '@/lib/domains/xml';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const checkCache = new Map();
+const CHECK_CACHE_TTL_MS = 45 * 1000; // 45 seconds cache for identical availability lookups
 
 export async function GET(req) {
   try {
@@ -31,22 +34,33 @@ export async function GET(req) {
       }, { status: 503 });
     }
 
+    const cacheKey = fqdns.sort().join(',');
+    const cached = checkCache.get(cacheKey);
     let checks;
-    try {
-      checks = await NamecheapService.checkDomainAvailability(fqdns);
-    } catch (err) {
-      const message = err instanceof NamecheapError
-        ? (err.publicMessage || publicRegistrarError(err.errors || [{ message: err.message }]))
-        : 'Could not check availability. Please try again.';
-      console.error('[domains/check]', err);
-      return NextResponse.json({ error: message, query: parsed.fqdn, results: [] }, { status: 502 });
+
+    if (cached && (Date.now() - cached.timestamp < CHECK_CACHE_TTL_MS)) {
+      checks = cached.data;
+    } else {
+      try {
+        checks = await NamecheapService.checkDomainAvailability(fqdns);
+        checkCache.set(cacheKey, { timestamp: Date.now(), data: checks });
+      } catch (err) {
+        const message = err instanceof NamecheapError
+          ? (err.publicMessage || publicRegistrarError(err.errors || [{ message: err.message }]))
+          : 'Could not check availability. Please try again.';
+        console.error('[domains/check]', err);
+        return NextResponse.json({ error: message, query: parsed.fqdn, results: [] }, { status: 502 });
+      }
     }
+
+    // Single fast in-memory batch lookup for all TLD pricing
+    const pricingMap = await getPricingMap(auth.adminDb);
 
     const results = [];
     for (const check of checks) {
       const item = parseDomainInput(check.domain);
       if (!item) continue;
-      const pricing = await getPricingForTld(auth.adminDb, item.tld);
+      const pricing = pricingMap.get(item.tld.toLowerCase());
       if (!pricing || pricing.enabled === false) {
         results.push({
           domain: check.domain,
@@ -81,3 +95,4 @@ export async function GET(req) {
     return NextResponse.json({ error: 'Could not check this domain' }, { status: 500 });
   }
 }
+

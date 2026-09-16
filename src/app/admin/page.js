@@ -105,7 +105,7 @@ const AVAILABLE_TOOLS = [
   { key: 'tiktok-trends', labelAr: 'اتجاهات التواصل', labelEn: 'Social Trends' },
   { key: 'bio', labelAr: 'رابط البايو', labelEn: 'Bio Link' },
   { key: 'landing', labelAr: 'صفحة الهبوط بالذكاء', labelEn: 'Landing Page AI' },
-  { key: 'sites', labelAr: 'المواقع والفانلز', labelEn: 'Sites & Funnels' },
+  { key: 'sites', labelAr: 'الفانلز', labelEn: 'Funnels' },
   { key: 'domains', labelAr: 'النطاقات', labelEn: 'Domains' },
   { key: 'digital', labelAr: 'المنتجات الرقمية', labelEn: 'Digital Products' },
   { key: 'niche', labelAr: 'استوديو العلامة التجارية', labelEn: 'Niche & Brand Studio' },

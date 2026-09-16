@@ -611,8 +611,8 @@ export default function OutreachPage({ isRTL, users = [] }) {
           <span className="outreach-pill-dot" />
           <Mail size={15} />
           <div>
-            <div className="outreach-pill-label">{t('البريد (Resend)', 'Email (Resend)')}</div>
-            <div className="outreach-pill-sub">{status?.emailConfigured ? t('جاهز للإرسال', 'Ready to send') : t('أضف RESEND_API_KEY', 'Add RESEND_API_KEY')}</div>
+            <div className="outreach-pill-label">{t('البريد (Amazon SES)', 'Email (Amazon SES)')}</div>
+            <div className="outreach-pill-sub">{status?.emailConfigured ? t('جاهز للإرسال', 'Ready to send') : t('تحقق من إعدادات SMTP', 'Check SMTP settings')}</div>
           </div>
         </div>
         <div className={`outreach-pill ${whatsappReady ? 'is-ok' : 'is-warn'}`}>
@@ -766,7 +766,7 @@ export default function OutreachPage({ isRTL, users = [] }) {
               value={form.channel}
               onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
             >
-              <option value="email">{t('إيميل عبر Resend', 'Email via Resend')}</option>
+              <option value="email">{t('إيميل (Amazon SES)', 'Email (Amazon SES)')}</option>
               <option value="whatsapp" disabled={!whatsappReady}>
                 WhatsApp {whatsappReady ? '' : t('(غير مفعّل)', '(disabled)')}
               </option>

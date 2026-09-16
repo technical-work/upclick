@@ -373,7 +373,7 @@ export default function RegisterPage() {
       Tracking.track('CompleteRegistration', { email, name });
       Tracking.lead({ source: 'registration_page', name, email, phone: formattedPhone });
 
-      // Send Verification Email via Resend
+      // Send Verification Email via Amazon SES
       try {
         await fetch('/api/auth/send-verification', {
           method: 'POST',

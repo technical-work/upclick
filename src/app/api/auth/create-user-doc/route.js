@@ -104,7 +104,7 @@ export async function POST(req) {
       }, { merge: true });
     }
 
-    // 3. Send Trial Email 1 — Welcome Email via Resend asynchronously
+    // 3. Send Trial Email 1 — Welcome Email via emailService asynchronously
     try {
       await emailService.sendTrialWelcomeEmail({
         to: email,

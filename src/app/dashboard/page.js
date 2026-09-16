@@ -668,11 +668,11 @@ function EmailVerificationLock({ user, lang, logout }) {
         }}>
           {isAr ? (
             <>
-              أرسلنا رمز التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني <strong>{user?.email}</strong> عبر <strong>Resend</strong>.
+              أرسلنا رمز التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني <strong>{user?.email}</strong>.
             </>
           ) : (
             <>
-              We sent a 6-digit verification code to <strong>{user?.email}</strong> via <strong>Resend</strong>.
+              We sent a 6-digit verification code to <strong>{user?.email}</strong>.
             </>
           )}
         </p>

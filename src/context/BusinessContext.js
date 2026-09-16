@@ -21,7 +21,7 @@ export const ALL_SYSTEM_TOOLS = [
   { key: 'social', labelAr: 'الحسابات الاجتماعية (Social Accounts)', labelEn: 'Social Accounts', icon: '🌐' },
   { key: 'tiktok-trends', labelAr: 'الترندات الاجتماعية (Social Trends)', labelEn: 'Social Trends', icon: '🔥' },
   { key: 'bio', labelAr: 'رابط السيرة الذاتية (Bio Link)', labelEn: 'Bio Link', icon: '🔗' },
-  { key: 'sites', labelAr: 'المواقع والفانلز (Sites & Funnels)', labelEn: 'Sites & Funnels', icon: '🌐' },
+  { key: 'sites', labelAr: 'الفانلز (Funnels)', labelEn: 'Funnels', icon: '🌐' },
   { key: 'domains', labelAr: 'النطاقات (Domains)', labelEn: 'Domains', icon: '🌍' },
   { key: 'landing', labelAr: 'إنشاء صفحة هبوط بـ AI (Landing Page AI)', labelEn: 'Landing Page AI', icon: '🌐' },
   { key: 'courses', labelAr: 'الكورسات والدورات (Courses)', labelEn: 'Courses', icon: '📚' },

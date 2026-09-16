@@ -507,7 +507,6 @@ export default function SitesView() {
 
   // Sub-tabs list matching UpKlick / GoHighLevel
   const subTabs = [
-    { key: 'sites', label: isRtl ? 'المواقع' : 'Sites' },
     { key: 'funnels', label: isRtl ? 'الفانلز' : 'Funnels' },
     { key: 'websites', label: isRtl ? 'المواقع الإلكترونية' : 'Websites' },
     { key: 'stores', label: isRtl ? 'المتاجر' : 'Stores', highlight: true },
@@ -641,7 +640,7 @@ export default function SitesView() {
             if (activeSubTab === 'stores' && selectedStore) {
               setStoreForceTab('settings');
             } else {
-              alert(isRtl ? 'إعدادات المواقع والفانلز' : 'Sites & Funnels Settings');
+              alert(isRtl ? 'إعدادات الفانلز' : 'Funnels Settings');
             }
           }}
           style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: '8px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}

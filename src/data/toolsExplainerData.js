@@ -385,11 +385,11 @@ export const TOOLS_EXPLAINER_DATA = {
   },
   sites: {
     page: 'sites',
-    titleAr: 'المواقع والفانلز (Sites & Funnels)',
-    titleEn: 'Sites & Funnels',
-    categoryAr: 'بناء المواقع والفانلز',
-    categoryEn: 'Websites & Funnels',
-    summaryAr: 'منظومة كاملة مثل GoHighLevel لبناء وإدارة مسارات البيع (Sales Funnels)، والمواقع الإلكترونية بمحرر سحب وإفلات فائق السرعة، كود مخصص، ونشر مباشر.',
+    titleAr: 'الفانلز (Funnels)',
+    titleEn: 'Funnels',
+    categoryAr: 'بناء مسارات البيع والفانلز',
+    categoryEn: 'Funnels',
+    summaryAr: 'منظومة متكاملة لبناء وإدارة مسارات البيع (Sales Funnels) بمحرر سحب وإفلات فائق السرعة، كود مخصص، ونشر مباشر.',
     summaryEn: 'Full GoHighLevel-style platform to build and manage sales funnels and websites with visual drag-and-drop, custom HTML/CSS, and instant publishing.',
     featuresAr: [
       'محرر سحب وإفلات كامل الشاشة مع أكثر من 15 عنصراً تفاعلياً',

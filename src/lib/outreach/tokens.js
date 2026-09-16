@@ -28,7 +28,7 @@ export function maskPhone(phone) {
 }
 
 function unsubscribeSecret() {
-  return String(process.env.OUTREACH_UNSUBSCRIBE_SECRET || process.env.CRON_SECRET || process.env.RESEND_API_KEY || 'upklick-outreach').trim();
+  return String(process.env.OUTREACH_UNSUBSCRIBE_SECRET || process.env.CRON_SECRET || process.env.SMTP_PASSWORD || 'upklick-outreach').trim();
 }
 
 export function signUnsubscribeToken(userId) {
