@@ -73,6 +73,7 @@ export default function EmailBuilderModal({
   const [testEmailInput, setTestEmailInput] = useState('');
   const [testSending, setTestSending] = useState(false);
   const [testFeedback, setTestFeedback] = useState(null);
+  const [pendingTemplate, setPendingTemplate] = useState(null);
   const [copiedToken, setCopiedToken] = useState(null);
   const [htmlCopied, setHtmlCopied] = useState(false);
 
@@ -196,12 +197,7 @@ export default function EmailBuilderModal({
   };
 
   const handleApplyTemplate = (tmpl) => {
-    if (window.confirm(t('تطبيق هذا القالب؟ سيتم استبدال التصميم الحالي.', 'Apply this template? Current design will be replaced.'))) {
-      setBlocks(tmpl.blocks);
-      setTheme(tmpl.theme || DEFAULT_EMAIL_THEME);
-      setSelectedBlockId(tmpl.blocks[0]?.id || null);
-      recordHistory(tmpl.blocks, tmpl.theme || DEFAULT_EMAIL_THEME);
-    }
+    setPendingTemplate(tmpl);
   };
 
   const handleCopyToken = (token) => {
@@ -1193,6 +1189,111 @@ export default function EmailBuilderModal({
                 }}
               >
                 {testSending ? t('جارٍ الإرسال…', 'Sending…') : t('إرسال الآن 🚀', 'Send Now 🚀')}
+              </button>
+            </div>
+          </div>
+      {/* Custom Confirmation Modal for Applying Templates */}
+      {pendingTemplate && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            zIndex: 10001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setPendingTemplate(null)}
+        >
+          <div
+            style={{
+              maxWidth: '460px',
+              width: '100%',
+              background: '#12121f',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              padding: '22px 24px',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              direction: isRTL ? 'rtl' : 'ltr'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 107, 53, 0.15)',
+                  color: '#FF6B35',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '22px',
+                  flexShrink: 0
+                }}
+              >
+                {pendingTemplate.thumbnail || '✨'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#ffffff' }}>
+                  {t('تطبيق هذا القالب؟', 'Apply this template?')}
+                </h3>
+                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                  {isRTL ? pendingTemplate.nameAr : pendingTemplate.nameEn}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingTemplate(null)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '13.5px', color: '#cbd5e1', lineHeight: 1.6 }}>
+              {t(
+                'هل أنت متأكد من تطبيق هذا القالب؟ سيتم استبدال التصميم الحالي في مساحة العمل بالتصميم الجديد.',
+                'Are you sure you want to apply this template? The current canvas layout will be replaced.'
+              )}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setPendingTemplate(null)}
+              >
+                {t('إلغاء', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  background: 'linear-gradient(135deg, #FF6B35 0%, #6C35FF 100%)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  padding: '8px 20px'
+                }}
+                onClick={() => {
+                  setBlocks(pendingTemplate.blocks);
+                  setTheme(pendingTemplate.theme || DEFAULT_EMAIL_THEME);
+                  setSelectedBlockId(pendingTemplate.blocks[0]?.id || null);
+                  recordHistory(pendingTemplate.blocks, pendingTemplate.theme || DEFAULT_EMAIL_THEME);
+                  setPendingTemplate(null);
+                }}
+              >
+                {t('تطبيق القالب الآن ✨', 'Apply Template Now ✨')}
               </button>
             </div>
           </div>
