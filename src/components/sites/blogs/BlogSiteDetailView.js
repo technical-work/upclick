@@ -26,7 +26,8 @@ import {
   Calendar,
   Tag,
   User,
-  Settings
+  Settings,
+  Layout
 } from 'lucide-react';
 
 export default function BlogSiteDetailView({
@@ -37,6 +38,7 @@ export default function BlogSiteDetailView({
   onCreateNewPost,
   onOpenAiPostCreator,
   onEditPost,
+  onOpenBuilderForPost,
   onDeletePost,
   onDuplicatePost,
   onPublishPost,
@@ -796,6 +798,16 @@ export default function BlogSiteDetailView({
                                 <Edit3 size={14} />
                                 <span>{isRtl ? 'تعديل المقال' : 'Edit post'}</span>
                               </button>
+                              {onOpenBuilderForPost && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveMenuPostId(null); onOpenBuilderForPost(post); }}
+                                  style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', textAlign: isRtl ? 'right' : 'left', color: '#7c3aed', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                >
+                                  <Layout size={14} />
+                                  <span>{isRtl ? 'تعديل في المنشئ 🎨' : 'Edit in Builder 🎨'}</span>
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => { setActiveMenuPostId(null); onPreviewPost(post); }}

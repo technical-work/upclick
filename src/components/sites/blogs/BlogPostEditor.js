@@ -39,7 +39,8 @@ import {
   Wand2, 
   Layers, 
   FileText,
-  Edit2
+  Edit2,
+  Layout
 } from 'lucide-react';
 
 export default function BlogPostEditor({
@@ -50,6 +51,7 @@ export default function BlogPostEditor({
   onSavePost,
   onPublishPost,
   onPreviewPost,
+  onOpenBuilder,
   showToast
 }) {
   const [title, setTitle] = useState(post?.title || 'New Blog Post');
@@ -401,6 +403,46 @@ Format only as clean HTML with headings (<h2>, <h3>), paragraphs (<p>), bullet l
           >
             <Eye size={16} />
           </button>
+
+          {onOpenBuilder && (
+            <button
+              type="button"
+              onClick={() => {
+                const updatedPost = {
+                  ...post,
+                  title: title.trim() || 'Untitled Post',
+                  slug: slug.trim() || title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-'),
+                  content: contentHtml,
+                  category,
+                  author,
+                  coverImage,
+                  excerpt: excerpt.trim() || contentHtml.replace(/<[^>]*>/g, '').slice(0, 160) + '...',
+                  words: wordCount,
+                  readTime: readingTime
+                };
+                onOpenBuilder(updatedPost);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12.5px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)',
+                transition: 'all 0.15s ease'
+              }}
+              title={isRtl ? 'فتح في المنشئ البصري الكامل وتعديل كل عنصر' : 'Open in full visual builder'}
+            >
+              <Layout size={14} />
+              <span>{isRtl ? 'تعديل في المنشئ 🎨' : 'Builder 🎨'}</span>
+            </button>
+          )}
 
           <button
             type="button"

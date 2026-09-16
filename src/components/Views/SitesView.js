@@ -106,9 +106,11 @@ export default function SitesView() {
   const [builderStoreMode, setBuilderStoreMode] = useState(false);
   const [builderWebsiteMode, setBuilderWebsiteMode] = useState(false);
   const [builderWebinarMode, setBuilderWebinarMode] = useState(false);
+  const [builderBlogMode, setBuilderBlogMode] = useState(false);
   const [storeActivePageIdx, setStoreActivePageIdx] = useState(0);
   const [websiteActivePageIdx, setWebsiteActivePageIdx] = useState(0);
   const [webinarActivePageIdx, setWebinarActivePageIdx] = useState(0);
+  const [blogActivePostIdx, setBlogActivePostIdx] = useState(0);
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -805,6 +807,75 @@ export default function SitesView() {
     if (showToast) showToast(targetStatus === 'published' ? (isRtl ? 'تم نشر المقال بنجاح 🚀' : 'Post published successfully 🚀') : (isRtl ? 'تم نقل المقال للمسودة' : 'Post converted to draft'));
   };
 
+  const handleOpenBuilderForBlogPost = (postOrIndex) => {
+    if (!selectedBlogSite) return;
+    let targetIdx = 0;
+    if (typeof postOrIndex === 'number') {
+      targetIdx = postOrIndex;
+    } else if (postOrIndex && typeof postOrIndex === 'object') {
+      const foundIdx = (selectedBlogSite.posts || []).findIndex(p => p.id === postOrIndex.id);
+      if (foundIdx >= 0) {
+        targetIdx = foundIdx;
+      } else {
+        const newPosts = [postOrIndex, ...(selectedBlogSite.posts || [])];
+        const updatedSite = { ...selectedBlogSite, posts: newPosts };
+        handleUpdateBlogSite(updatedSite);
+        targetIdx = 0;
+      }
+    }
+
+    setBuilderBlogMode(true);
+    setBuilderStoreMode(false);
+    setBuilderWebsiteMode(false);
+    setBuilderWebinarMode(false);
+    setBlogActivePostIdx(targetIdx);
+    setIsBuilderOpen(true);
+  };
+
+  const updateActiveBlogPost = (patch) => {
+    if (!selectedBlogSite || !selectedBlogSite.posts) return;
+    const targetPost = selectedBlogSite.posts[blogActivePostIdx] || selectedBlogSite.posts[0];
+    if (!targetPost) return;
+
+    const updatedPost = { 
+      ...targetPost, 
+      ...patch, 
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) 
+    };
+    const updatedPosts = selectedBlogSite.posts.map((p, idx) => idx === blogActivePostIdx ? updatedPost : p);
+    const updatedBlogSite = { ...selectedBlogSite, posts: updatedPosts };
+    handleUpdateBlogSite(updatedBlogSite);
+    if (activeBlogPost && activeBlogPost.id === updatedPost.id) {
+      setActiveBlogPost(updatedPost);
+    }
+  };
+
+  const updateActiveBlogPostCanvas = (newCanvas) => {
+    updateActiveBlogPost({ canvas: newCanvas });
+  };
+
+  const handlePublishBlogPostInBuilder = async () => {
+    if (!selectedBlogSite || !selectedBlogSite.posts) return;
+    const targetPost = selectedBlogSite.posts[blogActivePostIdx] || selectedBlogSite.posts[0];
+    if (!targetPost) return;
+
+    const updatedPost = {
+      ...targetPost,
+      status: 'published',
+      published: true,
+      publishedAt: new Date().toISOString(),
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+    const updatedPosts = selectedBlogSite.posts.map((p, idx) => idx === blogActivePostIdx ? updatedPost : p);
+    const updatedBlogSite = { ...selectedBlogSite, posts: updatedPosts };
+    handleUpdateBlogSite(updatedBlogSite);
+    if (activeBlogPost && activeBlogPost.id === updatedPost.id) {
+      setActiveBlogPost(updatedPost);
+    }
+    if (showToast) showToast(isRtl ? 'تم نشر المقال بنجاح 🚀' : 'Blog post published successfully 🚀');
+    return updatedBlogSite;
+  };
+
   const handleDuplicateStore = (storeId) => {
     const target = stores.find(s => s.id === storeId);
     if (!target) return;
@@ -1117,6 +1188,91 @@ export default function SitesView() {
   ];
 
   const builderFunnel = useMemo(() => {
+    if (builderBlogMode && selectedBlogSite) {
+      const postsAsSteps = (selectedBlogSite.posts || []).map((p, idx) => ({
+        id: p.id,
+        name: p.title || `Post ${idx + 1}`,
+        path: `/${p.slug || p.id}`,
+        published: p.status === 'published',
+        page: p.page || DEFAULT_PAGE,
+        canvas: (p.canvas && p.canvas.length > 0) ? p.canvas : [
+          {
+            id: `el_badge_${p.id}`,
+            type: 'subheadline',
+            content: `🏷️ ${p.category || 'Article'} • ${p.readTime || '3 min read'}`,
+            fontSize: '14px',
+            color: '#2563eb',
+            align: 'left',
+            weight: '700',
+            margin: '0 0 10px'
+          },
+          {
+            id: `el_title_${p.id}`,
+            type: 'headline',
+            content: p.title || 'New Blog Post',
+            fontSize: '36px',
+            color: '#0f172a',
+            align: 'left',
+            weight: '800',
+            margin: '0 0 16px'
+          },
+          {
+            id: `el_meta_${p.id}`,
+            type: 'paragraph',
+            content: `Written by ${p.author || 'Author'} • Last updated ${p.lastUpdated || 'Today'}`,
+            fontSize: '13px',
+            color: '#64748b',
+            align: 'left',
+            margin: '0 0 24px'
+          },
+          ...(p.coverImage ? [{
+            id: `el_img_${p.id}`,
+            type: 'image',
+            src: p.coverImage,
+            alt: p.title,
+            radius: '12px',
+            margin: '0 0 28px',
+            shadow: true
+          }] : []),
+          {
+            id: `el_content_${p.id}`,
+            type: 'custom_html',
+            code: p.content || `<p style="font-size: 16px; line-height: 1.8; color: #334155;">Start writing your amazing article content here...</p>`,
+            padding: '10px 0'
+          }
+        ]
+      }));
+
+      if (postsAsSteps.length === 0) {
+        postsAsSteps.push({
+          id: 'post_draft_new',
+          name: 'New Article',
+          path: '/new-post',
+          published: false,
+          page: DEFAULT_PAGE,
+          canvas: [
+            {
+              id: 'el_title_draft',
+              type: 'headline',
+              content: 'Write your new blog post',
+              fontSize: '36px',
+              weight: '800'
+            },
+            {
+              id: 'el_p_draft',
+              type: 'paragraph',
+              content: 'Customize your blog article with images, videos, columns, call-to-actions, and styled copy.'
+            }
+          ]
+        });
+      }
+
+      return {
+        id: selectedBlogSite.id,
+        name: `${selectedBlogSite.name} (Blog Post Builder)`,
+        steps: postsAsSteps
+      };
+    }
     if (builderWebsiteMode && selectedWebsite) {
       return {
         id: selectedWebsite.id,
@@ -1139,7 +1295,7 @@ export default function SitesView() {
       };
     }
     return selectedFunnel;
-  }, [builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, selectedFunnel]);
+  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, selectedFunnel]);
 
   const builderStorePreview = useMemo(() => {
     if (!builderStoreMode || !selectedStore) return null;
@@ -1165,16 +1321,19 @@ export default function SitesView() {
         <StorePreviewContext.Provider value={builderStorePreview}>
         <BuilderWorkspace
           funnel={builderFunnel}
-          stepIndex={builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : activeStepIndex))}
-          onChangeStep={builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex))}
+          stepIndex={builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : activeStepIndex)))}
+          onChangeStep={builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex)))}
           onClose={() => {
             setIsBuilderOpen(false);
             setBuilderStoreMode(false);
             setBuilderWebsiteMode(false);
             setBuilderWebinarMode(false);
+            setBuilderBlogMode(false);
           }}
           onUpdateCanvas={(newCanvas) => {
-            if (builderWebsiteMode && selectedWebsite) {
+            if (builderBlogMode && selectedBlogSite) {
+              updateActiveBlogPostCanvas(newCanvas);
+            } else if (builderWebsiteMode && selectedWebsite) {
               updateActiveWebsitePageCanvas(newCanvas);
             } else if (builderWebinarMode && selectedWebinar) {
               updateActiveWebinarPageCanvas(newCanvas);
@@ -1185,7 +1344,9 @@ export default function SitesView() {
             }
           }}
           onUpdateStep={(patch) => {
-            if (builderWebsiteMode && selectedWebsite) {
+            if (builderBlogMode && selectedBlogSite) {
+              updateActiveBlogPost(patch);
+            } else if (builderWebsiteMode && selectedWebsite) {
               updateActiveWebsitePage(patch);
             } else if (builderWebinarMode && selectedWebinar) {
               updateActiveWebinarPage(patch);
@@ -1195,7 +1356,7 @@ export default function SitesView() {
               updateActiveStep(patch);
             }
           }}
-          onPublish={builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep))}
+          onPublish={builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep)))}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>
@@ -1411,6 +1572,7 @@ export default function SitesView() {
             onSavePost={handleSaveBlogPost}
             onPublishPost={handlePublishBlogPost}
             onPreviewPost={(post) => setPreviewingPost(post)}
+            onOpenBuilder={handleOpenBuilderForBlogPost}
             showToast={showToast}
           />
         ) : isCreatingBlogSite || isEditingBlogSite ? (
@@ -1474,6 +1636,7 @@ export default function SitesView() {
               setActiveBlogPost(newAiPost);
             }}
             onEditPost={(post) => setActiveBlogPost(post)}
+            onOpenBuilderForPost={handleOpenBuilderForBlogPost}
             onDeletePost={handleDeleteBlogPost}
             onDuplicatePost={handleDuplicateBlogPost}
             onPublishPost={handlePublishBlogPost}
