@@ -548,7 +548,7 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
                 <Sparkles size={16} />
               </div>
               <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800 }}>
-                {draft ? t('تعديل حملة الإيميل', 'Edit Email Campaign') : t('إنشاء وتصميم حملة إيميل جديدة', 'Compose GoHighLevel Email Campaign')}
+                {draft ? t('تعديل حملة الإيميل', 'Edit Email Campaign') : t('إنشاء وتصميم حملة إيميل جديدة', 'Compose Visual Email Campaign')}
               </h3>
             </div>
             <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text3)' }}>

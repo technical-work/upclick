@@ -626,9 +626,6 @@ export default function EmailBuilderModal({
           <div>
             <div style={{ fontSize: '15px', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>{t('مصمم الإيميلات المرئي الذكي', 'Visual Drag & Drop Email Designer')}</span>
-              <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '999px', background: 'rgba(255, 107, 53, 0.15)', color: '#FF6B35', border: '1px solid rgba(255, 107, 53, 0.3)', fontWeight: 800 }}>
-                GoHighLevel Engine
-              </span>
             </div>
             <div style={{ fontSize: '11px', color: '#94a3b8' }}>
               {campaignName ? `${t('الحملة:', 'Campaign:')} ${campaignName}` : t('محرر السحب والإفلات وقوالب الإيميل الجاهزة', 'Interactive Drag & Drop Canvas & Templates')}

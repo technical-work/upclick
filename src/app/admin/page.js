@@ -1939,7 +1939,7 @@ const AdminDashboard = () => {
              activeTab === 'payments' ? t('admin.paymentsDesc') :
              activeTab === 'support' ? (isRTL ? 'متابعة وحل مشكلات العملاء وفتح المحادثات الفورية' : 'Manage customer issues and open chat threads') :
              activeTab === 'tracking' ? (isRTL ? 'إدارة وتتبع أكواد البيكسل والتحليلات الخاصة بالمنصة' : 'Manage and track platform pixel and analytics configurations') :
-             activeTab === 'email-campaigns' || activeTab === 'outreach' ? (isRTL ? 'إنشاء وتصميم حملات البريد بنظام GoHighLevel المرئي Drag & Drop مع استهداف دقيق وسجلات إرسال فورية' : 'Create & design visual email campaigns with Drag & Drop builder, audience targeting, and real-time delivery logs') :
+             activeTab === 'email-campaigns' || activeTab === 'outreach' ? (isRTL ? 'إنشاء وتصميم حملات البريد المرئية بتقنية Drag & Drop مع استهداف دقيق وسجلات إرسال فورية' : 'Create & design visual email campaigns with Drag & Drop builder, audience targeting, and real-time delivery logs') :
              activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp' ? (isRTL ? 'إرسال حملات الواتساب وقوالب Twilio المعتمدة حسب فئات استهلاك الكريدت' : 'Send approved Twilio WhatsApp campaigns by credit-usage segment') :
              activeTab === 'domains' ? (isRTL ? 'تسعير النطاقات، الطلبات، وإعادة محاولة التسجيل بعد الدفع' : 'Domain pricing, orders, and retry failed registrar purchases') :
              t('admin.statsDesc')}
