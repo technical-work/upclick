@@ -24,6 +24,7 @@ import {
   blogsStorageKey,
   formsStorageKey,
   surveysStorageKey,
+  quizzesStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
 import WebsiteListView from '../sites/websites/WebsiteListView';
@@ -57,6 +58,8 @@ import { createBlankForm, createFormFromTemplate } from '../sites/forms/formTemp
 import SurveyListView from '../sites/surveys/SurveyListView';
 import SurveyBuilderView from '../sites/surveys/SurveyBuilderView';
 import { createBlankSurvey, createSurveyFromTemplate } from '../sites/surveys/surveyTemplates';
+import QuizListView from '../sites/quizzes/QuizListView';
+import { QUIZ_TEMPLATES } from '../sites/quizzes/quizTemplates';
 import { 
   Plus, 
   Search, 
@@ -99,6 +102,7 @@ export default function SitesView() {
   const blogPersistTimer = useRef(null);
   const formPersistTimer = useRef(null);
   const surveyPersistTimer = useRef(null);
+  const quizPersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
   const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
@@ -109,6 +113,7 @@ export default function SitesView() {
   const [selectedBlogSite, setSelectedBlogSite] = useState(null);
   const [selectedForm, setSelectedForm] = useState(null);
   const [selectedSurvey, setSelectedSurvey] = useState(null);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
   const [isSurveyBuilderOpen, setIsSurveyBuilderOpen] = useState(false);
   const [isCreatingBlogSite, setIsCreatingBlogSite] = useState(false);
   const [isEditingBlogSite, setIsEditingBlogSite] = useState(false);
@@ -131,11 +136,13 @@ export default function SitesView() {
   const [builderBlogMode, setBuilderBlogMode] = useState(false);
   const [builderFormMode, setBuilderFormMode] = useState(false);
   const [builderSurveyMode, setBuilderSurveyMode] = useState(false);
+  const [builderQuizMode, setBuilderQuizMode] = useState(false);
   const [storeActivePageIdx, setStoreActivePageIdx] = useState(0);
   const [websiteActivePageIdx, setWebsiteActivePageIdx] = useState(0);
   const [webinarActivePageIdx, setWebinarActivePageIdx] = useState(0);
   const [blogActivePostIdx, setBlogActivePostIdx] = useState(0);
   const [surveyActiveSlideIdx, setSurveyActiveSlideIdx] = useState(0);
+  const [quizActiveSlideIdx, setQuizActiveSlideIdx] = useState(0);
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,6 +175,7 @@ export default function SitesView() {
   const [blogs, setBlogs] = useState([]);
   const [forms, setForms] = useState([]);
   const [surveys, setSurveys] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -187,6 +195,7 @@ export default function SitesView() {
       setBlogs([]);
       setForms([]);
       setSurveys([]);
+      setQuizzes([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
@@ -194,6 +203,7 @@ export default function SitesView() {
       setSelectedBlogSite(null);
       setSelectedForm(null);
       setSelectedSurvey(null);
+      setSelectedQuiz(null);
       setIsSurveyBuilderOpen(false);
       setActiveBlogPost(null);
       loadedAccountUid.current = '';
@@ -209,6 +219,7 @@ export default function SitesView() {
       setSelectedBlogSite(null);
       setSelectedForm(null);
       setSelectedSurvey(null);
+      setSelectedQuiz(null);
       setIsSurveyBuilderOpen(false);
       setActiveBlogPost(null);
       loadedAccountUid.current = accountUid;
@@ -222,6 +233,7 @@ export default function SitesView() {
     const scopedBlogs = sitesForUser(readJsonList(blogsStorageKey(accountUid)), accountUid);
     const scopedForms = sitesForUser(readJsonList(formsStorageKey(accountUid)), accountUid);
     const scopedSurveys = sitesForUser(readJsonList(surveysStorageKey(accountUid)), accountUid);
+    const scopedQuizzes = sitesForUser(readJsonList(quizzesStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
@@ -242,6 +254,9 @@ export default function SitesView() {
       : [];
     const gcSurveys = gcBelongsToAccount
       ? sitesForUser(GC?.upclickSurveys?.surveys, accountUid)
+      : [];
+    const gcQuizzes = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickQuizzes?.quizzes, accountUid)
       : [];
 
     // Sanitizers to clear any legacy demo stats from stored funnels, stores, webinars
@@ -334,6 +349,16 @@ export default function SitesView() {
     const nextBlogs = dedupeSitesList(gcBlogs.length ? gcBlogs : scopedBlogs, 'blogsite');
     const nextForms = dedupeSitesList(gcForms.length ? gcForms : scopedForms, 'form');
     const nextSurveys = dedupeSitesList(gcSurveys.length ? gcSurveys : scopedSurveys, 'survey');
+    const nextQuizzes = dedupeSitesList(gcQuizzes.length ? gcQuizzes : (scopedQuizzes.length ? scopedQuizzes : [
+      {
+        ...QUIZ_TEMPLATES[0],
+        id: 'quiz_marketing_demo_1',
+        name: isRtl ? (QUIZ_TEMPLATES[0].nameAr || QUIZ_TEMPLATES[0].name) : QUIZ_TEMPLATES[0].name,
+        createdAt: new Date().toISOString(),
+        ownerUid: accountUid,
+        submissions: []
+      }
+    ]), 'quiz');
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
@@ -377,7 +402,30 @@ export default function SitesView() {
       if (!prevMine.length && nextSurveys.length) return nextSurveys;
       return nextSurveys;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, GC?.upclickSurveys?.surveys, isRtl]);
+    setQuizzes((prev) => {
+      if (userChanged) return nextQuizzes;
+      const prevMine = sitesForUser(prev, accountUid);
+      if (!prevMine.length && nextQuizzes.length) return nextQuizzes;
+      return nextQuizzes;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, GC?.upclickSurveys?.surveys, GC?.upclickQuizzes?.quizzes, isRtl]);
+
+  const saveQuizzes = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setQuizzes(mine);
+    writeJsonList(quizzesStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (quizPersistTimer.current) clearTimeout(quizPersistTimer.current);
+    quizPersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickQuizzes: {
+          quizzes: mine
+        }
+      });
+    }, 700);
+  };
 
   const saveForms = (updatedList) => {
     if (!accountUid) return;
@@ -546,6 +594,202 @@ export default function SitesView() {
     const match = surveys.find((s) => s.id === selectedSurvey.id);
     if (match && match !== selectedSurvey) setSelectedSurvey(match);
   }, [surveys, selectedSurvey]);
+
+  // Sync selectedQuiz
+  useEffect(() => {
+    if (!selectedQuiz) return;
+    const match = quizzes.find((q) => q.id === selectedQuiz.id);
+    if (match && match !== selectedQuiz) setSelectedQuiz(match);
+  }, [quizzes, selectedQuiz]);
+
+  // Quiz Management Handlers
+  const handleOpenBuilderForQuiz = (quizToOpen) => {
+    setSelectedQuiz(quizToOpen);
+    setBuilderQuizMode(true);
+    setBuilderSurveyMode(false);
+    setBuilderFormMode(false);
+    setBuilderBlogMode(false);
+    setBuilderStoreMode(false);
+    setBuilderWebsiteMode(false);
+    setBuilderWebinarMode(false);
+    setQuizActiveSlideIdx(0);
+    setIsBuilderOpen(true);
+  };
+
+  const handleCreateQuizBlank = (name, passingScore = 70) => {
+    const newQuiz = {
+      id: `quiz_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: name || 'New Scored Quiz',
+      category: 'General',
+      passingScore: Number(passingScore) || 70,
+      createdAt: new Date().toISOString(),
+      ownerUid: accountUid,
+      questions: [
+        {
+          id: 'q1',
+          title: 'Question 1: Select the correct choice',
+          description: 'Provide an engaging question for your audience.',
+          type: 'radio',
+          options: ['Correct Choice (Option A)', 'Option B', 'Option C', 'Option D'],
+          correctAnswer: 'Correct Choice (Option A)',
+          points: 25,
+          explanation: 'This is the verified correct answer.'
+        },
+        {
+          id: 'q2',
+          title: 'Question 2: Select the correct choice',
+          description: 'Add more knowledge or qualification checks.',
+          type: 'radio',
+          options: ['Option A', 'Correct Choice (Option B)', 'Option C'],
+          correctAnswer: 'Correct Choice (Option B)',
+          points: 25,
+          explanation: 'Option B is correct.'
+        },
+        {
+          id: 'q3',
+          title: 'Question 3: Select the correct choice',
+          description: '',
+          type: 'radio',
+          options: ['Option A', 'Option B', 'Correct Choice (Option C)'],
+          correctAnswer: 'Correct Choice (Option C)',
+          points: 50,
+          explanation: 'Option C satisfies the question.'
+        }
+      ],
+      settings: {
+        progressBar: true,
+        showTimer: false,
+        showInstantFeedback: false,
+        showExplanationsAtEnd: true,
+        allowRetry: true,
+        requireLeadCapture: true,
+        buttonColor: '#2563eb',
+        backgroundColor: '#0f172a',
+        textColor: '#ffffff',
+        borderRadius: '16px'
+      },
+      submissions: []
+    };
+
+    const owned = stampSiteOwner(newQuiz, accountUid);
+    const nextQuizzes = [owned, ...quizzes];
+    saveQuizzes(nextQuizzes);
+    handleOpenBuilderForQuiz(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء الاختبار بنجاح' : 'Quiz created successfully');
+  };
+
+  const handleCreateQuizFromTemplate = (template) => {
+    const newQuiz = {
+      ...JSON.parse(JSON.stringify(template)),
+      id: `quiz_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: isRtl ? (template.nameAr || template.name) : template.name,
+      description: isRtl ? (template.descriptionAr || template.description) : template.description,
+      createdAt: new Date().toISOString(),
+      ownerUid: accountUid,
+      submissions: []
+    };
+
+    const owned = stampSiteOwner(newQuiz, accountUid);
+    const nextQuizzes = [owned, ...quizzes];
+    saveQuizzes(nextQuizzes);
+    handleOpenBuilderForQuiz(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء الاختبار من القالب بنجاح' : 'Quiz created from template');
+  };
+
+  const handleSaveQuizInBuilder = (updatedQuiz) => {
+    const owned = stampSiteOwner(updatedQuiz, accountUid);
+    const nextQuizzes = quizzes.map((q) => (q.id === owned.id ? owned : q));
+    saveQuizzes(nextQuizzes);
+    setSelectedQuiz(owned);
+  };
+
+  const updateActiveQuizCanvas = (newCanvas) => {
+    if (!selectedQuiz) return;
+    const targetQIdx = quizActiveSlideIdx || 0;
+    const formBlock = (newCanvas || []).find((el) => el.type === 'form');
+    const updatedQuestions = [...(selectedQuiz.questions || [])];
+    const targetQ = updatedQuestions[targetQIdx] || { id: `q_${targetQIdx + 1}` };
+    updatedQuestions[targetQIdx] = {
+      ...targetQ,
+      canvas: newCanvas,
+      title: formBlock?.title || targetQ.title,
+      description: formBlock?.subtitle || targetQ.description,
+      options: formBlock?.fields?.[0]?.options || targetQ.options
+    };
+
+    const updatedQuiz = {
+      ...selectedQuiz,
+      questions: updatedQuestions,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveQuizInBuilder(updatedQuiz);
+  };
+
+  const updateActiveQuizStep = (patch) => {
+    if (!selectedQuiz) return;
+    const targetQIdx = quizActiveSlideIdx || 0;
+    const updatedQuestions = [...(selectedQuiz.questions || [])];
+    const targetQ = updatedQuestions[targetQIdx] || { id: `q_${targetQIdx + 1}` };
+    updatedQuestions[targetQIdx] = {
+      ...targetQ,
+      ...patch,
+      title: patch.name || targetQ.title
+    };
+
+    const updatedQuiz = {
+      ...selectedQuiz,
+      questions: updatedQuestions,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveQuizInBuilder(updatedQuiz);
+  };
+
+  const handlePublishQuizInBuilder = async () => {
+    if (!selectedQuiz) return;
+    const updatedQuiz = {
+      ...selectedQuiz,
+      status: 'published',
+      published: true,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveQuizInBuilder(updatedQuiz);
+    if (showToast) showToast(isRtl ? 'تم حفظ ونشر الاختبار بنجاح 🚀' : 'Quiz published successfully 🚀');
+    return updatedQuiz;
+  };
+
+  const handleDuplicateQuiz = (quizToDup) => {
+    const dup = {
+      ...JSON.parse(JSON.stringify(quizToDup)),
+      id: `quiz_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: `${quizToDup.name} (Copy)`,
+      updatedAt: new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      submissions: [],
+      analytics: { views: 0, attempts: 0, passRate: 0, avgScore: 0 }
+    };
+    const owned = stampSiteOwner(dup, accountUid);
+    const nextQuizzes = [owned, ...quizzes];
+    saveQuizzes(nextQuizzes);
+    if (showToast) showToast(isRtl ? 'تم تكرار الاختبار' : 'Quiz duplicated');
+  };
+
+  const handleDeleteQuiz = (quizId) => {
+    const nextQuizzes = quizzes.filter((q) => q.id !== quizId);
+    saveQuizzes(nextQuizzes);
+    if (selectedQuiz?.id === quizId) setSelectedQuiz(null);
+    if (showToast) showToast(isRtl ? 'تم حذف الاختبار' : 'Quiz deleted');
+  };
+
+  const handleUpdateQuizName = (quizId, newName) => {
+    const nextQuizzes = quizzes.map((q) => (q.id === quizId ? { ...q, name: newName } : q));
+    saveQuizzes(nextQuizzes);
+  };
 
   // Survey Management Handlers
   const handleOpenBuilderForSurvey = (surveyToOpen) => {
@@ -1818,8 +2062,88 @@ export default function SitesView() {
         steps
       };
     }
+    if (builderQuizMode && selectedQuiz) {
+      const quizQuestions = (selectedQuiz.questions && selectedQuiz.questions.length > 0)
+        ? selectedQuiz.questions
+        : [
+            {
+              id: 'q_1',
+              title: selectedQuiz.name || 'Question 1',
+              type: 'radio',
+              options: ['Option A (Correct)', 'Option B', 'Option C'],
+              correctAnswer: 'Option A (Correct)',
+              points: 25,
+              explanation: 'Correct Answer Explanation'
+            }
+          ];
+
+      const steps = quizQuestions.map((q, qIdx) => {
+        const slideCanvas = (q.canvas && q.canvas.length > 0)
+          ? q.canvas
+          : [
+              {
+                id: `el_q_headline_${q.id}`,
+                type: 'headline',
+                content: q.title || `Question ${qIdx + 1}`,
+                fontSize: '26px',
+                color: selectedQuiz.settings?.textColor || '#0f172a',
+                align: 'center',
+                weight: '800',
+                margin: '0 0 8px'
+              },
+              ...(q.description ? [{
+                id: `el_q_sub_${q.id}`,
+                type: 'paragraph',
+                content: q.description,
+                fontSize: '14px',
+                color: '#64748b',
+                align: 'center',
+                margin: '0 0 16px'
+              }] : []),
+              {
+                id: `el_quiz_block_${q.id}`,
+                type: 'form',
+                title: `Question ${qIdx + 1} (${q.points || 20} pts)`,
+                subtitle: q.explanation ? `💡 Explanation: ${q.explanation}` : (isRtl ? 'اختر الإجابة الصحيحة' : 'Select the correct answer'),
+                fields: [
+                  {
+                    id: q.id,
+                    label: q.title || `Question ${qIdx + 1}`,
+                    type: q.type || 'radio',
+                    options: q.options || ['Option 1', 'Option 2', 'Option 3'],
+                    required: true,
+                    width: '100%'
+                  }
+                ],
+                buttonText: qIdx === quizQuestions.length - 1 ? (isRtl ? 'إنهاء وحساب النتيجة' : 'Submit & Grade') : (isRtl ? 'السؤال التالي' : 'Next Question'),
+                buttonBg: selectedQuiz.settings?.buttonColor || '#2563eb',
+                bg: selectedQuiz.settings?.backgroundColor || '#ffffff',
+                color: selectedQuiz.settings?.textColor || '#0f172a',
+                radius: `${parseInt(selectedQuiz.settings?.borderRadius || 16)}px`,
+                maxWidth: '580px',
+                margin: '16px auto',
+                shadow: true
+              }
+            ];
+
+        return {
+          id: q.id,
+          name: q.title || `Question ${qIdx + 1}`,
+          path: `/${q.id}`,
+          published: true,
+          page: DEFAULT_PAGE,
+          canvas: slideCanvas
+        };
+      });
+
+      return {
+        id: selectedQuiz.id,
+        name: `${selectedQuiz.name} (Quiz Builder)`,
+        steps
+      };
+    }
     return selectedFunnel;
-  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, builderFormMode, selectedForm, builderSurveyMode, selectedSurvey, selectedFunnel]);
+  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, builderFormMode, selectedForm, builderSurveyMode, selectedSurvey, builderQuizMode, selectedQuiz, selectedFunnel]);
 
   const builderStorePreview = useMemo(() => {
     if (!builderStoreMode || !selectedStore) return null;
@@ -1845,8 +2169,8 @@ export default function SitesView() {
         <StorePreviewContext.Provider value={builderStorePreview}>
         <BuilderWorkspace
           funnel={builderFunnel}
-          stepIndex={builderSurveyMode ? surveyActiveSlideIdx : (builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : (builderFormMode ? 0 : activeStepIndex)))))}
-          onChangeStep={builderSurveyMode ? setSurveyActiveSlideIdx : (builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : (builderFormMode ? () => {} : setActiveStepIndex)))))}
+          stepIndex={builderQuizMode ? quizActiveSlideIdx : (builderSurveyMode ? surveyActiveSlideIdx : (builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : (builderFormMode ? 0 : activeStepIndex))))))}
+          onChangeStep={builderQuizMode ? setQuizActiveSlideIdx : (builderSurveyMode ? setSurveyActiveSlideIdx : (builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : (builderFormMode ? () => {} : setActiveStepIndex))))))}
           onClose={() => {
             setIsBuilderOpen(false);
             setBuilderStoreMode(false);
@@ -1855,9 +2179,12 @@ export default function SitesView() {
             setBuilderBlogMode(false);
             setBuilderFormMode(false);
             setBuilderSurveyMode(false);
+            setBuilderQuizMode(false);
           }}
           onUpdateCanvas={(newCanvas) => {
-            if (builderSurveyMode && selectedSurvey) {
+            if (builderQuizMode && selectedQuiz) {
+              updateActiveQuizCanvas(newCanvas);
+            } else if (builderSurveyMode && selectedSurvey) {
               updateActiveSurveyCanvas(newCanvas);
             } else if (builderFormMode && selectedForm) {
               updateActiveFormCanvas(newCanvas);
@@ -1874,7 +2201,9 @@ export default function SitesView() {
             }
           }}
           onUpdateStep={(patch) => {
-            if (builderSurveyMode && selectedSurvey) {
+            if (builderQuizMode && selectedQuiz) {
+              updateActiveQuizStep(patch);
+            } else if (builderSurveyMode && selectedSurvey) {
               updateActiveSurveyStep(patch);
             } else if (builderFormMode && selectedForm) {
               updateActiveFormStep(patch);
@@ -1890,7 +2219,7 @@ export default function SitesView() {
               updateActiveStep(patch);
             }
           }}
-          onPublish={builderSurveyMode ? handlePublishSurveyInBuilder : (builderFormMode ? handlePublishFormInBuilder : (builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep)))))}
+          onPublish={builderQuizMode ? handlePublishQuizInBuilder : (builderSurveyMode ? handlePublishSurveyInBuilder : (builderFormMode ? handlePublishFormInBuilder : (builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep))))))}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>
@@ -1918,7 +2247,7 @@ export default function SitesView() {
                 if (tab.key !== 'websites') setSelectedWebsite(null);
                 if (tab.key !== 'webinars') setSelectedWebinar(null);
                 if (tab.key !== 'stores') setSelectedStore(null);
-                if (tab.key !== 'forms' && tab.key !== 'surveys') setSelectedForm(null);
+                if (tab.key !== 'forms' && tab.key !== 'surveys' && tab.key !== 'quizzes') setSelectedForm(null);
                 if (tab.key !== 'blogs') {
                   setSelectedBlogSite(null);
                   setActiveBlogPost(null);
@@ -2024,6 +2353,18 @@ export default function SitesView() {
                   borderRadius: '4px'
                 }}>
                   {surveys.length}
+                </span>
+              )}
+              {tab.key === 'quizzes' && quizzes.length > 0 && (
+                <span style={{
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  color: '#f59e0b',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {quizzes.length}
                 </span>
               )}
             </button>
@@ -2248,6 +2589,18 @@ export default function SitesView() {
           onDeleteSurvey={handleDeleteSurvey}
           onDuplicateSurvey={handleDuplicateSurvey}
           onUpdateSurveyName={handleUpdateSurveyName}
+          isRtl={isRtl}
+          showToast={showToast}
+        />
+      ) : activeSubTab === 'quizzes' ? (
+        <QuizListView
+          quizzes={quizzes}
+          onOpenBuilder={(q) => handleOpenBuilderForQuiz(q)}
+          onCreateBlank={handleCreateQuizBlank}
+          onCreateFromTemplate={handleCreateQuizFromTemplate}
+          onDeleteQuiz={handleDeleteQuiz}
+          onDuplicateQuiz={handleDuplicateQuiz}
+          onUpdateQuizName={handleUpdateQuizName}
           isRtl={isRtl}
           showToast={showToast}
         />

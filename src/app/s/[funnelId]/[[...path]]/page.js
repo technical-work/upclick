@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import LiveSiteView from '@/components/sites/LiveSiteView';
 import PublicFormRunner from '@/components/sites/forms/PublicFormRunner';
 import PublicSurveyRunner from '@/components/sites/surveys/PublicSurveyRunner';
+import PublicQuizRunner from '@/components/sites/quizzes/PublicQuizRunner';
 
 function PublicSiteContent() {
   const params = useParams();
@@ -17,6 +18,14 @@ function PublicSiteContent() {
   const path = segments.length ? `/${segments.join('/')}` : '/';
   const productId = searchParams?.get('productId') || '';
   const isStore = funnelId.startsWith('store_');
+
+  // Handle /s/quiz/[quizId] or /s/quiz_[id] or /s/qz_[id]
+  if (rawFunnelId === 'quiz' && segments[0]) {
+    return <PublicQuizRunner quizId={segments[0]} />;
+  }
+  if (funnelId.startsWith('quiz_') || funnelId.startsWith('qz_')) {
+    return <PublicQuizRunner quizId={funnelId} />;
+  }
 
   // Handle /s/survey/[surveyId] or /s/survey_[id] or /s/srv_[id]
   if (rawFunnelId === 'survey' && segments[0]) {

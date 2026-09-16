@@ -5,6 +5,7 @@ export const LEGACY_WEBINARS_KEY = 'upklick_webinars_v1';
 export const LEGACY_BLOGS_KEY = 'upklick_blogs_v1';
 export const LEGACY_FORMS_KEY = 'upklick_forms_v1';
 export const LEGACY_SURVEYS_KEY = 'upklick_surveys_v1';
+export const LEGACY_QUIZZES_KEY = 'upklick_quizzes_v1';
 
 export function funnelsStorageKey(uid) {
   return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
@@ -32,6 +33,10 @@ export function formsStorageKey(uid) {
 
 export function surveysStorageKey(uid) {
   return uid ? `${LEGACY_SURVEYS_KEY}_${uid}` : LEGACY_SURVEYS_KEY;
+}
+
+export function quizzesStorageKey(uid) {
+  return uid ? `${LEGACY_QUIZZES_KEY}_${uid}` : LEGACY_QUIZZES_KEY;
 }
 
 export function stampSiteOwner(item, uid) {
@@ -335,6 +340,93 @@ export function trackSurveyView(surveyId) {
     }
   } catch (err) {
     console.error('Failed to track survey view:', err);
+  }
+}
+
+export function findLocalQuizById(quizId) {
+  if (!quizId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_QUIZZES_KEY)) continue;
+      const found = readJsonList(key).find((q) => q?.id === quizId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function saveQuizSubmission(quizId, submission) {
+  if (!quizId || !submission || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_QUIZZES_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((q) => {
+        if (q?.id === quizId) {
+          changed = true;
+          const subs = [submission, ...(q.submissions || [])];
+          const views = (q.analytics?.views || 0) + 1;
+          const attempts = subs.length;
+          const passedCount = subs.filter((s) => s.passed).length;
+          const avgScore = attempts > 0 ? Math.round(subs.reduce((acc, s) => acc + (s.percentage || 0), 0) / attempts) : 0;
+          return {
+            ...q,
+            submissions: subs,
+            analytics: {
+              views,
+              attempts,
+              passedCount,
+              passRate: attempts > 0 ? Math.round((passedCount / attempts) * 100) : 0,
+              avgScore
+            }
+          };
+        }
+        return q;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to save quiz submission:', err);
+  }
+}
+
+export function trackQuizView(quizId) {
+  if (!quizId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_QUIZZES_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((q) => {
+        if (q?.id === quizId) {
+          changed = true;
+          const views = (q.analytics?.views || 0) + 1;
+          const attempts = q.submissions?.length || 0;
+          return {
+            ...q,
+            analytics: {
+              ...(q.analytics || {}),
+              views,
+              attempts
+            }
+          };
+        }
+        return q;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to track quiz view:', err);
   }
 }
 
