@@ -2041,7 +2041,6 @@ export default function SitesView() {
     { key: 'forms', label: isRtl ? 'النماذج' : 'Forms' },
     { key: 'surveys', label: isRtl ? 'الاستبيانات' : 'Surveys' },
     { key: 'quizzes', label: isRtl ? 'الاختبارات' : 'Quizzes' },
-    { key: 'chat-widget', label: isRtl ? 'ويدجت الدردشة' : 'Chat Widget' },
     { key: 'qr-codes', label: isRtl ? 'رموز QR' : 'QR Codes' }
   ];
 
