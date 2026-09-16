@@ -60,6 +60,8 @@ import AiSettingsPage from './AiSettingsPage';
 import PlansSettingsPage from './PlansSettingsPage';
 import TrackingSettingsPage from './TrackingSettingsPage';
 import OutreachPage from './OutreachPage';
+import EmailCampaignsView from '@/components/outreach/EmailCampaignsView';
+import WhatsAppOutreachView from '@/components/outreach/WhatsAppOutreachView';
 import DomainsPage from './DomainsPage';
 import LiveSiteView from '@/components/sites/LiveSiteView';
 import { normalizeHost } from '@/lib/sites/publicSite';
@@ -1924,7 +1926,8 @@ const AdminDashboard = () => {
              activeTab === 'payments' ? t('admin.paymentsTitle') :
              activeTab === 'support' ? (isRTL ? 'الدعم الفني والشكاوى' : 'Support Tickets') :
              activeTab === 'tracking' ? t('nav.trackingSettings') :
-             activeTab === 'outreach' ? (isRTL ? 'جدولة الإيميل والواتساب' : 'Email & WhatsApp Outreach') :
+             activeTab === 'email-campaigns' || activeTab === 'outreach' ? (isRTL ? 'حملات وجدولة الإيميل' : 'Email Campaigns & Builder') :
+             activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp' ? (isRTL ? 'جدولة ورسائل الواتساب' : 'WhatsApp Outreach') :
              activeTab === 'domains' ? (isRTL ? 'النطاقات والمسجّل' : 'Domains & Registrar') :
              t('admin.statsTitle')}
           </h2>
@@ -1936,7 +1939,8 @@ const AdminDashboard = () => {
              activeTab === 'payments' ? t('admin.paymentsDesc') :
              activeTab === 'support' ? (isRTL ? 'متابعة وحل مشكلات العملاء وفتح المحادثات الفورية' : 'Manage customer issues and open chat threads') :
              activeTab === 'tracking' ? (isRTL ? 'إدارة وتتبع أكواد البيكسل والتحليلات الخاصة بالمنصة' : 'Manage and track platform pixel and analytics configurations') :
-             activeTab === 'outreach' ? (isRTL ? 'إرسال حملات إيميل وواتساب حسب فئات استهلاك الكريدت — من الخادم فقط وبعد تأكيد SEND' : 'Send email and WhatsApp campaigns by credit-usage segment — server-side only, after typed SEND confirm') :
+             activeTab === 'email-campaigns' || activeTab === 'outreach' ? (isRTL ? 'إنشاء وتصميم حملات البريد بنظام GoHighLevel المرئي Drag & Drop مع استهداف دقيق وسجلات إرسال فورية' : 'Create & design visual email campaigns with Drag & Drop builder, audience targeting, and real-time delivery logs') :
+             activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp' ? (isRTL ? 'إرسال حملات الواتساب وقوالب Twilio المعتمدة حسب فئات استهلاك الكريدت' : 'Send approved Twilio WhatsApp campaigns by credit-usage segment') :
              activeTab === 'domains' ? (isRTL ? 'تسعير النطاقات، الطلبات، وإعادة محاولة التسجيل بعد الدفع' : 'Domain pricing, orders, and retry failed registrar purchases') :
              t('admin.statsDesc')}
           </p>
@@ -2956,8 +2960,10 @@ const AdminDashboard = () => {
         <AiSettingsPage />
       ) : activeTab === 'tracking' && userData?.role === 'admin' ? (
         <TrackingSettingsPage />
-      ) : activeTab === 'outreach' && userData?.role === 'admin' ? (
-        <OutreachPage isRTL={isRTL} users={users} />
+      ) : (activeTab === 'email-campaigns' || activeTab === 'outreach') && userData?.role === 'admin' ? (
+        <EmailCampaignsView isRTL={isRTL} users={users} />
+      ) : (activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp') && userData?.role === 'admin' ? (
+        <WhatsAppOutreachView isRTL={isRTL} users={users} />
       ) : activeTab === 'domains' && userData?.role === 'admin' ? (
         <DomainsPage isRTL={isRTL} />
       ) : activeTab === 'support' && userData?.role === 'admin' ? (

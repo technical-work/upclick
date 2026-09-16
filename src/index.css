@@ -1129,4 +1129,45 @@
   .admin-dashboard-theme .outreach-compose-grid {
     grid-template-columns: 1fr !important;
   }
+}
+
+/* ==========================================================================
+   Visual Drag & Drop Email Designer (GoHighLevel Style)
+   ========================================================================== */
+
+.email-builder-overlay {
+  animation: emailBuilderEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes emailBuilderEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.email-builder-block {
+  transition: all 0.15s ease;
+}
+
+.email-builder-block:hover {
+  outline: 1px dashed rgba(255, 107, 53, 0.6) !important;
+}
+
+.email-builder-block.is-selected {
+  outline: 2px solid #FF6B35 !important;
+}
+
+.email-canvas-viewport.is-mobile-frame {
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  animation: mobileFramePulse 0.3s ease;
+}
+
+@keyframes mobileFramePulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
 }

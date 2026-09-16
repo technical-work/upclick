@@ -209,6 +209,17 @@ export function getNotificationEmailTemplate({ name, title, message, actionUrl, 
 }
 
 export function getCampaignEmailTemplate({ name, title, messageHtml, unsubscribeUrl, actionUrl, actionText }) {
+  const rawHtml = String(messageHtml || '');
+
+  // If the email was built using the Visual Email Builder, it contains its own full layout
+  if (rawHtml.includes('<!-- upklick-custom-email-builder -->') || rawHtml.includes('data-ghl-email-root')) {
+    let finalHtml = rawHtml;
+    if (unsubscribeUrl && !finalHtml.includes(unsubscribeUrl)) {
+      finalHtml = finalHtml.replaceAll('{{unsubscribe_url}}', unsubscribeUrl);
+    }
+    return finalHtml;
+  }
+
   const recipientName = name ? name : 'عزيزنا المستخدم';
   const content = `
     <div style="direction: rtl; text-align: right;">

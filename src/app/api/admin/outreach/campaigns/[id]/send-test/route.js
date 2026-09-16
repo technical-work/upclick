@@ -25,24 +25,37 @@ export async function POST(req, { params }) {
     }, { status: 400 });
   }
 
-  const adminUser = {
+  let reqBody = {};
+  try {
+    reqBody = await req.json();
+  } catch {
+    // empty body is acceptable
+  }
+
+  const customEmail = String(reqBody.testEmail || '').trim();
+  const customPhone = String(reqBody.testPhone || '').trim();
+
+  const targetEmail = customEmail || auth.email || auth.userData?.email;
+  const targetPhone = customPhone || auth.userData?.phoneNumber || '';
+
+  const testUser = {
     id: auth.uid,
-    email: auth.email || auth.userData?.email,
-    name: auth.userData?.name || 'Admin',
-    phoneNumber: auth.userData?.phoneNumber || '',
-    displayName: auth.userData?.name || 'Admin'
+    email: targetEmail,
+    name: auth.userData?.name || 'Admin Preview',
+    phoneNumber: targetPhone,
+    displayName: auth.userData?.name || 'Admin Preview'
   };
 
-  if (campaign.channel === 'whatsapp' && !adminUser.phoneNumber) {
-    return NextResponse.json({ error: 'Admin profile has no phone number for a WhatsApp test' }, { status: 400 });
+  if (campaign.channel === 'whatsapp' && !testUser.phoneNumber) {
+    return NextResponse.json({ error: 'Please provide a valid phone number for the WhatsApp test' }, { status: 400 });
   }
-  if (campaign.channel === 'email' && !adminUser.email) {
-    return NextResponse.json({ error: 'Admin account has no email for a test send' }, { status: 400 });
+  if (campaign.channel === 'email' && !testUser.email) {
+    return NextResponse.json({ error: 'Please provide a valid email address for the test send' }, { status: 400 });
   }
 
   const result = await sendToRecipient({
     campaign,
-    user: { ...adminUser, marketingOptOut: false, emailOptOut: false, whatsappOptOut: false },
+    user: { ...testUser, marketingOptOut: false, emailOptOut: false, whatsappOptOut: false },
     userId: auth.uid,
     isTest: true
   });
@@ -56,7 +69,7 @@ export async function POST(req, { params }) {
 
   await snap.ref.set({
     testSentAt: FieldValue.serverTimestamp(),
-    testSentTo: campaign.channel === 'email' ? adminUser.email : adminUser.phoneNumber,
+    testSentTo: campaign.channel === 'email' ? testUser.email : testUser.phoneNumber,
     testProviderId: result.providerId || null
   }, { merge: true });
 
@@ -64,6 +77,6 @@ export async function POST(req, { params }) {
   return NextResponse.json({
     success: true,
     campaign: serializeCampaign(updated),
-    sentTo: campaign.channel === 'email' ? adminUser.email : adminUser.phoneNumber
+    sentTo: campaign.channel === 'email' ? testUser.email : testUser.phoneNumber
   });
 }

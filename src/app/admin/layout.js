@@ -49,9 +49,10 @@ const LayoutContent = ({ children }) => {
       ]
     },
     {
-      label: i18n.language === 'ar' ? 'التسويق والتواصل' : 'Outreach',
+      label: i18n.language === 'ar' ? 'التسويق والتواصل' : 'Marketing & Outreach',
       items: [
-        { path: '/admin?tab=outreach', label: i18n.language === 'ar' ? 'جدولة الإيميل والواتساب' : 'Email & WhatsApp', step: 1, roles: ['admin'] }
+        { path: '/admin?tab=email-campaigns', label: i18n.language === 'ar' ? 'حملات وجدولة الإيميل' : 'Email Campaigns', step: 1, roles: ['admin'] },
+        { path: '/admin?tab=whatsapp-outreach', label: i18n.language === 'ar' ? 'جدولة ورسائل الواتساب' : 'WhatsApp Outreach', step: 2, roles: ['admin'] }
       ]
     },
     {
