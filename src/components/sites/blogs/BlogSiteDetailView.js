@@ -38,6 +38,7 @@ export default function BlogSiteDetailView({
   onCreateNewPost,
   onOpenAiPostCreator,
   onEditPost,
+  onOpenTextEditor,
   onOpenBuilderForPost,
   onDeletePost,
   onDuplicatePost,
@@ -150,6 +151,38 @@ export default function BlogSiteDetailView({
         {/* Right Action Buttons matching Screenshot 3 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           
+          {/* Live Blog URL Open & Copy Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const origin = typeof window !== 'undefined' ? window.location.origin : '';
+              const liveUrl = blogSite?.domain 
+                ? `https://${blogSite.domain}` 
+                : `${origin}/s/${encodeURIComponent(blogSite?.id || '')}`;
+              navigator.clipboard.writeText(liveUrl);
+              if (showToast) showToast(isRtl ? 'تم نسخ رابط المدونة المباشر 🔗' : 'Live blog link copied 🔗');
+              window.open(liveUrl, '_blank');
+            }}
+            style={{
+              background: 'rgba(37, 99, 235, 0.1)',
+              border: '1px solid rgba(37, 99, 235, 0.3)',
+              color: '#2563eb',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
+            }}
+            title={isRtl ? 'فتح رابط المدونة المباشر في نافذة جديدة' : 'Open live blog link'}
+          >
+            <ExternalLink size={15} />
+            <span>{blogSite?.domain || (isRtl ? 'رابط المدونة المباشر 🔗' : 'Live Blog 🔗')}</span>
+          </button>
+
           {/* + Edit blog site button */}
           <button
             type="button"
@@ -808,6 +841,33 @@ export default function BlogSiteDetailView({
                                   <span>{isRtl ? 'تعديل في المنشئ 🎨' : 'Edit in Builder 🎨'}</span>
                                 </button>
                               )}
+                              {onOpenTextEditor && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveMenuPostId(null); onOpenTextEditor(post); }}
+                                  style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', textAlign: isRtl ? 'right' : 'left', color: 'var(--t1)', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                >
+                                  <Sparkles size={14} color="#8b5cf6" />
+                                  <span>{isRtl ? 'محرر الذكاء الاصطناعي ✍️' : 'AI Text Editor ✍️'}</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuPostId(null);
+                                  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                                  const postUrl = blogSite?.domain 
+                                    ? `https://${blogSite.domain}/${post.slug || post.id}` 
+                                    : `${origin}/s/${encodeURIComponent(blogSite?.id || '')}/${encodeURIComponent(post.slug || post.id)}`;
+                                  navigator.clipboard.writeText(postUrl);
+                                  if (showToast) showToast(isRtl ? 'تم نسخ رابط المقال الحي 🔗' : 'Live post link copied 🔗');
+                                  window.open(postUrl, '_blank');
+                                }}
+                                style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', textAlign: isRtl ? 'right' : 'left', color: '#2563eb', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                              >
+                                <ExternalLink size={14} />
+                                <span>{isRtl ? 'فتح الرابط الحي 🔗' : 'Open Live Link 🔗'}</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => { setActiveMenuPostId(null); onPreviewPost(post); }}

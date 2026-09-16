@@ -148,3 +148,18 @@ export function findLocalFunnelById(funnelId) {
   }
   return null;
 }
+
+export function findLocalBlogById(blogId) {
+  if (!blogId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_BLOGS_KEY)) continue;
+      const found = readJsonList(key).find((b) => b?.id === blogId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}

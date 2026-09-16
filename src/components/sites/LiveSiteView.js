@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import ElementRenderer from '@/components/builder/ElementRenderer';
 import { DEFAULT_PAGE } from '@/lib/builder/elementRegistry';
 import { normalizeHost, pickPublishedStep, publishedSiteToStore, PUBLISHED_SITES, SITE_DOMAINS } from '@/lib/sites/publicSite';
-import { findLocalFunnelById, findLocalStoreById } from '@/lib/sites/userSitesScope';
+import { findLocalBlogById, findLocalFunnelById, findLocalStoreById } from '@/lib/sites/userSitesScope';
 import {
   cartCount,
   loadStoreCart,
@@ -133,8 +133,15 @@ export default function LiveSiteView({
         if (!cancelled) setStoreRecord(null);
 
         if (isDraft) {
-          const match = findLocalFunnelById(funnelId || resolvedId);
-          const draftStep = match?.steps?.[stepIdx] || match?.steps?.[0] || null;
+          const match = findLocalFunnelById(funnelId || resolvedId) || findLocalBlogById(funnelId || resolvedId);
+          const steps = match?.steps || (match?.posts || []).map((p, idx) => ({
+            id: p.id,
+            name: p.title || 'Post',
+            path: `/${p.slug || p.id}`,
+            canvas: p.canvas || [],
+            page: p.page || DEFAULT_PAGE
+          }));
+          const draftStep = pickPublishedStep({ steps }, { stepIdx, path }) || steps?.[stepIdx] || steps?.[0] || null;
           if (!cancelled && draftStep) {
             setStep(draftStep);
             setMode('draft');

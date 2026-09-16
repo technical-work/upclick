@@ -36,12 +36,14 @@ export function isApexDomain(host) {
 
 export function getStepPath(step, fallbackIdx = 0) {
   if (step?.path) return normalizePath(step.path);
+  if (step?.slug) return normalizePath(step.slug);
   return fallbackIdx === 0 ? '/' : `/page-${fallbackIdx + 1}`;
 }
 
 export function getEntitySteps(entity) {
   if (Array.isArray(entity?.steps) && entity.steps.length) return entity.steps;
   if (Array.isArray(entity?.pages) && entity.pages.length) return entity.pages;
+  if (Array.isArray(entity?.posts) && entity.posts.length) return entity.posts;
   return [];
 }
 
@@ -65,7 +67,7 @@ export function getProductionUrls({ origin, funnel, stepIdx = 0 }) {
 }
 
 export function pickPublishedStep(site, { stepIdx, path } = {}) {
-  const steps = site?.steps || site?.pages || [];
+  const steps = site?.steps || site?.pages || site?.posts || [];
   if (!steps.length) return null;
   const rawWanted = String(path || '').trim();
   const wanted = rawWanted ? normalizePath(rawWanted).toLowerCase() : '';
@@ -76,16 +78,16 @@ export function pickPublishedStep(site, { stepIdx, path } = {}) {
     let byPath = steps.find((s) => s.path && normalizePath(s.path).toLowerCase() === wanted);
     if (byPath) return byPath;
 
-    // 2. Match without leading slash against s.path
+    // 2. Match without leading slash against s.path or s.slug
     byPath = steps.find((s) => {
-      const sp = String(s.path || '').trim().replace(/^\//, '').toLowerCase();
+      const sp = String(s.path || s.slug || '').trim().replace(/^\//, '').toLowerCase();
       return sp && sp === cleanWanted;
     });
     if (byPath) return byPath;
 
     // 3. Match against step name slug or id (e.g. name "admin", "ai-freelance")
     byPath = steps.find((s) => {
-      const sName = String(s.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const sName = String(s.name || s.title || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const sId = String(s.id || '').trim().toLowerCase();
       return (sName && sName === cleanWanted) || (sId && sId === cleanWanted);
     });
@@ -94,7 +96,7 @@ export function pickPublishedStep(site, { stepIdx, path } = {}) {
 
   if (Number.isFinite(stepIdx) && steps[stepIdx]) return steps[stepIdx];
   if (Number.isFinite(site?.defaultStepIdx) && steps[site.defaultStepIdx]) return steps[site.defaultStepIdx];
-  return steps.find((s) => s.published) || steps[0] || null;
+  return steps.find((s) => s.published || s.status === 'published') || steps[0] || null;
 }
 
 export async function publishFunnelPublic({ funnel, ownerUid, defaultStepIdx = 0 }) {

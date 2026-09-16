@@ -867,12 +867,50 @@ export default function SitesView() {
       lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
     };
     const updatedPosts = selectedBlogSite.posts.map((p, idx) => idx === blogActivePostIdx ? updatedPost : p);
-    const updatedBlogSite = { ...selectedBlogSite, posts: updatedPosts };
+    const updatedBlogSite = { 
+      ...selectedBlogSite, 
+      published: true,
+      publishedAt: new Date().toISOString(),
+      posts: updatedPosts 
+    };
     handleUpdateBlogSite(updatedBlogSite);
     if (activeBlogPost && activeBlogPost.id === updatedPost.id) {
       setActiveBlogPost(updatedPost);
     }
-    if (showToast) showToast(isRtl ? 'تم نشر المقال بنجاح 🚀' : 'Blog post published successfully 🚀');
+    
+    try {
+      await publishFunnelPublic({
+        funnel: {
+          id: updatedBlogSite.id,
+          name: updatedBlogSite.name,
+          domain: updatedBlogSite.domain,
+          steps: updatedBlogSite.posts.map((p, idx) => ({
+            id: p.id,
+            name: p.title,
+            path: `/${p.slug || p.id}`,
+            published: true,
+            publishedAt: p.publishedAt || new Date().toISOString(),
+            publishedCanvas: p.canvas || [],
+            publishedPage: p.page || DEFAULT_PAGE
+          }))
+        },
+        ownerUid,
+        defaultStepIdx: blogActivePostIdx
+      });
+      if (updatedBlogSite.domain) {
+        await connectFunnelDomain({
+          funnelId: updatedBlogSite.id,
+          ownerUid,
+          host: updatedBlogSite.domain,
+          previousHost: ''
+        });
+      }
+      if (showToast) showToast(isRtl ? 'تم نشر المقال على الرابط الحي 🚀' : 'Blog post published to live URL 🚀');
+    } catch (err) {
+      console.error(err);
+      if (showToast) showToast(isRtl ? 'تم حفظ المقال محلياً' : 'Saved locally');
+    }
+
     return updatedBlogSite;
   };
 
@@ -1599,7 +1637,7 @@ export default function SitesView() {
               const newPost = {
                 id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 title: 'New Blog Post',
-                slug: 'new-blog-post',
+                slug: `post-${Date.now().toString().slice(-4)}`,
                 category: 'General',
                 author: user?.displayName || user?.email?.split('@')[0] || 'Admin',
                 status: 'draft',
@@ -1613,13 +1651,13 @@ export default function SitesView() {
                 seo: { metaTitle: '', metaDescription: '', canonicalUrl: '' },
                 tags: []
               };
-              setActiveBlogPost(newPost);
+              handleOpenBuilderForBlogPost(newPost);
             }}
             onOpenAiPostCreator={() => {
               const newAiPost = {
                 id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
                 title: 'AI Generated Blog Post',
-                slug: 'ai-generated-blog-post',
+                slug: `ai-post-${Date.now().toString().slice(-4)}`,
                 category: 'Marketing',
                 author: 'Content AI',
                 status: 'draft',
@@ -1635,7 +1673,8 @@ export default function SitesView() {
               };
               setActiveBlogPost(newAiPost);
             }}
-            onEditPost={(post) => setActiveBlogPost(post)}
+            onEditPost={(post) => handleOpenBuilderForBlogPost(post)}
+            onOpenTextEditor={(post) => setActiveBlogPost(post)}
             onOpenBuilderForPost={handleOpenBuilderForBlogPost}
             onDeletePost={handleDeleteBlogPost}
             onDuplicatePost={handleDuplicateBlogPost}

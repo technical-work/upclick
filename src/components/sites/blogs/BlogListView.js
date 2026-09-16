@@ -585,6 +585,21 @@ export default function BlogListView({
                           </button>
                           <button
                             type="button"
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                              const liveUrl = site.domain ? `https://${site.domain}` : `${origin}/s/${encodeURIComponent(site.id)}`;
+                              navigator.clipboard.writeText(liveUrl);
+                              if (showToast) showToast(isRtl ? 'تم نسخ رابط المدونة 🔗' : 'Live blog link copied 🔗');
+                              window.open(liveUrl, '_blank');
+                            }}
+                            style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', textAlign: isRtl ? 'right' : 'left', color: '#2563eb', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                          >
+                            <ExternalLink size={14} />
+                            <span>{isRtl ? 'فتح الرابط المباشر 🔗' : 'Open Live Blog 🔗'}</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => { setActiveMenuId(null); if (onDuplicateBlogSite) onDuplicateBlogSite(site); }}
                             style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', textAlign: isRtl ? 'right' : 'left', color: 'var(--t1)', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                           >
