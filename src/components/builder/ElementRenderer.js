@@ -1240,6 +1240,261 @@ export default function ElementRenderer({ el, interactive = true }) {
     );
   }
 
+  /* ----------------------------------------------------
+   * WEBINAR FUNNEL ELEMENTS
+   * ---------------------------------------------------- */
+  if (type === 'webinar_registration') {
+    const bullets = Array.isArray(el.bullets) ? el.bullets : [
+      'The exact 3-part framework to 10x your client acquisition',
+      'How to automate 80% of manual tasks using AI workflows',
+      'Live interactive Q&A + Downloadable growth blueprint'
+    ];
+    return (
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
+        padding: '36px',
+        margin: '24px auto',
+        maxWidth: '840px',
+        boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.08)',
+        display: 'grid',
+        gridTemplateColumns: '1.2fr 1fr',
+        gap: '32px',
+        alignItems: 'center',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#eff6ff', color: '#2563eb', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', width: 'fit-content' }}>
+            <span>📅</span> {el.dateText || 'Live Stream This Thursday • 7:00 PM'}
+          </div>
+          <h3 style={{ margin: 0, fontSize: '24px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' }}>
+            {el.title || 'Exclusive Masterclass Registration'}
+          </h3>
+          <p style={{ margin: 0, fontSize: '14px', color: '#64748b', lineHeight: '1.5' }}>
+            {el.subtitle || 'Reserve your free seat and discover the latest proven frameworks.'}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+            {bullets.map((b, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#334155' }}>
+                <span style={{ color: '#16a34a', fontWeight: '900' }}>✓</span>
+                <span>{b}</span>
+              </div>
+            ))}
+          </div>
+          {el.speakerName && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+              <img src={el.speakerAvatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120'} alt="Speaker" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{el.speakerName}</div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>{el.speakerRole || 'Lead Presenter'}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Lead capture form */}
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', textAlign: 'center' }}>Reserve Your Free Pass</div>
+          <input type="text" placeholder="Full Name *" style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', background: '#ffffff' }} />
+          <input type="email" placeholder="Best Email Address *" style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', background: '#ffffff' }} />
+          <input type="tel" placeholder="WhatsApp / Phone Number" style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', background: '#ffffff' }} />
+          <button
+            type="button"
+            onClick={() => { if (interactive) alert('Thank you! Redirecting to confirmation page...'); }}
+            style={{
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: '#ffffff',
+              border: 'none',
+              padding: '12px',
+              borderRadius: '8px',
+              fontWeight: '800',
+              fontSize: '14px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+            }}
+          >
+            {el.buttonText || 'Claim Free Pass Now 🚀'}
+          </button>
+          <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center' }}>🔒 100% Free · No credit card required</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'webinar_broadcast_room') {
+    return (
+      <div style={{ maxWidth: '1080px', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Stream header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a', color: '#ffffff', padding: '14px 20px', borderRadius: '12px 12px 0 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ background: '#ef4444', color: '#fff', fontSize: '11px', fontWeight: '800', padding: '3px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff' }} />
+              LIVE
+            </span>
+            <span style={{ fontSize: '15px', fontWeight: '800' }}>{el.title || 'Live Webinar Broadcast'}</span>
+          </div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>👥</span>
+            <span>{el.viewersCount || '1,428'} watching now</span>
+          </div>
+        </div>
+
+        {/* Video Player + Chat simulation */}
+        <div style={{ display: 'grid', gridTemplateColumns: el.chatEnabled !== false ? '1fr 320px' : '1fr', gap: '16px', minHeight: '440px' }}>
+          <div style={{ background: '#000000', borderRadius: '0 0 0 12px', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <iframe
+              src={toEmbedUrl(el.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')}
+              title="Webinar Live Stream"
+              style={{ width: '100%', height: '100%', minHeight: '440px', border: 'none' }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+
+          {el.chatEnabled !== false && (
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0 0 12px 0', display: 'flex', flexDirection: 'column', height: '440px', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', fontWeight: '800', fontSize: '13px', color: '#0f172a', display: 'flex', justifyContent: 'space-between' }}>
+                <span>💬 Live Chat</span>
+                <span style={{ fontSize: '11px', color: '#16a34a' }}>● Active</span>
+              </div>
+              <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
+                <div style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '800', color: '#2563eb' }}>Omar K.: </span>
+                  <span style={{ color: '#334155' }}>Great insights so far! Taking notes 📝</span>
+                </div>
+                <div style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: '800', color: '#059669' }}>Laila M.: </span>
+                  <span style={{ color: '#334155' }}>Can we get access to the template links?</span>
+                </div>
+                <div style={{ background: '#eff6ff', padding: '6px 10px', borderRadius: '6px', borderLeft: '3px solid #2563eb' }}>
+                  <span style={{ fontWeight: '800', color: '#1e40af' }}>Host Moderator: </span>
+                  <span style={{ color: '#1e40af' }}>Yes! The exclusive offer link is now live below.</span>
+                </div>
+              </div>
+              <div style={{ padding: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '6px' }}>
+                <input type="text" placeholder="Send message..." style={{ flex: 1, padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px' }} />
+                <button style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '700' }}>Send</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Timed Offer Card */}
+        {el.showOffer !== false && (
+          <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '2px solid #3b82f6', borderRadius: '12px', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: '900', color: '#1e3a8a' }}>{el.offerTitle || 'Special Live Attendee Discount 🎁'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                <span style={{ fontSize: '20px', fontWeight: '900', color: '#16a34a' }}>{el.offerPrice || '$197'}</span>
+                <span style={{ fontSize: '14px', color: '#94a3b8', textDecoration: 'line-through' }}>{el.offerComparePrice || '$997'}</span>
+                <span style={{ background: '#fee2e2', color: '#dc2626', fontSize: '11px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px' }}>80% OFF</span>
+              </div>
+            </div>
+            <a
+              href={el.offerLink || '/replay'}
+              style={{ background: '#2563eb', color: '#ffffff', textDecoration: 'none', padding: '12px 24px', borderRadius: '8px', fontWeight: '800', fontSize: '14px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}
+            >
+              {el.offerButtonText || 'Claim Special Offer Now →'}
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'webinar_add_to_calendar') {
+    return (
+      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '28px', maxWidth: '720px', margin: '20px auto', textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
+        <h3 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>{el.title || 'Save Date to Your Calendar 📅'}</h3>
+        <p style={{ margin: '0 0 20px', fontSize: '13.5px', color: '#64748b' }}>{el.subtitle || 'Click to add an automated reminder to your schedule:'}</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => { if (interactive) alert('Added to Google Calendar!'); }}
+            style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>🗓️</span> Google Calendar
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (interactive) alert('Added to Apple Calendar (iCal)!'); }}
+            style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>🍎</span> Apple Calendar
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (interactive) alert('Added to Outlook Calendar!'); }}
+            style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>📧</span> Outlook
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'webinar_speakers') {
+    const speakers = Array.isArray(el.speakers) ? el.speakers : [
+      { name: 'Dr. Tariq Al-Mansoor', role: 'Head of Growth & AI Specialist', bio: 'Helped 500+ businesses scale customer acquisition and revenue.', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+      { name: 'Jessica Vance', role: 'VP of Product Innovation', bio: 'Keynote speaker and mentor for high-velocity marketing teams.', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80' }
+    ];
+    return (
+      <div style={{ maxWidth: '840px', margin: '32px auto', textAlign: 'center' }}>
+        <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginBottom: '24px' }}>{el.title || 'Meet Your Masterclass Hosts'}</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(speakers.length, 3)}, 1fr)`, gap: '20px' }}>
+          {speakers.map((sp, idx) => (
+            <div key={idx} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <img src={sp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300'} alt={sp.name} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #eff6ff' }} />
+              <div style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>{sp.name}</div>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#2563eb' }}>{sp.role}</div>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: '1.4' }}>{sp.bio}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'webinar_offer_card') {
+    const features = Array.isArray(el.features) ? el.features : [
+      'Full Lifetime Access to 12 Video Modules',
+      'Weekly Live Coaching & Strategy Q&A Calls',
+      'Plug-and-Play Funnel & Campaign Templates',
+      'Private VIP Mastermind Community Access',
+      '30-Day 100% Money-Back Guarantee'
+    ];
+    return (
+      <div style={{ background: '#ffffff', border: '2px solid #2563eb', borderRadius: '16px', padding: '36px', maxWidth: '640px', margin: '32px auto', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(37, 99, 235, 0.25)' }}>
+        <div style={{ background: '#fee2e2', color: '#dc2626', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', display: 'inline-block', marginBottom: '14px' }}>
+          {el.badge || '🔥 EXCLUSIVE WEBINAR ATTENDEE SPECIAL OFFER'}
+        </div>
+        <h3 style={{ fontSize: '26px', fontWeight: '900', color: '#0f172a', margin: '0 0 12px' }}>{el.title || 'Complete Scaling Accelerator Package'}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '20px' }}>
+          <span style={{ fontSize: '36px', fontWeight: '900', color: '#16a34a' }}>{el.price || '$197'}</span>
+          <span style={{ fontSize: '20px', color: '#94a3b8', textDecoration: 'line-through' }}>{el.comparePrice || '$997'}</span>
+          <span style={{ background: '#dcfce7', color: '#166534', fontSize: '12px', fontWeight: '800', padding: '3px 8px', borderRadius: '6px' }}>{el.discount || '80% OFF'}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left', marginBottom: '28px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          {features.map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', color: '#334155' }}>
+              <span style={{ color: '#16a34a', fontWeight: '900' }}>✓</span>
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+        <a
+          href={el.buttonLink || '/checkout'}
+          style={{ display: 'block', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#ffffff', textDecoration: 'none', padding: '16px', borderRadius: '10px', fontWeight: '900', fontSize: '16px', boxShadow: '0 6px 20px rgba(37, 99, 235, 0.4)' }}
+        >
+          {el.buttonText || 'Claim Instant Lifetime Access Now 🚀'}
+        </a>
+        <div style={{ marginTop: '12px', fontSize: '12px', color: '#64748b' }}>🔒 30-Day 100% Risk-Free Money-Back Guarantee</div>
+      </div>
+    );
+  }
+
   if (type === 'prebuilt_template') {
     return (
       <div style={{ ...wrapBox(el, { background: el.bg || '#0b0f19', color: el.color || '#fff', padding: '48px 32px', borderRadius: '16px' }) }}>

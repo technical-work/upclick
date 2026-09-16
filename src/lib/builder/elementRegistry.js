@@ -807,6 +807,123 @@ export const ELEMENT_REGISTRY = {
       { key: 'title', label: 'Checkout Title', type: 'text' },
       { key: 'bumpOfferTitle', label: 'Order Bump Offer', type: 'text' }
     ]
+  },
+  webinar_registration: {
+    label: 'Webinar Registration Card',
+    category: 'webinar',
+    defaults: {
+      title: 'Exclusive Live Masterclass',
+      subtitle: 'Claim Your Free VIP Pass & Discover Proven Growth Strategies',
+      dateText: 'Thursday, October 24 • 7:00 PM EST',
+      speakerName: 'Dr. Sarah Jenkins',
+      speakerRole: 'AI & Revenue Growth Strategist',
+      speakerAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
+      buttonText: 'Reserve My Free Seat Now 🚀',
+      bullets: [
+        'The exact 3-part framework to 10x your client acquisition',
+        'How to automate 80% of manual tasks using AI workflows',
+        'Live interactive Q&A + Downloadable growth blueprint'
+      ]
+    },
+    fields: [
+      { key: 'title', label: 'Card Title', type: 'text' },
+      { key: 'subtitle', label: 'Subtitle', type: 'text' },
+      { key: 'dateText', label: 'Date & Time Label', type: 'text' },
+      { key: 'speakerName', label: 'Speaker Name', type: 'text' },
+      { key: 'speakerRole', label: 'Speaker Role', type: 'text' },
+      { key: 'speakerAvatar', label: 'Speaker Avatar URL', type: 'url' },
+      { key: 'buttonText', label: 'CTA Button Text', type: 'text' }
+    ]
+  },
+  webinar_broadcast_room: {
+    label: 'Webinar Broadcast Room',
+    category: 'webinar',
+    defaults: {
+      title: 'Live Masterclass Broadcast',
+      statusText: '🔴 Live Streaming Now',
+      viewersCount: '1,428',
+      videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      isLive: true,
+      chatEnabled: true,
+      showOffer: true,
+      offerTitle: 'Exclusive Live Attendee Special Offer 🎁',
+      offerPrice: '$197',
+      offerComparePrice: '$997',
+      offerLink: '/replay',
+      offerButtonText: 'Claim 80% Discount Now →'
+    },
+    fields: [
+      { key: 'title', label: 'Stream Title', type: 'text' },
+      { key: 'statusText', label: 'Live Status Badge', type: 'text' },
+      { key: 'viewersCount', label: 'Simulated Viewers Count', type: 'text' },
+      { key: 'videoUrl', label: 'Video URL (YouTube/Vimeo/Direct MP4)', type: 'url' },
+      { key: 'offerTitle', label: 'Offer Box Title', type: 'text' },
+      { key: 'offerPrice', label: 'Offer Price', type: 'text' },
+      { key: 'offerComparePrice', label: 'Compare Price', type: 'text' },
+      { key: 'offerLink', label: 'Offer CTA Link', type: 'text' }
+    ]
+  },
+  webinar_add_to_calendar: {
+    label: 'Add to Calendar Widget',
+    category: 'webinar',
+    defaults: {
+      title: 'Save the Date on Your Calendar 📅',
+      subtitle: 'Never miss a minute of the live event. Add to your calendar with one click:',
+      eventName: 'Exclusive Masterclass: Scaling with AI',
+      eventDate: 'Thursday, October 24 • 7:00 PM EST',
+      whatsappGroupLink: 'https://chat.whatsapp.com/'
+    },
+    fields: [
+      { key: 'title', label: 'Title', type: 'text' },
+      { key: 'subtitle', label: 'Subtitle', type: 'text' },
+      { key: 'eventName', label: 'Calendar Event Name', type: 'text' },
+      { key: 'eventDate', label: 'Date & Time', type: 'text' },
+      { key: 'whatsappGroupLink', label: 'WhatsApp VIP Link', type: 'url' }
+    ]
+  },
+  webinar_speakers: {
+    label: 'Webinar Speakers Showcase',
+    category: 'webinar',
+    defaults: {
+      title: 'Meet Your Masterclass Hosts',
+      speakers: [
+        { name: 'Dr. Tariq Al-Mansoor', role: 'Head of Growth & AI Specialist', bio: 'Helped 500+ businesses scale customer acquisition and revenue.', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+        { name: 'Jessica Vance', role: 'VP of Product Innovation', bio: 'Keynote speaker and mentor for high-velocity marketing teams.', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80' }
+      ]
+    },
+    fields: [
+      { key: 'title', label: 'Section Title', type: 'text' }
+    ]
+  },
+  webinar_offer_card: {
+    label: 'Webinar Offer & Checkout Box',
+    category: 'webinar',
+    defaults: {
+      badge: '🔥 EXCLUSIVE WEBINAR ATTENDEE OFFER',
+      title: 'Complete Business Scaling Accelerator Program',
+      price: '$197',
+      comparePrice: '$997',
+      discount: '80% OFF — TODAY ONLY',
+      countdownMinutes: 30,
+      features: [
+        'Full Lifetime Access to 12 Video Modules',
+        'Weekly Live Coaching & Strategy Q&A Calls',
+        'Plug-and-Play Funnel & Campaign Templates',
+        'Private VIP Mastermind Community Access',
+        '30-Day 100% Money-Back Guarantee'
+      ],
+      buttonText: 'Get Instant Lifetime Access Now →',
+      buttonLink: '/checkout'
+    },
+    fields: [
+      { key: 'badge', label: 'Top Badge', type: 'text' },
+      { key: 'title', label: 'Program Name', type: 'text' },
+      { key: 'price', label: 'Special Price', type: 'text' },
+      { key: 'comparePrice', label: 'Regular Price', type: 'text' },
+      { key: 'discount', label: 'Discount Tag', type: 'text' },
+      { key: 'buttonText', label: 'CTA Button Text', type: 'text' },
+      { key: 'buttonLink', label: 'Checkout Link', type: 'text' }
+    ]
   }
 };
 
@@ -817,6 +934,7 @@ export const ELEMENT_CATEGORIES = [
   { id: 'layout', label: 'Rows & columns', types: ['row_1', 'row_2', 'row_3', 'row_4', 'spacer', 'divider'] },
   { id: 'social', label: 'Social proof', types: ['testimonials', 'number_counter', 'star_rating', 'logo_cloud', 'stats_row', 'team_member'] },
   { id: 'commerce', label: 'Commerce & Store', types: ['store_header', 'store_hero_banner', 'store_filter_bar', 'store_products_grid', 'store_product_detail', 'store_cart', 'store_checkout', 'pricing_table', 'pricing_grid', 'product_card', 'countdown', 'progress_bar', 'guarantee'] },
+  { id: 'webinar', label: 'Webinar & Live', types: ['webinar_registration', 'webinar_broadcast_room', 'webinar_add_to_calendar', 'webinar_speakers', 'webinar_offer_card'] },
   { id: 'content', label: 'Sections', types: ['hero', 'navbar', 'features_grid', 'icon_box', 'about_split', 'cta_banner', 'faq', 'footer', 'code'] }
 ];
 
@@ -1157,6 +1275,128 @@ export function createCanvasForPageType(pageType = 'landing', title = 'Home', we
           ]
         }),
         createElement('button', { content: 'Start Building Now 🚀' }),
+        foot
+      ];
+  }
+}
+
+export function createCanvasForWebinarPage(stepType = 'registration', title = '', webinar = {}) {
+  const brand = webinar.name || title || 'Webinar Masterclass';
+  const webinarTitle = webinar.name || title || 'How to Scale Your Business in 2026';
+  const videoUrl = webinar.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+  const isLive = webinar.type === 'live';
+
+  const navHeader = createElement('navbar', {
+    brand,
+    links: [
+      { label: 'Overview', url: '#overview' },
+      { label: 'Speakers', url: '#speakers' },
+      { label: 'Agenda', url: '#agenda' },
+      { label: 'FAQ', url: '#faq' }
+    ]
+  });
+  const foot = createElement('footer', { brand });
+
+  switch (stepType) {
+    case 'registration':
+    default:
+      return [
+        navHeader,
+        createElement('badge', { content: isLive ? '🔴 LIVE STREAM MASTERCLASS' : '⚡ EXCLUSIVE ON-DEMAND WORKSHOP', color: '#2563eb', bg: '#eff6ff' }),
+        createElement('headline', { content: webinarTitle + ' 🚀', fontSize: '38px', align: 'center', weight: '900' }),
+        createElement('subheadline', { content: 'Discover the exact step-by-step strategies to accelerate your growth and unlock record revenue.', align: 'center', fontSize: '18px' }),
+        createElement('countdown', { label: isLive ? 'Live Stream Starts In:' : 'Special Access Window Expires In:' }),
+        createElement('webinar_registration', {
+          title: 'Reserve Your Free Seat Now',
+          subtitle: 'Free access for a limited time. Instant confirmation sent via email & WhatsApp.',
+          dateText: isLive ? 'Live This Thursday • 7:00 PM EST' : 'Instant On-Demand Access Available',
+          buttonText: 'Claim My Free Pass Now 🚀'
+        }),
+        createElement('webinar_speakers'),
+        createElement('features_grid', {
+          title: 'What You Will Master in This Masterclass',
+          items: [
+            { icon: '🎯', title: 'Actionable Frameworks', desc: 'No fluff or theory — get plug-and-play workflows you can deploy today.' },
+            { icon: '⚡', title: 'High-Impact Automation', desc: 'Learn how to automate sales, lead capture, and client onboarding.' },
+            { icon: '💎', title: 'Exclusive Resources', desc: 'Download our comprehensive worksheets, calculators, and swipe files.' }
+          ]
+        }),
+        createElement('testimonials', {
+          title: 'What Past Attendees Are Saying ⭐'
+        }),
+        createElement('faq', {
+          title: 'Frequently Asked Questions',
+          items: [
+            { q: 'Is this webinar really free?', a: 'Yes! Attendance is 100% free, but seats are limited to maintain server capacity.' },
+            { q: 'Will there be a replay available?', a: 'Replays are only guaranteed for registered attendees for a 48-hour window.' },
+            { q: 'Do I need any previous experience?', a: 'No, our step-by-step roadmap is designed for beginners and advanced entrepreneurs alike.' }
+          ]
+        }),
+        foot
+      ];
+
+    case 'confirmation':
+    case 'thankyou':
+      return [
+        navHeader,
+        createElement('badge', { content: '🎉 SEAT RESERVED SUCCESSFULLY', color: '#16a34a', bg: '#dcfce7' }),
+        createElement('headline', { content: 'You Are Registered! Save the Date 📅', fontSize: '36px', align: 'center', weight: '900' }),
+        createElement('paragraph', { content: 'We have sent your exclusive access link and preparation workbook to your email.', align: 'center', fontSize: '16px' }),
+        createElement('notice', { title: 'Important Step Next', content: 'Add the webinar to your calendar now so you do not miss the live broadcast.' }),
+        createElement('webinar_add_to_calendar', {
+          eventName: webinarTitle,
+          eventDate: isLive ? 'Live This Thursday • 7:00 PM EST' : 'Instant On-Demand Access'
+        }),
+        createElement('features_grid', {
+          title: '3 Steps to Prepare for Maximum Results',
+          items: [
+            { icon: '📅', title: '1. Add to Calendar', desc: 'Sync with Google, Apple, or Outlook so you get automated alerts.' },
+            { icon: '📝', title: '2. Download Workbook', desc: 'Print out the companion notes sheet to fill during the presentation.' },
+            { icon: '⏰', title: '3. Join 5 Mins Early', desc: 'Virtual room opens early to test audio, video, and claim chat priority.' }
+          ]
+        }),
+        createElement('whatsapp_button', { content: 'Join VIP Webinar WhatsApp Group for Live Alerts' }),
+        foot
+      ];
+
+    case 'broadcast':
+    case 'watch':
+      return [
+        navHeader,
+        createElement('webinar_broadcast_room', {
+          title: webinarTitle,
+          statusText: isLive ? '🔴 Live Streaming Now' : '⚡ On-Demand Masterclass Stream',
+          viewersCount: '1,428',
+          videoUrl: videoUrl,
+          isLive: isLive
+        }),
+        createElement('webinar_speakers'),
+        createElement('notice', { title: 'Workbook & Resources', content: 'Download the accompanying slides and strategy worksheets directly below the stream.' }),
+        foot
+      ];
+
+    case 'replay':
+    case 'offer':
+      return [
+        navHeader,
+        createElement('badge', { content: '⏳ LIMITED-TIME REPLAY & SPECIAL OFFER', color: '#dc2626', bg: '#fee2e2' }),
+        createElement('headline', { content: 'Watch the Masterclass Replay + Claim Special Offer 🎁', fontSize: '36px', align: 'center', weight: '900' }),
+        createElement('paragraph', { content: 'This recorded session and special package discount will be removed when the countdown hits zero.', align: 'center' }),
+        createElement('video', { src: videoUrl }),
+        createElement('countdown', { label: 'Special Offer Discount Expires In:' }),
+        createElement('webinar_offer_card', {
+          title: webinarTitle + ' Accelerator Package',
+          price: '$197',
+          comparePrice: '$997',
+          discount: '80% OFF SPECIAL DISCOUNT'
+        }),
+        createElement('faq', {
+          title: 'Offer FAQ & 30-Day Guarantee',
+          items: [
+            { q: 'How long do I get access to the accelerator program?', a: 'You get lifetime access including all future updates and monthly coaching calls.' },
+            { q: 'Is there a money-back guarantee?', a: 'Yes, 30 days 100% money-back guarantee if you are not completely satisfied.' }
+          ]
+        }),
         foot
       ];
   }

@@ -42,7 +42,8 @@ export default function CreateWebsiteModal({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 99999,
-      padding: '20px',
+      padding: '16px',
+      boxSizing: 'border-box',
       direction: isRtl ? 'rtl' : 'ltr'
     }}>
       <div style={{
@@ -50,16 +51,25 @@ export default function CreateWebsiteModal({
         borderRadius: '16px',
         width: '100%',
         maxWidth: templateStep ? '820px' : '580px',
+        maxHeight: '90vh',
+        display: 'flex',
+        flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0',
         color: '#1e293b',
+        boxSizing: 'border-box',
         animation: 'scaleUp 0.25s ease'
       }}>
         <style>{`
           @keyframes scaleUp {
             from { transform: scale(0.95); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
+          }
+          .ghl-option-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
           }
           .ghl-option-card {
             border: 2px solid #e2e8f0;
@@ -72,6 +82,7 @@ export default function CreateWebsiteModal({
             display: flex;
             flex-direction: column;
             justifyContent: space-between;
+            box-sizing: border-box;
           }
           .ghl-option-card:hover {
             border-color: #93c5fd;
@@ -86,13 +97,14 @@ export default function CreateWebsiteModal({
 
         {/* Modal Header */}
         <div style={{
-          padding: '18px 24px',
+          padding: '16px 20px',
           borderBottom: '1px solid #f1f5f9',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          flexShrink: 0
         }}>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>
+          <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#0f172a' }}>
             {templateStep 
               ? (isRtl ? 'اختر قالباً لموقعك الجديد' : 'Select a Website Template')
               : (isRtl ? 'إنشاء موقع إلكتروني جديد' : 'Create new website')
@@ -108,7 +120,8 @@ export default function CreateWebsiteModal({
               padding: '4px',
               borderRadius: '6px',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              flexShrink: 0
             }}
           >
             <X size={20} />
@@ -116,9 +129,9 @@ export default function CreateWebsiteModal({
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {!templateStep ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="ghl-option-grid">
               
               {/* Option 1: From blank (Matches Screenshot 2) */}
               <div

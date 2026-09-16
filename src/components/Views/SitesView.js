@@ -20,6 +20,7 @@ import {
   stampSiteOwner,
   storesStorageKey,
   websitesStorageKey,
+  webinarsStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
 import WebsiteListView from '../sites/websites/WebsiteListView';
@@ -30,6 +31,15 @@ import {
   createBlankWebsite,
   createWebsiteFromTemplate
 } from '../sites/websites/websiteTemplates';
+import WebinarListView from '../sites/webinars/WebinarListView';
+import WebinarDetailView from '../sites/webinars/WebinarDetailView';
+import CreateWebinarModal from '../sites/webinars/CreateWebinarModal';
+import {
+  PREBUILT_WEBINAR_TEMPLATES,
+  createBlankWebinar,
+  createWebinarFromTemplate
+} from '../sites/webinars/webinarTemplates';
+import SitesAnalyticsView from '../sites/analytics/SitesAnalyticsView';
 import { 
   Plus, 
   Search, 
@@ -52,7 +62,8 @@ import {
   FileText,
   MessageSquare,
   QrCode,
-  Layers
+  Layers,
+  Radio
 } from 'lucide-react';
 
 const EMPTY_CART = [];
@@ -67,12 +78,14 @@ export default function SitesView() {
   const persistTimer = useRef(null);
   const storePersistTimer = useRef(null);
   const websitePersistTimer = useRef(null);
+  const webinarPersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
   const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
   const [selectedFunnel, setSelectedFunnel] = useState(null);
   const [selectedStore, setSelectedStore] = useState(null);
   const [selectedWebsite, setSelectedWebsite] = useState(null);
+  const [selectedWebinar, setSelectedWebinar] = useState(null);
   const [detailTab, setDetailTab] = useState('steps');
   const [stepOverviewTab, setStepOverviewTab] = useState('overview');
   
@@ -80,8 +93,10 @@ export default function SitesView() {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [builderStoreMode, setBuilderStoreMode] = useState(false);
   const [builderWebsiteMode, setBuilderWebsiteMode] = useState(false);
+  const [builderWebinarMode, setBuilderWebinarMode] = useState(false);
   const [storeActivePageIdx, setStoreActivePageIdx] = useState(0);
   const [websiteActivePageIdx, setWebsiteActivePageIdx] = useState(0);
+  const [webinarActivePageIdx, setWebinarActivePageIdx] = useState(0);
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,6 +109,9 @@ export default function SitesView() {
   // Website Modal
   const [isCreateWebsiteModalOpen, setIsCreateWebsiteModalOpen] = useState(false);
 
+  // Webinar Modal
+  const [isCreateWebinarModalOpen, setIsCreateWebinarModalOpen] = useState(false);
+
   // Add Step Modal
   const [isAddStepModalOpen, setIsAddStepModalOpen] = useState(false);
   const [newStepName, setNewStepName] = useState('');
@@ -103,10 +121,11 @@ export default function SitesView() {
   // Active step index inside detail builder
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
-  // Load funnels / stores / websites for the signed-in user only
+  // Load funnels / stores / websites / webinars for the signed-in user only
   const [funnels, setFunnels] = useState([]);
   const [stores, setStores] = useState([]);
   const [websites, setWebsites] = useState([]);
+  const [webinars, setWebinars] = useState([]);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -122,9 +141,11 @@ export default function SitesView() {
       setFunnels([]);
       setStores([]);
       setWebsites([]);
+      setWebinars([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
+      setSelectedWebinar(null);
       loadedAccountUid.current = '';
       return;
     }
@@ -134,6 +155,7 @@ export default function SitesView() {
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
+      setSelectedWebinar(null);
       loadedAccountUid.current = accountUid;
     }
 
@@ -141,6 +163,7 @@ export default function SitesView() {
     const scopedFunnels = sitesForUser(readJsonList(funnelsStorageKey(accountUid)), accountUid);
     const scopedStores = sitesForUser(readJsonList(storesStorageKey(accountUid)), accountUid);
     const scopedWebsites = sitesForUser(readJsonList(websitesStorageKey(accountUid)), accountUid);
+    const scopedWebinars = sitesForUser(readJsonList(webinarsStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
@@ -150,38 +173,123 @@ export default function SitesView() {
     const gcWebsites = gcBelongsToAccount
       ? sitesForUser(GC?.upclickWebsites?.websites, accountUid)
       : [];
-
-    const nextFunnels = gcFunnels.length ? gcFunnels : scopedFunnels;
-    const nextStores = gcStores.length ? gcStores : scopedStores;
-    
-    // If user has no websites stored yet, initialize default prebuilts
-    const initialWebsitesSeed = (!scopedWebsites.length && !gcWebsites.length)
-      ? PREBUILT_WEBSITE_TEMPLATES.map(t => createWebsiteFromTemplate(t.id, '', accountUid))
+    const gcWebinars = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickWebinars?.webinars, accountUid)
       : [];
-    const nextWebsites = gcWebsites.length ? gcWebsites : (scopedWebsites.length ? scopedWebsites : initialWebsitesSeed);
+
+    // Sanitizers to clear any legacy demo stats from stored funnels, stores, webinars
+    const sanitizeFunnel = (f) => {
+      if (!f) return f;
+      const hasRealLogs = Array.isArray(f.visitorLogs) && f.visitorLogs.length > 0;
+      const hasRealLeads = Array.isArray(f.leads) && f.leads.length > 0;
+      const cleanSteps = (f.steps || []).map(st => ({
+        ...st,
+        views: hasRealLogs ? (Number(st.views) || 0) : 0,
+        optins: hasRealLeads ? (Number(st.optins) || 0) : 0
+      }));
+      return {
+        ...f,
+        views: hasRealLogs ? (Number(f.views) || 0) : 0,
+        optins: hasRealLeads ? (Number(f.optins) || 0) : 0,
+        steps: cleanSteps
+      };
+    };
+
+    const sanitizeStore = (s) => {
+      if (!s || !s.pages) return s;
+      const hasRealOrders = Array.isArray(s.orders) && s.orders.length > 0;
+      const hasRealLogs = Array.isArray(s.visitorLogs) && s.visitorLogs.length > 0;
+      const cleanPages = s.pages.map(p => {
+        if (!hasRealLogs || [3420, 2890, 5820, 1450, 980, 860, 640].includes(p.views)) {
+          return { ...p, views: hasRealLogs ? (Number(p.views) || 0) : 0, uniqueViews: 0, optins: 0, orders: hasRealOrders ? (Number(p.orders) || 0) : 0, salesAmount: 0 };
+        }
+        return p;
+      });
+      return { ...s, pages: cleanPages };
+    };
+
+    const sanitizeWebinar = (w) => {
+      if (!w) return w;
+      const hasRealRegistrations = Array.isArray(w.attendees) && w.attendees.length > 0;
+      if (!hasRealRegistrations || w.stats?.totalViews === 3840) {
+        return {
+          ...w,
+          stats: {
+            totalViews: hasRealRegistrations ? (Number(w.stats?.totalViews) || 0) : 0,
+            registrations: hasRealRegistrations ? w.attendees.length : 0,
+            attendanceRate: '0%',
+            replayViews: 0,
+            orders: 0,
+            conversionRate: '0%',
+            revenue: '$0'
+          }
+        };
+      }
+      return w;
+    };
+
+    const isAutoSeededFunnel = (f) => {
+      const isPrebuiltName = ['Ai-brand vision', 'Auto Body Shop', 'Business Development', 'Coding Framework', 'Human OS'].includes(f.name);
+      return isPrebuiltName && !f.published && !f.domain && (!f.visitorLogs || f.visitorLogs.length === 0);
+    };
+
+    const nextFunnels = (gcFunnels.length ? gcFunnels : scopedFunnels).filter(f => !isAutoSeededFunnel(f)).map(sanitizeFunnel);
+    const nextStores = (gcStores.length ? gcStores : scopedStores).map(sanitizeStore);
+    
+    // Deduplication helper to guarantee each site/webinar has a globally unique key
+    const dedupeSitesList = (list, prefix = 'item') => {
+      const seen = new Set();
+      return (list || []).map((item, idx) => {
+        if (!item) return null;
+        let id = item.id;
+        if (!id || seen.has(id)) {
+          id = `${prefix}_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 7)}`;
+          return { ...item, id };
+        }
+        seen.add(id);
+        return item;
+      }).filter(Boolean);
+    };
+
+    // Filter out any legacy auto-seeded prebuilt items that were not explicitly created or published
+    const isAutoSeededWebinar = (w) => {
+      const isPrebuiltName = ['tpl_ai_masterclass', 'tpl_ecommerce_secrets', 'tpl_marketing_funnels', 'tpl_real_estate', 'AI & Business Growth Masterclass', 'E-Commerce 7-Figure Scaling Secrets', 'High-Ticket Client Acquisition Blueprint', 'Real Estate Wealth & Investment Summit', 'ماستركلاس نمو الأعمال بالذكاء الاصطناعي', 'أسرار مضاعفة مبيعات التجارة الإلكترونية', 'استراتيجيات جذب العملاء ذوي القيمة العالية', 'قمة الاستثمار العقاري وصناعة الثروة'].includes(w.name) || ['tpl_ai_masterclass', 'tpl_ecommerce_secrets', 'tpl_marketing_funnels', 'tpl_real_estate'].includes(w.id);
+      return isPrebuiltName && !w.published && !w.domain && (!w.visitorLogs || w.visitorLogs.length === 0);
+    };
+
+    const isAutoSeededWebsite = (w) => {
+      const isPrebuiltName = ['tpl_financial_planner', 'tpl_agency_designer', 'tpl_saas_startup', 'tpl_ecommerce_store', 'Financial Planner', 'Website Designer & Creative Agency', 'SaaS Modern Tech Platform', 'Minimalist Fashion Brand', 'مخطط مالي ومستشار استثماري', 'وكالة تصميم مواقع وتجارب رقمية', 'منصة برمجيات وحلول سحابية', 'براند أزياء وتجارة إلكترونية'].includes(w.name) || ['tpl_financial_planner', 'tpl_agency_designer', 'tpl_saas_startup', 'tpl_ecommerce_store'].includes(w.id);
+      return isPrebuiltName && !w.published && !w.domain && (!w.visitorLogs || w.visitorLogs.length === 0);
+    };
+
+    const nextWebsites = dedupeSitesList((gcWebsites.length ? gcWebsites : scopedWebsites).filter(w => !isAutoSeededWebsite(w)), 'website');
+    const nextWebinars = dedupeSitesList((gcWebinars.length ? gcWebinars : scopedWebinars).filter(w => !isAutoSeededWebinar(w)).map(sanitizeWebinar), 'webinar');
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
-      const prevMine = sitesForUser(prev, accountUid);
+      const prevMine = sitesForUser(prev, accountUid).map(sanitizeFunnel);
       if (!prevMine.length && nextFunnels.length) return nextFunnels;
-      if (listsHaveSameItems(prev, prevMine)) return prev;
-      return prevMine;
+      return nextFunnels;
     });
     setStores((prev) => {
       if (userChanged) return nextStores;
-      const prevMine = sitesForUser(prev, accountUid);
+      const prevMine = sitesForUser(prev, accountUid).map(sanitizeStore);
       if (!prevMine.length && nextStores.length) return nextStores;
-      if (listsHaveSameItems(prev, prevMine)) return prev;
-      return prevMine;
+      return nextStores;
     });
     setWebsites((prev) => {
       if (userChanged) return nextWebsites;
       const prevMine = sitesForUser(prev, accountUid);
       if (!prevMine.length && nextWebsites.length) return nextWebsites;
-      if (listsHaveSameItems(prev, prevMine)) return prev;
-      return prevMine;
+      return nextWebsites;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites]);
+    setWebinars((prev) => {
+      if (userChanged) return nextWebinars;
+      const prevMine = sitesForUser(prev, accountUid).map(sanitizeWebinar);
+      if (!prevMine.length && nextWebinars.length) return nextWebinars;
+      return nextWebinars;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, isRtl]);
 
   const saveFunnels = (updatedList) => {
     if (!accountUid) return;
@@ -234,6 +342,23 @@ export default function SitesView() {
     }, 700);
   };
 
+  const saveWebinars = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setWebinars(mine);
+    writeJsonList(webinarsStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (webinarPersistTimer.current) clearTimeout(webinarPersistTimer.current);
+    webinarPersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickWebinars: {
+          webinars: mine
+        }
+      });
+    }, 700);
+  };
+
   // Sync selectedFunnel
   useEffect(() => {
     if (!selectedFunnel) return;
@@ -254,6 +379,125 @@ export default function SitesView() {
     const match = websites.find((w) => w.id === selectedWebsite.id);
     if (match && match !== selectedWebsite) setSelectedWebsite(match);
   }, [websites, selectedWebsite]);
+
+  // Sync selectedWebinar
+  useEffect(() => {
+    if (!selectedWebinar) return;
+    const match = webinars.find((w) => w.id === selectedWebinar.id);
+    if (match && match !== selectedWebinar) setSelectedWebinar(match);
+  }, [webinars, selectedWebinar]);
+
+  // Webinar Management Handlers
+  const handleCreateWebinar = (params) => {
+    let newWebinar;
+    if (params.templateId && params.templateId !== 'blank') {
+      newWebinar = createWebinarFromTemplate({ ...params, accountUid });
+    } else {
+      newWebinar = createBlankWebinar({ ...params, accountUid });
+    }
+    const owned = stampSiteOwner(newWebinar, accountUid);
+    const nextWebinars = [owned, ...webinars];
+    saveWebinars(nextWebinars);
+    setSelectedWebinar(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء مسار الويبينار بنجاح' : 'Webinar funnel created successfully');
+  };
+
+  const handleDuplicateWebinar = (webinar) => {
+    const cloned = {
+      ...webinar,
+      id: `webinar_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      name: `${webinar.name} (Copy)`,
+      ownerUid: accountUid,
+      published: false,
+      domain: '',
+      domainStatus: '',
+      pages: (webinar.pages || []).map((p, idx) => ({
+        ...p,
+        id: `wbp_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 7)}`
+      })),
+      lastUpdated: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    const nextWebinars = [cloned, ...webinars];
+    saveWebinars(nextWebinars);
+    if (showToast) showToast(isRtl ? 'تم تكرار الويبينار' : 'Webinar duplicated');
+  };
+
+  const handleDeleteWebinar = (webinarId) => {
+    const nextWebinars = webinars.filter(w => w.id !== webinarId);
+    saveWebinars(nextWebinars);
+    if (selectedWebinar?.id === webinarId) {
+      setSelectedWebinar(null);
+    }
+    if (showToast) showToast(isRtl ? 'تم حذف مسار الويبينار' : 'Webinar funnel deleted');
+  };
+
+  const handleUpdateWebinar = (updatedWebinar) => {
+    const owned = stampSiteOwner(updatedWebinar, accountUid);
+    const prev = webinars.find((w) => w.id === owned.id);
+    if (prev === owned) {
+      setSelectedWebinar(owned);
+      return;
+    }
+    const nextWebinars = webinars.map(w => w.id === owned.id ? owned : w);
+    saveWebinars(nextWebinars);
+    setSelectedWebinar(owned);
+  };
+
+  const updateActiveWebinarPage = (patch) => {
+    if (!selectedWebinar || !selectedWebinar.pages) return;
+    const targetPage = selectedWebinar.pages[webinarActivePageIdx] || selectedWebinar.pages[0];
+    if (!targetPage) return;
+
+    const updatedPage = { ...targetPage, ...patch };
+    const updatedPages = selectedWebinar.pages.map((p, idx) => idx === webinarActivePageIdx ? updatedPage : p);
+    const updatedWebinar = { ...selectedWebinar, pages: updatedPages };
+    handleUpdateWebinar(updatedWebinar);
+  };
+
+  const updateActiveWebinarPageCanvas = (newCanvas) => {
+    updateActiveWebinarPage({ canvas: newCanvas });
+  };
+
+  const handlePublishWebinarPage = async () => {
+    if (!selectedWebinar?.pages) return;
+    const targetPage = selectedWebinar.pages[webinarActivePageIdx] || selectedWebinar.pages[0];
+    if (!targetPage) return;
+    const publishedPatch = {
+      published: true,
+      publishedAt: new Date().toISOString(),
+      publishedCanvas: JSON.parse(JSON.stringify(targetPage.canvas || [])),
+      publishedPage: { ...DEFAULT_PAGE, ...(targetPage.page || {}) }
+    };
+    const updatedPage = { ...targetPage, ...publishedPatch };
+    const updatedPages = selectedWebinar.pages.map((p, idx) => idx === webinarActivePageIdx ? updatedPage : p);
+    const updatedWebinar = { ...selectedWebinar, published: true, publishedAt: new Date().toISOString(), pages: updatedPages };
+    handleUpdateWebinar(updatedWebinar);
+    try {
+      await publishFunnelPublic({
+        funnel: {
+          id: updatedWebinar.id,
+          name: updatedWebinar.name,
+          domain: updatedWebinar.domain,
+          steps: updatedWebinar.pages
+        },
+        ownerUid,
+        defaultStepIdx: webinarActivePageIdx
+      });
+      if (updatedWebinar.domain) {
+        await connectFunnelDomain({
+          funnelId: updatedWebinar.id,
+          ownerUid,
+          host: updatedWebinar.domain,
+          previousHost: ''
+        });
+      }
+      if (showToast) showToast(isRtl ? 'تم نشر صفحة الويبينار' : 'Webinar page published to live URL');
+      return updatedWebinar;
+    } catch (err) {
+      console.error(err);
+      if (showToast) showToast(isRtl ? 'حُفظ محلياً، لكن النشر العام فشل.' : 'Saved locally, but public publish failed.');
+    }
+  };
 
   // Website Management Handlers
   const handleCreateWebsiteBlank = (name) => {
@@ -706,6 +950,13 @@ export default function SitesView() {
         steps: selectedWebsite.pages || []
       };
     }
+    if (builderWebinarMode && selectedWebinar) {
+      return {
+        id: selectedWebinar.id,
+        name: selectedWebinar.name,
+        steps: selectedWebinar.pages || []
+      };
+    }
     if (builderStoreMode && selectedStore) {
       return {
         id: selectedStore.id,
@@ -714,7 +965,7 @@ export default function SitesView() {
       };
     }
     return selectedFunnel;
-  }, [builderWebsiteMode, selectedWebsite, builderStoreMode, selectedStore, selectedFunnel]);
+  }, [builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, selectedFunnel]);
 
   const builderStorePreview = useMemo(() => {
     if (!builderStoreMode || !selectedStore) return null;
@@ -740,16 +991,19 @@ export default function SitesView() {
         <StorePreviewContext.Provider value={builderStorePreview}>
         <BuilderWorkspace
           funnel={builderFunnel}
-          stepIndex={builderWebsiteMode ? websiteActivePageIdx : (builderStoreMode ? storeActivePageIdx : activeStepIndex)}
-          onChangeStep={builderWebsiteMode ? setWebsiteActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex)}
+          stepIndex={builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : activeStepIndex))}
+          onChangeStep={builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex))}
           onClose={() => {
             setIsBuilderOpen(false);
             setBuilderStoreMode(false);
             setBuilderWebsiteMode(false);
+            setBuilderWebinarMode(false);
           }}
           onUpdateCanvas={(newCanvas) => {
             if (builderWebsiteMode && selectedWebsite) {
               updateActiveWebsitePageCanvas(newCanvas);
+            } else if (builderWebinarMode && selectedWebinar) {
+              updateActiveWebinarPageCanvas(newCanvas);
             } else if (builderStoreMode && selectedStore) {
               updateActiveStorePageCanvas(newCanvas);
             } else {
@@ -759,13 +1013,15 @@ export default function SitesView() {
           onUpdateStep={(patch) => {
             if (builderWebsiteMode && selectedWebsite) {
               updateActiveWebsitePage(patch);
+            } else if (builderWebinarMode && selectedWebinar) {
+              updateActiveWebinarPage(patch);
             } else if (builderStoreMode && selectedStore) {
               updateActiveStorePage(patch);
             } else {
               updateActiveStep(patch);
             }
           }}
-          onPublish={builderWebsiteMode ? handlePublishWebsitePage : (builderStoreMode ? handlePublishStorePage : handlePublishStep)}
+          onPublish={builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep))}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>
@@ -791,6 +1047,7 @@ export default function SitesView() {
                 setActiveSubTab(tab.key);
                 if (tab.key !== 'funnels') setSelectedFunnel(null);
                 if (tab.key !== 'websites') setSelectedWebsite(null);
+                if (tab.key !== 'webinars') setSelectedWebinar(null);
                 if (tab.key !== 'stores') setSelectedStore(null);
               }}
               style={{
@@ -819,6 +1076,18 @@ export default function SitesView() {
                   borderRadius: '4px'
                 }}>
                   {websites.length}
+                </span>
+              )}
+              {tab.key === 'webinars' && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {webinars.length}
                 </span>
               )}
               {tab.key === 'stores' && (
@@ -877,6 +1146,33 @@ export default function SitesView() {
             onDeleteWebsite={handleDeleteWebsite}
           />
         )
+      ) : activeSubTab === 'webinars' ? (
+        /* RENDER WEBINARS VIEW WHEN SUBTAB IS 'webinars' */
+        selectedWebinar ? (
+          <WebinarDetailView
+            webinar={selectedWebinar}
+            isRtl={isRtl}
+            ownerUid={ownerUid}
+            showToast={showToast}
+            onBack={() => setSelectedWebinar(null)}
+            onOpenBuilderForPage={(pageIdx) => {
+              setBuilderWebinarMode(true);
+              setWebinarActivePageIdx(pageIdx);
+              setIsBuilderOpen(true);
+            }}
+            onUpdateWebinar={handleUpdateWebinar}
+            onPublishWebinar={handlePublishWebinarPage}
+          />
+        ) : (
+          <WebinarListView
+            webinars={webinars}
+            isRtl={isRtl}
+            onSelectWebinar={(w) => setSelectedWebinar(w)}
+            onOpenCreateModal={() => setIsCreateWebinarModalOpen(true)}
+            onDuplicateWebinar={handleDuplicateWebinar}
+            onDeleteWebinar={handleDeleteWebinar}
+          />
+        )
       ) : activeSubTab === 'stores' ? (
         selectedStore ? (
           <StoreDetailView
@@ -904,6 +1200,15 @@ export default function SitesView() {
             onDeleteStore={handleDeleteStore}
           />
         )
+      ) : activeSubTab === 'analytics' ? (
+        <SitesAnalyticsView
+          funnels={funnels}
+          websites={websites}
+          stores={stores}
+          webinars={webinars}
+          isRtl={isRtl}
+          showToast={showToast}
+        />
       ) : (
         /* RENDER FUNNELS VIEW */
         selectedFunnel ? (
@@ -1196,16 +1501,39 @@ export default function SitesView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFunnels.map((funnel) => (
-                    <tr key={funnel.id} onClick={() => { setSelectedFunnel(funnel); setActiveStepIndex(0); }} style={{ borderBottom: '1px solid var(--edge)', cursor: 'pointer' }}>
-                      <td style={{ padding: '16px 20px', fontWeight: '700', color: 'var(--t1)' }}>{funnel.name}</td>
-                      <td style={{ padding: '16px 20px', color: 'var(--t2)', fontSize: '13px' }}>{funnel.lastUpdated}</td>
-                      <td style={{ padding: '16px 20px', color: 'var(--t2)', fontSize: '13px' }}>{funnel.steps?.length || 0} Steps</td>
-                      <td style={{ padding: '16px 20px' }} onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => {}} style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer' }}><MoreVertical size={16} /></button>
+                  {filteredFunnels.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--t2)' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                          <Layers size={26} />
+                        </div>
+                        <h3 style={{ fontSize: '16px', fontWeight: '700', margin: '0 0 6px 0', color: 'var(--t1)' }}>
+                          {searchQuery ? (isRtl ? 'لم يتم العثور على نتائج' : 'No matching funnels') : (isRtl ? 'لا توجد مسارات بيع (فانلز) بعد' : 'No funnels created yet')}
+                        </h3>
+                        <p style={{ fontSize: '13px', color: 'var(--t3)', margin: '0 0 20px 0' }}>
+                          {isRtl ? 'ابدأ الآن بإنشاء أول فانل لك لجمع العملاء المحتملين والمبيعات.' : 'Start by creating your first sales funnel to capture leads and sales.'}
+                        </p>
+                        <button
+                          onClick={() => setIsCreateModalOpen(true)}
+                          style={{ background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 22px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                        >
+                          <Plus size={16} />
+                          <span>{isRtl ? 'إنشاء فانل جديد' : 'Create new funnel'}</span>
+                        </button>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredFunnels.map((funnel) => (
+                      <tr key={funnel.id} onClick={() => { setSelectedFunnel(funnel); setActiveStepIndex(0); }} style={{ borderBottom: '1px solid var(--edge)', cursor: 'pointer' }}>
+                        <td style={{ padding: '16px 20px', fontWeight: '700', color: 'var(--t1)' }}>{funnel.name}</td>
+                        <td style={{ padding: '16px 20px', color: 'var(--t2)', fontSize: '13px' }}>{funnel.lastUpdated}</td>
+                        <td style={{ padding: '16px 20px', color: 'var(--t2)', fontSize: '13px' }}>{funnel.steps?.length || 0} Steps</td>
+                        <td style={{ padding: '16px 20px' }} onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => {}} style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer' }}><MoreVertical size={16} /></button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1233,6 +1561,14 @@ export default function SitesView() {
         onClose={() => setIsCreateWebsiteModalOpen(false)}
         onCreateBlank={handleCreateWebsiteBlank}
         onCreateFromTemplate={handleCreateWebsiteFromTemplate}
+        isRtl={isRtl}
+      />
+
+      {/* CREATE WEBINAR MODAL */}
+      <CreateWebinarModal
+        isOpen={isCreateWebinarModalOpen}
+        onClose={() => setIsCreateWebinarModalOpen(false)}
+        onCreateWebinar={handleCreateWebinar}
         isRtl={isRtl}
       />
 

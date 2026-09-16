@@ -1,6 +1,7 @@
 export const LEGACY_FUNNELS_KEY = 'upklick_funnels_v1';
 export const LEGACY_STORES_KEY = 'upklick_stores_v1';
 export const LEGACY_WEBSITES_KEY = 'upklick_websites_v1';
+export const LEGACY_WEBINARS_KEY = 'upklick_webinars_v1';
 
 export function funnelsStorageKey(uid) {
   return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
@@ -12,6 +13,10 @@ export function storesStorageKey(uid) {
 
 export function websitesStorageKey(uid) {
   return uid ? `${LEGACY_WEBSITES_KEY}_${uid}` : LEGACY_WEBSITES_KEY;
+}
+
+export function webinarsStorageKey(uid) {
+  return uid ? `${LEGACY_WEBINARS_KEY}_${uid}` : LEGACY_WEBINARS_KEY;
 }
 
 export function stampSiteOwner(item, uid) {

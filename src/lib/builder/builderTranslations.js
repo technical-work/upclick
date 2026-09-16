@@ -248,7 +248,12 @@ export const ELEMENT_LABELS_I18N = {
   store_products_grid: { ar: 'شبكة منتجات المتجر', en: 'Store products grid' },
   store_product_detail: { ar: 'تفاصيل المنتج والشراء', en: 'Product detail block' },
   store_cart: { ar: 'سلة المشتريات', en: 'Shopping cart' },
-  store_checkout: { ar: 'صفحة إتمام الدفع (Checkout)', en: 'Store checkout' }
+  store_checkout: { ar: 'صفحة إتمام الدفع (Checkout)', en: 'Store checkout' },
+  webinar_registration: { ar: 'بطاقة التسجيل في الويبينار', en: 'Webinar Registration Card' },
+  webinar_broadcast_room: { ar: 'غرفة البث المباشر والشات', en: 'Webinar Broadcast Room' },
+  webinar_add_to_calendar: { ar: 'أزرار إضافة للتقويم', en: 'Add to Calendar Widget' },
+  webinar_speakers: { ar: 'عرض المتحدثين والمدربين', en: 'Webinar Speakers Showcase' },
+  webinar_offer_card: { ar: 'بطاقة العرض والخصم الحصري', en: 'Webinar Offer & Checkout Box' }
 };
 
 export const CATEGORY_LABELS_I18N = {
@@ -258,6 +263,7 @@ export const CATEGORY_LABELS_I18N = {
   media: { ar: 'صور ووسائط', en: 'Media & Visuals' },
   forms: { ar: 'نماذج وتواصل', en: 'Forms & Leads' },
   store: { ar: 'عناصر المتجر', en: 'Store Blocks' },
+  webinar: { ar: 'الويبينار والبث المباشر', en: 'Webinar & Live Stream' },
   interactive: { ar: 'أدوات تفاعلية', en: 'Interactive Blocks' },
   content: { ar: 'أقسام المحتوى', en: 'Content Sections' }
 };
