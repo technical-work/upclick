@@ -5,6 +5,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UpKlick — The AI Operating System for Arab Creators & Entrepreneurs</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="UpKlick">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <meta name="theme-color" content="#FF6B35">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap"
@@ -306,6 +313,197 @@
       padding: 14px 32px;
       font-size: 16px;
       border-radius: var(--r2)
+    }
+
+    /* GET APP BUTTON & MODAL */
+    .btn-get-app {
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(108, 53, 255, 0.18));
+      border: 1px solid rgba(255, 107, 53, 0.4);
+      color: #fff !important;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.15);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-get-app:hover {
+      background: linear-gradient(135deg, var(--or), var(--pu));
+      border-color: transparent;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(108, 53, 255, 0.4);
+    }
+
+    #get-app-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 8, 15, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #get-app-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .get-app-card {
+      background: #10101a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 28px;
+      width: 100%;
+      max-width: 480px;
+      padding: 32px 28px;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 107, 53, 0.15);
+      transform: scale(0.92) translateY(20px);
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-align: center;
+    }
+
+    #get-app-modal.active .get-app-card {
+      transform: scale(1) translateY(0);
+    }
+
+    .get-app-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--t2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    html[dir="rtl"] .get-app-close {
+      right: auto;
+      left: 18px;
+    }
+
+    .get-app-close:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      transform: rotate(90deg);
+    }
+
+    .get-app-icon-wrap {
+      width: 84px;
+      height: 84px;
+      margin: 0 auto 18px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #FF6B35, #6C35FF);
+      padding: 3px;
+      box-shadow: 0 12px 30px rgba(255, 107, 53, 0.35);
+      animation: floatIcon 3s ease-in-out infinite alternate;
+    }
+
+    .get-app-icon-wrap img {
+      width: 100%;
+      height: 100%;
+      border-radius: 20px;
+      object-fit: cover;
+      display: block;
+    }
+
+    @keyframes floatIcon {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-6px); }
+    }
+
+    .get-app-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 22px 0 20px;
+      text-align: start;
+    }
+
+    .get-app-step-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 12px 16px;
+      transition: all 0.2s ease;
+    }
+
+    .get-app-step-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 107, 53, 0.25);
+    }
+
+    .get-app-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--or), var(--pu));
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .get-app-step-text {
+      font-size: 13px;
+      color: var(--t1);
+      line-height: 1.5;
+    }
+
+    .get-app-step-text b {
+      color: var(--or);
+    }
+
+    /* Floating Mobile Install Pill */
+    #mobile-install-pill {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(16, 16, 26, 0.92);
+      border: 1.5px solid rgba(255, 107, 53, 0.5);
+      border-radius: 40px;
+      padding: 8px 18px 8px 12px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 107, 53, 0.25);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      cursor: pointer;
+      animation: pulseGlow 2.5s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(255,107,53,0.2); }
+      50% { box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 32px rgba(255,107,53,0.45); }
+    }
+
+    @media (max-width: 768px) {
+      #mobile-install-pill {
+        display: flex;
+      }
     }
 
     /* SECTIONS BASE */
@@ -2954,7 +3152,11 @@
         <a href="#social-community" data-t="landing-nav-community">Community</a>
         <a href="#roadmap" data-t="landing-nav-roadmap">Roadmap</a>
       </nav>
-      <div class="hdr-btns"><button class="btn btn-ghost" onclick="toggleLang(this)"
+      <div class="hdr-btns">
+        <button type="button" class="btn btn-get-app" onclick="openGetAppModal()" data-t="landing-btn-getapp" title="تثبيت التطبيق على الموبايل">
+          <span>📲</span> <span data-t="landing-btn-getapp">GET APP</span>
+        </button>
+        <button class="btn btn-ghost" onclick="toggleLang(this)"
           style="padding:7px 14px;font-size:13px" data-t="landing-btn-lang">عربي</button>
         <a href="/login" class="btn btn-ghost" data-t="landing-nav-signin">Sign In</a>
         <a href="/register?cta=start_free" class="btn btn-prime" data-t="landing-nav-startfree">Start Free →</a>
@@ -2972,6 +3174,10 @@
     </div>
 
     <div class="mob-nav-body">
+      <a href="javascript:void(0)" onclick="openGetAppModal(); toggleMobNav(false);" style="background: rgba(255, 107, 53, 0.08); border: 1px solid rgba(255, 107, 53, 0.2); border-radius: 12px; margin-bottom: 6px;">
+        <span class="mob-nav-icon" style="background: var(--or-d); color: var(--or);">📲</span>
+        <span style="color: var(--or); font-weight: 700;" data-t="landing-btn-getapp-full">GET APP (تثبيت التطبيق)</span>
+      </a>
       <a href="#preview" onclick="toggleMobNav(false)">
         <span class="mob-nav-icon">⌂</span>
         <span data-t="landing-nav-dashboard">Dashboard</span>
@@ -2999,6 +3205,11 @@
     </div>
 
     <div class="mob-nav-footer">
+      <button type="button" class="btn btn-get-app btn-xl" onclick="openGetAppModal(); toggleMobNav(false);"
+        style="width: 100%; justify-content: center; margin-bottom: 10px;"
+        data-t="landing-btn-getapp-full">
+        <span>📲</span> <span>GET APP (تثبيت التطبيق)</span>
+      </button>
       <a href="/register?cta=start_free" class="btn btn-prime btn-xl"
         style="width: 100%; justify-content: center; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);"
         data-t="landing-nav-startfree">Start Free →</a>
@@ -3038,6 +3249,9 @@
         <div class="hero-cta">
           <a href="/register?cta=start_free" class="btn btn-prime btn-xl" data-t="landing-hero-cta-trial">🚀 Start Free
             Trial</a>
+          <button type="button" class="btn btn-get-app btn-xl" onclick="openGetAppModal()" style="display: inline-flex;" data-t="landing-hero-cta-app">
+            <span>📲</span> <span data-t="landing-btn-getapp">GET APP</span>
+          </button>
           <a href="#preview" class="btn btn-ghost btn-xl" data-t="landing-hero-cta-preview">See it Live →</a>
         </div>
         <div class="hero-trust">
@@ -4185,6 +4399,17 @@
 
     // ── TRANSLATIONS DEFAULTS ──
     var EN_DEFAULTS = {
+      'landing-btn-getapp': 'GET APP',
+      'landing-btn-getapp-full': 'GET APP (Install App)',
+      'landing-hero-cta-app': 'GET APP',
+      'landing-getapp-title': 'Install UpKlick on Your Phone',
+      'landing-getapp-sub': 'Add UpKlick icon directly to your mobile home screen for 1-tap instant launch, full-screen view, and lightning speed.',
+      'landing-getapp-ios-s1': 'Tap the <b>Share icon (⎋)</b> at the bottom of Safari.',
+      'landing-getapp-ios-s2': 'Scroll down and tap <b>"Add to Home Screen" (⊞)</b>.',
+      'landing-getapp-ios-s3': 'Tap <b>"Add"</b> at the top right — Done! 🎉',
+      'landing-getapp-android-btn': '📲 Install App on Phone Now',
+      'landing-getapp-desktop-msg': 'On Desktop: Click the <b>Install (⊞)</b> icon in your browser address bar.',
+      'landing-getapp-pill': '📲 Get UpKlick App — Install to Home Screen',
       'landing-nav-dashboard': 'Dashboard',
       'landing-nav-tools': 'Tools',
       'landing-nav-forwho': 'For Who',
@@ -4385,6 +4610,17 @@
     };
 
     var AR_DEFAULTS = {
+      'landing-btn-getapp': 'GET APP',
+      'landing-btn-getapp-full': 'GET APP (تثبيت التطبيق)',
+      'landing-hero-cta-app': 'GET APP',
+      'landing-getapp-title': 'تثبيت تطبيق UpKlick على هاتفك',
+      'landing-getapp-sub': 'أضف أيقونة تطبيق UpKlick إلى شاشة هاتفك الرئيسية للوصول بلمسة واحدة وشاشة كاملة وسرعة فائقة.',
+      'landing-getapp-ios-s1': 'اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط سفاري السفلي.',
+      'landing-getapp-ios-s2': 'مرر للأسفل واختر <b>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen ⊞)</b>.',
+      'landing-getapp-ios-s3': 'اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉',
+      'landing-getapp-android-btn': '📲 تثبيت التطبيق على هاتفك الآن',
+      'landing-getapp-desktop-msg': 'على متصفح الكمبيوتر: انقر على أيقونة <b>التثبيت (⊞)</b> في شريط العنوان بالأعلى.',
+      'landing-getapp-pill': '📲 حمّل تطبيق UpKlick — ثبّته على شاشة هاتفك',
       'landing-nav-dashboard': 'الرئيسية',
       'landing-nav-tools': 'الأدوات',
       'landing-nav-forwho': 'لمن',
@@ -5124,6 +5360,155 @@
         }
       });
     });
+  </script>
+  <!-- Floating Mobile Install Pill -->
+  <div id="mobile-install-pill" onclick="openGetAppModal()">
+    <span style="font-size: 20px;">📲</span>
+    <span style="font-size: 13px; font-weight: 700; color: #fff;" data-t="landing-getapp-pill">حمّل تطبيق UpKlick على هاتفك</span>
+  </div>
+
+  <!-- ══════════════ GET APP MODAL ══════════════ -->
+  <div id="get-app-modal" onclick="if(event.target===this)closeGetAppModal()">
+    <div class="get-app-card">
+      <button type="button" class="get-app-close" onclick="closeGetAppModal()" aria-label="Close">✕</button>
+      
+      <div class="get-app-icon-wrap">
+        <img src="/app-icon.png" alt="UpKlick App Icon" onerror="this.src='/icon-192.png'">
+      </div>
+
+      <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px;" data-t="landing-getapp-title">
+        تثبيت تطبيق UpKlick على هاتفك
+      </h3>
+      <p style="font-size: 13px; color: var(--t2); line-height: 1.6;" data-t="landing-getapp-sub">
+        أضف أيقونة UpKlick مباشرة إلى شاشة هاتفك للوصول السريع بلمسة واحدة وشاشة كاملة وسرعة فائقة.
+      </p>
+
+      <!-- Dynamic Device Steps -->
+      <div id="get-app-ios-steps" class="get-app-steps" style="display: none;">
+        <div class="get-app-step-item">
+          <div class="get-app-step-num">1</div>
+          <div class="get-app-step-text" data-t="landing-getapp-ios-s1">
+            اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط سفاري السفلي.
+          </div>
+        </div>
+        <div class="get-app-step-item">
+          <div class="get-app-step-num">2</div>
+          <div class="get-app-step-text" data-t="landing-getapp-ios-s2">
+            مرر للأسفل واختر <b>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen ⊞)</b>.
+          </div>
+        </div>
+        <div class="get-app-step-item">
+          <div class="get-app-step-num">3</div>
+          <div class="get-app-step-text" data-t="landing-getapp-ios-s3">
+            اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉
+          </div>
+        </div>
+      </div>
+
+      <div id="get-app-android-steps" style="margin: 22px 0 16px; display: none;">
+        <button type="button" id="pwa-install-trigger-btn" class="btn btn-prime btn-xl" onclick="triggerPWAInstall()" style="width: 100%; justify-content: center; font-size: 15px; padding: 14px 20px;" data-t="landing-getapp-android-btn">
+          <span>📲</span> <span>تثبيت التطبيق على هاتفك الآن</span>
+        </button>
+      </div>
+
+      <div id="get-app-desktop-steps" style="margin: 20px 0 10px; display: none; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px 16px;">
+        <div style="font-size: 13px; color: var(--t1);" data-t="landing-getapp-desktop-msg">
+          على متصفح الكمبيوتر: انقر على أيقونة <b>التثبيت (⊞)</b> في شريط العنوان بالأعلى لتثبيت UpKlick كتطبيق سطح مكتب.
+        </div>
+      </div>
+
+      <div style="margin-top: 18px;">
+        <a href="/register?cta=start_free" class="btn btn-ghost btn-sm" style="font-size: 12px; color: var(--t3);" onclick="closeGetAppModal()">
+          أو تابع التصفح على الويب ←
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // PWA & Get App Modal Logic
+    var deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      var installBtn = document.getElementById('pwa-install-trigger-btn');
+      var androidBox = document.getElementById('get-app-android-steps');
+      if (androidBox) androidBox.style.display = 'block';
+      if (installBtn) installBtn.style.display = 'inline-flex';
+    });
+
+    window.addEventListener('appinstalled', function () {
+      deferredPrompt = null;
+      var modal = document.getElementById('get-app-modal');
+      if (modal) modal.classList.remove('active');
+    });
+
+    function openGetAppModal() {
+      var modal = document.getElementById('get-app-modal');
+      if (!modal) return;
+
+      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      var isAndroid = /Android/.test(navigator.userAgent);
+      
+      var iosSteps = document.getElementById('get-app-ios-steps');
+      var androidSteps = document.getElementById('get-app-android-steps');
+      var desktopSteps = document.getElementById('get-app-desktop-steps');
+
+      if (iosSteps) iosSteps.style.display = 'none';
+      if (androidSteps) androidSteps.style.display = 'none';
+      if (desktopSteps) desktopSteps.style.display = 'none';
+
+      if (isIOS) {
+        if (iosSteps) iosSteps.style.display = 'flex';
+      } else if (deferredPrompt || isAndroid) {
+        if (androidSteps) androidSteps.style.display = 'block';
+      } else {
+        if (desktopSteps) desktopSteps.style.display = 'block';
+        if (androidSteps) androidSteps.style.display = 'block';
+      }
+
+      modal.style.display = 'flex';
+      setTimeout(function () {
+        modal.classList.add('active');
+      }, 10);
+    }
+
+    function closeGetAppModal() {
+      var modal = document.getElementById('get-app-modal');
+      if (!modal) return;
+      modal.classList.remove('active');
+      setTimeout(function () {
+        modal.style.display = 'none';
+      }, 300);
+    }
+
+    function triggerPWAInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function (choiceResult) {
+          if (choiceResult.outcome === 'accepted') {
+            closeGetAppModal();
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+          var iosSteps = document.getElementById('get-app-ios-steps');
+          if (iosSteps) iosSteps.style.display = 'flex';
+        } else {
+          var desktopSteps = document.getElementById('get-app-desktop-steps');
+          if (desktopSteps) desktopSteps.style.display = 'block';
+        }
+      }
+    }
+
+    // Register Service Worker if supported
+    if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(function() {});
+      });
+    }
   </script>
 </body>
 
