@@ -110,7 +110,13 @@ export const BUILDER_I18N = {
     optionsTitle: 'خيارات القائمة المنسدلة / الاختيارات',
     optionsDesc: 'اكتب الخيارات التي ستظهر للمستخدم للاختيار منها',
     quickAdd: '+ إضافة سريعة',
-    quickAddPlaceholder: 'اكتب خيارات متعددة مفصولة بفواصل واضغط إضافة...'
+    quickAddPlaceholder: 'اكتب خيارات متعددة مفصولة بفواصل واضغط إضافة...',
+    addQuestion: '+ إضافة سؤال جديد',
+    addSlide: '+ إضافة شريحة جديدة',
+    addStep: '+ إضافة خطوة جديدة',
+    deleteStep: 'حذف',
+    duplicateStep: 'نسخ وتكرار',
+    questionsList: 'قائمة الأسئلة والخطوات'
   },
   en: {
     // Header
@@ -131,6 +137,12 @@ export const BUILDER_I18N = {
     optionsTitle: 'Options / Choices list',
     optionsDesc: 'Enter the choices that will appear in this dropdown or list',
     quickAdd: '+ Quick Add',
+    addQuestion: '+ Add Question',
+    addSlide: '+ Add Slide',
+    addStep: '+ Add Step',
+    deleteStep: 'Delete',
+    duplicateStep: 'Duplicate',
+    questionsList: 'Questions & Steps List',
     // Drawer Tabs
     tabRows: 'Rows',
     tabElements: 'Elements',

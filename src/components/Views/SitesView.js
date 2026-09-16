@@ -744,6 +744,76 @@ export default function SitesView() {
     handleSaveQuizInBuilder(updatedQuiz);
   };
 
+  const handleAddQuizQuestion = () => {
+    if (!selectedQuiz) return;
+    const currentQuestions = selectedQuiz.questions || [];
+    const nextQNum = currentQuestions.length + 1;
+    const newQId = `q_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newQuestion = {
+      id: newQId,
+      title: isRtl ? `السؤال ${nextQNum}: اختر الإجابة الصحيحة` : `Question ${nextQNum}: Select the correct choice`,
+      description: isRtl ? 'اكتب نص توضيحي إضافي للسؤال هنا...' : 'Provide an engaging question for your audience.',
+      type: 'radio',
+      options: isRtl ? ['الخيار 1 (الإجابة الصحيحة)', 'الخيار 2', 'الخيار 3', 'الخيار 4'] : ['Correct Choice (Option A)', 'Option B', 'Option C', 'Option D'],
+      correctAnswer: isRtl ? 'الخيار 1 (الإجابة الصحيحة)' : 'Correct Choice (Option A)',
+      points: 25,
+      explanation: isRtl ? 'توضيح وشرح الإجابة الصحيحة لهذا السؤال.' : 'This is the verified correct answer.'
+    };
+
+    const updatedQuestions = [...currentQuestions, newQuestion];
+    const updatedQuiz = {
+      ...selectedQuiz,
+      questions: updatedQuestions,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveQuizInBuilder(updatedQuiz);
+    setQuizActiveSlideIdx(updatedQuestions.length - 1);
+    if (showToast) showToast(isRtl ? 'تمت إضافة سؤال جديد بنجاح 🎯' : 'New quiz question added successfully 🎯');
+  };
+
+  const handleDeleteQuizQuestion = (qIdxToDelete) => {
+    if (!selectedQuiz) return;
+    const currentQuestions = selectedQuiz.questions || [];
+    if (currentQuestions.length <= 1) {
+      if (showToast) showToast(isRtl ? 'يجب أن يحتوي الاختبار على سؤال واحد على الأقل' : 'Quiz must have at least one question', 'error');
+      return;
+    }
+    const targetIdx = typeof qIdxToDelete === 'number' ? qIdxToDelete : quizActiveSlideIdx;
+    const updatedQuestions = currentQuestions.filter((_, idx) => idx !== targetIdx);
+    const updatedQuiz = {
+      ...selectedQuiz,
+      questions: updatedQuestions,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveQuizInBuilder(updatedQuiz);
+    const nextIdx = Math.max(0, Math.min(quizActiveSlideIdx, updatedQuestions.length - 1));
+    setQuizActiveSlideIdx(nextIdx);
+    if (showToast) showToast(isRtl ? 'تم حذف السؤال' : 'Question removed');
+  };
+
+  const handleDuplicateQuizQuestion = (qIdxToDup) => {
+    if (!selectedQuiz) return;
+    const currentQuestions = selectedQuiz.questions || [];
+    const targetIdx = typeof qIdxToDup === 'number' ? qIdxToDup : quizActiveSlideIdx;
+    const sourceQ = currentQuestions[targetIdx];
+    if (!sourceQ) return;
+    const newQ = {
+      ...JSON.parse(JSON.stringify(sourceQ)),
+      id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: `${sourceQ.title} (${isRtl ? 'نسخة' : 'Copy'})`
+    };
+    const updatedQuestions = [...currentQuestions];
+    updatedQuestions.splice(targetIdx + 1, 0, newQ);
+    const updatedQuiz = {
+      ...selectedQuiz,
+      questions: updatedQuestions,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveQuizInBuilder(updatedQuiz);
+    setQuizActiveSlideIdx(targetIdx + 1);
+    if (showToast) showToast(isRtl ? 'تم نسخ السؤال بنجاح' : 'Question duplicated successfully');
+  };
+
   const handlePublishQuizInBuilder = async () => {
     if (!selectedQuiz) return;
     const updatedQuiz = {
@@ -871,6 +941,80 @@ export default function SitesView() {
       updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     };
     handleSaveSurveyInBuilder(updatedSurvey);
+  };
+
+  const handleAddSurveySlide = () => {
+    if (!selectedSurvey) return;
+    const currentSlides = selectedSurvey.slides || [];
+    const nextNum = currentSlides.length + 1;
+    const newSlideId = `slide_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newSlide = {
+      id: newSlideId,
+      title: isRtl ? `شريحة ${nextNum}: سؤال جديد` : `Slide ${nextNum}: New Question`,
+      subtitle: isRtl ? 'اكتب وصفاً توضيحياً للسؤال...' : 'Provide helpful context for this question.',
+      buttonText: isRtl ? 'التالي' : 'Next',
+      elements: [
+        {
+          id: `f_${Date.now()}`,
+          label: isRtl ? `سؤال ${nextNum}` : `Question ${nextNum}`,
+          type: 'radio',
+          options: isRtl ? ['الخيار 1', 'الخيار 2', 'الخيار 3'] : ['Choice 1', 'Choice 2', 'Choice 3'],
+          required: true
+        }
+      ]
+    };
+    const updatedSlides = [...currentSlides, newSlide];
+    const updatedSurvey = {
+      ...selectedSurvey,
+      slides: updatedSlides,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveSurveyInBuilder(updatedSurvey);
+    setSurveyActiveSlideIdx(updatedSlides.length - 1);
+    if (showToast) showToast(isRtl ? 'تمت إضافة شريحة جديدة بنجاح 📋' : 'New survey slide added successfully 📋');
+  };
+
+  const handleDeleteSurveySlide = (sIdxToDelete) => {
+    if (!selectedSurvey) return;
+    const currentSlides = selectedSurvey.slides || [];
+    if (currentSlides.length <= 1) {
+      if (showToast) showToast(isRtl ? 'يجب أن يحتوي الاستبيان على شريحة واحدة على الأقل' : 'Survey must have at least one slide', 'error');
+      return;
+    }
+    const targetIdx = typeof sIdxToDelete === 'number' ? sIdxToDelete : surveyActiveSlideIdx;
+    const updatedSlides = currentSlides.filter((_, idx) => idx !== targetIdx);
+    const updatedSurvey = {
+      ...selectedSurvey,
+      slides: updatedSlides,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveSurveyInBuilder(updatedSurvey);
+    const nextIdx = Math.max(0, Math.min(surveyActiveSlideIdx, updatedSlides.length - 1));
+    setSurveyActiveSlideIdx(nextIdx);
+    if (showToast) showToast(isRtl ? 'تم حذف الشريحة' : 'Slide removed');
+  };
+
+  const handleDuplicateSurveySlide = (sIdxToDup) => {
+    if (!selectedSurvey) return;
+    const currentSlides = selectedSurvey.slides || [];
+    const targetIdx = typeof sIdxToDup === 'number' ? sIdxToDup : surveyActiveSlideIdx;
+    const sourceSlide = currentSlides[targetIdx];
+    if (!sourceSlide) return;
+    const newSlide = {
+      ...JSON.parse(JSON.stringify(sourceSlide)),
+      id: `slide_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: `${sourceSlide.title} (${isRtl ? 'نسخة' : 'Copy'})`
+    };
+    const updatedSlides = [...currentSlides];
+    updatedSlides.splice(targetIdx + 1, 0, newSlide);
+    const updatedSurvey = {
+      ...selectedSurvey,
+      slides: updatedSlides,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveSurveyInBuilder(updatedSurvey);
+    setSurveyActiveSlideIdx(targetIdx + 1);
+    if (showToast) showToast(isRtl ? 'تم نسخ الشريحة بنجاح' : 'Slide duplicated successfully');
   };
 
   const handlePublishSurveyInBuilder = async () => {
@@ -2220,6 +2364,9 @@ export default function SitesView() {
             }
           }}
           onPublish={builderQuizMode ? handlePublishQuizInBuilder : (builderSurveyMode ? handlePublishSurveyInBuilder : (builderFormMode ? handlePublishFormInBuilder : (builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep))))))}
+          onAddStep={builderQuizMode ? handleAddQuizQuestion : (builderSurveyMode ? handleAddSurveySlide : null)}
+          onDeleteStep={builderQuizMode ? handleDeleteQuizQuestion : (builderSurveyMode ? handleDeleteSurveySlide : null)}
+          onDuplicateStep={builderQuizMode ? handleDuplicateQuizQuestion : (builderSurveyMode ? handleDuplicateSurveySlide : null)}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>

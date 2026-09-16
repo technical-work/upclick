@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   Code,
+  Copy,
   Eye,
   ExternalLink,
   Globe,
@@ -12,6 +13,7 @@ import {
   Plus,
   Redo2,
   Smartphone,
+  Trash2,
   Undo2,
   X
 } from 'lucide-react';
@@ -60,7 +62,10 @@ export default function BuilderWorkspace({
   onUpdateCanvas,
   onUpdateStep,
   onPublish,
-  isStore = false
+  isStore = false,
+  onAddStep,
+  onDeleteStep,
+  onDuplicateStep
 }) {
   const step = funnel?.steps?.[stepIndex] || funnel?.steps?.[0] || null;
   const canvas = step?.canvas || EMPTY_CANVAS;
@@ -98,6 +103,14 @@ export default function BuilderWorkspace({
   };
 
   const isAr = currentLang === 'ar';
+  const isQuiz = Boolean(
+    funnel?.name?.includes('(Quiz Builder)') ||
+    funnel?.steps?.some((s) => s.name?.toLowerCase().includes('question') || s.name?.includes('سؤال') || s.name?.includes('pts'))
+  );
+  const isSurvey = Boolean(
+    funnel?.name?.includes('(Survey Builder)') ||
+    funnel?.steps?.some((s) => s.name?.toLowerCase().includes('slide') || s.name?.includes('شريحة'))
+  );
 
   const [mounted, setMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
@@ -312,11 +325,96 @@ export default function BuilderWorkspace({
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <select className="inp" value={stepIndex} onChange={(e) => onChangeStep(Number(e.target.value))} style={{ fontSize: 12.5, padding: '4px 12px' }}>
-            {funnel?.steps?.map((st, idx) => <option key={st.id} value={idx}>{st.name}</option>)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <select
+            className="inp"
+            value={stepIndex}
+            onChange={(e) => onChangeStep(Number(e.target.value))}
+            style={{
+              fontSize: 12.5,
+              padding: '5px 12px',
+              minWidth: 160,
+              maxWidth: 240,
+              fontWeight: 700,
+              color: '#1e40af',
+              background: '#eff6ff',
+              borderColor: '#93c5fd',
+              borderRadius: 6
+            }}
+          >
+            {funnel?.steps?.map((st, idx) => (
+              <option key={st.id || idx} value={idx}>
+                {idx + 1}. {st.name}
+              </option>
+            ))}
           </select>
-          <div style={{ display: 'flex', background: '#f1f5f9', padding: 2, borderRadius: 6, border: '1px solid #e2e8f0' }}>
+          {onAddStep && (
+            <button
+              type="button"
+              onClick={onAddStep}
+              title={isAr ? (isQuiz ? 'إضافة سؤال جديد للاختبار' : (isSurvey ? 'إضافة شريحة جديدة للاستبيان' : 'إضافة خطوة جديدة')) : (isQuiz ? 'Add new question' : (isSurvey ? 'Add new slide' : 'Add new step'))}
+              style={{
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: '0 2px 4px rgba(37,99,235,0.2)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={14} strokeWidth={3} />
+              <span>{isAr ? (isQuiz ? '+ إضافة سؤال' : (isSurvey ? '+ إضافة شريحة' : '+ إضافة خطوة')) : (isQuiz ? '+ Add Question' : (isSurvey ? '+ Add Slide' : '+ Add Step'))}</span>
+            </button>
+          )}
+          {onDuplicateStep && (funnel?.steps?.length || 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => onDuplicateStep(stepIndex)}
+              title={isAr ? (isQuiz ? 'نسخ وتكرار هذا السؤال' : 'نسخ وتكرار هذه الخطوة') : 'Duplicate current'}
+              style={{
+                background: '#ffffff',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: 6,
+                padding: '6px 8px',
+                fontSize: 11.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              <Copy size={13} />
+            </button>
+          )}
+          {onDeleteStep && (funnel?.steps?.length || 0) > 1 && (
+            <button
+              type="button"
+              onClick={() => onDeleteStep(stepIndex)}
+              title={isAr ? (isQuiz ? 'حذف هذا السؤال' : 'حذف هذه الخطوة') : 'Delete current'}
+              style={{
+                background: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fee2e2',
+                borderRadius: 6,
+                padding: '6px 8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+          <div style={{ display: 'flex', background: '#f1f5f9', padding: 2, borderRadius: 6, border: '1px solid #e2e8f0', marginLeft: 4 }}>
             <button type="button" title={getBuilderString('desktop', currentLang)} onClick={() => setBuilderDevice('desktop')} style={{ background: builderDevice === 'desktop' ? '#fff' : 'none', border: 'none', color: builderDevice === 'desktop' ? '#2563eb' : '#64748b', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}><Monitor size={16} /></button>
             <button type="button" title={getBuilderString('mobile', currentLang)} onClick={() => setBuilderDevice('mobile')} style={{ background: builderDevice === 'mobile' ? '#fff' : 'none', border: 'none', color: builderDevice === 'mobile' ? '#2563eb' : '#64748b', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}><Smartphone size={16} /></button>
           </div>
@@ -420,6 +518,94 @@ export default function BuilderWorkspace({
 
               {navTab === 'page' && (
                 <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
+                  {/* Questions & Steps Overview Card */}
+                  {funnel?.steps && funnel.steps.length > 0 && (
+                    <div style={{ marginBottom: 16, padding: 12, background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#1e293b' }}>
+                          {isAr ? (isQuiz ? '📋 قائمة أسئلة الاختبار' : (isSurvey ? '📋 شرائح الاستبيان' : '📋 خطوات الصفحة')) : (isQuiz ? 'Quiz Questions' : (isSurvey ? 'Survey Slides' : 'Page Steps'))}
+                        </span>
+                        <span style={{ fontSize: 11, background: '#dbeafe', color: '#1e40af', padding: '1px 8px', borderRadius: 999, fontWeight: 800 }}>
+                          {funnel.steps.length} {isAr ? (isQuiz ? 'أسئلة' : 'عناصر') : 'items'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                        {funnel.steps.map((st, sIdx) => {
+                          const isSelected = sIdx === stepIndex;
+                          return (
+                            <div
+                              key={st.id || sIdx}
+                              onClick={() => onChangeStep(sIdx)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '7px 10px',
+                                borderRadius: 7,
+                                background: isSelected ? '#eff6ff' : '#ffffff',
+                                border: isSelected ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <span style={{ fontSize: 12, fontWeight: isSelected ? 800 : 600, color: isSelected ? '#1d4ed8' : '#334155', display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ width: 20, height: 20, borderRadius: 4, background: isSelected ? '#2563eb' : '#f1f5f9', color: isSelected ? '#fff' : '#64748b', fontSize: 10.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {sIdx + 1}
+                                </span>
+                                {st.name}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {onDuplicateStep && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onDuplicateStep(sIdx); }}
+                                    title={isAr ? 'نسخ وتكرار' : 'Duplicate'}
+                                    style={{ border: 'none', background: '#f8fafc', color: '#64748b', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}
+                                  >
+                                    <Copy size={12} />
+                                  </button>
+                                )}
+                                {onDeleteStep && funnel.steps.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onDeleteStep(sIdx); }}
+                                    title={isAr ? 'حذف' : 'Delete'}
+                                    style={{ border: 'none', background: '#fef2f2', color: '#dc2626', borderRadius: 4, padding: '3px 6px', cursor: 'pointer' }}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {onAddStep && (
+                        <button
+                          type="button"
+                          onClick={onAddStep}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: 7,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6
+                          }}
+                        >
+                          <Plus size={14} strokeWidth={2.5} />
+                          {isAr ? (isQuiz ? 'إضافة سؤال جديد للاختبار' : (isSurvey ? 'إضافة شريحة جديدة' : 'إضافة خطوة جديدة')) : (isQuiz ? '+ Add New Question' : (isSurvey ? '+ Add New Slide' : '+ Add New Step'))}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {[
                     ['background', getBuilderString('pageBg', currentLang), 'color'],
                     ['textColor', getBuilderString('pageTextColor', currentLang), 'color'],
