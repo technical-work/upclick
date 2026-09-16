@@ -348,12 +348,26 @@ button {
   font-family: var(--fb)
 }
 
-input,
+input:not([type="radio"]):not([type="checkbox"]),
 select,
 textarea {
   -webkit-appearance: none;
   appearance: none;
-  font-family: var(--fb)
+  font-family: var(--fb);
+}
+
+input[type="radio"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+  accent-color: #2563eb;
+  cursor: pointer;
 }
 
 /* ── AMBIENT ANIMATIONS ── */

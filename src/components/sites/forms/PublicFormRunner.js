@@ -209,49 +209,107 @@ export default function PublicFormRunner({ formId }) {
                   };
 
                   return (
-                    <div key={field.id}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                    <div key={field.id} style={{ margin: '6px 0' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>
                         {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {optionsList.map((opt, optIdx) => (
-                          <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              value={opt}
-                              checked={currentChecked.includes(opt)}
-                              onChange={() => handleCheckboxToggle(opt)}
-                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                            />
-                            <span>{opt}</span>
-                          </label>
-                        ))}
+                        {optionsList.map((opt, optIdx) => {
+                          const isChecked = currentChecked.includes(opt);
+                          return (
+                            <label
+                              key={optIdx}
+                              onClick={() => handleCheckboxToggle(opt)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '13.5px',
+                                color: isChecked ? '#1d4ed8' : '#334155',
+                                cursor: 'pointer',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                background: isChecked ? '#eff6ff' : '#f8fafc',
+                                border: isChecked ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+                                transition: 'all 0.15s ease',
+                                userSelect: 'none'
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '4px',
+                                  border: isChecked ? '1px solid #2563eb' : '2px solid #cbd5e1',
+                                  background: isChecked ? '#2563eb' : '#ffffff',
+                                  color: '#ffffff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '12px',
+                                  fontWeight: '900',
+                                  flexShrink: 0,
+                                  boxSizing: 'border-box',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                {isChecked ? '✓' : ''}
+                              </span>
+                              <span style={{ fontWeight: isChecked ? '700' : '500' }}>{opt}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   );
                 }
 
                 if (field.type === 'radio') {
+                  const selectedOpt = formData[field.id] || '';
                   return (
-                    <div key={field.id}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                    <div key={field.id} style={{ margin: '6px 0' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>
                         {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {optionsList.map((opt, optIdx) => (
-                          <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
-                            <input
-                              type="radio"
-                              name={field.id}
-                              value={opt}
-                              required={field.required}
-                              checked={formData[field.id] === opt}
-                              onChange={(e) => handleChange(field.id, e.target.value)}
-                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                            />
-                            <span>{opt}</span>
-                          </label>
-                        ))}
+                        {optionsList.map((opt, optIdx) => {
+                          const isSelected = selectedOpt === opt;
+                          return (
+                            <label
+                              key={optIdx}
+                              onClick={() => handleChange(field.id, opt)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '13.5px',
+                                color: isSelected ? '#1d4ed8' : '#334155',
+                                cursor: 'pointer',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                background: isSelected ? '#eff6ff' : '#f8fafc',
+                                border: isSelected ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+                                transition: 'all 0.15s ease',
+                                userSelect: 'none'
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '50%',
+                                  border: isSelected ? '5px solid #2563eb' : '2px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  display: 'inline-block',
+                                  flexShrink: 0,
+                                  boxSizing: 'border-box',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              />
+                              <span style={{ fontWeight: isSelected ? '700' : '500' }}>{opt}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   );

@@ -304,26 +304,51 @@ export default function LiveFormModal({
                 }
 
                 if (field.type === 'radio') {
+                  const selectedOpt = formData[field.id] || '';
                   return (
-                    <div key={field.id}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                    <div key={field.id} style={{ margin: '6px 0' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '8px' }}>
                         {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {optionsList.map((opt, i) => (
-                          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t1)', cursor: 'pointer' }}>
-                            <input
-                              type="radio"
-                              name={field.id}
-                              value={opt}
-                              required={field.required}
-                              checked={formData[field.id] === opt}
-                              onChange={(e) => handleChange(field.id, e.target.value)}
-                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                            />
-                            <span>{opt}</span>
-                          </label>
-                        ))}
+                        {optionsList.map((opt, i) => {
+                          const isSelected = selectedOpt === opt;
+                          return (
+                            <label
+                              key={i}
+                              onClick={() => handleChange(field.id, opt)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '13.5px',
+                                color: isSelected ? '#2563eb' : 'var(--t1)',
+                                cursor: 'pointer',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'var(--surface2)',
+                                border: isSelected ? '1px solid #2563eb' : '1px solid var(--edge)',
+                                transition: 'all 0.15s ease',
+                                userSelect: 'none'
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '50%',
+                                  border: isSelected ? '5px solid #2563eb' : '2px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  display: 'inline-block',
+                                  flexShrink: 0,
+                                  boxSizing: 'border-box',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              />
+                              <span style={{ fontWeight: isSelected ? '700' : '500' }}>{opt}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -344,23 +369,56 @@ export default function LiveFormModal({
                   };
 
                   return (
-                    <div key={field.id}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                    <div key={field.id} style={{ margin: '6px 0' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '8px' }}>
                         {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {optionsList.map((opt, i) => (
-                          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t1)', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              value={opt}
-                              checked={currentChecked.includes(opt)}
-                              onChange={() => handleCheckboxToggle(opt)}
-                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                            />
-                            <span>{opt}</span>
-                          </label>
-                        ))}
+                        {optionsList.map((opt, i) => {
+                          const isChecked = currentChecked.includes(opt);
+                          return (
+                            <label
+                              key={i}
+                              onClick={() => handleCheckboxToggle(opt)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                fontSize: '13.5px',
+                                color: isChecked ? '#2563eb' : 'var(--t1)',
+                                cursor: 'pointer',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                background: isChecked ? 'rgba(37, 99, 235, 0.08)' : 'var(--surface2)',
+                                border: isChecked ? '1px solid #2563eb' : '1px solid var(--edge)',
+                                transition: 'all 0.15s ease',
+                                userSelect: 'none'
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '4px',
+                                  border: isChecked ? '1px solid #2563eb' : '2px solid #cbd5e1',
+                                  background: isChecked ? '#2563eb' : '#ffffff',
+                                  color: '#ffffff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '12px',
+                                  fontWeight: '900',
+                                  flexShrink: 0,
+                                  boxSizing: 'border-box',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                {isChecked ? '✓' : ''}
+                              </span>
+                              <span style={{ fontWeight: isChecked ? '700' : '500' }}>{opt}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   );
