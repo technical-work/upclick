@@ -174,33 +174,36 @@ export const ELEMENT_REGISTRY = {
     label: 'Opt-in form',
     category: 'actions',
     defaults: {
-      title: 'Get instant access',
-      subtitle: 'Enter your details and we will send the next step.',
-      buttonText: 'Submit now',
+      title: 'Get in Touch',
+      subtitle: 'Please fill in the details below and we will get back to you shortly.',
+      buttonText: 'Submit Form',
       successTitle: 'Thank you!',
-      successText: 'Your submission was received.',
-      bg: '#f8fafc',
+      successText: 'Your submission was received successfully.',
+      bg: '#ffffff',
       color: '#0f172a',
       buttonBg: '#2563eb',
       radius: '16px',
       fields: [
-        { label: 'Full Name', type: 'text', placeholder: 'Your name', required: true },
-        { label: 'Email Address', type: 'email', placeholder: 'you@email.com', required: true },
-        { label: 'Phone Number', type: 'tel', placeholder: '+971 50 000 0000', required: false }
+        { id: 'f_first_name', label: 'First Name', type: 'first_name', placeholder: 'Enter your first name', required: true, width: '50%' },
+        { id: 'f_last_name', label: 'Last Name', type: 'last_name', placeholder: 'Enter your last name', required: false, width: '50%' },
+        { id: 'f_email', label: 'Email Address', type: 'email', placeholder: 'you@email.com', required: true, width: '100%' },
+        { id: 'f_phone', label: 'Phone Number', type: 'phone', placeholder: '+1 (555) 000-0000', required: false, width: '100%' }
       ]
     },
     fields: [
       { key: 'title', label: 'Form title', type: 'text' },
       { key: 'subtitle', label: 'Subtitle', type: 'textarea' },
       { key: 'buttonText', label: 'Submit label', type: 'text' },
+      { key: 'buttonBg', label: 'Button color', type: 'color' },
       { key: 'successTitle', label: 'Success title', type: 'text' },
       { key: 'successText', label: 'Success message', type: 'textarea' },
-      { key: 'buttonBg', label: 'Button color', type: 'color' },
       ...STYLE_FIELDS,
       { key: 'fields', label: 'Form fields', type: 'items', itemFields: [
         { key: 'label', label: 'Label', type: 'text' },
         { key: 'placeholder', label: 'Placeholder', type: 'text' },
-        { key: 'type', label: 'Type', type: 'select', options: ['text', 'email', 'tel', 'number'] }
+        { key: 'type', label: 'Field Type', type: 'select', options: ['text', 'first_name', 'last_name', 'email', 'phone', 'number', 'textarea', 'date_of_birth', 'dropdown', 'consent_checkbox'] },
+        { key: 'width', label: 'Width', type: 'select', options: ['100%', '50%'] },
+        { key: 'required', label: 'Required', type: 'toggle' }
       ]}
     ]
   },
@@ -1404,17 +1407,30 @@ export function createCanvasForWebinarPage(stepType = 'registration', title = ''
 
 export function normalizeFormFields(fields) {
   if (!Array.isArray(fields)) return [];
-  return fields.map((field) => {
-    if (typeof field === 'string') {
-      return { label: field, type: field.toLowerCase().includes('email') ? 'email' : 'text', placeholder: field, required: true };
-    }
-    return {
-      label: field.label || 'Field',
-      type: field.type || 'text',
-      placeholder: field.placeholder || field.label || '',
-      required: field.required !== false
-    };
-  });
+  return fields
+    .filter((field) => field && field.type !== 'submit')
+    .map((field, idx) => {
+      if (typeof field === 'string') {
+        const isEmail = field.toLowerCase().includes('email');
+        return {
+          id: `f_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+          label: field,
+          type: isEmail ? 'email' : 'text',
+          placeholder: field,
+          required: true,
+          width: '100%'
+        };
+      }
+      return {
+        id: field.id || `f_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+        label: field.label || 'Field',
+        type: field.type || 'text',
+        placeholder: field.placeholder !== undefined ? field.placeholder : (field.label || ''),
+        required: field.required !== false,
+        width: field.width || '100%',
+        options: field.options || []
+      };
+    });
 }
 
 export function toEmbedUrl(src = '') {

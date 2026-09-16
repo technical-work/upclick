@@ -69,11 +69,11 @@ export const PREBUILT_FORM_TEMPLATES = [
       messageHtml: '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: #64748b; margin: 0;">Thank you for taking the time to complete this form.</p></div>',
       redirectUrl: '',
       styling: {
-        bg: '#ffffff',
+        bg: 'var(--surface)',
         font: 'Inter',
         borderRadius: '12px',
         cardShadow: true,
-        labelColor: '#1e293b'
+        labelColor: 'var(--t1)'
       },
       showTermsLinks: true
     }
@@ -347,11 +347,11 @@ export function createBlankForm(name = 'Form 1', ownerUid = '', authorName = 'Us
       messageHtml: '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: #64748b; margin: 0;">Thank you for taking the time to complete this form.</p></div>',
       redirectUrl: '',
       styling: {
-        bg: '#ffffff',
+        bg: 'var(--surface)',
         font: 'Inter',
         borderRadius: '12px',
         cardShadow: true,
-        labelColor: '#1e293b'
+        labelColor: 'var(--t1)'
       },
       showTermsLinks: true
     },

@@ -705,7 +705,8 @@ export default function FormBuilderView({
               style={{
                 width: '100%',
                 maxWidth: deviceMode === 'mobile' ? '380px' : '620px',
-                background: form.settings?.styling?.bg || 'var(--surface)',
+                background: (form.settings?.styling?.bg && form.settings?.styling?.bg !== '#ffffff') ? form.settings.styling.bg : 'var(--surface)',
+                color: 'var(--t1)',
                 borderRadius: form.settings?.styling?.borderRadius || '14px',
                 boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
                 border: '1px solid var(--edge)',

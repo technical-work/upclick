@@ -1504,46 +1504,29 @@ export default function SitesView() {
       const formFields = (selectedForm.fields && selectedForm.fields.length > 0)
         ? selectedForm.fields
         : [
-            { id: 'f_name', label: 'Full Name', type: 'text', placeholder: 'Enter your name', required: true },
-            { id: 'f_email', label: 'Email Address', type: 'email', placeholder: 'you@example.com', required: true },
-            { id: 'f_phone', label: 'Phone Number', type: 'tel', placeholder: '+1 (555) 000-0000', required: false }
+            { id: 'f_first_name', label: 'First Name', type: 'first_name', placeholder: 'Enter your first name', required: true, width: '50%' },
+            { id: 'f_last_name', label: 'Last Name', type: 'last_name', placeholder: 'Enter your last name', required: false, width: '50%' },
+            { id: 'f_email', label: 'Email Address', type: 'email', placeholder: 'your@email.com', required: true, width: '100%' },
+            { id: 'f_phone', label: 'Phone Number', type: 'phone', placeholder: '+1 (555) 000-0000', required: false, width: '100%' }
           ];
 
       const formStepCanvas = (selectedForm.canvas && selectedForm.canvas.length > 0)
         ? selectedForm.canvas
         : [
             {
-              id: `el_headline_${selectedForm.id}`,
-              type: 'headline',
-              content: selectedForm.name || 'Get In Touch',
-              fontSize: '32px',
-              weight: '800',
-              align: 'center',
-              margin: '0 0 8px'
-            },
-            ...(selectedForm.description ? [{
-              id: `el_sub_${selectedForm.id}`,
-              type: 'subheadline',
-              content: selectedForm.description,
-              fontSize: '16px',
-              weight: '500',
-              color: '#64748b',
-              align: 'center',
-              margin: '0 0 24px'
-            }] : []),
-            {
               id: `el_form_${selectedForm.id}`,
               type: 'form',
-              title: selectedForm.name || 'Sign Up',
-              subtitle: selectedForm.description || '',
+              title: selectedForm.name || (isRtl ? 'نموذج التواصل' : 'Get In Touch'),
+              subtitle: selectedForm.description || (isRtl ? 'يرجى إدخال بياناتك للتواصل معك' : 'Please fill in your details below to get started.'),
               fields: formFields,
-              buttonText: selectedForm.styling?.buttonText || selectedForm.buttonText || 'Submit Form',
+              buttonText: selectedForm.styling?.buttonText || selectedForm.buttonText || (isRtl ? 'إرسال النموذج' : 'Submit Form'),
               buttonBg: selectedForm.styling?.buttonColor || '#2563eb',
               bg: selectedForm.styling?.backgroundColor || '#ffffff',
               color: selectedForm.styling?.textColor || '#0f172a',
               radius: `${selectedForm.styling?.borderRadius || 16}px`,
-              maxWidth: '520px',
-              margin: '0 auto 24px'
+              maxWidth: '560px',
+              margin: '20px auto',
+              shadow: true
             }
           ];
 

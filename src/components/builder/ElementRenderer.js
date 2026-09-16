@@ -169,41 +169,283 @@ function FaqBlock({ el, interactive }) {
 
 function FormBlock({ el, interactive }) {
   const fields = normalizeFormFields(el.fields);
+  const [formValues, setFormValues] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleFieldChange = (id, val) => {
+    setFormValues((prev) => ({ ...prev, [id]: val }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!interactive) return;
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setSubmitted(true);
+    }, 400);
+  };
+
+  const textColor = el.color || '#0f172a';
+  const labelColor = el.labelColor || el.color || '#334155';
+  const btnBg = el.buttonBg || el.bg || '#2563eb';
+  const btnColor = el.buttonColor || '#ffffff';
+  const boxRadius = el.radius || '16px';
 
   return (
-    <div style={{ ...wrapBox(el, { background: el.bg || '#f8fafc', padding: el.padding || '32px', borderRadius: el.radius || '16px', maxWidth: el.maxWidth || '480px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }), border: '1px solid #e2e8f0' }}>
+    <div
+      style={{
+        ...wrapBox(el, {
+          background: el.bg || '#ffffff',
+          padding: el.padding || '32px',
+          borderRadius: boxRadius,
+          maxWidth: el.maxWidth || '540px',
+          boxShadow: el.shadow ? '0 12px 36px rgba(15, 23, 42, 0.08)' : 'none'
+        }),
+        border: '1px solid #e2e8f0',
+        textAlign: 'left'
+      }}
+    >
       {submitted ? (
-        <div style={{ textAlign: 'center' }}>
-          <CheckCircle2 size={44} color="#22c55e" style={{ margin: '0 auto 10px' }} />
-          <h4 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: '800' }}>{el.successTitle || 'Thank you!'}</h4>
-          <p style={{ margin: 0, color: '#64748b', fontSize: '14px' }}>{el.successText || 'Your submission was received.'}</p>
-        </div>
-      ) : (
-        <>
-          <h4 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: '800', textAlign: 'center', color: el.color || '#0f172a' }}>{el.title || 'Sign up'}</h4>
-          {el.subtitle && <p style={{ margin: '0 0 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>{el.subtitle}</p>}
-          {fields.map((field, i) => (
-            <input
-              key={`${field.label}-${i}`}
-              type={field.type}
-              placeholder={field.placeholder}
-              required={field.required}
-              readOnly={!interactive}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', marginBottom: '10px', boxSizing: 'border-box' }}
-            />
-          ))}
+        <div style={{ textAlign: 'center', padding: '24px 10px' }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'rgba(34, 197, 94, 0.12)',
+              color: '#16a34a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px'
+            }}
+          >
+            <CheckCircle2 size={32} strokeWidth={2.5} />
+          </div>
+          <h4 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '800', color: textColor, textAlign: 'center' }}>
+            {el.successTitle || 'Thank you!'}
+          </h4>
+          <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: '14px', lineHeight: 1.5, textAlign: 'center' }}>
+            {el.successText || 'Your submission has been received successfully.'}
+          </p>
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (interactive) setSubmitted(true);
+              setSubmitted(false);
+              setFormValues({});
             }}
-            style={{ width: '100%', background: el.buttonBg || el.bg || '#2563eb', color: '#fff', border: 'none', padding: '13px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}
+            style={{
+              background: 'none',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '8px 18px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#475569',
+              cursor: 'pointer'
+            }}
           >
-            {el.buttonText || 'Submit'}
+            Submit another response
           </button>
-        </>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+          {el.title && (
+            <h4
+              style={{
+                margin: '0 0 6px',
+                fontSize: el.titleSize || '22px',
+                fontWeight: '800',
+                textAlign: el.align || 'center',
+                color: textColor
+              }}
+            >
+              {el.title}
+            </h4>
+          )}
+          {el.subtitle && (
+            <p
+              style={{
+                margin: '0 0 20px',
+                textAlign: el.align || 'center',
+                color: '#64748b',
+                fontSize: '13.5px',
+                lineHeight: 1.5
+              }}
+            >
+              {el.subtitle}
+            </p>
+          )}
+
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '12px 14px',
+              marginBottom: '18px'
+            }}
+          >
+            {fields.map((field, i) => {
+              const fieldId = field.id || `f_${i}`;
+              const isHalfWidth = field.width === '50%';
+              const inputType =
+                field.type === 'email'
+                  ? 'email'
+                  : field.type === 'phone' || field.type === 'tel'
+                  ? 'tel'
+                  : field.type === 'number'
+                  ? 'number'
+                  : field.type === 'date_of_birth' || field.type === 'date'
+                  ? 'date'
+                  : 'text';
+
+              if (field.type === 'consent_checkbox') {
+                return (
+                  <div key={fieldId} style={{ width: '100%', margin: '4px 0' }}>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        fontSize: '12px',
+                        color: '#64748b',
+                        lineHeight: 1.5,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        required={field.required}
+                        checked={!!formValues[fieldId]}
+                        onChange={(e) => handleFieldChange(fieldId, e.target.checked)}
+                        style={{ marginTop: '3px', cursor: 'pointer' }}
+                      />
+                      <span>{field.label}</span>
+                    </label>
+                  </div>
+                );
+              }
+
+              if (field.type === 'textarea') {
+                return (
+                  <div key={fieldId} style={{ width: '100%' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: labelColor, marginBottom: '6px' }}>
+                      {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      value={formValues[fieldId] || ''}
+                      onChange={(e) => handleFieldChange(fieldId, e.target.value)}
+                      readOnly={!interactive}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13.5px',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        resize: 'vertical',
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
+                );
+              }
+
+              if (field.type === 'dropdown' || field.type === 'select') {
+                const options = Array.isArray(field.options) ? field.options : ['Option 1', 'Option 2', 'Option 3'];
+                return (
+                  <div key={fieldId} style={{ width: isHalfWidth ? 'calc(50% - 7px)' : '100%', minWidth: '220px', flex: isHalfWidth ? '1 1 calc(50% - 7px)' : '1 1 100%' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: labelColor, marginBottom: '6px' }}>
+                      {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                    </label>
+                    <select
+                      required={field.required}
+                      value={formValues[fieldId] || ''}
+                      onChange={(e) => handleFieldChange(fieldId, e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '11px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13.5px',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value="">{field.placeholder || 'Select...'}</option>
+                      {options.map((opt, optIdx) => (
+                        <option key={optIdx} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+
+              return (
+                <div key={fieldId} style={{ width: isHalfWidth ? 'calc(50% - 7px)' : '100%', minWidth: '200px', flex: isHalfWidth ? '1 1 calc(50% - 7px)' : '1 1 100%' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: labelColor, marginBottom: '6px' }}>
+                    {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                  </label>
+                  <input
+                    type={inputType}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    value={formValues[fieldId] || ''}
+                    onChange={(e) => handleFieldChange(fieldId, e.target.value)}
+                    readOnly={!interactive}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13.5px',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            style={{
+              width: '100%',
+              background: btnBg,
+              color: btnColor,
+              border: 'none',
+              padding: '14px 24px',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '15px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+              transition: 'all 0.2s ease',
+              opacity: isSubmitting ? 0.8 : 1
+            }}
+          >
+            {isSubmitting ? 'Submitting...' : (el.buttonText || 'Submit Form')}
+          </button>
+        </form>
       )}
     </div>
   );
