@@ -1942,6 +1942,18 @@ export default function SitesView() {
               }}
             >
               {tab.label}
+              {tab.key === 'funnels' && funnels.length > 0 && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {funnels.length}
+                </span>
+              )}
               {tab.key === 'websites' && (
                 <span style={{
                   background: 'rgba(37, 99, 235, 0.12)',
@@ -1990,7 +2002,7 @@ export default function SitesView() {
                   {blogs.length}
                 </span>
               )}
-              {(tab.key === 'forms' || tab.key === 'surveys') && forms.length > 0 && (
+              {tab.key === 'forms' && forms.length > 0 && (
                 <span style={{
                   background: 'rgba(37, 99, 235, 0.12)',
                   color: '#2563eb',
@@ -2000,6 +2012,18 @@ export default function SitesView() {
                   borderRadius: '4px'
                 }}>
                   {forms.length}
+                </span>
+              )}
+              {tab.key === 'surveys' && surveys.length > 0 && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {surveys.length}
                 </span>
               )}
             </button>
