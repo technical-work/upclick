@@ -29,7 +29,8 @@ import {
   ShieldCheck,
   Smartphone,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Palette
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
