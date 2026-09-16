@@ -293,37 +293,39 @@ function OptionsManager({ value, onChange, lang = 'en', correctAnswer = '', onSe
                 }}
               />
 
-              {/* Set as Correct Answer Button */}
+              {/* Set as Correct Answer Button (Compact) */}
               {onSelectCorrectAnswer && (
                 <button
                   type="button"
                   onClick={() => handleToggleCorrect(opt)}
-                  title={isCorrect ? (isRtl ? 'إلغاء تحديد هذه كإجابة صحيحة' : 'Unmark correct answer') : (isRtl ? 'تعيين هذا الخيار كإجابة صحيحة لهذا السؤال' : 'Mark this option as correct answer')}
+                  title={isCorrect ? (isRtl ? 'إلغاء تحديد هذا الخيار كإجابة صحيحة' : 'Unmark correct answer') : (isRtl ? 'تعيين هذا الخيار كإجابة صحيحة' : 'Mark as correct answer')}
                   style={{
-                    border: isCorrect ? '1px solid #10b981' : '1px dashed #94a3b8',
+                    height: '26px',
+                    border: isCorrect ? '1px solid #10b981' : '1px solid #cbd5e1',
                     background: isCorrect ? '#ecfdf5' : '#f8fafc',
-                    color: isCorrect ? '#047857' : '#475569',
-                    borderRadius: '6px',
-                    padding: '5px 8px',
-                    fontSize: '11px',
-                    fontWeight: isCorrect ? '800' : '700',
+                    color: isCorrect ? '#047857' : '#64748b',
+                    borderRadius: '5px',
+                    padding: '2px 7px',
+                    fontSize: '10.5px',
+                    fontWeight: isCorrect ? '800' : '600',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '3px',
                     cursor: 'pointer',
                     flexShrink: 0,
+                    whiteSpace: 'nowrap',
                     transition: 'all 0.15s ease'
                   }}
                 >
                   {isCorrect ? (
                     <>
-                      <CheckCircle2 size={13} style={{ color: '#10b981' }} />
-                      <span>{isRtl ? '✅ الإجابة الصحيحة' : '✅ Correct'}</span>
+                      <CheckCircle2 size={11} style={{ color: '#10b981' }} />
+                      <span>{isRtl ? '✅ صحيحة' : '✅ Correct'}</span>
                     </>
                   ) : (
                     <>
-                      <Star size={12} style={{ color: '#94a3b8' }} />
-                      <span>{isRtl ? '⭐ تعيين كصحيح' : '⭐ Set Correct'}</span>
+                      <Star size={11} style={{ color: '#94a3b8' }} />
+                      <span>{isRtl ? '⭐ تعيين' : '⭐ Set'}</span>
                     </>
                   )}
                 </button>
@@ -334,20 +336,21 @@ function OptionsManager({ value, onChange, lang = 'en', correctAnswer = '', onSe
                 onClick={() => handleRemoveOption(optIdx)}
                 title={isRtl ? 'حذف هذا الخيار' : 'Delete Option'}
                 style={{
-                  width: '28px',
-                  height: '28px',
+                  width: '26px',
+                  height: '26px',
                   border: '1px solid #fee2e2',
                   background: '#fef2f2',
                   color: '#dc2626',
-                  borderRadius: '6px',
+                  borderRadius: '5px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  padding: 0
                 }}
               >
-                <Trash2 size={12} />
+                <Trash2 size={11} />
               </button>
             </div>
           );
