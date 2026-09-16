@@ -23,6 +23,7 @@ import {
   webinarsStorageKey,
   blogsStorageKey,
   formsStorageKey,
+  surveysStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
 import WebsiteListView from '../sites/websites/WebsiteListView';
@@ -53,6 +54,9 @@ import FormIntegrateModal from '../sites/forms/FormIntegrateModal';
 import LiveFormModal from '../sites/forms/LiveFormModal';
 import FormSubmissionsModal from '../sites/forms/FormSubmissionsModal';
 import { createBlankForm, createFormFromTemplate } from '../sites/forms/formTemplates';
+import SurveyListView from '../sites/surveys/SurveyListView';
+import SurveyBuilderView from '../sites/surveys/SurveyBuilderView';
+import { createBlankSurvey, createSurveyFromTemplate } from '../sites/surveys/surveyTemplates';
 import { 
   Plus, 
   Search, 
@@ -94,6 +98,7 @@ export default function SitesView() {
   const webinarPersistTimer = useRef(null);
   const blogPersistTimer = useRef(null);
   const formPersistTimer = useRef(null);
+  const surveyPersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
   const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
@@ -103,6 +108,8 @@ export default function SitesView() {
   const [selectedWebinar, setSelectedWebinar] = useState(null);
   const [selectedBlogSite, setSelectedBlogSite] = useState(null);
   const [selectedForm, setSelectedForm] = useState(null);
+  const [selectedSurvey, setSelectedSurvey] = useState(null);
+  const [isSurveyBuilderOpen, setIsSurveyBuilderOpen] = useState(false);
   const [isCreatingBlogSite, setIsCreatingBlogSite] = useState(false);
   const [isEditingBlogSite, setIsEditingBlogSite] = useState(false);
   const [activeBlogPost, setActiveBlogPost] = useState(null);
@@ -151,13 +158,14 @@ export default function SitesView() {
   // Active step index inside detail builder
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
-  // Load funnels / stores / websites / webinars / blogs / forms for the signed-in user only
+  // Load funnels / stores / websites / webinars / blogs / forms / surveys for the signed-in user only
   const [funnels, setFunnels] = useState([]);
   const [stores, setStores] = useState([]);
   const [websites, setWebsites] = useState([]);
   const [webinars, setWebinars] = useState([]);
   const [blogs, setBlogs] = useState([]);
   const [forms, setForms] = useState([]);
+  const [surveys, setSurveys] = useState([]);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -176,12 +184,15 @@ export default function SitesView() {
       setWebinars([]);
       setBlogs([]);
       setForms([]);
+      setSurveys([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
       setSelectedWebinar(null);
       setSelectedBlogSite(null);
       setSelectedForm(null);
+      setSelectedSurvey(null);
+      setIsSurveyBuilderOpen(false);
       setActiveBlogPost(null);
       loadedAccountUid.current = '';
       return;
@@ -195,6 +206,8 @@ export default function SitesView() {
       setSelectedWebinar(null);
       setSelectedBlogSite(null);
       setSelectedForm(null);
+      setSelectedSurvey(null);
+      setIsSurveyBuilderOpen(false);
       setActiveBlogPost(null);
       loadedAccountUid.current = accountUid;
     }
@@ -206,6 +219,7 @@ export default function SitesView() {
     const scopedWebinars = sitesForUser(readJsonList(webinarsStorageKey(accountUid)), accountUid);
     const scopedBlogs = sitesForUser(readJsonList(blogsStorageKey(accountUid)), accountUid);
     const scopedForms = sitesForUser(readJsonList(formsStorageKey(accountUid)), accountUid);
+    const scopedSurveys = sitesForUser(readJsonList(surveysStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
@@ -223,6 +237,9 @@ export default function SitesView() {
       : [];
     const gcForms = gcBelongsToAccount
       ? sitesForUser(GC?.upclickForms?.forms, accountUid)
+      : [];
+    const gcSurveys = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickSurveys?.surveys, accountUid)
       : [];
 
     // Sanitizers to clear any legacy demo stats from stored funnels, stores, webinars
@@ -351,7 +368,13 @@ export default function SitesView() {
       if (!prevMine.length && nextForms.length) return nextForms;
       return nextForms;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, isRtl]);
+    setSurveys((prev) => {
+      if (userChanged) return nextSurveys;
+      const prevMine = sitesForUser(prev, accountUid);
+      if (!prevMine.length && nextSurveys.length) return nextSurveys;
+      return nextSurveys;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, GC?.upclickSurveys?.surveys, isRtl]);
 
   const saveForms = (updatedList) => {
     if (!accountUid) return;
@@ -365,6 +388,23 @@ export default function SitesView() {
         ...GC,
         upclickForms: {
           forms: mine
+        }
+      });
+    }, 700);
+  };
+
+  const saveSurveys = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setSurveys(mine);
+    writeJsonList(surveysStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (surveyPersistTimer.current) clearTimeout(surveyPersistTimer.current);
+    surveyPersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickSurveys: {
+          surveys: mine
         }
       });
     }, 700);
@@ -496,6 +536,77 @@ export default function SitesView() {
     const match = forms.find((f) => f.id === selectedForm.id);
     if (match && match !== selectedForm) setSelectedForm(match);
   }, [forms, selectedForm]);
+
+  // Sync selectedSurvey
+  useEffect(() => {
+    if (!selectedSurvey) return;
+    const match = surveys.find((s) => s.id === selectedSurvey.id);
+    if (match && match !== selectedSurvey) setSelectedSurvey(match);
+  }, [surveys, selectedSurvey]);
+
+  // Survey Management Handlers
+  const handleCreateSurveyBlank = ({ name }) => {
+    const author = user?.displayName || user?.email?.split('@')[0] || 'Mohamed Hesham';
+    const newSurvey = createBlankSurvey(name, accountUid, author);
+    const owned = stampSiteOwner(newSurvey, accountUid);
+    const nextSurveys = [owned, ...surveys];
+    saveSurveys(nextSurveys);
+    setSelectedSurvey(owned);
+    setIsSurveyBuilderOpen(true);
+    if (showToast) showToast(isRtl ? 'تم إنشاء الاستبيان بنجاح' : 'Survey created successfully');
+  };
+
+  const handleCreateSurveyFromTemplate = (template, { name }) => {
+    const author = user?.displayName || user?.email?.split('@')[0] || 'Mohamed Hesham';
+    const newSurvey = createSurveyFromTemplate(template, name, accountUid, author);
+    const owned = stampSiteOwner(newSurvey, accountUid);
+    const nextSurveys = [owned, ...surveys];
+    saveSurveys(nextSurveys);
+    setSelectedSurvey(owned);
+    setIsSurveyBuilderOpen(true);
+    if (showToast) showToast(isRtl ? 'تم إنشاء الاستبيان من القالب بنجاح' : 'Survey created from template');
+  };
+
+  const handleSaveSurveyInBuilder = (updatedSurvey) => {
+    const owned = stampSiteOwner(updatedSurvey, accountUid);
+    const nextSurveys = surveys.map((s) => (s.id === owned.id ? owned : s));
+    saveSurveys(nextSurveys);
+    setSelectedSurvey(owned);
+  };
+
+  const handleDuplicateSurvey = (surveyToDup) => {
+    const dup = {
+      ...JSON.parse(JSON.stringify(surveyToDup)),
+      id: `survey_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: `${surveyToDup.name} (Copy)`,
+      updatedAt: new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      submissions: [],
+      analytics: { views: 0, completions: 0, completionRate: 0 }
+    };
+    const owned = stampSiteOwner(dup, accountUid);
+    const nextSurveys = [owned, ...surveys];
+    saveSurveys(nextSurveys);
+    if (showToast) showToast(isRtl ? 'تم تكرار الاستبيان' : 'Survey duplicated');
+  };
+
+  const handleDeleteSurvey = (surveyId) => {
+    const nextSurveys = surveys.filter((s) => s.id !== surveyId);
+    saveSurveys(nextSurveys);
+    if (selectedSurvey?.id === surveyId) setSelectedSurvey(null);
+    if (showToast) showToast(isRtl ? 'تم حذف الاستبيان' : 'Survey deleted');
+  };
+
+  const handleUpdateSurveyName = (surveyId, newName) => {
+    const nextSurveys = surveys.map((s) => (s.id === surveyId ? { ...s, name: newName } : s));
+    saveSurveys(nextSurveys);
+  };
 
   // Form Management Handlers
   const handleCreateFormBlank = (name) => {
@@ -1577,6 +1688,18 @@ export default function SitesView() {
     };
   }, [builderStoreMode, selectedStore]);
 
+  if (isSurveyBuilderOpen && selectedSurvey) {
+    return (
+      <SurveyBuilderView
+        survey={selectedSurvey}
+        onBack={() => setIsSurveyBuilderOpen(false)}
+        onSave={handleSaveSurveyInBuilder}
+        isRtl={isRtl}
+        showToast={showToast}
+      />
+    );
+  }
+
   return (
     <div style={{ paddingBottom: '50px', animation: 'fadeIn 0.3s ease' }}>
       
@@ -1950,7 +2073,22 @@ export default function SitesView() {
             showToast={showToast}
           />
         )
-      ) : (activeSubTab === 'forms' || activeSubTab === 'surveys') ? (
+      ) : activeSubTab === 'surveys' ? (
+        <SurveyListView
+          surveys={surveys}
+          onOpenBuilder={(s) => {
+            setSelectedSurvey(s);
+            setIsSurveyBuilderOpen(true);
+          }}
+          onCreateBlank={handleCreateSurveyBlank}
+          onCreateFromTemplate={handleCreateSurveyFromTemplate}
+          onDeleteSurvey={handleDeleteSurvey}
+          onDuplicateSurvey={handleDuplicateSurvey}
+          onUpdateSurveyName={handleUpdateSurveyName}
+          isRtl={isRtl}
+          showToast={showToast}
+        />
+      ) : activeSubTab === 'forms' ? (
         <FormListView
           forms={forms}
           isRtl={isRtl}

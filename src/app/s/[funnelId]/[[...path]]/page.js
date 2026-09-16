@@ -4,6 +4,7 @@ import React, { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import LiveSiteView from '@/components/sites/LiveSiteView';
 import PublicFormRunner from '@/components/sites/forms/PublicFormRunner';
+import PublicSurveyRunner from '@/components/sites/surveys/PublicSurveyRunner';
 
 function PublicSiteContent() {
   const params = useParams();
@@ -16,6 +17,14 @@ function PublicSiteContent() {
   const path = segments.length ? `/${segments.join('/')}` : '/';
   const productId = searchParams?.get('productId') || '';
   const isStore = funnelId.startsWith('store_');
+
+  // Handle /s/survey/[surveyId] or /s/survey_[id] or /s/srv_[id]
+  if (rawFunnelId === 'survey' && segments[0]) {
+    return <PublicSurveyRunner surveyId={segments[0]} />;
+  }
+  if (funnelId.startsWith('survey_') || funnelId.startsWith('srv_')) {
+    return <PublicSurveyRunner surveyId={funnelId} />;
+  }
 
   // Handle /s/form/[formId] or /s/form_[id]
   if (rawFunnelId === 'form' && segments[0]) {

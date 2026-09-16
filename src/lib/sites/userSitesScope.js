@@ -4,6 +4,7 @@ export const LEGACY_WEBSITES_KEY = 'upklick_websites_v1';
 export const LEGACY_WEBINARS_KEY = 'upklick_webinars_v1';
 export const LEGACY_BLOGS_KEY = 'upklick_blogs_v1';
 export const LEGACY_FORMS_KEY = 'upklick_forms_v1';
+export const LEGACY_SURVEYS_KEY = 'upklick_surveys_v1';
 
 export function funnelsStorageKey(uid) {
   return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
@@ -27,6 +28,10 @@ export function blogsStorageKey(uid) {
 
 export function formsStorageKey(uid) {
   return uid ? `${LEGACY_FORMS_KEY}_${uid}` : LEGACY_FORMS_KEY;
+}
+
+export function surveysStorageKey(uid) {
+  return uid ? `${LEGACY_SURVEYS_KEY}_${uid}` : LEGACY_SURVEYS_KEY;
 }
 
 export function stampSiteOwner(item, uid) {
@@ -246,6 +251,90 @@ export function trackFormView(formId) {
     }
   } catch (err) {
     console.error('Failed to track form view:', err);
+  }
+}
+
+export function findLocalSurveyById(surveyId) {
+  if (!surveyId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_SURVEYS_KEY)) continue;
+      const found = readJsonList(key).find((s) => s?.id === surveyId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function saveSurveySubmission(surveyId, submission) {
+  if (!surveyId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_SURVEYS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((s) => {
+        if (s?.id === surveyId) {
+          changed = true;
+          const subs = [submission, ...(s.submissions || [])];
+          const views = (s.analytics?.views || 0) + 1;
+          const completions = (s.analytics?.completions || 0) + 1;
+          return {
+            ...s,
+            submissions: subs,
+            analytics: {
+              views,
+              completions,
+              submissions: subs.length,
+              completionRate: views > 0 ? Math.round((completions / views) * 100) : 100
+            }
+          };
+        }
+        return s;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to save survey submission:', err);
+  }
+}
+
+export function trackSurveyView(surveyId) {
+  if (!surveyId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_SURVEYS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((s) => {
+        if (s?.id === surveyId) {
+          changed = true;
+          const views = (s.analytics?.views || 0) + 1;
+          const completions = s.analytics?.completions || s.submissions?.length || 0;
+          return {
+            ...s,
+            analytics: {
+              ...(s.analytics || {}),
+              views,
+              completionRate: views > 0 ? Math.round((completions / views) * 100) : 0
+            }
+          };
+        }
+        return s;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to track survey view:', err);
   }
 }
 
