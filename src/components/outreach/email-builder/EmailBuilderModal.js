@@ -1192,6 +1192,9 @@ export default function EmailBuilderModal({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
       {/* Custom Confirmation Modal for Applying Templates */}
       {pendingTemplate && (
         <div
