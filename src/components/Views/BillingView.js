@@ -184,15 +184,6 @@ export default function BillingView() {
   let statusText = L('Active Subscription', 'اشتراك نشط');
   let expiryDateString = '—';
 
-  const getMs = (val) => {
-    if (!val) return 0;
-    if (typeof val === 'string') return new Date(val).getTime();
-    if (typeof val === 'number') return val;
-    if (val.toDate) return val.toDate().getTime();
-    if (val.seconds) return val.seconds * 1000;
-    return 0;
-  };
-
   if (userData?.expiresAt) {
     const expiresMs = getMs(userData.expiresAt);
     expiryDateString = new Date(expiresMs).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
