@@ -177,6 +177,8 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [detailsTarget, setDetailsTarget] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -493,10 +495,25 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
     { ok: confirmText.trim().toUpperCase() === 'SEND', label: 'SEND' }
   ];
 
-  const filteredCampaigns = campaigns.filter((c) => {
-    if (filterStatus === 'all') return true;
-    return c.status === filterStatus;
-  });
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter((c) => {
+      if (filterStatus === 'all') return true;
+      return c.status === filterStatus;
+    });
+  }, [campaigns, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCampaigns.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedCampaigns = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredCampaigns.slice(start, start + pageSize);
+  }, [filteredCampaigns, currentPage, pageSize]);
 
   return (
     <div className="outreach-page" style={{ animation: 'fadeSlide 0.35s ease' }}>
@@ -1247,7 +1264,7 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
               <button
                 key={f.id}
                 type="button"
-                onClick={() => setFilterStatus(f.id)}
+                onClick={() => { setFilterStatus(f.id); setCurrentPage(1); }}
                 style={{
                   background: filterStatus === f.id ? 'rgba(255, 107, 53, 0.15)' : 'transparent',
                   border: filterStatus === f.id ? '1px solid rgba(255, 107, 53, 0.4)' : '1px solid transparent',
@@ -1283,7 +1300,7 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
                     {t('لا توجد حملات إيميل مطابقة', 'No matching email campaigns found')}
                   </td>
                 </tr>
-              ) : filteredCampaigns.map((c) => {
+              ) : paginatedCampaigns.map((c) => {
                 const total = c.total || c.previewCount || 0;
                 const pct = total ? Math.min(100, Math.round(((c.sent || 0) / total) * 100)) : 0;
                 const isOpen = draft?.id === c.id;
@@ -1370,6 +1387,110 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {filteredCampaigns.length > 0 && (
+          <div
+            style={{
+              padding: '12px 20px',
+              borderTop: '1px solid var(--line)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              background: 'rgba(255, 255, 255, 0.015)'
+            }}
+          >
+            {/* Summary & Page Size */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '12px', color: 'var(--text3)' }}>
+              <span>
+                {t(
+                  `عرض ${(currentPage - 1) * pageSize + 1} إلى ${Math.min(currentPage * pageSize, filteredCampaigns.length)} من أصل ${filteredCampaigns.length} حملة`,
+                  `Showing ${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, filteredCampaigns.length)} of ${filteredCampaigns.length} campaigns`
+                )}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{t('لكل صفحة:', 'Per page:')}</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    background: 'var(--bg3)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--text)',
+                    borderRadius: '6px',
+                    padding: '2px 6px',
+                    fontSize: '11.5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Pagination Number Buttons */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: '4px 10px', fontSize: '12px', opacity: currentPage <= 1 ? 0.4 : 1 }}
+                >
+                  {isRTL ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                  <span>{t('السابق', 'Prev')}</span>
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                  const isCur = p === currentPage;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '6px',
+                        background: isCur ? '#FF6B35' : 'var(--bg3)',
+                        color: isCur ? '#ffffff' : 'var(--text2)',
+                        border: isCur ? 'none' : '1px solid var(--line)',
+                        fontWeight: isCur ? 800 : 600,
+                        fontSize: '11.5px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: '4px 10px', fontSize: '12px', opacity: currentPage >= totalPages ? 0.4 : 1 }}
+                >
+                  <span>{t('التالي', 'Next')}</span>
+                  {isRTL ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Visual Email Builder Modal */}
