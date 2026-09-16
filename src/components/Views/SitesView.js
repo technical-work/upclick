@@ -51,6 +51,7 @@ import FormListView from '../sites/forms/FormListView';
 import CreateFormModal from '../sites/forms/CreateFormModal';
 import FormIntegrateModal from '../sites/forms/FormIntegrateModal';
 import LiveFormModal from '../sites/forms/LiveFormModal';
+import FormSubmissionsModal from '../sites/forms/FormSubmissionsModal';
 import { createBlankForm, createFormFromTemplate } from '../sites/forms/formTemplates';
 import { 
   Plus, 
@@ -109,6 +110,8 @@ export default function SitesView() {
   const [isCreateFormModalOpen, setIsCreateFormModalOpen] = useState(false);
   const [isIntegrateFormModalOpen, setIsIntegrateFormModalOpen] = useState(false);
   const [integratingForm, setIntegratingForm] = useState(null);
+  const [isSubmissionsModalOpen, setIsSubmissionsModalOpen] = useState(false);
+  const [submissionsModalForm, setSubmissionsModalForm] = useState(null);
   const [previewingLiveForm, setPreviewingLiveForm] = useState(null);
   const [detailTab, setDetailTab] = useState('steps');
   const [stepOverviewTab, setStepOverviewTab] = useState('overview');
@@ -1946,8 +1949,8 @@ export default function SitesView() {
           onDuplicateForm={handleDuplicateForm}
           onDeleteForm={handleDeleteForm}
           onOpenSubmissions={(f) => {
-            setIntegratingForm(f);
-            setIsIntegrateFormModalOpen(true);
+            setSubmissionsModalForm(f);
+            setIsSubmissionsModalOpen(true);
           }}
           onOpenIntegrate={(f) => {
             setIntegratingForm(f);
@@ -2361,6 +2364,18 @@ export default function SitesView() {
           setIntegratingForm(null);
         }}
         form={integratingForm}
+        isRtl={isRtl}
+        showToast={showToast}
+      />
+
+      {/* FORM SUBMISSIONS MODAL */}
+      <FormSubmissionsModal
+        isOpen={isSubmissionsModalOpen}
+        onClose={() => {
+          setIsSubmissionsModalOpen(false);
+          setSubmissionsModalForm(null);
+        }}
+        form={submissionsModalForm}
         isRtl={isRtl}
         showToast={showToast}
       />
