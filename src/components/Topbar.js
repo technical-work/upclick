@@ -201,6 +201,33 @@ export default function Topbar() {
 
 
       <div className="tb-actions">
+        {/* Facebook +200 Credits Claim Bonus Button */}
+        {!userData?.facebookRewardClaimed && (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open_fb_reward_modal'))}
+            style={{
+              background: 'linear-gradient(135deg, rgba(24, 119, 242, 0.22), rgba(255, 107, 53, 0.22))',
+              border: '1px solid rgba(24, 119, 242, 0.5)',
+              borderRadius: '10px',
+              padding: '4px 12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11.5px',
+              fontWeight: '700',
+              color: '#fff',
+              cursor: 'pointer',
+              boxShadow: '0 0 16px rgba(24, 119, 242, 0.3)',
+              transition: 'all 0.2s ease'
+            }}
+            title={L('Claim +200 Free AI Credits', 'احصل على 200 كريديت هدية مجانية')}
+          >
+            <span>🎁</span>
+            <span style={{ color: '#FFD700' }}>+200 {L('Credits', 'كريديت')}</span>
+          </button>
+        )}
+
         {/* EGP Rate Box */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(255,107,53,0.06), rgba(108,53,255,0.06))',

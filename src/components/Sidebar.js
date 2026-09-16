@@ -483,6 +483,36 @@ export default function Sidebar() {
           </div>
         )}
 
+        {!collapsed && !userData?.facebookRewardClaimed && (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('open_fb_reward_modal'))}
+            style={{
+              width: '100%',
+              fontSize: '11.5px',
+              fontWeight: '800',
+              color: '#fff',
+              marginTop: '4px',
+              marginBottom: '4px',
+              background: 'linear-gradient(135deg, rgba(24, 119, 242, 0.22), rgba(255, 107, 53, 0.22))',
+              border: '1px solid rgba(24, 119, 242, 0.45)',
+              padding: '6px 10px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 0 15px rgba(24, 119, 242, 0.2)',
+              transition: 'all 0.2s ease',
+              boxSizing: 'border-box'
+            }}
+          >
+            <span>🎁</span>
+            <span style={{ color: '#FFD700' }}>{isRtl ? '+200 كريديت هدية فيسبوك' : '+200 FB Group Gift'}</span>
+          </button>
+        )}
+
         {/* Logout button */}
         <button
           className="sb-logout-btn"
