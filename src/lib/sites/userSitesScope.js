@@ -184,3 +184,68 @@ export function findLocalFormById(formId) {
   }
   return null;
 }
+
+export function saveFormSubmission(formId, submission) {
+  if (!formId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FORMS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((f) => {
+        if (f?.id === formId) {
+          changed = true;
+          const subs = [submission, ...(f.submissions || [])];
+          const views = (f.analytics?.views || 0) + 1;
+          return {
+            ...f,
+            submissions: subs,
+            analytics: {
+              views,
+              submissions: subs.length
+            }
+          };
+        }
+        return f;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to save form submission:', err);
+  }
+}
+
+export function trackFormView(formId) {
+  if (!formId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FORMS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((f) => {
+        if (f?.id === formId) {
+          changed = true;
+          const views = (f.analytics?.views || 0) + 1;
+          return {
+            ...f,
+            analytics: {
+              ...(f.analytics || {}),
+              views
+            }
+          };
+        }
+        return f;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to track form view:', err);
+  }
+}
+

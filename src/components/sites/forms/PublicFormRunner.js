@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { findLocalFormById } from '@/lib/sites/userSitesScope';
+import { findLocalFormById, saveFormSubmission, trackFormView } from '@/lib/sites/userSitesScope';
 
 export default function PublicFormRunner({ formId }) {
   const [form, setForm] = useState(null);
@@ -18,6 +18,7 @@ export default function PublicFormRunner({ formId }) {
     const found = findLocalFormById(formId);
     if (found) {
       setForm(found);
+      trackFormView(formId);
     }
     setLoading(false);
   }, [formId]);
@@ -62,6 +63,8 @@ export default function PublicFormRunner({ formId }) {
       phone: formData.f_phone || '',
       data: { ...formData }
     };
+
+    saveFormSubmission(form.id, submissionPayload);
 
     setTimeout(() => {
       setIsSubmitting(false);

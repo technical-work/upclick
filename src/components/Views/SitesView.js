@@ -502,7 +502,7 @@ export default function SitesView() {
     const owned = stampSiteOwner(newForm, accountUid);
     const nextForms = [owned, ...forms];
     saveForms(nextForms);
-    handleOpenBuilderForForm(owned);
+    setSelectedForm(owned);
     if (showToast) showToast(isRtl ? 'تم إنشاء النموذج بنجاح' : 'Form created successfully');
   };
 
@@ -512,7 +512,7 @@ export default function SitesView() {
     const owned = stampSiteOwner(newForm, accountUid);
     const nextForms = [owned, ...forms];
     saveForms(nextForms);
-    handleOpenBuilderForForm(owned);
+    setSelectedForm(owned);
     if (showToast) showToast(isRtl ? 'تم إنشاء النموذج من القالب بنجاح' : 'Form created from template');
   };
 
@@ -1938,22 +1938,33 @@ export default function SitesView() {
           />
         )
       ) : (activeSubTab === 'forms' || activeSubTab === 'surveys') ? (
-        <FormListView
-          forms={forms}
-          isRtl={isRtl}
-          onSelectForm={(f) => handleOpenBuilderForForm(f)}
-          onOpenFormEditor={(f) => handleOpenBuilderForForm(f)}
-          onOpenCreateModal={() => setIsCreateFormModalOpen(true)}
-          onDuplicateForm={handleDuplicateForm}
-          onDeleteForm={handleDeleteForm}
-          onOpenSubmissions={(f) => setPreviewingLiveForm(f)}
-          onOpenIntegrate={(f) => {
-            setIntegratingForm(f);
-            setIsIntegrateFormModalOpen(true);
-          }}
-          onPreviewLiveForm={(f) => setPreviewingLiveForm(f)}
-          showToast={showToast}
-        />
+        selectedForm ? (
+          <FormBuilderView
+            form={selectedForm}
+            isRtl={isRtl}
+            onBack={() => setSelectedForm(null)}
+            onSaveForm={handleUpdateForm}
+            onOpenVisualBuilder={(f) => handleOpenBuilderForForm(f)}
+            showToast={showToast}
+          />
+        ) : (
+          <FormListView
+            forms={forms}
+            isRtl={isRtl}
+            onSelectForm={(f) => setSelectedForm(f)}
+            onOpenFormEditor={(f) => setSelectedForm(f)}
+            onOpenCreateModal={() => setIsCreateFormModalOpen(true)}
+            onDuplicateForm={handleDuplicateForm}
+            onDeleteForm={handleDeleteForm}
+            onOpenSubmissions={(f) => setSelectedForm(f)}
+            onOpenIntegrate={(f) => {
+              setIntegratingForm(f);
+              setIsIntegrateFormModalOpen(true);
+            }}
+            onPreviewLiveForm={(f) => setPreviewingLiveForm(f)}
+            showToast={showToast}
+          />
+        )
       ) : (
         /* RENDER FUNNELS VIEW */
         selectedFunnel ? (

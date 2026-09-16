@@ -551,7 +551,7 @@ export default function FormListView({
                               }}
                             >
                               <Edit3 size={14} style={{ color: 'var(--a)' }} />
-                              <span>{isRtl ? 'فتح في المنشئ المرئي' : 'Open in Visual Builder'}</span>
+                              <span>{isRtl ? 'تعديل النموذج' : 'Edit Form'}</span>
                             </button>
 
                             <button
