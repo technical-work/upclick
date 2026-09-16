@@ -409,12 +409,13 @@ export default function BillingView() {
   const creditProgress = Math.min(100, Math.max(0, (userCredits / totalPlanCredits) * 100));
 
   return (
-    <div className="pg on" id="pg-billing" style={{ maxWidth: '1080px', margin: '0 auto' }}>
+    <div className="pg on" id="pg-billing" style={{ maxWidth: '1140px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
       <style>{`
         .billing-grid {
           display: grid;
           grid-template-columns: 2fr 1.2fr;
           gap: 20px;
+          width: 100%;
         }
         .billing-nav {
           display: flex;
@@ -422,11 +423,14 @@ export default function BillingView() {
           margin-bottom: 20px;
           border-bottom: 1px solid var(--edge);
           padding-bottom: 10px;
+          width: 100%;
+          overflow-x: auto;
         }
         .billing-nav button {
           font-weight: 700;
           font-size: 13px;
           padding: 8px 16px;
+          white-space: nowrap;
         }
         .credit-bar-container {
           background: var(--surface2);
@@ -445,9 +449,10 @@ export default function BillingView() {
         }
         .recharge-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
           gap: 12px;
           margin-top: 14px;
+          width: 100%;
         }
         .recharge-card {
           border: 1px solid var(--brd);
@@ -460,6 +465,8 @@ export default function BillingView() {
           align-items: center;
           justify-content: space-between;
           transition: transform 0.2s, border-color 0.2s;
+          box-sizing: border-box;
+          width: 100%;
         }
         .recharge-card:hover {
           transform: translateY(-2px);
@@ -475,15 +482,24 @@ export default function BillingView() {
         .card-row:last-child {
           border-bottom: none;
         }
+        @media (max-width: 1024px) {
+          .billing-grid {
+            grid-template-columns: 1fr;
+          }
+        }
         @media (max-width: 768px) {
           .billing-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+          .recharge-grid {
             grid-template-columns: 1fr;
           }
           .billing-nav {
             flex-wrap: wrap;
           }
           .billing-nav button {
-            flex: 1 1 calc(50% - 8px);
+            flex: 1 1 100%;
             text-align: center;
           }
         }

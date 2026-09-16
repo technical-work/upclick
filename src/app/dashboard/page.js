@@ -214,10 +214,18 @@ function DashboardShell() {
   if (isExpired) {
     return (
       <div style={{
-        minHeight: '100vh',
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        overflowY: 'auto',
+        overflowX: 'hidden',
         backgroundColor: '#0a0a0f',
         backgroundImage: 'radial-gradient(circle at top right, rgba(255, 107, 53, 0.08), transparent 40%), radial-gradient(circle at bottom left, rgba(108, 53, 255, 0.08), transparent 40%)',
-        fontFamily: '"IBM Plex Sans Arabic", "DM Sans", sans-serif',
+        fontFamily: lang === 'ar' ? '"IBM Plex Sans Arabic", sans-serif' : '"DM Sans", sans-serif',
+        direction: lang === 'ar' ? 'rtl' : 'ltr',
+        zIndex: 9999,
+        boxSizing: 'border-box'
       }}>
         {/* Minimal restricted Topbar/Header */}
         <div style={{
@@ -229,7 +237,9 @@ function DashboardShell() {
           alignItems: 'center',
           position: 'sticky',
           top: 0,
-          zIndex: 100
+          zIndex: 100,
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {(() => {
