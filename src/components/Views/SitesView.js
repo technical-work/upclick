@@ -25,6 +25,7 @@ import {
   formsStorageKey,
   surveysStorageKey,
   quizzesStorageKey,
+  qrCodesStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
 import WebsiteListView from '../sites/websites/WebsiteListView';
@@ -60,6 +61,10 @@ import SurveyBuilderView from '../sites/surveys/SurveyBuilderView';
 import { createBlankSurvey, createSurveyFromTemplate } from '../sites/surveys/surveyTemplates';
 import QuizListView from '../sites/quizzes/QuizListView';
 import { QUIZ_TEMPLATES } from '../sites/quizzes/quizTemplates';
+import QRCodeListView from '../sites/qrcodes/QRCodeListView';
+import CreateQRCodeModal from '../sites/qrcodes/CreateQRCodeModal';
+import QRAnalyticsModal from '../sites/qrcodes/QRAnalyticsModal';
+import BulkQRModal from '../sites/qrcodes/BulkQRModal';
 import { 
   Plus, 
   Search, 
@@ -103,6 +108,7 @@ export default function SitesView() {
   const formPersistTimer = useRef(null);
   const surveyPersistTimer = useRef(null);
   const quizPersistTimer = useRef(null);
+  const qrCodesPersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
   const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
@@ -176,6 +182,11 @@ export default function SitesView() {
   const [forms, setForms] = useState([]);
   const [surveys, setSurveys] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
+  const [qrCodes, setQrCodes] = useState([]);
+  const [isCreateQRModalOpen, setIsCreateQRModalOpen] = useState(false);
+  const [editingQR, setEditingQR] = useState(null);
+  const [isQRAnalyticsOpen, setIsQRAnalyticsOpen] = useState(false);
+  const [isBulkQRModalOpen, setIsBulkQRModalOpen] = useState(false);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -196,6 +207,7 @@ export default function SitesView() {
       setForms([]);
       setSurveys([]);
       setQuizzes([]);
+      setQrCodes([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
@@ -234,6 +246,7 @@ export default function SitesView() {
     const scopedForms = sitesForUser(readJsonList(formsStorageKey(accountUid)), accountUid);
     const scopedSurveys = sitesForUser(readJsonList(surveysStorageKey(accountUid)), accountUid);
     const scopedQuizzes = sitesForUser(readJsonList(quizzesStorageKey(accountUid)), accountUid);
+    const scopedQRCodes = sitesForUser(readJsonList(qrCodesStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
@@ -257,6 +270,9 @@ export default function SitesView() {
       : [];
     const gcQuizzes = gcBelongsToAccount
       ? sitesForUser(GC?.upclickQuizzes?.quizzes, accountUid)
+      : [];
+    const gcQRCodes = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickQRCodes?.qrCodes, accountUid)
       : [];
 
     // Sanitizers to clear any legacy demo stats from stored funnels, stores, webinars
@@ -359,6 +375,7 @@ export default function SitesView() {
         submissions: []
       }
     ]), 'quiz');
+    const nextQRCodes = dedupeSitesList(gcQRCodes.length ? gcQRCodes : scopedQRCodes, 'qr');
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
@@ -408,7 +425,13 @@ export default function SitesView() {
       if (!prevMine.length && nextQuizzes.length) return nextQuizzes;
       return nextQuizzes;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, GC?.upclickSurveys?.surveys, GC?.upclickQuizzes?.quizzes, isRtl]);
+    setQrCodes((prev) => {
+      if (userChanged) return nextQRCodes;
+      const prevMine = sitesForUser(prev, accountUid);
+      if (!prevMine.length && nextQRCodes.length) return nextQRCodes;
+      return nextQRCodes;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, GC?.upclickSurveys?.surveys, GC?.upclickQuizzes?.quizzes, GC?.upclickQRCodes?.qrCodes, isRtl]);
 
   const saveQuizzes = (updatedList) => {
     if (!accountUid) return;
@@ -454,6 +477,23 @@ export default function SitesView() {
         ...GC,
         upclickQuizzes: {
           quizzes: mine
+        }
+      });
+    }, 700);
+  };
+
+  const saveQRCodes = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setQrCodes(mine);
+    writeJsonList(qrCodesStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (qrCodesPersistTimer.current) clearTimeout(qrCodesPersistTimer.current);
+    qrCodesPersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickQRCodes: {
+          qrCodes: mine
         }
       });
     }, 700);
@@ -664,6 +704,83 @@ export default function SitesView() {
       window.removeEventListener('focus', reloadQuizzesFromStorage);
     };
   }, [accountUid]);
+
+  // Live listener for QR Code Updates across tabs and scans
+  useEffect(() => {
+    if (!accountUid) return;
+    const reloadQRCodesFromStorage = () => {
+      try {
+        const stored = readJsonList(qrCodesStorageKey(accountUid));
+        const scoped = sitesForUser(stored, accountUid);
+        if (scoped) {
+          setQrCodes((prev) => {
+            const isDifferent = JSON.stringify(scoped) !== JSON.stringify(prev);
+            return isDifferent ? scoped : prev;
+          });
+        }
+      } catch (err) {
+        console.error('Error reloading QR codes from storage:', err);
+      }
+    };
+
+    window.addEventListener('storage', reloadQRCodesFromStorage);
+    window.addEventListener('upclick_qr_codes_updated', reloadQRCodesFromStorage);
+    window.addEventListener('focus', reloadQRCodesFromStorage);
+
+    return () => {
+      window.removeEventListener('storage', reloadQRCodesFromStorage);
+      window.removeEventListener('upclick_qr_codes_updated', reloadQRCodesFromStorage);
+      window.removeEventListener('focus', reloadQRCodesFromStorage);
+    };
+  }, [accountUid]);
+
+  // QR Codes Management Handlers
+  const handleCreateOrUpdateQR = (qrData) => {
+    const isEditing = qrCodes.some((q) => q.id === qrData.id);
+    let updated;
+    if (isEditing) {
+      updated = qrCodes.map((q) => (q.id === qrData.id ? { ...q, ...qrData } : q));
+    } else {
+      updated = [qrData, ...qrCodes];
+    }
+    saveQRCodes(updated);
+    setIsCreateQRModalOpen(false);
+    setEditingQR(null);
+  };
+
+  const handleDeleteQR = (qrId) => {
+    const updated = qrCodes.filter((q) => q.id !== qrId);
+    saveQRCodes(updated);
+    showToast(isRtl ? 'تم حذف رمز QR بنجاح' : 'QR code deleted successfully');
+  };
+
+  const handleBulkDeleteQR = (qrIds) => {
+    const idSet = new Set(qrIds);
+    const updated = qrCodes.filter((q) => !idSet.has(q.id));
+    saveQRCodes(updated);
+    showToast(isRtl ? `تم حذف ${qrIds.length} رمز QR` : `Deleted ${qrIds.length} QR codes`);
+  };
+
+  const handleDuplicateQR = (qr) => {
+    const duplicate = {
+      ...qr,
+      id: `qr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      name: `${qr.name || 'QR'} (Copy)`,
+      createdAt: new Date().toISOString(),
+      scans: 0,
+      analytics: { totalScans: 0, uniqueScans: 0 },
+      scanLogs: []
+    };
+    saveQRCodes([duplicate, ...qrCodes]);
+    showToast(isRtl ? 'تم تكرار رمز QR بنجاح' : 'QR code duplicated successfully');
+  };
+
+  const handleBulkCreateQR = (newQRs) => {
+    const stamped = (newQRs || []).map((q) => stampSiteOwner(q, accountUid));
+    saveQRCodes([...stamped, ...qrCodes]);
+    setIsBulkQRModalOpen(false);
+    showToast(isRtl ? `تم إنشاء ${stamped.length} رمز QR بنجاح` : `Successfully created ${stamped.length} QR codes`);
+  };
 
   // Quiz Management Handlers
   const handleOpenBuilderForQuiz = (quizToOpen) => {
@@ -2587,6 +2704,18 @@ export default function SitesView() {
                   {quizzes.length}
                 </span>
               )}
+              {tab.key === 'qr-codes' && qrCodes.length > 0 && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {qrCodes.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -2842,6 +2971,25 @@ export default function SitesView() {
             setIsIntegrateFormModalOpen(true);
           }}
           onPreviewLiveForm={(f) => setPreviewingLiveForm(f)}
+          showToast={showToast}
+        />
+      ) : activeSubTab === 'qr-codes' ? (
+        <QRCodeListView
+          qrCodes={qrCodes}
+          isRtl={isRtl}
+          onOpenCreate={() => {
+            setEditingQR(null);
+            setIsCreateQRModalOpen(true);
+          }}
+          onEditQR={(qr) => {
+            setEditingQR(qr);
+            setIsCreateQRModalOpen(true);
+          }}
+          onDuplicateQR={handleDuplicateQR}
+          onDeleteQR={handleDeleteQR}
+          onBulkDelete={handleBulkDeleteQR}
+          onOpenAnalytics={() => setIsQRAnalyticsOpen(true)}
+          onOpenBulkModal={() => setIsBulkQRModalOpen(true)}
           showToast={showToast}
         />
       ) : (
@@ -3274,6 +3422,47 @@ export default function SitesView() {
         onSubmitResponse={handleSubmitLiveFormResponse}
         showToast={showToast}
       />
+
+      {/* CREATE / EDIT QR CODE MODAL */}
+      {isCreateQRModalOpen && (
+        <CreateQRCodeModal
+          isOpen={isCreateQRModalOpen}
+          isRtl={isRtl}
+          onClose={() => {
+            setIsCreateQRModalOpen(false);
+            setEditingQR(null);
+          }}
+          onSave={handleCreateOrUpdateQR}
+          existingQR={editingQR}
+          funnels={funnels}
+          forms={forms}
+          surveys={surveys}
+          quizzes={quizzes}
+          showToast={showToast}
+        />
+      )}
+
+      {/* QR ANALYTICS MODAL */}
+      {isQRAnalyticsOpen && (
+        <QRAnalyticsModal
+          isOpen={isQRAnalyticsOpen}
+          isRtl={isRtl}
+          qrCodes={qrCodes}
+          onClose={() => setIsQRAnalyticsOpen(false)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* BULK QR MODAL */}
+      {isBulkQRModalOpen && (
+        <BulkQRModal
+          isOpen={isBulkQRModalOpen}
+          isRtl={isRtl}
+          onClose={() => setIsBulkQRModalOpen(false)}
+          onBulkCreate={handleBulkCreateQR}
+          showToast={showToast}
+        />
+      )}
 
     </div>
   );

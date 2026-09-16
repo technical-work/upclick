@@ -6,6 +6,7 @@ export const LEGACY_BLOGS_KEY = 'upklick_blogs_v1';
 export const LEGACY_FORMS_KEY = 'upklick_forms_v1';
 export const LEGACY_SURVEYS_KEY = 'upklick_surveys_v1';
 export const LEGACY_QUIZZES_KEY = 'upklick_quizzes_v1';
+export const LEGACY_QR_CODES_KEY = 'upklick_qr_codes_v1';
 
 export function funnelsStorageKey(uid) {
   return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
@@ -37,6 +38,10 @@ export function surveysStorageKey(uid) {
 
 export function quizzesStorageKey(uid) {
   return uid ? `${LEGACY_QUIZZES_KEY}_${uid}` : LEGACY_QUIZZES_KEY;
+}
+
+export function qrCodesStorageKey(uid) {
+  return uid ? `${LEGACY_QR_CODES_KEY}_${uid}` : LEGACY_QR_CODES_KEY;
 }
 
 export function stampSiteOwner(item, uid) {
@@ -459,6 +464,85 @@ export function trackQuizView(quizId) {
   } catch (err) {
     console.error('Failed to track quiz view:', err);
   }
+}
+
+function isQRCodeKey(key) {
+  if (!key) return false;
+  return key.startsWith(LEGACY_QR_CODES_KEY) || key.startsWith('upklick_qr_codes') || key.startsWith('upclick_qr_codes') || key.includes('qr_codes');
+}
+
+function matchesQRCodeId(targetId, searchId) {
+  if (!targetId || !searchId) return false;
+  if (targetId === searchId) return true;
+  const cleanT = String(targetId).trim().replace(/^(qr_|qrcode_|QR-)+/g, '');
+  const cleanS = String(searchId).trim().replace(/^(qr_|qrcode_|QR-)+/g, '');
+  return cleanT.toLowerCase() === cleanS.toLowerCase();
+}
+
+export function findLocalQRCodeById(qrId) {
+  if (!qrId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQRCodeKey(key)) continue;
+      const found = readJsonList(key).find((q) => matchesQRCodeId(q?.id, qrId));
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function trackQRCodeScan(qrId) {
+  if (!qrId || typeof window === 'undefined') return null;
+  let updatedQR = null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQRCodeKey(key)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((qr) => {
+        if (matchesQRCodeId(qr?.id, qrId)) {
+          changed = true;
+          const totalScans = (qr.analytics?.totalScans || qr.scans || 0) + 1;
+          const uniqueScans = (qr.analytics?.uniqueScans || 0) + 1;
+          const logs = [
+            {
+              id: `scan_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              scannedAt: new Date().toISOString(),
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
+              device: typeof navigator !== 'undefined' && /mobile/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'
+            },
+            ...(Array.isArray(qr.scanLogs) ? qr.scanLogs : [])
+          ];
+          updatedQR = {
+            ...qr,
+            scans: totalScans,
+            analytics: {
+              ...(qr.analytics || {}),
+              totalScans,
+              uniqueScans
+            },
+            scanLogs: logs
+          };
+          return updatedQR;
+        }
+        return qr;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('upclick_qr_codes_updated', { detail: { qrId, updatedQR } }));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  } catch (err) {
+    console.error('Failed to track QR code scan:', err);
+  }
+  return updatedQR;
 }
 
 

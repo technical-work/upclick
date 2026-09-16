@@ -6,6 +6,7 @@ import LiveSiteView from '@/components/sites/LiveSiteView';
 import PublicFormRunner from '@/components/sites/forms/PublicFormRunner';
 import PublicSurveyRunner from '@/components/sites/surveys/PublicSurveyRunner';
 import PublicQuizRunner from '@/components/sites/quizzes/PublicQuizRunner';
+import PublicQRRunner from '@/components/sites/qrcodes/PublicQRRunner';
 
 function PublicSiteContent() {
   const params = useParams();
@@ -18,6 +19,14 @@ function PublicSiteContent() {
   const path = segments.length ? `/${segments.join('/')}` : '/';
   const productId = searchParams?.get('productId') || '';
   const isStore = funnelId.startsWith('store_');
+
+  // Handle /s/qr/[qrId] or /s/qr_[id]
+  if (rawFunnelId === 'qr' && segments[0]) {
+    return <PublicQRRunner qrId={segments[0]} />;
+  }
+  if (funnelId.startsWith('qr_') || funnelId.startsWith('qr-')) {
+    return <PublicQRRunner qrId={funnelId} />;
+  }
 
   // Handle /s/quiz/[quizId] or /s/quiz_[id] or /s/qz_[id]
   if (rawFunnelId === 'quiz' && segments[0]) {
