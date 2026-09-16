@@ -304,7 +304,20 @@ export const FIELD_LABELS_I18N = {
   'Buttons': { ar: 'الأزرار', en: 'Buttons' },
   'Cards': { ar: 'البطاقات', en: 'Cards' },
   'Features': { ar: 'الميزات', en: 'Features' },
-  'Questions': { ar: 'الأسئلة والأجوبة', en: 'Questions' }
+  'Questions': { ar: 'الأسئلة والأجوبة', en: 'Questions' },
+  'Form title': { ar: 'عنوان النموذج', en: 'Form title' },
+  'Form fields': { ar: 'حقول النموذج', en: 'Form fields' },
+  'Submit label': { ar: 'نص زر الإرسال', en: 'Submit label' },
+  'Button color': { ar: 'لون الزر', en: 'Button color' },
+  'Redirect to URL (optional)': { ar: 'تحويل إلى رابط مخصص (اختياري)', en: 'Redirect to URL (optional)' },
+  'Notification Email (optional)': { ar: 'بريد الإشعارات (اختياري)', en: 'Notification Email (optional)' },
+  'Success title': { ar: 'عنوان رسالة النجاح', en: 'Success title' },
+  'Success message': { ar: 'نص رسالة النجاح', en: 'Success message' },
+  'Placeholder': { ar: 'النص التوضيحي', en: 'Placeholder' },
+  'Field Type': { ar: 'نوع الحقل', en: 'Field Type' },
+  'Width': { ar: 'عرض الحقل', en: 'Width' },
+  'Required': { ar: 'حقل إلزامي', en: 'Required' },
+  'Label': { ar: 'تسمية الحقل', en: 'Label' }
 };
 
 export function getBuilderString(key, lang = 'en') {

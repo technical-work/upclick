@@ -195,6 +195,8 @@ export const ELEMENT_REGISTRY = {
       { key: 'subtitle', label: 'Subtitle', type: 'textarea' },
       { key: 'buttonText', label: 'Submit label', type: 'text' },
       { key: 'buttonBg', label: 'Button color', type: 'color' },
+      { key: 'redirectUrl', label: 'Redirect to URL (optional)', type: 'url', placeholder: 'https://example.com/thank-you' },
+      { key: 'notificationsEmail', label: 'Notification Email (optional)', type: 'text', placeholder: 'admin@yourbusiness.com' },
       { key: 'successTitle', label: 'Success title', type: 'text' },
       { key: 'successText', label: 'Success message', type: 'textarea' },
       ...STYLE_FIELDS,
