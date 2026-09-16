@@ -17,26 +17,111 @@
     href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
   <script>
+    window.modalLang = 'ar';
+    window.activeModalTab = 'ios';
+
     window.openGetAppModal = function() {
       var modal = document.getElementById('get-app-modal');
       if (!modal) return;
+
+      var currentLang = (typeof _lang !== 'undefined' && _lang) ? _lang : (localStorage.getItem('upklick_lang') || 'ar');
+      window.modalLang = currentLang;
+
       var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       var isAndroid = /Android/.test(navigator.userAgent);
-      var iosSteps = document.getElementById('get-app-ios-steps');
-      var androidSteps = document.getElementById('get-app-android-steps');
-      var desktopSteps = document.getElementById('get-app-desktop-steps');
-      if (iosSteps) iosSteps.style.display = isIOS ? 'flex' : 'none';
-      if (androidSteps) androidSteps.style.display = (window.deferredPrompt || isAndroid || !isIOS) ? 'block' : 'none';
-      if (desktopSteps) desktopSteps.style.display = (!isIOS && !isAndroid) ? 'block' : 'none';
+      
+      var defaultTab = isIOS ? 'ios' : (isAndroid ? 'android' : 'desktop');
+      window.switchModalTab(defaultTab);
+      window.switchModalLang(currentLang);
+
       modal.style.display = 'flex';
-      setTimeout(function () { modal.classList.add('active'); }, 10);
+      setTimeout(function () {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }, 10);
     };
+
     window.closeGetAppModal = function() {
       var modal = document.getElementById('get-app-modal');
       if (!modal) return;
       modal.classList.remove('active');
-      setTimeout(function () { modal.style.display = 'none'; }, 300);
+      document.body.style.overflow = '';
+      setTimeout(function () {
+        modal.style.display = 'none';
+      }, 300);
     };
+
+    window.switchModalTab = function(tabName) {
+      window.activeModalTab = tabName;
+      ['ios', 'android', 'desktop'].forEach(function(t) {
+        var btn = document.getElementById('tab-btn-' + t);
+        var panel = document.getElementById('get-app-' + t + '-panel');
+        if (btn) {
+          if (t === tabName) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+        if (panel) {
+          panel.style.display = (t === tabName) ? 'block' : 'none';
+        }
+      });
+    };
+
+    window.switchModalLang = function(lang) {
+      window.modalLang = lang;
+      var btnAr = document.getElementById('modal-lang-ar');
+      var btnEn = document.getElementById('modal-lang-en');
+      if (btnAr && btnEn) {
+        if (lang === 'ar') {
+          btnAr.classList.add('active');
+          btnEn.classList.remove('active');
+        } else {
+          btnEn.classList.add('active');
+          btnAr.classList.remove('active');
+        }
+      }
+
+      var modalCard = document.querySelector('.get-app-card');
+      if (modalCard) {
+        modalCard.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+      }
+
+      var dict = {
+        'modal-app-title': lang === 'ar' ? 'تثبيت تطبيق UpKlick' : 'Install UpKlick Web App',
+        'modal-app-sub': lang === 'ar' ? 'أضف أيقونة تطبيق UpKlick إلى شاشة هاتفك للوصول السريع بلمسة واحدة وشاشة كاملة وسرعة فائقة.' : 'Add UpKlick icon to your home screen for 1-tap instant launch, full-screen view, and maximum speed.',
+        'modal-spec-rating': '4.9 / 5',
+        'modal-spec-reviews': lang === 'ar' ? '(+2,400 تقييم)' : '(2,400+ Reviews)',
+        'modal-spec-size': lang === 'ar' ? '< 1 ميجابايت' : '< 1 MB',
+        'modal-spec-free': lang === 'ar' ? 'مجاني 100%' : '100% Free',
+        'modal-tab-ios-lbl': 'iPhone (iOS)',
+        'modal-tab-android-lbl': 'Android',
+        'modal-tab-desktop-lbl': lang === 'ar' ? 'الكمبيوتر (Desktop)' : 'Desktop (PC/Mac)',
+        'modal-ios-note': lang === 'ar' ? 'ملاحظة: يتطلب التثبيت على الآيفون فتح الموقع في متصفح <b>Safari</b>.' : 'Note: Installing on iPhone requires opening the site in <b>Safari</b> browser.',
+        'modal-ios-s1': lang === 'ar' ? 'اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط Safari السفلي.' : 'Tap the <b>Share icon (⎋)</b> in the bottom bar of Safari.',
+        'modal-ios-s2': lang === 'ar' ? 'مرر للأسفل في القائمة واختر <b>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen ⊞)</b>.' : 'Scroll down and tap <b>"Add to Home Screen" (⊞)</b>.',
+        'modal-ios-s3': lang === 'ar' ? 'اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉' : 'Tap <b>"Add"</b> in top right corner — UpKlick will appear right on your home screen! 🎉',
+        'modal-android-install-btn': lang === 'ar' ? '📲 تثبيت التطبيق على هاتفك الآن' : '📲 Install App on Phone Now',
+        'modal-or-manual': lang === 'ar' ? 'أو بخطوات يدوية سهلة' : 'Or via quick manual steps',
+        'modal-android-s1': lang === 'ar' ? 'افتح قائمة خيارات المتصفح <b>(⋮ الثلاث نقاط)</b> في الزاوية العلوية.' : 'Tap the <b>(⋮ 3-dots) menu</b> at top right of your browser.',
+        'modal-android-s2': lang === 'ar' ? 'اختر <b>"تثبيت التطبيق" (Install app)</b> أو <b>"إضافة إلى الشاشة الرئيسية"</b>.' : 'Select <b>"Install app"</b> or <b>"Add to Home screen"</b>.',
+        'modal-android-s3': lang === 'ar' ? 'اضغط <b>"تثبيت"</b> واستمتع بالتطبيق بشاشة كاملة وسرعة فائقة! 🎉' : 'Tap <b>"Install"</b> and launch UpKlick anytime in full-screen! 🎉',
+        'modal-desktop-note': lang === 'ar' ? 'يعمل على متصفحات Chrome, Edge, Brave و Safari على Windows و Mac.' : 'Works on Chrome, Edge, Brave & Safari on Windows & Mac.',
+        'modal-desktop-s1': lang === 'ar' ? 'انقر على أيقونة <b>التثبيت (⊞ أو 📥)</b> في شريط العنوان أعلى المتصفح.' : 'Click the <b>Install (⊞ or 📥)</b> icon in your browser address bar at the top.',
+        'modal-desktop-s2': lang === 'ar' ? 'اضغط على <b>"تثبيت (Install)"</b> ليفتح UpKlick كتطبيق سطح مكتب مستقل.' : 'Click <b>"Install"</b> to run UpKlick as a standalone native desktop app.',
+        'modal-feat-1': lang === 'ar' ? 'شاشة كاملة' : 'Full Screen',
+        'modal-feat-2': lang === 'ar' ? 'لمسة واحدة' : '1-Tap Launch',
+        'modal-feat-3': lang === 'ar' ? 'خفيف وسريع' : 'Fast (<1MB)',
+        'modal-feat-4': lang === 'ar' ? 'سحابي وآمن' : 'Cloud Sync',
+        'modal-dismiss-text': lang === 'ar' ? 'أو تابع التصفح على الويب ←' : 'Or continue in web browser →'
+      };
+
+      Object.keys(dict).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          el.innerHTML = dict[id];
+        }
+      });
+    };
+
     window.triggerPWAInstall = function() {
       if (window.deferredPrompt) {
         window.deferredPrompt.prompt();
@@ -49,20 +134,17 @@
       } else {
         var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIOS) {
-          var iosSteps = document.getElementById('get-app-ios-steps');
-          if (iosSteps) iosSteps.style.display = 'flex';
+          window.switchModalTab('ios');
         } else {
-          var desktopSteps = document.getElementById('get-app-desktop-steps');
-          if (desktopSteps) desktopSteps.style.display = 'block';
+          window.switchModalTab('desktop');
         }
       }
     };
+
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       window.deferredPrompt = e;
       var installBtn = document.getElementById('pwa-install-trigger-btn');
-      var androidBox = document.getElementById('get-app-android-steps');
-      if (androidBox) androidBox.style.display = 'block';
       if (installBtn) installBtn.style.display = 'inline-flex';
     });
   </script>
@@ -365,39 +447,43 @@
       border-radius: var(--r2)
     }
 
-    /* GET APP BUTTON & MODAL */
+    /* GET APP BUTTON & PREMIUM BILINGUAL MODAL */
     .btn-get-app {
-      background: linear-gradient(135deg, rgba(255, 107, 53, 0.18), rgba(108, 53, 255, 0.18));
-      border: 1px solid rgba(255, 107, 53, 0.4);
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(108, 53, 255, 0.2));
+      border: 1.5px solid rgba(255, 107, 53, 0.45);
       color: #fff !important;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(255, 107, 53, 0.15);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 4px 18px rgba(255, 107, 53, 0.2);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .btn-get-app:hover {
       background: linear-gradient(135deg, var(--or), var(--pu));
       border-color: transparent;
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(108, 53, 255, 0.4);
+      box-shadow: 0 8px 28px rgba(108, 53, 255, 0.45);
     }
 
     #get-app-modal {
       position: fixed;
       inset: 0;
-      background: rgba(8, 8, 15, 0.75);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(4, 4, 10, 0.85);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
       z-index: 10000;
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 16px;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
     }
 
     #get-app-modal.active {
@@ -406,17 +492,19 @@
     }
 
     .get-app-card {
-      background: #10101a;
+      background: linear-gradient(180deg, rgba(22, 22, 38, 0.96) 0%, rgba(12, 12, 22, 0.98) 100%);
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 28px;
       width: 100%;
-      max-width: 480px;
-      padding: 32px 28px;
+      max-width: 540px;
+      padding: 24px 22px 20px;
       position: relative;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 107, 53, 0.15);
-      transform: scale(0.92) translateY(20px);
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 50px rgba(255, 107, 53, 0.2);
+      transform: scale(0.94) translateY(18px);
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       text-align: center;
+      max-height: 94vh;
+      overflow-y: auto;
     }
 
     #get-app-modal.active .get-app-card {
@@ -425,103 +513,384 @@
 
     .get-app-close {
       position: absolute;
-      top: 18px;
-      right: 18px;
-      width: 34px;
-      height: 34px;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       color: var(--t2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 15px;
       cursor: pointer;
       transition: all 0.2s;
+      z-index: 5;
     }
 
     html[dir="rtl"] .get-app-close {
       right: auto;
-      left: 18px;
+      left: 16px;
     }
 
     .get-app-close:hover {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.18);
       color: #fff;
       transform: rotate(90deg);
     }
 
-    .get-app-icon-wrap {
-      width: 84px;
-      height: 84px;
-      margin: 0 auto 18px;
-      border-radius: 22px;
-      background: linear-gradient(135deg, #FF6B35, #6C35FF);
+    /* In-Modal Language Switcher Pill */
+    .get-app-lang-bar {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .get-app-lang-switcher {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
       padding: 3px;
+      gap: 3px;
+    }
+
+    .get-app-lang-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 16px;
+      border: none;
+      background: transparent;
+      color: var(--t2);
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .get-app-lang-btn.active {
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(108, 53, 255, 0.3));
+      border: 1px solid rgba(255, 107, 53, 0.4);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Hero Showcase & 3D Icon */
+    .get-app-hero-showcase {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .get-app-icon-wrap {
+      position: relative;
+      width: 78px;
+      height: 78px;
+      margin: 0 auto 12px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #FF6B35, #6C35FF);
+      padding: 2.5px;
       box-shadow: 0 12px 30px rgba(255, 107, 53, 0.35);
-      animation: floatIcon 3s ease-in-out infinite alternate;
+      animation: floatIcon 3.5s ease-in-out infinite alternate;
     }
 
     .get-app-icon-wrap img {
       width: 100%;
       height: 100%;
-      border-radius: 20px;
+      border-radius: 18px;
       object-fit: cover;
       display: block;
     }
 
+    .get-app-icon-glow {
+      position: absolute;
+      inset: -10px;
+      border-radius: 30px;
+      background: radial-gradient(circle, rgba(255, 107, 53, 0.4) 0%, rgba(108, 53, 255, 0.2) 60%, transparent 80%);
+      z-index: -1;
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
     @keyframes floatIcon {
-      0% { transform: translateY(0); }
-      100% { transform: translateY(-6px); }
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-5px) scale(1.02); }
+    }
+
+    .get-app-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 4px;
+      line-height: 1.3;
+    }
+
+    .get-app-subtitle {
+      font-size: 12.5px;
+      color: var(--t2);
+      line-height: 1.55;
+      max-width: 440px;
+      margin: 0 auto 12px;
+    }
+
+    /* Specs Badges Row */
+    .get-app-specs-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .get-app-spec-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      color: var(--t1);
+    }
+
+    .get-app-spec-tag b {
+      color: #FF8F5E;
+    }
+
+    .get-app-spec-free {
+      background: rgba(0, 255, 136, 0.08);
+      border-color: rgba(0, 255, 136, 0.25);
+      color: #00ff88;
+    }
+
+    .get-app-spec-free b {
+      color: #00ff88;
+    }
+
+    /* Segmented Device Selector Tabs */
+    .get-app-tabs-nav {
+      display: flex;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 14px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 14px;
+    }
+
+    .get-app-tab-btn {
+      flex: 1;
+      padding: 8px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--t2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .get-app-tab-btn:hover {
+      color: var(--t1);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .get-app-tab-btn.active {
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.25), rgba(108, 53, 255, 0.25));
+      border: 1px solid rgba(255, 107, 53, 0.4);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Tab Panels & Step Cards */
+    .get-app-tab-panel {
+      animation: fadeInTab 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes fadeInTab {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .get-app-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 107, 53, 0.08);
+      border: 1px solid rgba(255, 107, 53, 0.2);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 11.5px;
+      color: var(--t1);
+      margin-bottom: 12px;
+      text-align: start;
+      line-height: 1.45;
+    }
+
+    .get-app-banner.desktop-banner {
+      background: rgba(108, 53, 255, 0.08);
+      border-color: rgba(108, 53, 255, 0.2);
     }
 
     .get-app-steps {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin: 22px 0 20px;
+      gap: 8px;
+      margin-bottom: 14px;
       text-align: start;
     }
 
     .get-app-step-item {
       display: flex;
       align-items: center;
-      gap: 14px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 16px;
-      padding: 12px 16px;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      padding: 9px 12px;
       transition: all 0.2s ease;
     }
 
     .get-app-step-item:hover {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 107, 53, 0.25);
+      background: rgba(255, 255, 255, 0.065);
+      border-color: rgba(255, 107, 53, 0.3);
     }
 
     .get-app-step-num {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
       background: linear-gradient(135deg, var(--or), var(--pu));
       color: #fff;
       font-weight: 800;
-      font-size: 13px;
+      font-size: 11px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(255, 107, 53, 0.3);
     }
 
     .get-app-step-text {
-      font-size: 13px;
+      flex: 1;
+      font-size: 12px;
       color: var(--t1);
       line-height: 1.5;
     }
 
     .get-app-step-text b {
-      color: var(--or);
+      color: #FF8F5E;
+    }
+
+    .get-app-step-icon {
+      font-size: 14px;
+      color: var(--t2);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      flex-shrink: 0;
+    }
+
+    /* Android Direct CTA & Divider */
+    .get-app-install-cta {
+      margin-bottom: 12px;
+    }
+
+    .get-app-pulse-btn {
+      width: 100%;
+      justify-content: center;
+      font-size: 14px;
+      padding: 12px 20px;
+      box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
+      animation: buttonPulse 2.5s infinite;
+    }
+
+    @keyframes buttonPulse {
+      0%, 100% { box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4); }
+      50% { box-shadow: 0 4px 30px rgba(255, 107, 53, 0.7); transform: translateY(-1px); }
+    }
+
+    .get-app-divider-line {
+      position: relative;
+      text-align: center;
+      margin: 10px 0 12px;
+    }
+
+    .get-app-divider-line::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      z-index: 1;
+    }
+
+    .get-app-divider-line span {
+      position: relative;
+      z-index: 2;
+      background: #11111f;
+      padding: 0 10px;
+      font-size: 11px;
+      color: var(--t3);
+    }
+
+    /* Features Grid */
+    .get-app-features-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin: 14px 0 12px;
+    }
+
+    .get-app-feat-chip {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 7px 4px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--t2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .get-app-feat-chip span:first-child {
+      font-size: 14px;
+    }
+
+    /* Footer Actions */
+    .get-app-footer-actions {
+      margin-top: 6px;
+    }
+
+    .get-app-dismiss-btn {
+      font-size: 11.5px;
+      color: var(--t3);
+      padding: 4px 10px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+    }
+
+    .get-app-dismiss-btn:hover {
+      color: var(--t1);
     }
 
     /* Floating Mobile Install Pill */
@@ -534,11 +903,11 @@
       display: none;
       align-items: center;
       gap: 10px;
-      background: rgba(16, 16, 26, 0.92);
-      border: 1.5px solid rgba(255, 107, 53, 0.5);
+      background: rgba(16, 16, 26, 0.95);
+      border: 1.5px solid rgba(255, 107, 53, 0.55);
       border-radius: 40px;
-      padding: 8px 18px 8px 12px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 107, 53, 0.25);
+      padding: 8px 18px 8px 14px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 107, 53, 0.3);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       cursor: pointer;
@@ -546,8 +915,8 @@
     }
 
     @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(255,107,53,0.2); }
-      50% { box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 32px rgba(255,107,53,0.45); }
+      0%, 100% { box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 20px rgba(255,107,53,0.25); }
+      50% { box-shadow: 0 15px 35px rgba(0,0,0,0.6), 0 0 35px rgba(255,107,53,0.5); }
     }
 
     @media (max-width: 768px) {
@@ -3198,8 +3567,8 @@
         <a href="#roadmap" data-t="landing-nav-roadmap">Roadmap</a>
       </nav>
       <div class="hdr-btns">
-        <button type="button" class="btn btn-get-app" onclick="openGetAppModal()" data-t="landing-btn-getapp" title="تثبيت التطبيق على الموبايل">
-          <span>📲</span> <span data-t="landing-btn-getapp">GET APP</span>
+        <button type="button" class="btn btn-get-app" onclick="openGetAppModal()" data-t="landing-btn-getapp" title="تثبيت التطبيق">
+          📲 GET APP
         </button>
         <button class="btn btn-ghost" onclick="toggleLang(this)"
           style="padding:7px 14px;font-size:13px" data-t="landing-btn-lang">عربي</button>
@@ -3221,7 +3590,7 @@
     <div class="mob-nav-body">
       <a href="javascript:void(0)" onclick="openGetAppModal(); toggleMobNav(false);" style="background: rgba(255, 107, 53, 0.08); border: 1px solid rgba(255, 107, 53, 0.2); border-radius: 12px; margin-bottom: 6px;">
         <span class="mob-nav-icon" style="background: var(--or-d); color: var(--or);">📲</span>
-        <span style="color: var(--or); font-weight: 700;" data-t="landing-btn-getapp-full">GET APP (تثبيت التطبيق)</span>
+        <span style="color: var(--or); font-weight: 700;" data-t="landing-btn-getapp-full">📲 GET APP (Install App)</span>
       </a>
       <a href="#preview" onclick="toggleMobNav(false)">
         <span class="mob-nav-icon">⌂</span>
@@ -3253,7 +3622,7 @@
       <button type="button" class="btn btn-get-app btn-xl" onclick="openGetAppModal(); toggleMobNav(false);"
         style="width: 100%; justify-content: center; margin-bottom: 10px;"
         data-t="landing-btn-getapp-full">
-        <span>📲</span> <span>GET APP (تثبيت التطبيق)</span>
+        📲 GET APP (Install App)
       </button>
       <a href="/register?cta=start_free" class="btn btn-prime btn-xl"
         style="width: 100%; justify-content: center; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);"
@@ -4444,10 +4813,10 @@
 
     // ── TRANSLATIONS DEFAULTS ──
     var EN_DEFAULTS = {
-      'landing-btn-getapp': 'GET APP',
-      'landing-btn-getapp-full': 'GET APP (Install App)',
-      'landing-hero-cta-app': 'GET APP',
-      'landing-getapp-title': 'Install UpKlick on Your Phone',
+      'landing-btn-getapp': '📲 GET APP',
+      'landing-btn-getapp-full': '📲 GET APP (Install App)',
+      'landing-hero-cta-app': '📲 GET APP',
+      'landing-getapp-title': 'Install UpKlick Web App',
       'landing-getapp-sub': 'Add UpKlick icon directly to your mobile home screen for 1-tap instant launch, full-screen view, and lightning speed.',
       'landing-getapp-ios-s1': 'Tap the <b>Share icon (⎋)</b> at the bottom of Safari.',
       'landing-getapp-ios-s2': 'Scroll down and tap <b>"Add to Home Screen" (⊞)</b>.',
@@ -4655,9 +5024,9 @@
     };
 
     var AR_DEFAULTS = {
-      'landing-btn-getapp': 'GET APP',
-      'landing-btn-getapp-full': 'GET APP (تثبيت التطبيق)',
-      'landing-hero-cta-app': 'GET APP',
+      'landing-btn-getapp': '📲 حمّل التطبيق (GET APP)',
+      'landing-btn-getapp-full': '📲 حمّل التطبيق (GET APP)',
+      'landing-hero-cta-app': '📲 حمّل التطبيق',
       'landing-getapp-title': 'تثبيت تطبيق UpKlick على هاتفك',
       'landing-getapp-sub': 'أضف أيقونة تطبيق UpKlick إلى شاشة هاتفك الرئيسية للوصول بلمسة واحدة وشاشة كاملة وسرعة فائقة.',
       'landing-getapp-ios-s1': 'اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط سفاري السفلي.',
@@ -5412,144 +5781,193 @@
     <span style="font-size: 13px; font-weight: 700; color: #fff;" data-t="landing-getapp-pill">حمّل تطبيق UpKlick على هاتفك</span>
   </div>
 
-  <!-- ══════════════ GET APP MODAL ══════════════ -->
-  <div id="get-app-modal" onclick="if(event.target===this)closeGetAppModal()">
+  <!-- ══════════════ GET APP MODAL (BILINGUAL & PREMIUM) ══════════════ -->
+  <div id="get-app-modal" onclick="if(event.target===this)closeGetAppModal()" aria-modal="true" role="dialog">
     <div class="get-app-card">
       <button type="button" class="get-app-close" onclick="closeGetAppModal()" aria-label="Close">✕</button>
       
-      <div class="get-app-icon-wrap">
-        <img src="/app-icon.png" alt="UpKlick App Icon" onerror="this.src='/icon-192.png'">
-      </div>
-
-      <h3 style="font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px;" data-t="landing-getapp-title">
-        تثبيت تطبيق UpKlick على هاتفك
-      </h3>
-      <p style="font-size: 13px; color: var(--t2); line-height: 1.6;" data-t="landing-getapp-sub">
-        أضف أيقونة UpKlick مباشرة إلى شاشة هاتفك للوصول السريع بلمسة واحدة وشاشة كاملة وسرعة فائقة.
-      </p>
-
-      <!-- Dynamic Device Steps -->
-      <div id="get-app-ios-steps" class="get-app-steps" style="display: none;">
-        <div class="get-app-step-item">
-          <div class="get-app-step-num">1</div>
-          <div class="get-app-step-text" data-t="landing-getapp-ios-s1">
-            اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط سفاري السفلي.
-          </div>
-        </div>
-        <div class="get-app-step-item">
-          <div class="get-app-step-num">2</div>
-          <div class="get-app-step-text" data-t="landing-getapp-ios-s2">
-            مرر للأسفل واختر <b>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen ⊞)</b>.
-          </div>
-        </div>
-        <div class="get-app-step-item">
-          <div class="get-app-step-num">3</div>
-          <div class="get-app-step-text" data-t="landing-getapp-ios-s3">
-            اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉
-          </div>
+      <!-- In-Modal Language Switcher Pill -->
+      <div class="get-app-lang-bar">
+        <div class="get-app-lang-switcher">
+          <button type="button" class="get-app-lang-btn active" id="modal-lang-ar" onclick="switchModalLang('ar')">
+            <span>🇸🇦</span> <span>العربية</span>
+          </button>
+          <button type="button" class="get-app-lang-btn" id="modal-lang-en" onclick="switchModalLang('en')">
+            <span>🇬🇧</span> <span>English</span>
+          </button>
         </div>
       </div>
 
-      <div id="get-app-android-steps" style="margin: 22px 0 16px; display: none;">
-        <button type="button" id="pwa-install-trigger-btn" class="btn btn-prime btn-xl" onclick="triggerPWAInstall()" style="width: 100%; justify-content: center; font-size: 15px; padding: 14px 20px;" data-t="landing-getapp-android-btn">
-          <span>📲</span> <span>تثبيت التطبيق على هاتفك الآن</span>
+      <!-- App Icon Showcase & Rating Badges -->
+      <div class="get-app-hero-showcase">
+        <div class="get-app-icon-wrap">
+          <img src="/app-icon.png" alt="UpKlick App Icon" onerror="this.src='/icon-192.png'">
+          <div class="get-app-icon-glow"></div>
+        </div>
+        
+        <h3 id="modal-app-title" class="get-app-title" data-t="landing-getapp-title">
+          تثبيت تطبيق UpKlick على هاتفك
+        </h3>
+        <p id="modal-app-sub" class="get-app-subtitle" data-t="landing-getapp-sub">
+          أضف أيقونة تطبيق UpKlick إلى شاشة هاتفك للوصول السريع بلمسة واحدة وشاشة كاملة وسرعة فائقة.
+        </p>
+
+        <!-- Badges Bar -->
+        <div class="get-app-specs-row">
+          <div class="get-app-spec-tag">
+            <span>⭐</span> <b id="modal-spec-rating">4.9 / 5</b> <span id="modal-spec-reviews">(+2,400 تقييم)</span>
+          </div>
+          <div class="get-app-spec-tag">
+            <span>⚡</span> <b id="modal-spec-size">&lt; 1 ميجابايت</b>
+          </div>
+          <div class="get-app-spec-tag get-app-spec-free">
+            <span>🆓</span> <b id="modal-spec-free">مجاني 100%</b>
+          </div>
+        </div>
+      </div>
+
+      <!-- Device Selector Segmented Tabs -->
+      <div class="get-app-tabs-nav">
+        <button type="button" id="tab-btn-ios" class="get-app-tab-btn active" onclick="switchModalTab('ios')">
+          <span>🍎</span>
+          <span id="modal-tab-ios-lbl">iPhone (iOS)</span>
+        </button>
+        <button type="button" id="tab-btn-android" class="get-app-tab-btn" onclick="switchModalTab('android')">
+          <span>🤖</span>
+          <span id="modal-tab-android-lbl">Android</span>
+        </button>
+        <button type="button" id="tab-btn-desktop" class="get-app-tab-btn" onclick="switchModalTab('desktop')">
+          <span>💻</span>
+          <span id="modal-tab-desktop-lbl">الكمبيوتر (Desktop)</span>
         </button>
       </div>
 
-      <div id="get-app-desktop-steps" style="margin: 20px 0 10px; display: none; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 14px 16px;">
-        <div style="font-size: 13px; color: var(--t1);" data-t="landing-getapp-desktop-msg">
-          على متصفح الكمبيوتر: انقر على أيقونة <b>التثبيت (⊞)</b> في شريط العنوان بالأعلى لتثبيت UpKlick كتطبيق سطح مكتب.
+      <!-- TAB 1: iOS Safari Steps -->
+      <div id="get-app-ios-panel" class="get-app-tab-panel">
+        <div class="get-app-banner">
+          <span>💡</span>
+          <span id="modal-ios-note">ملاحظة: يتطلب التثبيت على الآيفون فتح الموقع في متصفح <b>Safari</b>.</span>
+        </div>
+        
+        <div class="get-app-steps">
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">1</div>
+            <div class="get-app-step-text" id="modal-ios-s1">
+              اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط Safari السفلي.
+            </div>
+            <div class="get-app-step-icon">⎋</div>
+          </div>
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">2</div>
+            <div class="get-app-step-text" id="modal-ios-s2">
+              مرر للأسفل في القائمة واختر <b>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen ⊞)</b>.
+            </div>
+            <div class="get-app-step-icon">⊞</div>
+          </div>
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">3</div>
+            <div class="get-app-step-text" id="modal-ios-s3">
+              اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉
+            </div>
+            <div class="get-app-step-icon">✨</div>
+          </div>
         </div>
       </div>
 
-      <div style="margin-top: 18px;">
-        <a href="/register?cta=start_free" class="btn btn-ghost btn-sm" style="font-size: 12px; color: var(--t3);" onclick="closeGetAppModal()">
-          أو تابع التصفح على الويب ←
-        </a>
+      <!-- TAB 2: Android Steps & Direct Install -->
+      <div id="get-app-android-panel" class="get-app-tab-panel" style="display: none;">
+        <div class="get-app-install-cta">
+          <button type="button" id="pwa-install-trigger-btn" class="btn btn-prime btn-xl get-app-pulse-btn" onclick="triggerPWAInstall()">
+            <span>📲</span> <span id="modal-android-install-btn">تثبيت التطبيق على هاتفك الآن</span>
+          </button>
+        </div>
+
+        <div class="get-app-divider-line">
+          <span id="modal-or-manual">أو بخطوات يدوية سهلة</span>
+        </div>
+
+        <div class="get-app-steps">
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">1</div>
+            <div class="get-app-step-text" id="modal-android-s1">
+              افتح قائمة خيارات المتصفح <b>(⋮ الثلاث نقاط)</b> في الزاوية العلوية.
+            </div>
+            <div class="get-app-step-icon">⋮</div>
+          </div>
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">2</div>
+            <div class="get-app-step-text" id="modal-android-s2">
+              اختر <b>"تثبيت التطبيق" (Install app)</b> أو <b>"إضافة إلى الشاشة الرئيسية"</b>.
+            </div>
+            <div class="get-app-step-icon">📲</div>
+          </div>
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">3</div>
+            <div class="get-app-step-text" id="modal-android-s3">
+              اضغط <b>"تثبيت"</b> واستمتع بالتطبيق بشاشة كاملة وسرعة فائقة! 🎉
+            </div>
+            <div class="get-app-step-icon">🚀</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Desktop Steps -->
+      <div id="get-app-desktop-panel" class="get-app-tab-panel" style="display: none;">
+        <div class="get-app-banner desktop-banner">
+          <span>🖥️</span>
+          <span id="modal-desktop-note">يعمل على متصفحات Chrome, Edge, Brave و Safari على Windows و Mac.</span>
+        </div>
+
+        <div class="get-app-steps">
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">1</div>
+            <div class="get-app-step-text" id="modal-desktop-s1">
+              انقر على أيقونة <b>التثبيت (⊞ أو 📥)</b> في شريط العنوان أعلى المتصفح.
+            </div>
+            <div class="get-app-step-icon">⊞</div>
+          </div>
+          <div class="get-app-step-item">
+            <div class="get-app-step-num">2</div>
+            <div class="get-app-step-text" id="modal-desktop-s2">
+              اضغط على <b>"تثبيت (Install)"</b> ليفتح UpKlick كتطبيق سطح مكتب مستقل.
+            </div>
+            <div class="get-app-step-icon">⚡</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features Grid -->
+      <div class="get-app-features-grid">
+        <div class="get-app-feat-chip">
+          <span>🚀</span>
+          <span id="modal-feat-1">شاشة كاملة</span>
+        </div>
+        <div class="get-app-feat-chip">
+          <span>⚡</span>
+          <span id="modal-feat-2">لمسة واحدة</span>
+        </div>
+        <div class="get-app-feat-chip">
+          <span>📴</span>
+          <span id="modal-feat-3">خفيف وسريع</span>
+        </div>
+        <div class="get-app-feat-chip">
+          <span>🔒</span>
+          <span id="modal-feat-4">سحابي وآمن</span>
+        </div>
+      </div>
+
+      <!-- Footer Action -->
+      <div class="get-app-footer-actions">
+        <button type="button" class="btn btn-ghost btn-sm get-app-dismiss-btn" onclick="closeGetAppModal()">
+          <span id="modal-dismiss-text">أو تابع التصفح على الويب ←</span>
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-    // PWA & Get App Modal Logic
-    var deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      var installBtn = document.getElementById('pwa-install-trigger-btn');
-      var androidBox = document.getElementById('get-app-android-steps');
-      if (androidBox) androidBox.style.display = 'block';
-      if (installBtn) installBtn.style.display = 'inline-flex';
-    });
-
-    window.addEventListener('appinstalled', function () {
-      deferredPrompt = null;
-      var modal = document.getElementById('get-app-modal');
-      if (modal) modal.classList.remove('active');
-    });
-
-    function openGetAppModal() {
-      var modal = document.getElementById('get-app-modal');
-      if (!modal) return;
-
-      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      var isAndroid = /Android/.test(navigator.userAgent);
-      
-      var iosSteps = document.getElementById('get-app-ios-steps');
-      var androidSteps = document.getElementById('get-app-android-steps');
-      var desktopSteps = document.getElementById('get-app-desktop-steps');
-
-      if (iosSteps) iosSteps.style.display = 'none';
-      if (androidSteps) androidSteps.style.display = 'none';
-      if (desktopSteps) desktopSteps.style.display = 'none';
-
-      if (isIOS) {
-        if (iosSteps) iosSteps.style.display = 'flex';
-      } else if (deferredPrompt || isAndroid) {
-        if (androidSteps) androidSteps.style.display = 'block';
-      } else {
-        if (desktopSteps) desktopSteps.style.display = 'block';
-        if (androidSteps) androidSteps.style.display = 'block';
-      }
-
-      modal.style.display = 'flex';
-      setTimeout(function () {
-        modal.classList.add('active');
-      }, 10);
-    }
-
-    function closeGetAppModal() {
-      var modal = document.getElementById('get-app-modal');
-      if (!modal) return;
-      modal.classList.remove('active');
-      setTimeout(function () {
-        modal.style.display = 'none';
-      }, 300);
-    }
-
-    function triggerPWAInstall() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(function (choiceResult) {
-          if (choiceResult.outcome === 'accepted') {
-            closeGetAppModal();
-          }
-          deferredPrompt = null;
-        });
-      } else {
-        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS) {
-          var iosSteps = document.getElementById('get-app-ios-steps');
-          if (iosSteps) iosSteps.style.display = 'flex';
-        } else {
-          var desktopSteps = document.getElementById('get-app-desktop-steps');
-          if (desktopSteps) desktopSteps.style.display = 'block';
-        }
-      }
-    }
-
-    // Register Service Worker if supported
-    if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+    // PWA & Service Worker Registration
+    if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js').catch(function() {});
       });
