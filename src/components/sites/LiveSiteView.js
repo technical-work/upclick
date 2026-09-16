@@ -6,7 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import ElementRenderer from '@/components/builder/ElementRenderer';
 import { DEFAULT_PAGE } from '@/lib/builder/elementRegistry';
-import { normalizeHost, pickPublishedStep, publishedSiteToStore, PUBLISHED_SITES, SITE_DOMAINS } from '@/lib/sites/publicSite';
+import { normalizeHost, isPlatformHostname, pickPublishedStep, publishedSiteToStore, PUBLISHED_SITES, SITE_DOMAINS } from '@/lib/sites/publicSite';
 import { findLocalBlogById, findLocalFormById, findLocalFunnelById, findLocalStoreById } from '@/lib/sites/userSitesScope';
 import {
   cartCount,
@@ -90,7 +90,7 @@ export default function LiveSiteView({
 
         let resolvedId = lookupId;
         const incomingHost = normalizeHost(host || (typeof window !== 'undefined' ? window.location.hostname : ''));
-        const isCustomLookup = !resolvedId || resolvedId === '_custom_domain' || resolvedId === '_domain';
+        const isCustomLookup = (!resolvedId || resolvedId === '_custom_domain' || resolvedId === '_domain') && !isPlatformHostname(incomingHost);
         if (incomingHost && isCustomLookup) {
           let domainSnap = await getDoc(doc(db, SITE_DOMAINS, incomingHost));
           if (!domainSnap.exists() && incomingHost.startsWith('www.')) {

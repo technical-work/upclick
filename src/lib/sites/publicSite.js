@@ -21,6 +21,31 @@ export function normalizePath(input) {
   return withSlash;
 }
 
+export function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = normalizeHost(host);
+  if (['localhost', '127.0.0.1', '0.0.0.0'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  if (
+    clean === 'upklick.net' ||
+    clean === 'www.upklick.net' ||
+    clean === 'app.upklick.net' ||
+    clean.endsWith('.upklick.net') ||
+    clean === 'upklick.com' ||
+    clean === 'www.upklick.com' ||
+    clean === 'app.upklick.com' ||
+    clean.endsWith('.upklick.com')
+  ) {
+    return true;
+  }
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => normalizeHost(item))
+    .filter(Boolean);
+  return extras.includes(clean);
+}
+
 export function getCnameTarget() {
   return process.env.NEXT_PUBLIC_SITES_CNAME || 'cname.vercel-dns.com';
 }
@@ -229,6 +254,10 @@ export async function connectFunnelDomain({ funnelId, ownerUid, host, previousHo
       try { await deleteDoc(doc(db, SITE_DOMAINS, prev)); } catch {}
     }
     return { host: '' };
+  }
+
+  if (isPlatformHostname(normalized)) {
+    throw new Error('This domain is a reserved platform domain and cannot be attached to a custom website.');
   }
 
   const existing = await getDoc(doc(db, SITE_DOMAINS, normalized));

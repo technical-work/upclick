@@ -7,20 +7,7 @@ import { query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Tracking } from '@/lib/tracking';
 import LiveSiteView from '@/components/sites/LiveSiteView';
-import { normalizeHost } from '@/lib/sites/publicSite';
-
-function isPlatformHostname(host) {
-  if (!host) return true;
-  const clean = host.toLowerCase().split(':')[0].trim();
-  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
-  if (clean.endsWith('.vercel.app')) return true;
-  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
-  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
-    .split(',')
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  return extras.includes(clean);
-}
+import { normalizeHost, isPlatformHostname } from '@/lib/sites/publicSite';
 
 export default function LoginPage() {
   const [isCustomDomain, setIsCustomDomain] = useState(() => {

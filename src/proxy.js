@@ -9,15 +9,27 @@ function hostnameOf(hostHeader) {
 
 function isPlatformHost(host) {
   if (!host) return true;
-  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') return true;
-  if (host.endsWith('.vercel.app')) return true;
-  if (host.includes('ngrok') || host.includes('trycloudflare')) return true;
-  if (host === 'upklick.com' || host === 'www.upklick.com' || host.endsWith('.upklick.com')) return true;
+  const clean = hostnameOf(host);
+  if (clean === 'localhost' || clean === '127.0.0.1' || clean === '0.0.0.0') return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  if (
+    clean === 'upklick.net' ||
+    clean === 'www.upklick.net' ||
+    clean === 'app.upklick.net' ||
+    clean.endsWith('.upklick.net') ||
+    clean === 'upklick.com' ||
+    clean === 'www.upklick.com' ||
+    clean === 'app.upklick.com' ||
+    clean.endsWith('.upklick.com')
+  ) {
+    return true;
+  }
   const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
     .split(',')
-    .map((item) => item.trim().toLowerCase())
+    .map((item) => hostnameOf(item))
     .filter(Boolean);
-  return extras.includes(host);
+  return extras.includes(clean);
 }
 
 export function proxy(request) {
