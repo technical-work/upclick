@@ -105,7 +105,12 @@ export const BUILDER_I18N = {
     center: 'وسط',
     right: 'يمين',
     addItem: '+ إضافة عنصر',
-    item: 'عنصر'
+    item: 'عنصر',
+    addOption: '+ إضافة خيار جديد',
+    optionsTitle: 'خيارات القائمة المنسدلة / الاختيارات',
+    optionsDesc: 'اكتب الخيارات التي ستظهر للمستخدم للاختيار منها',
+    quickAdd: '+ إضافة سريعة',
+    quickAddPlaceholder: 'اكتب خيارات متعددة مفصولة بفواصل واضغط إضافة...'
   },
   en: {
     // Header
@@ -122,7 +127,10 @@ export const BUILDER_I18N = {
     preview: 'Preview',
     publish: 'Publish',
     langToggle: 'عربي',
-
+    addOption: '+ Add new option',
+    optionsTitle: 'Options / Choices list',
+    optionsDesc: 'Enter the choices that will appear in this dropdown or list',
+    quickAdd: '+ Quick Add',
     // Drawer Tabs
     tabRows: 'Rows',
     tabElements: 'Elements',
@@ -317,7 +325,9 @@ export const FIELD_LABELS_I18N = {
   'Field Type': { ar: 'نوع الحقل', en: 'Field Type' },
   'Width': { ar: 'عرض الحقل', en: 'Width' },
   'Required': { ar: 'حقل إلزامي', en: 'Required' },
-  'Label': { ar: 'تسمية الحقل', en: 'Label' }
+  'Label': { ar: 'تسمية الحقل', en: 'Label' },
+  'Options / Choices': { ar: 'خيارات القائمة / الاختيارات', en: 'Options / Choices' },
+  'options': { ar: 'خيارات القائمة', en: 'Options' }
 };
 
 export function getBuilderString(key, lang = 'en') {

@@ -267,7 +267,13 @@ export default function LiveFormModal({
                   );
                 }
 
-                if (field.type === 'dropdown') {
+                const optionsList = Array.isArray(field.options) && field.options.length
+                  ? field.options
+                  : typeof field.options === 'string' && field.options.trim()
+                  ? field.options.split(',').map((s) => s.trim()).filter(Boolean)
+                  : ['Option 1', 'Option 2', 'Option 3'];
+
+                if (field.type === 'dropdown' || field.type === 'select') {
                   return (
                     <div key={field.id}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
@@ -289,10 +295,73 @@ export default function LiveFormModal({
                         }}
                       >
                         <option value="">{field.placeholder || (isRtl ? 'اختر خياراً...' : 'Select an option...')}</option>
-                        {(field.options || []).map((opt, i) => (
+                        {optionsList.map((opt, i) => (
                           <option key={i} value={opt}>{opt}</option>
                         ))}
                       </select>
+                    </div>
+                  );
+                }
+
+                if (field.type === 'radio') {
+                  return (
+                    <div key={field.id}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {optionsList.map((opt, i) => (
+                          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t1)', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name={field.id}
+                              value={opt}
+                              required={field.required}
+                              checked={formData[field.id] === opt}
+                              onChange={(e) => handleChange(field.id, e.target.value)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (field.type === 'checkbox') {
+                  const currentChecked = Array.isArray(formData[field.id])
+                    ? formData[field.id]
+                    : typeof formData[field.id] === 'string' && formData[field.id]
+                    ? formData[field.id].split(', ')
+                    : formData[field.id] ? [String(formData[field.id])] : [];
+
+                  const handleCheckboxToggle = (optVal) => {
+                    const next = currentChecked.includes(optVal)
+                      ? currentChecked.filter((v) => v !== optVal)
+                      : [...currentChecked, optVal];
+                    handleChange(field.id, next);
+                  };
+
+                  return (
+                    <div key={field.id}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {optionsList.map((opt, i) => (
+                          <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--t1)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              value={opt}
+                              checked={currentChecked.includes(opt)}
+                              onChange={() => handleCheckboxToggle(opt)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   );
                 }

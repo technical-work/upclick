@@ -146,7 +146,7 @@ export default function PublicFormRunner({ formId }) {
                   );
                 }
 
-                if (field.type === 'consent_checkbox' || field.type === 'checkbox') {
+                if (field.type === 'consent_checkbox') {
                   return (
                     <label key={field.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '12.5px', color: '#475569', lineHeight: 1.45, cursor: 'pointer' }}>
                       <input
@@ -161,15 +161,57 @@ export default function PublicFormRunner({ formId }) {
                   );
                 }
 
-                if (field.type === 'radio') {
-                  const options = Array.isArray(field.options) && field.options.length ? field.options : ['Option 1', 'Option 2', 'Option 3'];
+                const optionsList = Array.isArray(field.options) && field.options.length
+                  ? field.options
+                  : typeof field.options === 'string' && field.options.trim()
+                  ? field.options.split(',').map((s) => s.trim()).filter(Boolean)
+                  : ['Option 1', 'Option 2', 'Option 3'];
+
+                if (field.type === 'checkbox') {
+                  const currentChecked = Array.isArray(formData[field.id])
+                    ? formData[field.id]
+                    : typeof formData[field.id] === 'string' && formData[field.id]
+                    ? formData[field.id].split(', ')
+                    : formData[field.id] ? [String(formData[field.id])] : [];
+
+                  const handleCheckboxToggle = (optVal) => {
+                    const next = currentChecked.includes(optVal)
+                      ? currentChecked.filter((v) => v !== optVal)
+                      : [...currentChecked, optVal];
+                    handleChange(field.id, next);
+                  };
+
                   return (
                     <div key={field.id}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
                         {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {options.map((opt, optIdx) => (
+                        {optionsList.map((opt, optIdx) => (
+                          <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              value={opt}
+                              checked={currentChecked.includes(opt)}
+                              onChange={() => handleCheckboxToggle(opt)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (field.type === 'radio') {
+                  return (
+                    <div key={field.id}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {optionsList.map((opt, optIdx) => (
                           <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
                             <input
                               type="radio"
@@ -189,7 +231,6 @@ export default function PublicFormRunner({ formId }) {
                 }
 
                 if (field.type === 'dropdown' || field.type === 'select') {
-                  const options = Array.isArray(field.options) && field.options.length ? field.options : ['Option 1', 'Option 2', 'Option 3'];
                   return (
                     <div key={field.id}>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
@@ -211,7 +252,7 @@ export default function PublicFormRunner({ formId }) {
                         }}
                       >
                         <option value="">{field.placeholder || 'Select an option...'}</option>
-                        {options.map((opt, optIdx) => (
+                        {optionsList.map((opt, optIdx) => (
                           <option key={optIdx} value={opt}>{opt}</option>
                         ))}
                       </select>

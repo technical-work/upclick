@@ -204,6 +204,7 @@ export const ELEMENT_REGISTRY = {
         { key: 'label', label: 'Label', type: 'text' },
         { key: 'placeholder', label: 'Placeholder', type: 'text' },
         { key: 'type', label: 'Field Type', type: 'select', options: ['text', 'first_name', 'last_name', 'full_name', 'email', 'phone', 'number', 'textarea', 'date_of_birth', 'dropdown', 'radio', 'checkbox', 'consent_checkbox', 'address', 'city', 'state', 'postal_code', 'country', 'url'] },
+        { key: 'options', label: 'Options / Choices', type: 'options', placeholder: 'Option 1, Option 2, Option 3' },
         { key: 'width', label: 'Width', type: 'select', options: ['100%', '50%'] },
         { key: 'required', label: 'Required', type: 'toggle' }
       ]}
@@ -1415,22 +1416,23 @@ export function normalizeFormFields(fields) {
       if (typeof field === 'string') {
         const isEmail = field.toLowerCase().includes('email');
         return {
-          id: `f_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+          id: `f_${idx}`,
           label: field,
           type: isEmail ? 'email' : 'text',
           placeholder: field,
           required: true,
-          width: '100%'
+          width: '100%',
+          options: ['Option 1', 'Option 2', 'Option 3']
         };
       }
       return {
-        id: field.id || `f_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+        id: field.id || `f_${idx}`,
         label: field.label || 'Field',
         type: field.type || 'text',
         placeholder: field.placeholder !== undefined ? field.placeholder : (field.label || ''),
         required: Boolean(field.required),
         width: field.width || '100%',
-        options: field.options || []
+        options: field.options || ['Option 1', 'Option 2', 'Option 3']
       };
     });
 }
