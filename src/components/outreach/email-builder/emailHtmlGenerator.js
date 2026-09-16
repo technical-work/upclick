@@ -172,6 +172,85 @@ export function compileEmailHtml(blocks = [], theme = DEFAULT_EMAIL_THEME, optio
         `;
       }
 
+      case BLOCK_TYPES.COUNTDOWN: {
+        return `
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: ${block.paddingBottom || 12}px; margin-top: ${block.paddingTop || 12}px;">
+            <tr>
+              <td align="center" style="background-color: ${block.backgroundColor || 'rgba(239,68,68,0.1)'}; border: 1px solid ${block.borderColor || 'rgba(239,68,68,0.35)'}; border-radius: 12px; padding: 16px 20px; text-align: center; direction: ${dir};">
+                <div style="font-size: 13.5px; font-weight: bold; color: ${block.titleColor || '#f87171'}; margin-bottom: 6px;">${escapeHtml(block.title || '')}</div>
+                <div style="font-size: 26px; font-weight: 900; letter-spacing: 3px; color: ${block.digitsColor || '#ffffff'}; font-family: monospace; background: rgba(0,0,0,0.35); display: inline-block; padding: 6px 18px; border-radius: 8px; margin: 4px 0;">
+                  ${escapeHtml(block.timeDisplay || '24 : 00 : 00')}
+                </div>
+                ${block.subtitle ? `<div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">${escapeHtml(block.subtitle)}</div>` : ''}
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
+      case BLOCK_TYPES.VIDEO: {
+        return `
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: ${block.paddingBottom || 12}px; margin-top: ${block.paddingTop || 12}px;">
+            <tr>
+              <td align="center" style="text-align: center;">
+                <a href="${escapeHtml(block.videoUrl || 'https://youtube.com')}" target="_blank" style="display: block; position: relative; text-decoration: none;">
+                  <img src="${escapeHtml(block.thumbnailUrl || '')}" alt="Video Preview" style="width: 100%; max-width: 100%; border-radius: ${block.borderRadius || 14}px; display: block; border: 0;" />
+                  <div style="margin-top: 8px; font-size: 13px; font-weight: bold; color: #FF6B35;">▶ ${escapeHtml(block.title || 'اضغط هنا لمشاهدة الفيديو')}</div>
+                </a>
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
+      case BLOCK_TYPES.TESTIMONIAL: {
+        return `
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: ${block.paddingBottom || 12}px; margin-top: ${block.paddingTop || 12}px;">
+            <tr>
+              <td style="background-color: ${block.backgroundColor || 'rgba(255,255,255,0.03)'}; border: 1px solid ${block.borderColor || 'rgba(255,255,255,0.08)'}; border-radius: 14px; padding: 18px; text-align: ${textAlign}; direction: ${dir};">
+                <div style="color: #f59e0b; font-size: 16px; margin-bottom: 8px;">⭐⭐⭐⭐⭐</div>
+                <div style="font-size: 14px; font-style: italic; line-height: 1.6; color: ${block.textColor || '#e2e8f0'}; margin-bottom: 10px;">"${formatText(block.quote || '')}"</div>
+                <div style="font-size: 13px; font-weight: bold; color: #ffffff;">${escapeHtml(block.authorName || '')}</div>
+                ${block.authorRole ? `<div style="font-size: 11.5px; color: #94a3b8;">${escapeHtml(block.authorRole)}</div>` : ''}
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
+      case BLOCK_TYPES.PRICING: {
+        return `
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: ${block.paddingBottom || 14}px; margin-top: ${block.paddingTop || 14}px;">
+            <tr>
+              <td align="center" style="background-color: ${block.backgroundColor || 'rgba(108,53,255,0.1)'}; border: 2px solid ${block.borderColor || '#6C35FF'}; border-radius: 16px; padding: 22px 20px; text-align: center; direction: ${dir};">
+                ${block.badge ? `<div style="display: inline-block; background: #6C35FF; color: #fff; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 999px; margin-bottom: 8px;">${escapeHtml(block.badge)}</div>` : ''}
+                <div style="font-size: 18px; font-weight: bold; color: #ffffff; margin-bottom: 4px;">${escapeHtml(block.planName || '')}</div>
+                <div style="margin: 8px 0 14px 0;">
+                  <span style="font-size: 32px; font-weight: 900; color: #FF6B35;">${escapeHtml(block.price || '$49')}</span>
+                  <span style="font-size: 13px; color: #94a3b8;"> ${escapeHtml(block.period || '/ mo')}</span>
+                </div>
+                <div style="font-size: 13.5px; line-height: 1.8; color: #cbd5e1; text-align: ${textAlign}; margin-bottom: 18px; padding: 0 10px;">${formatText(block.features || '')}</div>
+                <a href="${escapeHtml(block.buttonUrl || 'https://upklick.net')}" target="_blank" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #FF6B35, #6C35FF); color: #ffffff !important; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 10px;">
+                  ${escapeHtml(block.buttonText || 'اشترك الآن')}
+                </a>
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
+      case BLOCK_TYPES.HTML: {
+        return `
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: ${block.paddingBottom || 10}px; margin-top: ${block.paddingTop || 10}px;">
+            <tr>
+              <td style="direction: ${dir}; text-align: ${textAlign};">
+                ${block.htmlContent || ''}
+              </td>
+            </tr>
+          </table>
+        `;
+      }
+
       case BLOCK_TYPES.DIVIDER: {
         return `
           <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: ${block.paddingBottom || 16}px; margin-top: ${block.paddingTop || 16}px;">

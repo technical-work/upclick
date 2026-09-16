@@ -7,6 +7,11 @@ export const BLOCK_TYPES = {
   CARD: 'card',
   COLUMNS: 'columns',
   COUPON: 'coupon',
+  COUNTDOWN: 'countdown',
+  VIDEO: 'video',
+  TESTIMONIAL: 'testimonial',
+  PRICING: 'pricing',
+  HTML: 'html',
   DIVIDER: 'divider',
   SPACER: 'spacer',
   SOCIAL: 'social',
@@ -69,6 +74,15 @@ export const AVAILABLE_BLOCKS_CATALOG = [
     descriptionEn: 'Featured alert or highlight box'
   },
   {
+    type: BLOCK_TYPES.COUNTDOWN,
+    labelAr: 'عداد وتنبيه عاجل',
+    labelEn: 'Urgency Countdown',
+    icon: 'Clock',
+    category: 'marketing',
+    descriptionAr: 'شريط تنازلي يحفز المستلم على سرعة التحويل',
+    descriptionEn: 'Urgency countdown bar'
+  },
+  {
     type: BLOCK_TYPES.COLUMNS,
     labelAr: 'عمودين متجاورين',
     labelEn: '2-Columns Grid',
@@ -85,6 +99,33 @@ export const AVAILABLE_BLOCKS_CATALOG = [
     category: 'marketing',
     descriptionAr: 'رمز خصم ترويجي مع إطار مميز',
     descriptionEn: 'Promo coupon code with copy style'
+  },
+  {
+    type: BLOCK_TYPES.TESTIMONIAL,
+    labelAr: 'آراء وتقييم العملاء',
+    labelEn: 'Testimonial Review',
+    icon: 'Star',
+    category: 'marketing',
+    descriptionAr: 'بطاقة تقييم ⭐⭐⭐⭐⭐ مع اقتباس العميل',
+    descriptionEn: 'Customer review and 5-star rating'
+  },
+  {
+    type: BLOCK_TYPES.VIDEO,
+    labelAr: 'معاينة فيديو',
+    labelEn: 'Video Preview',
+    icon: 'Video',
+    category: 'media',
+    descriptionAr: 'صورة مصغرة لفيديو مع زر تشغيل يفتح الرابط',
+    descriptionEn: 'Video thumbnail with play overlay'
+  },
+  {
+    type: BLOCK_TYPES.PRICING,
+    labelAr: 'باقة أسعار',
+    labelEn: 'Pricing Plan',
+    icon: 'DollarSign',
+    category: 'marketing',
+    descriptionAr: 'عرض سعر مميز مع قائمة ميزات وزر شراء',
+    descriptionEn: 'Featured plan price box with bullet features'
   },
   {
     type: BLOCK_TYPES.DIVIDER,
@@ -112,6 +153,15 @@ export const AVAILABLE_BLOCKS_CATALOG = [
     category: 'social',
     descriptionAr: 'روابط حسابات التواصل الاجتماعي',
     descriptionEn: 'Clickable social platform icons'
+  },
+  {
+    type: BLOCK_TYPES.HTML,
+    labelAr: 'كود مخصص (HTML)',
+    labelEn: 'Custom HTML',
+    icon: 'Code',
+    category: 'advanced',
+    descriptionAr: 'إدراج كود HTML أو عنصر مخصص',
+    descriptionEn: 'Raw custom HTML embed'
   },
   {
     type: BLOCK_TYPES.FOOTER,
@@ -225,6 +275,65 @@ export function createDefaultBlock(type) {
         paddingBottom: 12
       };
 
+    case BLOCK_TYPES.COUNTDOWN:
+      return {
+        id,
+        type,
+        title: '⏳ ينتهي العرض الخاص خلال:',
+        timeDisplay: '24 : 00 : 00',
+        subtitle: 'ساعات · دقائق · ثواني',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderColor: 'rgba(239, 68, 68, 0.35)',
+        titleColor: '#f87171',
+        digitsColor: '#ffffff',
+        paddingTop: 12,
+        paddingBottom: 12
+      };
+
+    case BLOCK_TYPES.VIDEO:
+      return {
+        id,
+        type,
+        thumbnailUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+        videoUrl: 'https://youtube.com',
+        title: 'شاهد الشرح التوضيحي السريع (3 دقائق)',
+        borderRadius: 14,
+        paddingTop: 12,
+        paddingBottom: 12
+      };
+
+    case BLOCK_TYPES.TESTIMONIAL:
+      return {
+        id,
+        type,
+        quote: 'منصة UpKlick ساعدتنا في زيادة مبيعات متجرنا بنسبة 140% خلال أول شهر بفضل قنوات المبيعات والأتمتة الذكية.',
+        authorName: 'سارة المنصوري',
+        authorRole: 'مؤسسة متجر إلكتروني',
+        rating: 5,
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        textColor: '#e2e8f0',
+        paddingTop: 12,
+        paddingBottom: 12
+      };
+
+    case BLOCK_TYPES.PRICING:
+      return {
+        id,
+        type,
+        planName: 'باقة النمو (Growth Plan)',
+        price: '49$',
+        period: '/ شهرياً',
+        features: '✓ جميع أدوات التسويق والـ CRM\n✓ 1,500 كريدت ذكاء اصطناعي شهرياً\n✓ نطاقات ومواقع غير محدودة\n✓ دعم فني VIP مباشر',
+        buttonText: 'اشترك في الباقة الآن ←',
+        buttonUrl: 'https://upklick.net/pricing',
+        backgroundColor: 'rgba(108, 53, 255, 0.1)',
+        borderColor: '#6C35FF',
+        badge: 'الأكثر طلباً ⭐',
+        paddingTop: 14,
+        paddingBottom: 14
+      };
+
     case BLOCK_TYPES.COLUMNS:
       return {
         id,
@@ -259,6 +368,15 @@ export function createDefaultBlock(type) {
         codeColor: '#FF6B35',
         paddingTop: 14,
         paddingBottom: 14
+      };
+
+    case BLOCK_TYPES.HTML:
+      return {
+        id,
+        type,
+        htmlContent: '<div style="text-align: center; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15); font-size: 13px; color: #94a3b8;">\n  ⚡ عنصر HTML مخصص\n</div>',
+        paddingTop: 10,
+        paddingBottom: 10
       };
 
     case BLOCK_TYPES.DIVIDER:

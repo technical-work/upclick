@@ -182,6 +182,8 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [activeTemplateId, setActiveTemplateId] = useState('welcome-onboarding');
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [designTab, setDesignTab] = useState('prebuilt'); // 'prebuilt' | 'saved'
 
   const t = (ar, en) => (isRTL ? ar : en);
   const composeRef = useRef(null);
@@ -193,7 +195,8 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
   const loadCore = useCallback(async () => {
     const results = await Promise.allSettled([
       adminFetch('/api/admin/outreach/status'),
-      adminFetch('/api/admin/outreach/campaigns')
+      adminFetch('/api/admin/outreach/campaigns'),
+      adminFetch('/api/admin/outreach/templates')
     ]);
 
     if (results[0].status === 'fulfilled') {
@@ -205,6 +208,10 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
     if (results[1].status === 'fulfilled') {
       const emailOnly = (results[1].value.campaigns || []).filter(c => c.channel !== 'whatsapp');
       setCampaigns(emailOnly);
+    }
+
+    if (results[2].status === 'fulfilled') {
+      setCustomTemplates(results[2].value.templates || []);
     }
   }, []);
 
@@ -710,41 +717,134 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
         {currentStep === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeSlide 0.25s ease' }}>
             
-            {/* Quick Template Picker Strip */}
+            {/* Quick Template Picker Strip with Tabs */}
             <div>
-              <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: '10px', color: 'var(--text)' }}>
-                {t('اختر قالباً جاهزاً أو صمم من الصفر:', 'Choose a ready template or build from scratch:')}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text)' }}>
+                  {t('اختر قالباً جاهزاً أو من تصاميمك المحفوظة:', 'Choose a ready template or your saved custom designs:')}
+                </div>
+                <div style={{ display: 'flex', gap: '4px', background: 'var(--bg3)', padding: '3px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDesignTab('prebuilt')}
+                    style={{
+                      background: designTab === 'prebuilt' ? '#FF6B35' : 'transparent',
+                      color: designTab === 'prebuilt' ? '#fff' : 'var(--text3)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 12px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {t('قوالب النظام (5)', 'Prebuilt Templates (5)')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesignTab('saved')}
+                    style={{
+                      background: designTab === 'saved' ? '#6C35FF' : 'transparent',
+                      color: designTab === 'saved' ? '#fff' : 'var(--text3)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 12px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {t(`تصاميمي المحفوظة (${customTemplates.length})`, `My Saved Designs (${customTemplates.length})`)}
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                {PREBUILT_EMAIL_TEMPLATES.map((tmpl) => {
-                  const isActive = activeTemplateId === tmpl.id;
-                  return (
-                    <div
-                      key={tmpl.id}
-                      onClick={() => handleApplyQuickTemplate(tmpl)}
-                      style={{
-                        background: isActive ? 'rgba(255, 107, 53, 0.12)' : 'var(--bg3)',
-                        border: isActive ? '2px solid #FF6B35' : '1px solid var(--line)',
-                        borderRadius: '12px',
-                        padding: '14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '20px' }}>{tmpl.thumbnail}</span>
-                        {isActive && <span style={{ fontSize: '11px', color: '#FF6B35', fontWeight: 800 }}>✓ {t('المحدد', 'Selected')}</span>}
+
+              {designTab === 'prebuilt' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                  {PREBUILT_EMAIL_TEMPLATES.map((tmpl) => {
+                    const isActive = activeTemplateId === tmpl.id;
+                    return (
+                      <div
+                        key={tmpl.id}
+                        onClick={() => handleApplyQuickTemplate(tmpl)}
+                        style={{
+                          background: isActive ? 'rgba(255, 107, 53, 0.12)' : 'var(--bg3)',
+                          border: isActive ? '2px solid #FF6B35' : '1px solid var(--line)',
+                          borderRadius: '12px',
+                          padding: '14px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '20px' }}>{tmpl.thumbnail}</span>
+                          {isActive && <span style={{ fontSize: '11px', color: '#FF6B35', fontWeight: 800 }}>✓ {t('المحدد', 'Selected')}</span>}
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text)' }}>
+                          {isRTL ? tmpl.nameAr : tmpl.nameEn}
+                        </div>
                       </div>
-                      <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text)' }}>
-                        {isRTL ? tmpl.nameAr : tmpl.nameEn}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                customTemplates.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', background: 'var(--bg3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text2)', fontWeight: 700 }}>
+                      {t('لا توجد تصاميم محفوظة بعد في مكتبتك', 'No custom saved templates yet')}
+                    </p>
+                    <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: 'var(--text3)' }}>
+                      {t('افتح مصمم الإيميلات واحفظ أي تصميم بالنقر على "حفظ كقالب مخصص"!', 'Open visual builder and click "Save as Template" to build your reusable library!')}
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                    {customTemplates.map((st) => {
+                      const isActive = activeTemplateId === st.id;
+                      return (
+                        <div
+                          key={st.id}
+                          onClick={() => {
+                            setActiveTemplateId(st.id);
+                            const compiled = compileEmailHtml(st.blocks, st.theme || DEFAULT_EMAIL_THEME);
+                            setForm((f) => ({
+                              ...f,
+                              emailDesign: { blocks: st.blocks, theme: st.theme },
+                              htmlBody: compiled
+                            }));
+                            setInfo(t(`تم تطبيق تصميم: ${st.name}`, `Loaded design: ${st.name}`));
+                          }}
+                          style={{
+                            background: isActive ? 'rgba(108, 53, 255, 0.15)' : 'var(--bg3)',
+                            border: isActive ? '2px solid #6C35FF' : '1px solid var(--line)',
+                            borderRadius: '12px',
+                            padding: '14px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '20px' }}>{st.thumbnail || '🎨'}</span>
+                            {isActive && <span style={{ fontSize: '11px', color: '#a78bfa', fontWeight: 800 }}>✓ {t('المحدد', 'Selected')}</span>}
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text)' }}>
+                            {st.name}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>
+                            {st.blocks?.length || 0} {t('عناصر', 'blocks')}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              )}
             </div>
 
             {/* Launch Visual Builder Banner */}
