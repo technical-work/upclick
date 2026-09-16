@@ -38,8 +38,8 @@ export default function CreateSurveyModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -50,12 +50,12 @@ export default function CreateSurveyModal({
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
           borderRadius: '16px',
           width: '100%',
           maxWidth: step === 'browse_templates' ? '820px' : '640px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          border: '1px solid #e2e8f0',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid var(--edge)',
           overflow: 'hidden',
           animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
@@ -64,19 +64,19 @@ export default function CreateSurveyModal({
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #e2e8f0',
+            borderBottom: '1px solid var(--edge)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}
         >
           <div>
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '800', color: 'var(--t1)' }}>
               {step === 'browse_templates'
                 ? (isRtl ? 'اختر قالب الاستبيان' : 'Choose a Survey Template')
                 : (isRtl ? 'إنشاء استبيان جديد' : 'Create new survey')}
             </h3>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--t2)' }}>
               {step === 'browse_templates'
                 ? (isRtl ? 'اختر قالباً لبدء العمل عليه فوراً' : 'Select a prebuilt survey template to get started instantly')
                 : (isRtl ? 'اختر طريقة البدء لإنشاء استبيان تفاعلي متعدد الشرائح' : 'Choose how you want to start building your multi-step survey')}
@@ -88,7 +88,7 @@ export default function CreateSurveyModal({
             style={{
               background: 'none',
               border: 'none',
-              color: '#94a3b8',
+              color: 'var(--t3)',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '8px',
@@ -102,270 +102,258 @@ export default function CreateSurveyModal({
         </div>
 
         {/* Body */}
-        {step === 'select_mode' ? (
-          <div style={{ padding: '24px' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
-                {isRtl ? 'اسم الاستبيان' : 'Survey Name'}
-              </label>
-              <input
-                type="text"
-                className="inp"
-                value={surveyName}
-                onChange={(e) => setSurveyName(e.target.value)}
-                placeholder="Survey 0"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13.5px',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              {/* Option 1: Start from Scratch matching Screenshot 2 */}
-              <div
-                onClick={() => setMode('scratch')}
-                style={{
-                  border: mode === 'scratch' ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                  borderRadius: '12px',
-                  padding: '18px',
-                  cursor: 'pointer',
-                  background: mode === 'scratch' ? '#f8fafc' : '#ffffff',
-                  boxShadow: mode === 'scratch' ? '0 4px 14px rgba(37, 99, 235, 0.08)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>
-                      {isRtl ? 'ابدأ من الصفر' : 'Start from Scratch'}
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                      {isRtl ? 'صمم استبيانك بالكامل خطوة بخطوة' : 'Design from scratch using the survey builder'}
-                    </p>
-                  </div>
-                  <div
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      border: mode === 'scratch' ? '5px solid #2563eb' : '2px solid #cbd5e1',
-                      background: '#ffffff',
-                      flexShrink: 0
-                    }}
-                  />
-                </div>
-
-                {/* Box Graphic with + */}
-                <div
-                  style={{
-                    height: '140px',
-                    borderRadius: '8px',
-                    border: '1px dashed #cbd5e1',
-                    background: '#f8fafc',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginTop: '14px',
-                    color: '#94a3b8'
-                  }}
-                >
-                  <Plus size={36} strokeWidth={1.5} />
-                </div>
+        <div style={{ padding: '24px' }}>
+          {step === 'select_mode' ? (
+            <div>
+              {/* Survey Name Input */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--t1)', marginBottom: '8px' }}>
+                  {isRtl ? 'اسم الاستبيان' : 'Survey Name'}
+                </label>
+                <input
+                  type="text"
+                  value={surveyName}
+                  onChange={(e) => setSurveyName(e.target.value)}
+                  placeholder={isRtl ? 'مثال: استبيان رضا العملاء' : 'e.g., Customer Satisfaction Survey'}
+                  className="inp"
+                  style={{ width: '100%', fontSize: '14px' }}
+                />
               </div>
 
-              {/* Option 2: From templates matching Screenshot 2 */}
+              {/* Dual Mode Cards (Screenshot 2) */}
               <div
-                onClick={() => setMode('templates')}
                 style={{
-                  border: mode === 'templates' ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                  borderRadius: '12px',
-                  padding: '18px',
-                  cursor: 'pointer',
-                  background: mode === 'templates' ? '#f8fafc' : '#ffffff',
-                  boxShadow: mode === 'templates' ? '0 4px 14px rgba(37, 99, 235, 0.08)' : 'none',
-                  transition: 'all 0.15s ease'
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '16px',
+                  marginBottom: '10px'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>
-                      {isRtl ? 'من القوالب الجاهزة' : 'From templates'}
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                      {isRtl ? 'انطلق بسرعة مع استبيان مصمم ومجهز' : 'Jump start with an awesome prebuilt survey'}
-                    </p>
-                  </div>
-                  <div
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      border: mode === 'templates' ? '5px solid #2563eb' : '2px solid #cbd5e1',
-                      background: '#ffffff',
-                      flexShrink: 0
-                    }}
-                  />
-                </div>
-
-                {/* Graphic with Over 1000+ Templates */}
+                {/* 1. Start from Scratch */}
                 <div
+                  onClick={() => setMode('scratch')}
                   style={{
-                    height: '140px',
-                    borderRadius: '8px',
-                    border: '1px solid #fed7aa',
-                    background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                    border: mode === 'scratch' ? '2px solid var(--a)' : '1px solid var(--edge)',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    cursor: 'pointer',
+                    background: mode === 'scratch' ? 'rgba(37, 99, 235, 0.08)' : 'var(--surface2)',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginTop: '14px',
-                    padding: '16px',
-                    position: 'relative',
-                    overflow: 'hidden'
+                    justifyContent: 'space-between'
                   }}
                 >
-                  <div style={{ fontSize: '14px', fontWeight: '800', color: '#c2410c', marginBottom: '4px' }}>
-                    {isRtl ? 'أكثر من 1000+ قالب جاهز' : 'Over 1000+ Templates'}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--t1)' }}>
+                        {isRtl ? 'البدء من الصفر' : 'Start from Scratch'}
+                      </h4>
+                      <div
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          border: mode === 'scratch' ? '5px solid var(--a)' : '2px solid var(--edge)',
+                          background: mode === 'scratch' ? '#fff' : 'transparent'
+                        }}
+                      />
+                    </div>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--t2)', lineHeight: 1.4 }}>
+                      {isRtl
+                        ? 'صمم من الصفر باستخدام المنشئ المرئي للاستبيانات'
+                        : 'Design from scratch using the full visual survey builder'}
+                    </p>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#ea580c' }}>
-                    {isRtl ? 'NPS، مبيعات، رضا العملاء، وأبحاث السوق' : 'NPS, CSAT, Discovery & Lead Scoring'}
-                  </div>
-                  <Sparkles size={24} style={{ color: '#f97316', position: 'absolute', top: 12, right: 12, opacity: 0.7 }} />
-                </div>
-              </div>
-            </div>
 
-            {/* Modal Actions matching Screenshot 2 */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '9px 20px',
-                  fontSize: '13.5px',
-                  fontWeight: '700',
-                  color: '#475569',
-                  cursor: 'pointer'
-                }}
-              >
-                {isRtl ? 'إلغاء' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleCreate}
-                style={{
-                  background: '#2563eb',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '9px 26px',
-                  fontSize: '13.5px',
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-                }}
-              >
-                {mode === 'templates' ? (isRtl ? 'متابعة لاختيار القالب ←' : 'Browse Templates →') : (isRtl ? 'إنشاء الاستبيان' : 'Create')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Template Browser */
-          <div style={{ padding: '24px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', maxHeight: '420px', overflowY: 'auto', marginBottom: '20px' }}>
-              {SURVEY_TEMPLATES.map((tpl) => (
+                  {/* Plus Box Placeholder */}
+                  <div
+                    style={{
+                      height: '110px',
+                      background: 'var(--surface)',
+                      borderRadius: '8px',
+                      border: '1px dashed var(--edge)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: mode === 'scratch' ? 'var(--a)' : 'var(--t3)'
+                    }}
+                  >
+                    <Plus size={32} />
+                  </div>
+                </div>
+
+                {/* 2. From Templates */}
                 <div
-                  key={tpl.id}
-                  onClick={() => setSelectedTemplate(tpl)}
+                  onClick={() => setMode('templates')}
                   style={{
-                    border: selectedTemplate?.id === tpl.id ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                    border: mode === 'templates' ? '2px solid var(--a)' : '1px solid var(--edge)',
                     borderRadius: '12px',
-                    padding: '16px',
+                    padding: '20px',
                     cursor: 'pointer',
-                    background: selectedTemplate?.id === tpl.id ? '#eff6ff' : '#ffffff',
-                    transition: 'all 0.15s ease'
+                    background: mode === 'templates' ? 'rgba(37, 99, 235, 0.08)' : 'var(--surface2)',
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '22px' }}>{tpl.icon}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb', background: '#dbeafe', padding: '2px 8px', borderRadius: '999px' }}>
-                      {tpl.category}
-                    </span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: 'var(--t1)' }}>
+                        {isRtl ? 'من القوالب الجاهزة' : 'From templates'}
+                      </h4>
+                      <div
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          border: mode === 'templates' ? '5px solid var(--a)' : '2px solid var(--edge)',
+                          background: mode === 'templates' ? '#fff' : 'transparent'
+                        }}
+                      />
+                    </div>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--t2)', lineHeight: 1.4 }}>
+                      {isRtl
+                        ? 'انطلق سريعاً مع استبيان مصمم ومجهز مسبقاً'
+                        : 'Jump start with an awesome prebuilt survey template'}
+                    </p>
                   </div>
-                  <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>
-                    {tpl.name}
-                  </h4>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
-                    {tpl.description}
-                  </p>
-                  <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569' }}>
-                    📋 {tpl.slides?.length || 0} {isRtl ? 'شرائح استبيان' : 'Survey Slides'}
+
+                  {/* Template graphic preview */}
+                  <div
+                    style={{
+                      height: '110px',
+                      background: 'var(--surface)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--edge)',
+                      padding: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        color: 'var(--t1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      <Sparkles size={14} color="#f59e0b" />
+                      <span>Over 1000+ Templates</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
+                      {isRtl ? 'قوالب CSAT، NPS، والمبيعات' : 'NPS, CSAT & Lead Qualification'}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setStep('select_mode')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#64748b',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  cursor: 'pointer'
-                }}
-              >
-                ← {isRtl ? 'الرجوع للاختيار' : 'Back'}
-              </button>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '8px',
-                    padding: '9px 18px',
-                    fontSize: '13.5px',
-                    fontWeight: '700',
-                    color: '#475569',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {isRtl ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handlePickTemplate(selectedTemplate)}
-                  style={{
-                    background: '#2563eb',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '9px 24px',
-                    fontSize: '13.5px',
-                    fontWeight: '700',
-                    color: '#ffffff',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {isRtl ? 'استخدام هذا القالب' : 'Use this Template'}
-                </button>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            /* Browse Templates view */
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '14px', maxHeight: '420px', overflowY: 'auto' }}>
+                {SURVEY_TEMPLATES.map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    onClick={() => handlePickTemplate(tpl)}
+                    style={{
+                      border: '1px solid var(--edge)',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      cursor: 'pointer',
+                      background: 'var(--surface2)',
+                      transition: 'all 0.15s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--a)';
+                      e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--edge)';
+                      e.currentTarget.style.background = 'var(--surface2)';
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{tpl.icon || '📋'}</div>
+                      <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--t1)', margin: '0 0 6px 0' }}>{tpl.name}</h4>
+                      <p style={{ fontSize: '11.5px', color: 'var(--t2)', margin: '0 0 12px 0', lineHeight: 1.4 }}>{tpl.description}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', color: 'var(--a)', fontWeight: '700' }}>
+                      <span>{tpl.slides?.length || 1} {isRtl ? 'شرائح' : 'slides'}</span>
+                      <ArrowRight size={14} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: '16px 24px',
+            borderTop: '1px solid var(--edge)',
+            background: 'var(--surface2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: '12px'
+          }}
+        >
+          {step === 'browse_templates' ? (
+            <button
+              type="button"
+              onClick={() => setStep('select_mode')}
+              className="btn btn-ghost"
+              style={{ fontSize: '13px', fontWeight: '600' }}
+            >
+              {isRtl ? 'رجوع' : 'Back'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-ghost"
+              style={{ fontSize: '13px', fontWeight: '600' }}
+            >
+              {isRtl ? 'إلغاء' : 'Cancel'}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleCreate}
+            style={{
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '9px 24px',
+              fontSize: '13.5px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+            }}
+          >
+            {step === 'browse_templates'
+              ? (isRtl ? 'استعراض' : 'Browse')
+              : (mode === 'scratch' ? (isRtl ? 'إنشاء' : 'Create') : (isRtl ? 'متابعة للقوالب' : 'Next'))}
+          </button>
+        </div>
       </div>
     </div>
   );

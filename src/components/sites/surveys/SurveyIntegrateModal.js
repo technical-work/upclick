@@ -38,8 +38,8 @@ export default function SurveyIntegrateModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -50,12 +50,12 @@ export default function SurveyIntegrateModal({
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
           borderRadius: '16px',
           width: '100%',
           maxWidth: '620px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          border: '1px solid #e2e8f0',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          border: '1px solid var(--edge)',
           overflow: 'hidden'
         }}
       >
@@ -63,42 +63,58 @@ export default function SurveyIntegrateModal({
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #e2e8f0',
+            borderBottom: '1px solid var(--edge)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}
         >
-          <div>
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
-              {isRtl ? `مشاركة وتضمين الاستبيان: ${survey.name}` : `Share & Integrate Survey: ${survey.name}`}
-            </h3>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b' }}>
-              {isRtl ? 'استخدم الرابط المباشر أو كود التضمين في موقعك' : 'Use the direct link or embed code to collect responses'}
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'rgba(37, 99, 235, 0.12)',
+                color: 'var(--a)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Share2 size={18} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--t1)' }}>
+                {isRtl ? 'تضمين ومشاركة الاستبيان' : 'Integrate & Share Survey'}
+              </h3>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--t2)' }}>{survey.name}</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '6px',
-              borderRadius: '8px'
-            }}
+            style={{ background: 'none', border: 'none', color: 'var(--t3)', cursor: 'pointer', padding: '4px' }}
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '0 16px' }}>
+        {/* Tab Selection */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            padding: '8px 16px',
+            background: 'var(--surface2)',
+            borderBottom: '1px solid var(--edge)',
+            gap: '6px'
+          }}
+        >
           {[
-            { id: 'link', label: isRtl ? 'الرابط المباشر' : 'Direct Link', icon: Share2 },
-            { id: 'embed', label: isRtl ? 'كود التضمين (iFrame)' : 'Embed Code', icon: Code2 },
-            { id: 'popup', label: isRtl ? 'نافذة منبثقة (Popup)' : 'Popup Widget', icon: Layers }
+            { id: 'link', label: isRtl ? 'رابط مباشر' : 'Direct Link', icon: ExternalLink },
+            { id: 'embed', label: isRtl ? 'تضمين iframe' : 'Embed Iframe', icon: Code2 },
+            { id: 'popup', label: isRtl ? 'نافذة منبثقة' : 'Popup Modal', icon: Layers }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -110,18 +126,20 @@ export default function SurveyIntegrateModal({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '6px',
-                  padding: '12px 16px',
-                  background: 'none',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
                   border: 'none',
-                  borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
-                  color: isActive ? '#2563eb' : '#64748b',
                   fontSize: '13px',
-                  fontWeight: isActive ? '700' : '600',
-                  cursor: 'pointer'
+                  fontWeight: isActive ? '700' : '500',
+                  cursor: 'pointer',
+                  background: isActive ? 'var(--surface)' : 'transparent',
+                  color: isActive ? 'var(--a)' : 'var(--t2)',
+                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                 }}
               >
-                <Icon size={16} />
+                <Icon size={14} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -132,8 +150,8 @@ export default function SurveyIntegrateModal({
         <div style={{ padding: '24px' }}>
           {activeTab === 'link' && (
             <div>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                {isRtl ? 'الرابط العام للاستبيان' : 'Public Survey URL'}
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--t1)', marginBottom: '8px' }}>
+                {isRtl ? 'رابط الاستبيان المباشر' : 'Direct Survey URL'}
               </label>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 <input
@@ -141,154 +159,153 @@ export default function SurveyIntegrateModal({
                   readOnly
                   value={surveyUrl}
                   className="inp"
-                  style={{
-                    flex: 1,
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '13px',
-                    background: '#f8fafc',
-                    color: '#0f172a'
-                  }}
+                  style={{ flex: 1, fontSize: '13px' }}
                 />
                 <button
                   type="button"
                   onClick={() => handleCopy(surveyUrl, 'link')}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: copiedType === 'link' ? '#16a34a' : '#2563eb',
+                    background: copiedType === 'link' ? '#16a34a' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '8px',
-                    padding: '10px 18px',
+                    padding: '8px 16px',
                     fontSize: '13px',
                     fontWeight: '700',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
                   }}
                 >
-                  {copiedType === 'link' ? <Check size={16} /> : <Copy size={16} />}
-                  <span>{copiedType === 'link' ? (isRtl ? 'تم النسخ!' : 'Copied!') : (isRtl ? 'نسخ' : 'Copy')}</span>
+                  {copiedType === 'link' ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copiedType === 'link' ? (isRtl ? 'تم النسخ' : 'Copied') : (isRtl ? 'نسخ' : 'Copy')}</span>
                 </button>
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => window.open(surveyUrl, '_blank')}
+                <a
+                  href={surveyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
-                    background: '#eff6ff',
-                    border: '1px solid #bfdbfe',
-                    color: '#2563eb',
-                    borderRadius: '8px',
-                    padding: '8px 14px',
                     fontSize: '12.5px',
                     fontWeight: '700',
-                    cursor: 'pointer'
+                    color: 'var(--a)'
                   }}
                 >
                   <ExternalLink size={14} />
-                  <span>{isRtl ? 'فتح المعاينة في صفحة جديدة' : 'Open in New Tab'}</span>
-                </button>
+                  <span>{isRtl ? 'فتح في لسان جديد' : 'Open in New Tab'}</span>
+                </a>
               </div>
             </div>
           )}
 
           {activeTab === 'embed' && (
             <div>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                {isRtl ? 'كود التضمين المباشر (HTML)' : 'Embed Code (HTML iFrame)'}
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--t1)', marginBottom: '8px' }}>
+                {isRtl ? 'كود التضمين (HTML Iframe)' : 'Embed Code (HTML Iframe)'}
               </label>
               <textarea
-                readOnly
                 rows={4}
+                readOnly
                 value={iframeEmbedCode}
                 className="inp"
                 style={{
                   width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '12px',
                   fontFamily: 'monospace',
-                  background: '#f8fafc',
-                  color: '#0f172a',
-                  marginBottom: '14px',
-                  boxSizing: 'border-box'
+                  fontSize: '12px',
+                  marginBottom: '16px',
+                  resize: 'none'
                 }}
               />
               <button
                 type="button"
                 onClick={() => handleCopy(iframeEmbedCode, 'embed')}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: copiedType === 'embed' ? '#16a34a' : '#2563eb',
+                  background: copiedType === 'embed' ? '#16a34a' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
-                  padding: '9px 20px',
+                  padding: '9px 18px',
                   fontSize: '13px',
                   fontWeight: '700',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
               >
-                {copiedType === 'embed' ? <Check size={16} /> : <Copy size={16} />}
-                <span>{copiedType === 'embed' ? (isRtl ? 'تم نسخ الكود!' : 'Copied!') : (isRtl ? 'نسخ كود التضمين' : 'Copy Embed Code')}</span>
+                {copiedType === 'embed' ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedType === 'embed' ? (isRtl ? 'تم نسخ كود التضمين' : 'Copied') : (isRtl ? 'نسخ كود التضمين' : 'Copy Embed Code')}</span>
               </button>
             </div>
           )}
 
           {activeTab === 'popup' && (
             <div>
-              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                {isRtl ? 'كود النافذة المنبثقة' : 'Popup Script Code'}
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--t1)', marginBottom: '8px' }}>
+                {isRtl ? 'كود النافذة المنبثقة (Popup Widget)' : 'Popup Widget Script'}
               </label>
               <textarea
-                readOnly
                 rows={3}
+                readOnly
                 value={popupScriptCode}
                 className="inp"
                 style={{
                   width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '12px',
                   fontFamily: 'monospace',
-                  background: '#f8fafc',
-                  color: '#0f172a',
-                  marginBottom: '14px',
-                  boxSizing: 'border-box'
+                  fontSize: '12px',
+                  marginBottom: '16px',
+                  resize: 'none'
                 }}
               />
               <button
                 type="button"
                 onClick={() => handleCopy(popupScriptCode, 'popup')}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: copiedType === 'popup' ? '#16a34a' : '#2563eb',
+                  background: copiedType === 'popup' ? '#16a34a' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
-                  padding: '9px 20px',
+                  padding: '9px 18px',
                   fontSize: '13px',
                   fontWeight: '700',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
               >
-                {copiedType === 'popup' ? <Check size={16} /> : <Copy size={16} />}
-                <span>{copiedType === 'popup' ? (isRtl ? 'تم نسخ الكود!' : 'Copied!') : (isRtl ? 'نسخ كود الـ Popup' : 'Copy Popup Script')}</span>
+                {copiedType === 'popup' ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedType === 'popup' ? (isRtl ? 'تم النسخ' : 'Copied') : (isRtl ? 'نسخ الكود' : 'Copy Script')}</span>
               </button>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: '14px 24px',
+            borderTop: '1px solid var(--edge)',
+            background: 'var(--surface2)',
+            display: 'flex',
+            justifyContent: 'flex-end'
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn btn-ghost"
+            style={{ fontSize: '13px', fontWeight: '600' }}
+          >
+            {isRtl ? 'إغلاق' : 'Close'}
+          </button>
         </div>
       </div>
     </div>

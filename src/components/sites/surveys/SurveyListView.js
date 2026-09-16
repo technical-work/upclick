@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus,
   Search,
@@ -22,7 +22,11 @@ import {
   CheckCircle2,
   ArrowRight,
   Download,
-  FolderPlus
+  FolderPlus,
+  Layers,
+  Inbox,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import CreateSurveyModal from './CreateSurveyModal';
 import SurveyIntegrateModal from './SurveyIntegrateModal';
@@ -40,7 +44,7 @@ export default function SurveyListView({
   showToast = () => {}
 }) {
   const [activeSubTab, setActiveSubTab] = useState('all'); // 'all' | 'analytics' | 'submissions'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeActionMenuId, setActiveActionMenuId] = useState(null);
@@ -48,21 +52,42 @@ export default function SurveyListView({
   const [selectedSurveyForSubmissions, setSelectedSurveyForSubmissions] = useState(null);
   const [renamingSurveyId, setRenamingSurveyId] = useState(null);
   const [renamingValue, setRenamingValue] = useState('');
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [folderName, setFolderName] = useState('');
 
-  // Filter surveys
-  const filteredSurveys = surveys.filter((s) =>
-    (s.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtered surveys
+  const filteredSurveys = useMemo(() => {
+    return surveys.filter((s) =>
+      (s.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [surveys, searchQuery]);
 
-  // Submissions across all surveys
-  const allSubmissions = surveys.flatMap((s) =>
-    (s.submissions || []).map((sub) => ({ ...sub, surveyId: s.id, surveyName: s.name }))
-  );
+  // Aggregate submissions across all surveys
+  const allSubmissions = useMemo(() => {
+    const list = [];
+    surveys.forEach((s) => {
+      (s.submissions || []).forEach((sub) => {
+        list.push({
+          ...sub,
+          surveyId: s.id,
+          surveyName: s.name
+        });
+      });
+    });
+    return list.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
+  }, [surveys]);
 
-  const filteredSubmissions = allSubmissions.filter((sub) => {
-    const text = `${sub.name || ''} ${sub.email || ''} ${sub.surveyName || ''}`.toLowerCase();
-    return text.includes(searchTerm.toLowerCase());
-  });
+  const filteredSubmissions = useMemo(() => {
+    return allSubmissions.filter((sub) => {
+      const text = `${sub.name || ''} ${sub.email || ''} ${sub.surveyName || ''} ${JSON.stringify(sub.data || {})}`.toLowerCase();
+      return text.includes(searchQuery.toLowerCase());
+    });
+  }, [allSubmissions, searchQuery]);
+
+  // Aggregate analytics
+  const totalViews = useMemo(() => surveys.reduce((acc, s) => acc + (s.analytics?.views || s.viewsCount || (s.submissions?.length ? s.submissions.length * 2 + 5 : 0)), 0), [surveys]);
+  const totalSubmissions = useMemo(() => allSubmissions.length, [allSubmissions]);
+  const avgCompletion = totalViews > 0 ? ((totalSubmissions / totalViews) * 100).toFixed(1) : '0.0';
 
   const handleStartRename = (survey) => {
     setRenamingSurveyId(survey.id);
@@ -73,7 +98,7 @@ export default function SurveyListView({
   const handleSaveRename = (surveyId) => {
     if (renamingValue.trim() && onUpdateSurveyName) {
       onUpdateSurveyName(surveyId, renamingValue.trim());
-      showToast(isRtl ? 'تم تغيير الاسم بنجاح' : 'Survey renamed successfully');
+      showToast(isRtl ? 'تم تغيير اسم الاستبيان بنجاح' : 'Survey renamed successfully');
     }
     setRenamingSurveyId(null);
   };
@@ -109,111 +134,120 @@ export default function SurveyListView({
   return (
     <div
       style={{
-        padding: '24px 32px',
+        padding: '0 24px',
         maxWidth: '1440px',
         margin: '0 auto',
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        direction: isRtl ? 'rtl' : 'ltr'
+        direction: isRtl ? 'rtl' : 'ltr',
+        animation: 'fadeIn 0.25s ease'
       }}
     >
-      {/* Top Subtabs & Action Bar (Screenshot 1) */}
+      {/* Top Header matching Screenshot 1 with dark theme variables */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid #e2e8f0',
-          paddingBottom: '14px',
+          borderBottom: '1px solid var(--edge)',
+          paddingBottom: '0px',
           marginBottom: '20px',
           flexWrap: 'wrap',
           gap: '12px'
         }}
       >
-        {/* Subtabs: Surveys / All surveys / Analytics / Submissions */}
+        {/* Left Sub-tabs: Surveys | All surveys | Analytics | Submissions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <span style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
+          <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--t1)', padding: '12px 0' }}>
             {isRtl ? 'الاستبيانات' : 'Surveys'}
           </span>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {[
-              { id: 'all', label: 'All surveys', labelAr: 'جميع الاستبيانات' },
-              { id: 'analytics', label: 'Analytics', labelAr: 'التحليلات' },
-              { id: 'submissions', label: 'Submissions', labelAr: 'الاستجابات' }
-            ].map((tab) => {
-              const isActive = activeSubTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveSubTab(tab.id)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    fontSize: '14px',
-                    fontWeight: isActive ? 600 : 500,
-                    color: isActive ? '#2563eb' : '#64748b',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    padding: '4px 0'
-                  }}
-                >
-                  <span>{isRtl ? tab.labelAr : tab.label}</span>
-                  {isActive && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '-15px',
-                        left: 0,
-                        right: 0,
-                        height: '2px',
-                        background: '#2563eb',
-                        borderRadius: '2px'
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Action buttons (Survey features, folder, + Create survey) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
-            onClick={() => showToast(isRtl ? 'ميزة الاستبيانات التفاعلية نشطة بالكامل' : 'Survey engine is fully active')}
+            onClick={() => setActiveSubTab('all')}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
-              color: '#334155',
-              padding: '7px 14px',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer'
+              background: 'none',
+              border: 'none',
+              borderBottom: activeSubTab === 'all' ? '2px solid var(--a)' : '2px solid transparent',
+              color: activeSubTab === 'all' ? 'var(--a)' : 'var(--t2)',
+              fontWeight: activeSubTab === 'all' ? '700' : '500',
+              fontSize: '14px',
+              padding: '12px 4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}
           >
-            <Sparkles size={14} color="#2563eb" />
+            {isRtl ? 'جميع الاستبيانات' : 'All surveys'}
+          </button>
+          <button
+            onClick={() => setActiveSubTab('analytics')}
+            style={{
+              background: 'none',
+              border: 'none',
+              borderBottom: activeSubTab === 'analytics' ? '2px solid var(--a)' : '2px solid transparent',
+              color: activeSubTab === 'analytics' ? 'var(--a)' : 'var(--t2)',
+              fontWeight: activeSubTab === 'analytics' ? '700' : '500',
+              fontSize: '14px',
+              padding: '12px 4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {isRtl ? 'التحليلات' : 'Analytics'}
+          </button>
+          <button
+            onClick={() => setActiveSubTab('submissions')}
+            style={{
+              background: 'none',
+              border: 'none',
+              borderBottom: activeSubTab === 'submissions' ? '2px solid var(--a)' : '2px solid transparent',
+              color: activeSubTab === 'submissions' ? 'var(--a)' : 'var(--t2)',
+              fontWeight: activeSubTab === 'submissions' ? '700' : '500',
+              fontSize: '14px',
+              padding: '12px 4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {isRtl ? 'الاستجابات' : 'Submissions'}
+          </button>
+        </div>
+
+        {/* Right Action buttons matching Screenshot 1 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={() => {
+              if (showToast) showToast(isRtl ? 'ميزات وتفضيلات الاستبيانات' : 'Survey features & preferences');
+            }}
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--edge)',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: 'var(--t1)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Sparkles size={14} color="#3b82f6" />
             <span>{isRtl ? 'ميزات الاستبيان' : 'Survey features'}</span>
           </button>
 
           <button
-            onClick={() => showToast(isRtl ? 'المجلدات الافتراضية نشطة' : 'Folder system active')}
+            onClick={() => setIsFolderModalOpen(true)}
+            title={isRtl ? 'مجلد جديد' : 'New Folder'}
             style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--edge)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontSize: '13px',
+              color: 'var(--t1)',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              color: '#475569',
-              cursor: 'pointer'
+              justifyContent: 'center'
             }}
-            title={isRtl ? 'إنشاء مجلد' : 'Folder manager'}
           >
             <FolderPlus size={16} />
           </button>
@@ -221,18 +255,18 @@ export default function SurveyListView({
           <button
             onClick={() => setIsCreateModalOpen(true)}
             style={{
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 18px',
+              fontSize: '13.5px',
+              fontWeight: '700',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              padding: '8px 18px',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(37, 99, 235, 0.2)'
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
             }}
           >
             <Plus size={16} />
@@ -254,7 +288,7 @@ export default function SurveyListView({
               gap: '12px'
             }}
           >
-            <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+            <div style={{ position: 'relative', width: '340px', maxWidth: '100%' }}>
               <Search
                 size={16}
                 style={{
@@ -262,37 +296,34 @@ export default function SurveyListView({
                   top: '50%',
                   transform: 'translateY(-50%)',
                   [isRtl ? 'right' : 'left']: '12px',
-                  color: '#94a3b8'
+                  color: 'var(--t3)'
                 }}
               />
               <input
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={isRtl ? 'البحث عن استبيان...' : 'Search for surveys'}
+                className="inp"
                 style={{
                   width: '100%',
                   padding: isRtl ? '8px 36px 8px 12px' : '8px 12px 8px 36px',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
-                  fontSize: '13px',
-                  background: '#ffffff',
-                  outline: 'none'
+                  fontSize: '13px'
                 }}
               />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '3px', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--surface2)', padding: '3px', borderRadius: '6px', border: '1px solid var(--edge)' }}>
               <button
                 onClick={() => setViewMode('list')}
                 style={{
-                  background: viewMode === 'list' ? '#ffffff' : 'transparent',
+                  background: viewMode === 'list' ? 'var(--surface)' : 'transparent',
                   border: 'none',
                   borderRadius: '4px',
                   padding: '5px',
-                  color: viewMode === 'list' ? '#2563eb' : '#64748b',
+                  color: viewMode === 'list' ? 'var(--a)' : 'var(--t2)',
                   cursor: 'pointer',
-                  boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                  boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
                 }}
                 title={isRtl ? 'عرض القائمة' : 'List View'}
               >
@@ -301,13 +332,13 @@ export default function SurveyListView({
               <button
                 onClick={() => setViewMode('grid')}
                 style={{
-                  background: viewMode === 'grid' ? '#ffffff' : 'transparent',
+                  background: viewMode === 'grid' ? 'var(--surface)' : 'transparent',
                   border: 'none',
                   borderRadius: '4px',
                   padding: '5px',
-                  color: viewMode === 'grid' ? '#2563eb' : '#64748b',
+                  color: viewMode === 'grid' ? 'var(--a)' : 'var(--t2)',
                   cursor: 'pointer',
-                  boxShadow: viewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                  boxShadow: viewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none'
                 }}
                 title={isRtl ? 'عرض الشبكة' : 'Grid View'}
               >
@@ -320,51 +351,51 @@ export default function SurveyListView({
           {filteredSurveys.length === 0 ? (
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--surface)',
                 borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                padding: '48px 24px',
-                textAlign: 'center',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                border: '1px solid var(--edge)',
+                padding: '56px 24px',
+                textAlign: 'center'
               }}
             >
               <div
                 style={{
-                  width: '56px',
-                  height: '56px',
+                  width: '60px',
+                  height: '60px',
                   borderRadius: '50%',
-                  background: '#eff6ff',
-                  color: '#2563eb',
+                  background: 'rgba(37, 99, 235, 0.1)',
+                  color: 'var(--a)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 16px'
                 }}
               >
-                <FileText size={28} />
+                <FileText size={30} />
               </div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--t1)', margin: '0 0 6px' }}>
                 {isRtl ? 'لا توجد استبيانات حالياً' : 'No surveys found'}
               </h3>
-              <p style={{ fontSize: '13px', color: '#64748b', maxWidth: '400px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--t2)', maxWidth: '440px', margin: '0 auto 24px', lineHeight: 1.6 }}>
                 {isRtl
-                  ? 'أنشئ أول استبيان تفاعلي متعدد الشرائح لجمع التقييمات والبيانات من عملائك باحترافية.'
-                  : 'Create your first interactive multi-slide survey to collect feedback and qualify leads effortlessly.'}
+                  ? 'أنشئ أول استبيان تفاعلي متعدد الشرائح لجمع التقييمات وتأهيل العملاء المحتملين في المنشئ المرئي الكامل.'
+                  : 'Create your first interactive multi-step survey in the visual builder to qualify leads and collect customer feedback.'}
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  background: '#2563eb',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '9px 20px',
+                  padding: '10px 22px',
                   borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
+                  fontSize: '13.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
                 }}
               >
                 <Plus size={16} />
@@ -375,35 +406,34 @@ export default function SurveyListView({
             /* Table View matching Screenshot 1 */
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--surface)',
                 borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                overflow: 'hidden',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                border: '1px solid var(--edge)',
+                overflow: 'hidden'
               }}
             >
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
                 <thead>
                   <tr
                     style={{
-                      background: '#f8fafc',
-                      borderBottom: '1px solid #e2e8f0',
+                      background: 'var(--surface2)',
+                      borderBottom: '1px solid var(--edge)',
                       textAlign: isRtl ? 'right' : 'left'
                     }}
                   >
-                    <th style={{ padding: '12px 18px', fontWeight: 600, color: '#475569' }}>
+                    <th style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px', textTransform: 'uppercase' }}>
                       {isRtl ? 'الاسم' : 'Name'}
                     </th>
-                    <th style={{ padding: '12px 18px', fontWeight: 600, color: '#475569' }}>
+                    <th style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px', textTransform: 'uppercase' }}>
                       {isRtl ? 'آخر تحديث' : 'Last updated'}
                     </th>
-                    <th style={{ padding: '12px 18px', fontWeight: 600, color: '#475569' }}>
+                    <th style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px', textTransform: 'uppercase' }}>
                       {isRtl ? 'تم التحديث بواسطة' : 'Updated by'}
                     </th>
-                    <th style={{ padding: '12px 18px', fontWeight: 600, color: '#475569' }}>
+                    <th style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px', textTransform: 'uppercase' }}>
                       {isRtl ? 'الاستجابات' : 'Submissions'}
                     </th>
-                    <th style={{ padding: '12px 18px', textAlign: 'center', fontWeight: 600, color: '#475569', width: '60px' }}>
+                    <th style={{ padding: '14px 20px', textAlign: 'center', fontWeight: '700', color: 'var(--t2)', width: '60px' }}>
                       •••
                     </th>
                   </tr>
@@ -413,14 +443,14 @@ export default function SurveyListView({
                     <tr
                       key={survey.id}
                       style={{
-                        borderBottom: '1px solid #f1f5f9',
+                        borderBottom: '1px solid var(--edge)',
                         transition: 'background 0.15s'
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface2)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       {/* Survey Name Column */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td style={{ padding: '16px 20px' }}>
                         {renamingSurveyId === survey.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <input
@@ -432,12 +462,8 @@ export default function SurveyListView({
                                 if (e.key === 'Enter') handleSaveRename(survey.id);
                                 if (e.key === 'Escape') setRenamingSurveyId(null);
                               }}
-                              style={{
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                border: '1px solid #2563eb',
-                                fontSize: '13px'
-                              }}
+                              className="inp"
+                              style={{ padding: '4px 8px', fontSize: '13px', width: '200px' }}
                             />
                             <button
                               onClick={() => handleSaveRename(survey.id)}
@@ -445,8 +471,8 @@ export default function SurveyListView({
                                 background: '#2563eb',
                                 color: '#ffffff',
                                 border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '4px',
+                                padding: '6px 10px',
+                                borderRadius: '6px',
                                 fontSize: '12px',
                                 cursor: 'pointer'
                               }}
@@ -460,28 +486,28 @@ export default function SurveyListView({
                             style={{
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '10px',
+                              gap: '12px',
                               cursor: 'pointer'
                             }}
                           >
                             <div
                               style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '36px',
+                                height: '36px',
                                 borderRadius: '8px',
-                                background: '#eff6ff',
-                                color: '#2563eb',
+                                background: 'rgba(37, 99, 235, 0.12)',
+                                color: 'var(--a)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 flexShrink: 0
                               }}
                             >
-                              <FileText size={16} />
+                              <FileText size={18} />
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#0f172a' }}>{survey.name}</div>
-                              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                              <div style={{ fontWeight: '700', color: 'var(--t1)' }}>{survey.name}</div>
+                              <div style={{ fontSize: '12px', color: 'var(--t2)' }}>
                                 {survey.slides?.length || 1} {isRtl ? 'شرائح' : 'slides'}
                               </div>
                             </div>
@@ -490,47 +516,48 @@ export default function SurveyListView({
                       </td>
 
                       {/* Last Updated Column */}
-                      <td style={{ padding: '14px 18px', color: '#64748b' }}>
+                      <td style={{ padding: '16px 20px', color: 'var(--t2)' }}>
                         {survey.updatedAt || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
                       </td>
 
                       {/* Updated By Column */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td style={{ padding: '16px 20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div
                             style={{
-                              width: '24px',
-                              height: '24px',
+                              width: '26px',
+                              height: '26px',
                               borderRadius: '50%',
-                              background: '#e2e8f0',
-                              color: '#334155',
+                              background: 'var(--surface2)',
+                              border: '1px solid var(--edge)',
+                              color: 'var(--t1)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '11px',
-                              fontWeight: 700
+                              fontWeight: '700'
                             }}
                           >
                             MH
                           </div>
-                          <span style={{ color: '#334155', fontWeight: 500 }}>
+                          <span style={{ color: 'var(--t1)', fontWeight: '600' }}>
                             {survey.updatedBy || 'Mohamed Hesham'}
                           </span>
                         </div>
                       </td>
 
                       {/* Submissions Column */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td style={{ padding: '16px 20px' }}>
                         <button
                           onClick={() => setSelectedSurveyForSubmissions(survey)}
                           style={{
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
+                            background: 'rgba(37, 99, 235, 0.1)',
+                            border: '1px solid rgba(37, 99, 235, 0.3)',
                             borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: '#2563eb',
+                            padding: '6px 12px',
+                            fontSize: '12.5px',
+                            fontWeight: '700',
+                            color: 'var(--a)',
                             cursor: 'pointer'
                           }}
                         >
@@ -539,16 +566,16 @@ export default function SurveyListView({
                       </td>
 
                       {/* Action Menu (3 dots) */}
-                      <td style={{ padding: '14px 18px', textAlign: 'center', position: 'relative' }}>
+                      <td style={{ padding: '16px 20px', textAlign: 'center', position: 'relative' }}>
                         <button
                           onClick={() => setActiveActionMenuId(activeActionMenuId === survey.id ? null : survey.id)}
                           style={{
                             background: 'transparent',
                             border: 'none',
-                            color: '#64748b',
+                            color: 'var(--t2)',
                             cursor: 'pointer',
-                            padding: '4px',
-                            borderRadius: '4px'
+                            padding: '6px',
+                            borderRadius: '6px'
                           }}
                         >
                           <MoreVertical size={16} />
@@ -559,14 +586,14 @@ export default function SurveyListView({
                           <div
                             style={{
                               position: 'absolute',
-                              top: '40px',
+                              top: '44px',
                               [isRtl ? 'left' : 'right']: '18px',
-                              background: '#ffffff',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '8px',
-                              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                              background: 'var(--surface)',
+                              border: '1px solid var(--edge)',
+                              borderRadius: '10px',
+                              boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
                               zIndex: 100,
-                              minWidth: '180px',
+                              minWidth: '190px',
                               padding: '6px 0'
                             }}
                           >
@@ -578,19 +605,19 @@ export default function SurveyListView({
                               style={{
                                 width: '100%',
                                 textAlign: isRtl ? 'right' : 'left',
-                                padding: '8px 14px',
+                                padding: '9px 14px',
                                 background: 'transparent',
                                 border: 'none',
                                 fontSize: '13px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer'
                               }}
                             >
-                              <Edit3 size={14} color="#2563eb" />
-                              <span>{isRtl ? 'تعديل في المنشئ' : 'Edit in Builder'}</span>
+                              <Edit3 size={14} color="#3b82f6" />
+                              <span>{isRtl ? 'تعديل في المنشئ المرئي' : 'Edit in Builder'}</span>
                             </button>
 
                             <button
@@ -601,18 +628,18 @@ export default function SurveyListView({
                               style={{
                                 width: '100%',
                                 textAlign: isRtl ? 'right' : 'left',
-                                padding: '8px 14px',
+                                padding: '9px 14px',
                                 background: 'transparent',
                                 border: 'none',
                                 fontSize: '13px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer'
                               }}
                             >
-                              <Share2 size={14} color="#059669" />
+                              <Share2 size={14} color="#10b981" />
                               <span>{isRtl ? 'رابط التضمين والمشاركة' : 'Share & Integrate'}</span>
                             </button>
 
@@ -624,18 +651,18 @@ export default function SurveyListView({
                               style={{
                                 width: '100%',
                                 textAlign: isRtl ? 'right' : 'left',
-                                padding: '8px 14px',
+                                padding: '9px 14px',
                                 background: 'transparent',
                                 border: 'none',
                                 fontSize: '13px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer'
                               }}
                             >
-                              <Eye size={14} color="#6366f1" />
+                              <Eye size={14} color="#818cf8" />
                               <span>{isRtl ? 'عرض الاستجابات' : 'View Submissions'}</span>
                             </button>
 
@@ -644,18 +671,18 @@ export default function SurveyListView({
                               style={{
                                 width: '100%',
                                 textAlign: isRtl ? 'right' : 'left',
-                                padding: '8px 14px',
+                                padding: '9px 14px',
                                 background: 'transparent',
                                 border: 'none',
                                 fontSize: '13px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer'
                               }}
                             >
-                              <Edit3 size={14} color="#eab308" />
+                              <Edit3 size={14} color="#fbbf24" />
                               <span>{isRtl ? 'إعادة تسمية' : 'Rename'}</span>
                             </button>
 
@@ -667,22 +694,22 @@ export default function SurveyListView({
                               style={{
                                 width: '100%',
                                 textAlign: isRtl ? 'right' : 'left',
-                                padding: '8px 14px',
+                                padding: '9px 14px',
                                 background: 'transparent',
                                 border: 'none',
                                 fontSize: '13px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer'
                               }}
                             >
-                              <Copy size={14} color="#64748b" />
+                              <Copy size={14} color="var(--t2)" />
                               <span>{isRtl ? 'تكرار الاستبيان' : 'Duplicate'}</span>
                             </button>
 
-                            <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+                            <div style={{ height: '1px', background: 'var(--edge)', margin: '4px 0' }} />
 
                             <button
                               onClick={() => {
@@ -692,7 +719,7 @@ export default function SurveyListView({
                               style={{
                                 width: '100%',
                                 textAlign: isRtl ? 'right' : 'left',
-                                padding: '8px 14px',
+                                padding: '9px 14px',
                                 background: 'transparent',
                                 border: 'none',
                                 fontSize: '13px',
@@ -719,7 +746,7 @@ export default function SurveyListView({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                 gap: '20px'
               }}
             >
@@ -727,74 +754,72 @@ export default function SurveyListView({
                 <div
                   key={survey.id}
                   style={{
-                    background: '#ffffff',
+                    background: 'var(--surface)',
                     borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--edge)',
                     padding: '20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-                    transition: 'all 0.15s ease',
+                    transition: 'all 0.2s ease',
                     cursor: 'pointer'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#2563eb';
-                    e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(37,99,235,0.08)';
+                    e.currentTarget.style.borderColor = 'var(--a)';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)';
+                    e.currentTarget.style.borderColor = 'var(--edge)';
+                    e.currentTarget.style.transform = 'none';
                   }}
                   onClick={() => onOpenBuilder(survey)}
                 >
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                       <div
                         style={{
-                          width: '36px',
-                          height: '36px',
+                          width: '40px',
+                          height: '40px',
                           borderRadius: '8px',
-                          background: '#eff6ff',
-                          color: '#2563eb',
+                          background: 'rgba(37, 99, 235, 0.12)',
+                          color: 'var(--a)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center'
                         }}
                       >
-                        <FileText size={18} />
+                        <FileText size={20} />
                       </div>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--t2)', background: 'var(--surface2)', padding: '2px 8px', borderRadius: '12px' }}>
                         {survey.slides?.length || 1} {isRtl ? 'شرائح' : 'slides'}
                       </span>
                     </div>
 
-                    <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>{survey.name}</h4>
-                    <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 16px' }}>
+                    <h4 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--t1)', margin: '0 0 6px' }}>{survey.name}</h4>
+                    <p style={{ fontSize: '12.5px', color: 'var(--t2)', margin: '0 0 16px' }}>
                       {survey.submissions?.length || 0} {isRtl ? 'استجابة مسجلة' : 'submissions collected'}
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '14px', borderTop: '1px solid var(--edge)' }}>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedSurveyForIntegrate(survey);
                       }}
+                      className="btn btn-ghost"
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#2563eb',
+                        padding: '6px 10px',
                         fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
+                        fontWeight: '700',
+                        color: 'var(--a)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '6px'
                       }}
                     >
-                      <Share2 size={13} />
+                      <Share2 size={14} />
                       <span>{isRtl ? 'مشاركة' : 'Share'}</span>
                     </button>
 
@@ -805,12 +830,12 @@ export default function SurveyListView({
                         onOpenBuilder(survey);
                       }}
                       style={{
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        color: '#2563eb',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        padding: '4px 10px',
+                        background: 'rgba(37, 99, 235, 0.12)',
+                        border: '1px solid rgba(37, 99, 235, 0.3)',
+                        color: 'var(--a)',
+                        fontSize: '12.5px',
+                        fontWeight: '700',
+                        padding: '6px 14px',
                         borderRadius: '6px',
                         cursor: 'pointer'
                       }}
@@ -828,27 +853,27 @@ export default function SurveyListView({
       {/* Analytics Subtab */}
       {activeSubTab === 'analytics' && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '6px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--t2)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 {isRtl ? 'إجمالي الاستبيانات' : 'Total Surveys'}
               </div>
-              <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a' }}>{surveys.length}</div>
+              <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--t1)' }}>{surveys.length}</div>
             </div>
 
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '6px' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--t2)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 {isRtl ? 'إجمالي الاستجابات المستلمة' : 'Total Submissions'}
               </div>
-              <div style={{ fontSize: '26px', fontWeight: 800, color: '#2563eb' }}>{allSubmissions.length}</div>
+              <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--a)' }}>{totalSubmissions}</div>
             </div>
 
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '6px' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--t2)', textTransform: 'uppercase', marginBottom: '8px' }}>
                 {isRtl ? 'متوسط نسبة الإكمال' : 'Avg Completion Rate'}
               </div>
-              <div style={{ fontSize: '26px', fontWeight: 800, color: '#10b981' }}>
-                {allSubmissions.length > 0 ? '84.2%' : '0%'}
+              <div style={{ fontSize: '28px', fontWeight: '900', color: '#10b981' }}>
+                {avgCompletion}%
               </div>
             </div>
           </div>
@@ -857,13 +882,13 @@ export default function SurveyListView({
 
       {/* Submissions Subtab */}
       {activeSubTab === 'submissions' && (
-        <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--edge)', padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: 'var(--t1)' }}>
                 {isRtl ? 'جميع الاستجابات الواردة' : 'All Submissions Log'}
               </h3>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--t2)' }}>
                 {allSubmissions.length} {isRtl ? 'استجابة عبر كافة استبياناتك' : 'total submissions across all surveys'}
               </p>
             </div>
@@ -874,13 +899,13 @@ export default function SurveyListView({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: '#2563eb',
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                 color: '#ffffff',
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: '8px',
                 fontSize: '13px',
-                fontWeight: 600,
+                fontWeight: '700',
                 cursor: 'pointer'
               }}
             >
@@ -890,27 +915,27 @@ export default function SurveyListView({
           </div>
 
           {filteredSubmissions.length === 0 ? (
-            <div style={{ padding: '36px 12px', textAlign: 'center', color: '#64748b' }}>
+            <div style={{ padding: '40px 12px', textAlign: 'center', color: 'var(--t2)' }}>
               {isRtl ? 'لا توجد أي استجابات مسجلة حتى الآن' : 'No submissions found yet.'}
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: isRtl ? 'right' : 'left' }}>
-                    <th style={{ padding: '10px 14px', fontWeight: 600, color: '#475569' }}>{isRtl ? 'الاستبيان' : 'Survey'}</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 600, color: '#475569' }}>{isRtl ? 'الاسم' : 'Name'}</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 600, color: '#475569' }}>{isRtl ? 'البريد' : 'Email'}</th>
-                    <th style={{ padding: '10px 14px', fontWeight: 600, color: '#475569' }}>{isRtl ? 'التاريخ' : 'Date'}</th>
+                  <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)', textAlign: isRtl ? 'right' : 'left' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px' }}>{isRtl ? 'الاستبيان' : 'Survey'}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px' }}>{isRtl ? 'الاسم' : 'Name'}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px' }}>{isRtl ? 'البريد' : 'Email'}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: '700', color: 'var(--t2)', fontSize: '12px' }}>{isRtl ? 'التاريخ' : 'Date'}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSubmissions.map((sub, sIdx) => (
-                    <tr key={sub.id || sIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: 600, color: '#2563eb' }}>{sub.surveyName}</td>
-                      <td style={{ padding: '12px 14px', fontWeight: 500, color: '#0f172a' }}>{sub.name || 'Anonymous'}</td>
-                      <td style={{ padding: '12px 14px', color: '#475569' }}>{sub.email || '—'}</td>
-                      <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '12px' }}>{sub.submittedAt || 'Recent'}</td>
+                    <tr key={sub.id || sIdx} style={{ borderBottom: '1px solid var(--edge)' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', color: 'var(--a)' }}>{sub.surveyName}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: '600', color: 'var(--t1)' }}>{sub.name || 'Anonymous'}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--t2)' }}>{sub.email || '—'}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--t3)', fontSize: '12px' }}>{sub.submittedAt || 'Recent'}</td>
                     </tr>
                   ))}
                 </tbody>

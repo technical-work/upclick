@@ -130,10 +130,12 @@ export default function SitesView() {
   const [builderWebinarMode, setBuilderWebinarMode] = useState(false);
   const [builderBlogMode, setBuilderBlogMode] = useState(false);
   const [builderFormMode, setBuilderFormMode] = useState(false);
+  const [builderSurveyMode, setBuilderSurveyMode] = useState(false);
   const [storeActivePageIdx, setStoreActivePageIdx] = useState(0);
   const [websiteActivePageIdx, setWebsiteActivePageIdx] = useState(0);
   const [webinarActivePageIdx, setWebinarActivePageIdx] = useState(0);
   const [blogActivePostIdx, setBlogActivePostIdx] = useState(0);
+  const [surveyActiveSlideIdx, setSurveyActiveSlideIdx] = useState(0);
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -546,14 +548,25 @@ export default function SitesView() {
   }, [surveys, selectedSurvey]);
 
   // Survey Management Handlers
+  const handleOpenBuilderForSurvey = (surveyToOpen) => {
+    setSelectedSurvey(surveyToOpen);
+    setBuilderSurveyMode(true);
+    setBuilderFormMode(false);
+    setBuilderBlogMode(false);
+    setBuilderStoreMode(false);
+    setBuilderWebsiteMode(false);
+    setBuilderWebinarMode(false);
+    setSurveyActiveSlideIdx(0);
+    setIsBuilderOpen(true);
+  };
+
   const handleCreateSurveyBlank = ({ name }) => {
     const author = user?.displayName || user?.email?.split('@')[0] || 'Mohamed Hesham';
     const newSurvey = createBlankSurvey(name, accountUid, author);
     const owned = stampSiteOwner(newSurvey, accountUid);
     const nextSurveys = [owned, ...surveys];
     saveSurveys(nextSurveys);
-    setSelectedSurvey(owned);
-    setIsSurveyBuilderOpen(true);
+    handleOpenBuilderForSurvey(owned);
     if (showToast) showToast(isRtl ? 'تم إنشاء الاستبيان بنجاح' : 'Survey created successfully');
   };
 
@@ -563,8 +576,7 @@ export default function SitesView() {
     const owned = stampSiteOwner(newSurvey, accountUid);
     const nextSurveys = [owned, ...surveys];
     saveSurveys(nextSurveys);
-    setSelectedSurvey(owned);
-    setIsSurveyBuilderOpen(true);
+    handleOpenBuilderForSurvey(owned);
     if (showToast) showToast(isRtl ? 'تم إنشاء الاستبيان من القالب بنجاح' : 'Survey created from template');
   };
 
@@ -573,6 +585,61 @@ export default function SitesView() {
     const nextSurveys = surveys.map((s) => (s.id === owned.id ? owned : s));
     saveSurveys(nextSurveys);
     setSelectedSurvey(owned);
+  };
+
+  const updateActiveSurveyCanvas = (newCanvas) => {
+    if (!selectedSurvey) return;
+    const targetSlideIdx = surveyActiveSlideIdx || 0;
+    const formBlock = (newCanvas || []).find((el) => el.type === 'form');
+    const updatedSlides = [...(selectedSurvey.slides || [])];
+    const targetSlide = updatedSlides[targetSlideIdx] || { id: `slide_${targetSlideIdx + 1}` };
+    updatedSlides[targetSlideIdx] = {
+      ...targetSlide,
+      canvas: newCanvas,
+      elements: formBlock?.fields || targetSlide.elements,
+      buttonText: formBlock?.buttonText || targetSlide.buttonText,
+      title: formBlock?.title || targetSlide.title,
+      subtitle: formBlock?.subtitle || targetSlide.subtitle
+    };
+
+    const updatedSurvey = {
+      ...selectedSurvey,
+      slides: updatedSlides,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveSurveyInBuilder(updatedSurvey);
+  };
+
+  const updateActiveSurveyStep = (patch) => {
+    if (!selectedSurvey) return;
+    const targetSlideIdx = surveyActiveSlideIdx || 0;
+    const updatedSlides = [...(selectedSurvey.slides || [])];
+    const targetSlide = updatedSlides[targetSlideIdx] || { id: `slide_${targetSlideIdx + 1}` };
+    updatedSlides[targetSlideIdx] = {
+      ...targetSlide,
+      ...patch,
+      title: patch.name || targetSlide.title
+    };
+
+    const updatedSurvey = {
+      ...selectedSurvey,
+      slides: updatedSlides,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveSurveyInBuilder(updatedSurvey);
+  };
+
+  const handlePublishSurveyInBuilder = async () => {
+    if (!selectedSurvey) return;
+    const updatedSurvey = {
+      ...selectedSurvey,
+      status: 'published',
+      published: true,
+      updatedAt: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleSaveSurveyInBuilder(updatedSurvey);
+    if (showToast) showToast(isRtl ? 'تم حفظ ونشر الاستبيان بنجاح 🚀' : 'Survey published successfully 🚀');
+    return updatedSurvey;
   };
 
   const handleDuplicateSurvey = (surveyToDup) => {
@@ -1670,8 +1737,89 @@ export default function SitesView() {
         ]
       };
     }
+    if (builderSurveyMode && selectedSurvey) {
+      const surveySlides = (selectedSurvey.slides && selectedSurvey.slides.length > 0)
+        ? selectedSurvey.slides
+        : [
+            {
+              id: 'slide_1',
+              title: selectedSurvey.name || 'Slide 1',
+              subtitle: '',
+              buttonText: 'Submit',
+              elements: []
+            }
+          ];
+
+      const steps = surveySlides.map((slide, slideIdx) => {
+        const slideCanvas = (slide.canvas && slide.canvas.length > 0)
+          ? slide.canvas
+          : [
+              {
+                id: `el_slide_headline_${slide.id}`,
+                type: 'headline',
+                content: slide.title || `Slide ${slideIdx + 1}`,
+                fontSize: '28px',
+                color: selectedSurvey.settings?.textColor || '#0f172a',
+                align: 'center',
+                weight: '800',
+                margin: '0 0 8px'
+              },
+              ...(slide.subtitle ? [{
+                id: `el_slide_sub_${slide.id}`,
+                type: 'paragraph',
+                content: slide.subtitle,
+                fontSize: '14px',
+                color: '#64748b',
+                align: 'center',
+                margin: '0 0 20px'
+              }] : []),
+              {
+                id: `el_survey_block_${slide.id}`,
+                type: 'form',
+                title: slide.title || `Slide ${slideIdx + 1}`,
+                subtitle: slide.subtitle || '',
+                fields: (slide.elements && slide.elements.length > 0)
+                  ? slide.elements.map(el => ({
+                      id: el.id,
+                      label: el.label,
+                      type: el.type,
+                      placeholder: el.placeholder,
+                      required: el.required,
+                      options: el.options,
+                      width: el.width || '100%'
+                    }))
+                  : [
+                      { id: `q_${slide.id}_1`, label: 'Your Question', type: 'radio', options: ['Option 1', 'Option 2', 'Option 3'], required: true, width: '100%' }
+                    ],
+                buttonText: slide.buttonText || (slideIdx === surveySlides.length - 1 ? (isRtl ? 'إرسال الاستبيان' : 'Submit Survey') : (isRtl ? 'التالي' : 'Next Slide')),
+                buttonBg: selectedSurvey.settings?.buttonColor || '#2563eb',
+                bg: selectedSurvey.settings?.backgroundColor || '#ffffff',
+                color: selectedSurvey.settings?.textColor || '#0f172a',
+                radius: `${parseInt(selectedSurvey.settings?.borderRadius || 16)}px`,
+                maxWidth: '580px',
+                margin: '16px auto',
+                shadow: true
+              }
+            ];
+
+        return {
+          id: slide.id,
+          name: slide.title || `Slide ${slideIdx + 1}`,
+          path: `/${slide.id}`,
+          published: true,
+          page: DEFAULT_PAGE,
+          canvas: slideCanvas
+        };
+      });
+
+      return {
+        id: selectedSurvey.id,
+        name: `${selectedSurvey.name} (Survey Builder)`,
+        steps
+      };
+    }
     return selectedFunnel;
-  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, builderFormMode, selectedForm, selectedFunnel]);
+  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, builderFormMode, selectedForm, builderSurveyMode, selectedSurvey, selectedFunnel]);
 
   const builderStorePreview = useMemo(() => {
     if (!builderStoreMode || !selectedStore) return null;
@@ -1689,18 +1837,6 @@ export default function SitesView() {
     };
   }, [builderStoreMode, selectedStore]);
 
-  if (isSurveyBuilderOpen && selectedSurvey) {
-    return (
-      <SurveyBuilderView
-        survey={selectedSurvey}
-        onBack={() => setIsSurveyBuilderOpen(false)}
-        onSave={handleSaveSurveyInBuilder}
-        isRtl={isRtl}
-        showToast={showToast}
-      />
-    );
-  }
-
   return (
     <div style={{ paddingBottom: '50px', animation: 'fadeIn 0.3s ease' }}>
       
@@ -1709,8 +1845,8 @@ export default function SitesView() {
         <StorePreviewContext.Provider value={builderStorePreview}>
         <BuilderWorkspace
           funnel={builderFunnel}
-          stepIndex={builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : (builderFormMode ? 0 : activeStepIndex))))}
-          onChangeStep={builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : (builderFormMode ? () => {} : setActiveStepIndex))))}
+          stepIndex={builderSurveyMode ? surveyActiveSlideIdx : (builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : (builderFormMode ? 0 : activeStepIndex)))))}
+          onChangeStep={builderSurveyMode ? setSurveyActiveSlideIdx : (builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : (builderFormMode ? () => {} : setActiveStepIndex)))))}
           onClose={() => {
             setIsBuilderOpen(false);
             setBuilderStoreMode(false);
@@ -1718,9 +1854,12 @@ export default function SitesView() {
             setBuilderWebinarMode(false);
             setBuilderBlogMode(false);
             setBuilderFormMode(false);
+            setBuilderSurveyMode(false);
           }}
           onUpdateCanvas={(newCanvas) => {
-            if (builderFormMode && selectedForm) {
+            if (builderSurveyMode && selectedSurvey) {
+              updateActiveSurveyCanvas(newCanvas);
+            } else if (builderFormMode && selectedForm) {
               updateActiveFormCanvas(newCanvas);
             } else if (builderBlogMode && selectedBlogSite) {
               updateActiveBlogPostCanvas(newCanvas);
@@ -1735,7 +1874,9 @@ export default function SitesView() {
             }
           }}
           onUpdateStep={(patch) => {
-            if (builderFormMode && selectedForm) {
+            if (builderSurveyMode && selectedSurvey) {
+              updateActiveSurveyStep(patch);
+            } else if (builderFormMode && selectedForm) {
               updateActiveFormStep(patch);
             } else if (builderBlogMode && selectedBlogSite) {
               updateActiveBlogPost(patch);
@@ -1749,7 +1890,7 @@ export default function SitesView() {
               updateActiveStep(patch);
             }
           }}
-          onPublish={builderFormMode ? handlePublishFormInBuilder : (builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep))))}
+          onPublish={builderSurveyMode ? handlePublishSurveyInBuilder : (builderFormMode ? handlePublishFormInBuilder : (builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep)))))}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>
@@ -2077,10 +2218,7 @@ export default function SitesView() {
       ) : activeSubTab === 'surveys' ? (
         <SurveyListView
           surveys={surveys}
-          onOpenBuilder={(s) => {
-            setSelectedSurvey(s);
-            setIsSurveyBuilderOpen(true);
-          }}
+          onOpenBuilder={(s) => handleOpenBuilderForSurvey(s)}
           onCreateBlank={handleCreateSurveyBlank}
           onCreateFromTemplate={handleCreateSurveyFromTemplate}
           onDeleteSurvey={handleDeleteSurvey}
