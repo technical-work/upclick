@@ -3,6 +3,7 @@ import path from 'path';
 import { headers } from 'next/headers';
 import { adminDb } from '@/utils/firebaseAdmin';
 import LiveSiteView from '@/components/sites/LiveSiteView';
+import LandingPageHost from '@/components/LandingPageHost';
 import { normalizeHost, isPlatformHostname } from '@/lib/sites/publicSite';
 
 export const dynamic = 'force-dynamic';
@@ -76,10 +77,5 @@ fbq('track', 'PageView');
     console.error("Error injecting tracking scripts into landing page:", err);
   }
 
-  return (
-    <div
-      dangerouslySetInnerHTML={{ __html: html }}
-      style={{ width: '100%', minHeight: '100vh', margin: 0, padding: 0 }}
-    />
-  );
+  return <LandingPageHost html={html} />;
 }
