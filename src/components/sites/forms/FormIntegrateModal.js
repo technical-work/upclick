@@ -54,8 +54,8 @@ export default function FormIntegrateModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.55)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(5px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -69,11 +69,12 @@ export default function FormIntegrateModal({
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
+          border: '1px solid var(--edge)',
           borderRadius: '16px',
           width: '100%',
           maxWidth: '640px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column'
@@ -83,7 +84,7 @@ export default function FormIntegrateModal({
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid var(--edge)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -95,8 +96,8 @@ export default function FormIntegrateModal({
                 width: '36px',
                 height: '36px',
                 borderRadius: '8px',
-                background: '#eff6ff',
-                color: '#2563eb',
+                background: 'rgba(37, 99, 235, 0.15)',
+                color: 'var(--a)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -105,10 +106,10 @@ export default function FormIntegrateModal({
               <Code size={18} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
                 {isRtl ? 'تضمين ومشاركة النموذج' : 'Integrate & Share Form'}
               </h2>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--t2)' }}>
                 {form.name}
               </p>
             </div>
@@ -119,7 +120,7 @@ export default function FormIntegrateModal({
             style={{
               background: 'none',
               border: 'none',
-              color: '#94a3b8',
+              color: 'var(--t2)',
               cursor: 'pointer',
               padding: '4px',
               borderRadius: '6px'
@@ -135,15 +136,15 @@ export default function FormIntegrateModal({
           {/* Share Direct Link Box */}
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: 'var(--surface2)',
+              border: '1px solid var(--edge)',
               borderRadius: '12px',
               padding: '16px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Globe size={14} style={{ color: '#2563eb' }} />
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--t1)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Globe size={14} style={{ color: 'var(--a)' }} />
                 <span>{isRtl ? 'رابط المشاركة المباشر' : 'Direct Share Link'}</span>
               </span>
               <button
@@ -151,7 +152,7 @@ export default function FormIntegrateModal({
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#2563eb',
+                  color: 'var(--a)',
                   fontSize: '12px',
                   fontWeight: '600',
                   cursor: 'pointer',
@@ -173,24 +174,24 @@ export default function FormIntegrateModal({
                 style={{
                   flex: 1,
                   padding: '9px 12px',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--edge)',
                   borderRadius: '8px',
                   fontSize: '12.5px',
-                  color: '#334155',
+                  color: 'var(--t1)',
                   outline: 'none'
                 }}
               />
               <button
                 onClick={handleCopyLink}
                 style={{
-                  background: copiedLink ? '#16a34a' : '#2563eb',
+                  background: copiedLink ? '#16a34a' : 'var(--a)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
                   padding: '0 16px',
                   fontSize: '13px',
-                  fontWeight: '600',
+                  fontWeight: '700',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -204,7 +205,7 @@ export default function FormIntegrateModal({
             </div>
 
             {showQr && (
-              <div style={{ marginTop: '16px', padding: '16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ marginTop: '16px', padding: '16px', background: '#ffffff', borderRadius: '8px', border: '1px solid var(--edge)', textAlign: 'center' }}>
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(shareUrl)}`}
                   alt="QR Code"
@@ -219,25 +220,25 @@ export default function FormIntegrateModal({
 
           {/* Embed Types */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#0f172a', marginBottom: '10px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--t1)', marginBottom: '10px' }}>
               {isRtl ? 'طريقة التضمين في موقعك' : 'Embed in Website / Funnel'}
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
               <button
                 onClick={() => setEmbedType('inline')}
                 style={{
-                  background: embedType === 'inline' ? '#eff6ff' : '#ffffff',
-                  border: embedType === 'inline' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                  background: embedType === 'inline' ? 'rgba(37,99,235,0.12)' : 'var(--surface2)',
+                  border: embedType === 'inline' ? '2px solid var(--a)' : '1px solid var(--edge)',
                   borderRadius: '8px',
                   padding: '10px 14px',
                   textAlign: isRtl ? 'right' : 'left',
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--t1)' }}>
                   {isRtl ? 'تضمين مباشر (Inline)' : 'Inline Embed'}
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
                   {isRtl ? 'يظهر النموذج مدمجاً داخل محتوى الصفحة' : 'Form renders directly inside your page content'}
                 </div>
               </button>
@@ -245,18 +246,18 @@ export default function FormIntegrateModal({
               <button
                 onClick={() => setEmbedType('popup')}
                 style={{
-                  background: embedType === 'popup' ? '#eff6ff' : '#ffffff',
-                  border: embedType === 'popup' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                  background: embedType === 'popup' ? 'rgba(37,99,235,0.12)' : 'var(--surface2)',
+                  border: embedType === 'popup' ? '2px solid var(--a)' : '1px solid var(--edge)',
                   borderRadius: '8px',
                   padding: '10px 14px',
                   textAlign: isRtl ? 'right' : 'left',
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--t1)' }}>
                   {isRtl ? 'نافذة منبثقة (Popup Button)' : 'Popup Button'}
                 </div>
-                <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>
                   {isRtl ? 'زر يفتح النموذج كنافذة مودال' : 'Button that opens form in a modal popup'}
                 </div>
               </button>
@@ -266,7 +267,7 @@ export default function FormIntegrateModal({
             <div style={{ position: 'relative' }}>
               <pre
                 style={{
-                  background: '#0f172a',
+                  background: '#090d16',
                   color: '#e2e8f0',
                   padding: '14px 16px',
                   borderRadius: '8px',
@@ -275,7 +276,8 @@ export default function FormIntegrateModal({
                   overflowX: 'auto',
                   margin: 0,
                   direction: 'ltr',
-                  fontFamily: 'monospace'
+                  fontFamily: 'monospace',
+                  border: '1px solid var(--edge)'
                 }}
               >
                 {activeCode}
@@ -312,8 +314,8 @@ export default function FormIntegrateModal({
         <div
           style={{
             padding: '16px 24px',
-            borderTop: '1px solid #f1f5f9',
-            background: '#fafafa',
+            borderTop: '1px solid var(--edge)',
+            background: 'var(--surface2)',
             display: 'flex',
             justifyContent: 'flex-end'
           }}
@@ -321,7 +323,7 @@ export default function FormIntegrateModal({
           <button
             onClick={onClose}
             style={{
-              background: '#2563eb',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '8px',

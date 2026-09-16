@@ -70,7 +70,7 @@ export default function LiveFormModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.65)',
+        background: 'rgba(0, 0, 0, 0.7)',
         backdropFilter: 'blur(5px)',
         display: 'flex',
         alignItems: 'center',
@@ -85,12 +85,13 @@ export default function LiveFormModal({
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
+          border: '1px solid var(--edge)',
           borderRadius: '16px',
           width: '100%',
           maxWidth: '560px',
           maxHeight: '90vh',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           overflowY: 'auto',
           position: 'relative',
           display: 'flex',
@@ -104,15 +105,15 @@ export default function LiveFormModal({
             position: 'absolute',
             top: '16px',
             [isRtl ? 'left' : 'right']: '16px',
-            background: '#f1f5f9',
-            border: 'none',
+            background: 'var(--surface2)',
+            border: '1px solid var(--edge)',
             borderRadius: '50%',
             width: '32px',
             height: '32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#64748b',
+            color: 'var(--t2)',
             cursor: 'pointer',
             zIndex: 10
           }}
@@ -124,10 +125,11 @@ export default function LiveFormModal({
           /* Thank You State matching Screenshot 4 WYSIWYG result */
           <div style={{ padding: '48px 32px', textAlign: 'center' }}>
             <div
+              style={{ color: 'var(--t1)' }}
               dangerouslySetInnerHTML={{
                 __html:
                   form.settings?.messageHtml ||
-                  '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: #64748b; margin: 0;">Thank you for taking the time to complete this form.</p></div>'
+                  '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: inherit; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: var(--t2); margin: 0;">Thank you for taking the time to complete this form.</p></div>'
               }}
             />
             <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
@@ -135,12 +137,12 @@ export default function LiveFormModal({
                 onClick={handleReset}
                 style={{
                   background: 'none',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--edge)',
                   borderRadius: '8px',
                   padding: '8px 18px',
                   fontSize: '13px',
                   fontWeight: '600',
-                  color: '#475569',
+                  color: 'var(--t1)',
                   cursor: 'pointer'
                 }}
               >
@@ -149,7 +151,7 @@ export default function LiveFormModal({
               <button
                 onClick={onClose}
                 style={{
-                  background: '#2563eb',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
@@ -167,10 +169,10 @@ export default function LiveFormModal({
           /* Live Form Form */
           <form onSubmit={handleSubmit} style={{ padding: '32px 28px' }}>
             <div style={{ marginBottom: '24px' }}>
-              <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '800', color: '#0f172a' }}>
+              <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '800', color: 'var(--t1)' }}>
                 {form.name}
               </h2>
-              <div style={{ height: '3px', width: '40px', background: '#2563eb', borderRadius: '2px' }} />
+              <div style={{ height: '3px', width: '40px', background: 'var(--a)', borderRadius: '2px' }} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -192,7 +194,7 @@ export default function LiveFormModal({
                           fontWeight: '700',
                           cursor: isSubmitting ? 'not-allowed' : 'pointer',
                           opacity: isSubmitting ? 0.7 : 1,
-                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
                           transition: 'all 0.2s ease',
                           display: 'flex',
                           alignItems: 'center',
@@ -219,7 +221,7 @@ export default function LiveFormModal({
                         alignItems: 'flex-start',
                         gap: '10px',
                         fontSize: '12px',
-                        color: '#475569',
+                        color: 'var(--t2)',
                         lineHeight: 1.45,
                         cursor: 'pointer',
                         padding: '4px 0'
@@ -240,8 +242,8 @@ export default function LiveFormModal({
                 if (field.type === 'textarea') {
                   return (
                     <div key={field.id}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                        {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                       </label>
                       <textarea
                         rows={3}
@@ -253,9 +255,10 @@ export default function LiveFormModal({
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--edge)',
+                          background: 'var(--surface2)',
                           fontSize: '13.5px',
-                          color: '#0f172a',
+                          color: 'var(--t1)',
                           outline: 'none',
                           fontFamily: 'inherit'
                         }}
@@ -267,8 +270,8 @@ export default function LiveFormModal({
                 if (field.type === 'dropdown') {
                   return (
                     <div key={field.id}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                        {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                       </label>
                       <select
                         required={field.required}
@@ -278,11 +281,11 @@ export default function LiveFormModal({
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--edge)',
+                          background: 'var(--surface2)',
                           fontSize: '13.5px',
-                          color: '#0f172a',
-                          outline: 'none',
-                          background: '#ffffff'
+                          color: 'var(--t1)',
+                          outline: 'none'
                         }}
                       >
                         <option value="">{field.placeholder || (isRtl ? 'اختر خياراً...' : 'Select an option...')}</option>
@@ -296,8 +299,8 @@ export default function LiveFormModal({
 
                 return (
                   <div key={field.id}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                      {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                      {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                     </label>
                     <input
                       type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
@@ -309,9 +312,10 @@ export default function LiveFormModal({
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid var(--edge)',
+                        background: 'var(--surface2)',
                         fontSize: '13.5px',
-                        color: '#0f172a',
+                        color: 'var(--t1)',
                         outline: 'none'
                       }}
                     />
@@ -321,10 +325,10 @@ export default function LiveFormModal({
             </div>
 
             {form.settings?.showTermsLinks !== false && (
-              <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '11.5px', color: '#2563eb' }}>
-                <a href="#privacy" style={{ color: '#2563eb', textDecoration: 'none', margin: '0 6px' }}>Privacy Policy</a>
+              <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '11.5px', color: 'var(--a)' }}>
+                <a href="#privacy" style={{ color: 'var(--a)', textDecoration: 'none', margin: '0 6px' }}>Privacy Policy</a>
                 <span>|</span>
-                <a href="#terms" style={{ color: '#2563eb', textDecoration: 'none', margin: '0 6px' }}>Terms of Service</a>
+                <a href="#terms" style={{ color: 'var(--a)', textDecoration: 'none', margin: '0 6px' }}>Terms of Service</a>
               </div>
             )}
           </form>

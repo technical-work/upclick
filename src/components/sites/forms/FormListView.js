@@ -24,13 +24,16 @@ import {
   TrendingUp,
   Inbox,
   Share2,
-  Check
+  Check,
+  Palette,
+  Sparkles
 } from 'lucide-react';
 
 export default function FormListView({
   forms = [],
   isRtl,
   onSelectForm,
+  onOpenFormEditor,
   onOpenCreateModal,
   onDuplicateForm,
   onDeleteForm,
@@ -93,13 +96,13 @@ export default function FormListView({
   return (
     <div style={{ padding: '0 24px', direction: isRtl ? 'rtl' : 'ltr', animation: 'fadeIn 0.25s ease' }}>
       
-      {/* Top Header matching Screenshot 1 */}
+      {/* Top Header matching Screenshot 1 with dark theme variables */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid var(--edge)',
           paddingBottom: '0px',
           marginBottom: '20px',
           flexWrap: 'wrap',
@@ -108,7 +111,7 @@ export default function FormListView({
       >
         {/* Left Sub-tabs: Forms | All forms | Analytics | Submissions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <span style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', padding: '12px 0' }}>
+          <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--t1)', padding: '12px 0' }}>
             {isRtl ? 'النماذج' : 'Forms'}
           </span>
           <button
@@ -116,8 +119,8 @@ export default function FormListView({
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'all' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'all' ? '#2563eb' : '#64748b',
+              borderBottom: activeTab === 'all' ? '2px solid var(--a)' : '2px solid transparent',
+              color: activeTab === 'all' ? 'var(--a)' : 'var(--t2)',
               fontWeight: activeTab === 'all' ? '700' : '500',
               fontSize: '14px',
               padding: '12px 4px',
@@ -132,8 +135,8 @@ export default function FormListView({
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'analytics' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'analytics' ? '#2563eb' : '#64748b',
+              borderBottom: activeTab === 'analytics' ? '2px solid var(--a)' : '2px solid transparent',
+              color: activeTab === 'analytics' ? 'var(--a)' : 'var(--t2)',
               fontWeight: activeTab === 'analytics' ? '700' : '500',
               fontSize: '14px',
               padding: '12px 4px',
@@ -148,8 +151,8 @@ export default function FormListView({
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === 'submissions' ? '2px solid #2563eb' : '2px solid transparent',
-              color: activeTab === 'submissions' ? '#2563eb' : '#64748b',
+              borderBottom: activeTab === 'submissions' ? '2px solid var(--a)' : '2px solid transparent',
+              color: activeTab === 'submissions' ? 'var(--a)' : 'var(--t2)',
               fontWeight: activeTab === 'submissions' ? '700' : '500',
               fontSize: '14px',
               padding: '12px 4px',
@@ -168,13 +171,13 @@ export default function FormListView({
               if (showToast) showToast(isRtl ? 'ميزات وتفضيلات النماذج' : 'Form features & preferences');
             }}
             style={{
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: 'var(--surface)',
+              border: '1px solid var(--edge)',
               borderRadius: '8px',
               padding: '8px 14px',
               fontSize: '13px',
               fontWeight: '600',
-              color: '#334155',
+              color: 'var(--t1)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -189,12 +192,12 @@ export default function FormListView({
             onClick={() => setIsFolderModalOpen(true)}
             title={isRtl ? 'مجلد جديد' : 'New Folder'}
             style={{
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: 'var(--surface)',
+              border: '1px solid var(--edge)',
               borderRadius: '8px',
               padding: '8px 12px',
               fontSize: '13px',
-              color: '#334155',
+              color: 'var(--t1)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -207,7 +210,7 @@ export default function FormListView({
           <button
             onClick={onOpenCreateModal}
             style={{
-              background: '#2563eb',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '8px',
@@ -218,7 +221,7 @@ export default function FormListView({
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
               transition: 'all 0.2s ease'
             }}
           >
@@ -247,8 +250,8 @@ export default function FormListView({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--edge)',
                   borderRadius: '8px',
                   padding: '2px'
                 }}
@@ -260,7 +263,7 @@ export default function FormListView({
                     border: 'none',
                     padding: '6px 8px',
                     borderRadius: '6px',
-                    color: '#64748b',
+                    color: 'var(--t2)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center'
@@ -272,15 +275,14 @@ export default function FormListView({
                   onClick={() => setViewMode('list')}
                   title={isRtl ? 'عرض القائمة' : 'List View'}
                   style={{
-                    background: viewMode === 'list' ? '#ffffff' : 'none',
+                    background: viewMode === 'list' ? 'var(--surface2)' : 'none',
                     border: 'none',
-                    boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    padding: '6px 8px',
                     borderRadius: '6px',
-                    color: viewMode === 'list' ? '#2563eb' : '#64748b',
+                    color: viewMode === 'list' ? 'var(--a)' : 'var(--t2)',
                     cursor: 'pointer',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    padding: '6px 8px'
                   }}
                 >
                   <List size={15} />
@@ -289,15 +291,14 @@ export default function FormListView({
                   onClick={() => setViewMode('grid')}
                   title={isRtl ? 'عرض الشبكة' : 'Grid View'}
                   style={{
-                    background: viewMode === 'grid' ? '#ffffff' : 'none',
+                    background: viewMode === 'grid' ? 'var(--surface2)' : 'none',
                     border: 'none',
-                    boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    padding: '6px 8px',
                     borderRadius: '6px',
-                    color: viewMode === 'grid' ? '#2563eb' : '#64748b',
+                    color: viewMode === 'grid' ? 'var(--a)' : 'var(--t2)',
                     cursor: 'pointer',
                     display: 'flex',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    padding: '6px 8px'
                   }}
                 >
                   <Grid size={15} />
@@ -311,10 +312,10 @@ export default function FormListView({
                   style={{
                     padding: '8px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--edge)',
                     fontSize: '13px',
-                    background: '#ffffff',
-                    color: '#334155'
+                    background: 'var(--surface)',
+                    color: 'var(--t1)'
                   }}
                 >
                   <option value="all">{isRtl ? 'جميع المجلدات' : 'All Folders'}</option>
@@ -324,7 +325,7 @@ export default function FormListView({
             </div>
 
             {/* Search Input matching Screenshot 1 */}
-            <div style={{ position: 'relative', width: '280px' }}>
+            <div style={{ position: 'relative', width: '300px' }}>
               <Search
                 size={16}
                 style={{
@@ -332,7 +333,7 @@ export default function FormListView({
                   [isRtl ? 'right' : 'left']: '12px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: '#94a3b8'
+                  color: 'var(--t2)'
                 }}
               />
               <input
@@ -343,13 +344,13 @@ export default function FormListView({
                 style={{
                   width: '100%',
                   padding: '9px 14px',
-                  [isRtl ? 'paddingRight' : 'paddingLeft']: '36px',
+                  [isRtl ? 'paddingRight' : 'paddingLeft']: '38px',
                   borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--edge)',
                   fontSize: '13px',
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   outline: 'none',
-                  color: '#0f172a'
+                  color: 'var(--t1)'
                 }}
               />
             </div>
@@ -357,15 +358,15 @@ export default function FormListView({
 
           {/* Forms Table / Grid */}
           {filteredForms.length === 0 ? (
-            /* Empty State */
+            /* Empty State matching Dark theme */
             <div
               style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--surface)',
+                border: '1px solid var(--edge)',
                 borderRadius: '12px',
                 padding: '60px 20px',
                 textAlign: 'center',
-                color: '#64748b'
+                color: 'var(--t2)'
               }}
             >
               <div
@@ -373,8 +374,8 @@ export default function FormListView({
                   width: '64px',
                   height: '64px',
                   borderRadius: '50%',
-                  background: '#eff6ff',
-                  color: '#2563eb',
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: 'var(--a)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -383,12 +384,12 @@ export default function FormListView({
               >
                 <FileText size={30} />
               </div>
-              <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 6px 0', color: '#0f172a' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 6px 0', color: 'var(--t1)' }}>
                 {searchQuery
                   ? (isRtl ? 'لم يتم العثور على نماذج مطابقة' : 'No matching forms found')
                   : (isRtl ? 'لا توجد نماذج تم إنشاؤها بعد' : 'No forms created yet')}
               </h3>
-              <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '440px', margin: '0 auto 20px auto', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--t2)', maxWidth: '440px', margin: '0 auto 20px auto', lineHeight: 1.5 }}>
                 {isRtl
                   ? 'قم ببناء نماذج احترافية مخصصة لجمع بيانات العملاء، الحجوزات، والمدفوعات ومشاركتها في أي مكان.'
                   : 'Build custom high-converting forms to capture leads, feedback, registrations and receive payments.'}
@@ -396,7 +397,7 @@ export default function FormListView({
               <button
                 onClick={onOpenCreateModal}
                 style={{
-                  background: '#2563eb',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
@@ -407,7 +408,7 @@ export default function FormListView({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)'
                 }}
               >
                 <Plus size={16} strokeWidth={2.5} />
@@ -415,11 +416,11 @@ export default function FormListView({
               </button>
             </div>
           ) : viewMode === 'list' ? (
-            /* Table matching Screenshot 1 */
+            /* Table matching Screenshot 1 with Dark Theme */
             <div
               style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--surface)',
+                border: '1px solid var(--edge)',
                 borderRadius: '12px',
                 overflow: 'visible'
               }}
@@ -428,26 +429,26 @@ export default function FormListView({
                 <thead>
                   <tr
                     style={{
-                      background: '#ffffff',
-                      borderBottom: '1px solid #e2e8f0',
+                      background: 'var(--surface2)',
+                      borderBottom: '1px solid var(--edge)',
                       fontSize: '12.5px',
                       fontWeight: '600',
-                      color: '#64748b'
+                      color: 'var(--t2)'
                     }}
                   >
                     <th style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <AtSign size={14} style={{ color: '#94a3b8' }} />
+                      <AtSign size={14} style={{ color: 'var(--t2)' }} />
                       <span>{isRtl ? 'الاسم' : 'Name'}</span>
                     </th>
                     <th style={{ padding: '14px 20px' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        <Calendar size={14} style={{ color: '#94a3b8' }} />
+                        <Calendar size={14} style={{ color: 'var(--t2)' }} />
                         <span>{isRtl ? 'تم التحديث في' : 'Updated on'}</span>
                       </div>
                     </th>
                     <th style={{ padding: '14px 20px' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        <User size={14} style={{ color: '#94a3b8' }} />
+                        <User size={14} style={{ color: 'var(--t2)' }} />
                         <span>{isRtl ? 'تم التحديث بواسطة' : 'Updated by'}</span>
                       </div>
                     </th>
@@ -460,21 +461,21 @@ export default function FormListView({
                       key={form.id}
                       onClick={() => onSelectForm(form)}
                       style={{
-                        borderBottom: '1px solid #f1f5f9',
+                        borderBottom: '1px solid var(--edge)',
                         cursor: 'pointer',
                         transition: 'background 0.15s ease'
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface2)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <td style={{ padding: '16px 20px', fontWeight: '600', color: '#0f172a', fontSize: '13.5px' }}>
+                      <td style={{ padding: '16px 20px', fontWeight: '700', color: 'var(--t1)', fontSize: '13.5px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ color: '#2563eb' }}>{form.name}</span>
+                          <span style={{ color: 'var(--a)' }}>{form.name}</span>
                           {form.submissions?.length > 0 && (
                             <span
                               style={{
-                                background: '#eff6ff',
-                                color: '#2563eb',
+                                background: 'rgba(37, 99, 235, 0.15)',
+                                color: 'var(--a)',
                                 fontSize: '11px',
                                 fontWeight: '700',
                                 padding: '2px 8px',
@@ -486,10 +487,10 @@ export default function FormListView({
                           )}
                         </div>
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#64748b', fontSize: '13px' }}>
+                      <td style={{ padding: '16px 20px', color: 'var(--t2)', fontSize: '13px' }}>
                         {form.lastUpdated || 'Recently'}
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#475569', fontSize: '13px' }}>
+                      <td style={{ padding: '16px 20px', color: 'var(--t2)', fontSize: '13px' }}>
                         {form.createdBy || 'Admin'}
                       </td>
                       <td
@@ -501,7 +502,7 @@ export default function FormListView({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#94a3b8',
+                            color: 'var(--t2)',
                             cursor: 'pointer',
                             padding: '4px',
                             borderRadius: '4px',
@@ -520,12 +521,12 @@ export default function FormListView({
                               position: 'absolute',
                               [isRtl ? 'left' : 'right']: '20px',
                               top: '40px',
-                              background: '#ffffff',
-                              border: '1px solid #e2e8f0',
+                              background: 'var(--surface)',
+                              border: '1px solid var(--edge)',
                               borderRadius: '10px',
-                              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)',
+                              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                               zIndex: 100,
-                              minWidth: '180px',
+                              minWidth: '190px',
                               padding: '6px 0',
                               display: 'flex',
                               flexDirection: 'column'
@@ -541,7 +542,7 @@ export default function FormListView({
                                 border: 'none',
                                 padding: '9px 16px',
                                 fontSize: '13px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -549,9 +550,33 @@ export default function FormListView({
                                 textAlign: isRtl ? 'right' : 'left'
                               }}
                             >
-                              <Edit3 size={14} />
-                              <span>{isRtl ? 'تعديل في المنشئ' : 'Edit in Builder'}</span>
+                              <Edit3 size={14} style={{ color: 'var(--a)' }} />
+                              <span>{isRtl ? 'فتح في المنشئ المرئي' : 'Open in Visual Builder'}</span>
                             </button>
+
+                            {onOpenFormEditor && (
+                              <button
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  onOpenFormEditor(form);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: '9px 16px',
+                                  fontSize: '13px',
+                                  color: 'var(--t1)',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  textAlign: isRtl ? 'right' : 'left'
+                                }}
+                              >
+                                <SlidersHorizontal size={14} />
+                                <span>{isRtl ? 'خصائص وحقول النموذج' : 'Form Fields & Settings'}</span>
+                              </button>
+                            )}
 
                             <button
                               onClick={() => {
@@ -563,7 +588,7 @@ export default function FormListView({
                                 border: 'none',
                                 padding: '9px 16px',
                                 fontSize: '13px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -585,7 +610,7 @@ export default function FormListView({
                                 border: 'none',
                                 padding: '9px 16px',
                                 fontSize: '13px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -607,7 +632,7 @@ export default function FormListView({
                                 border: 'none',
                                 padding: '9px 16px',
                                 fontSize: '13px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -629,7 +654,7 @@ export default function FormListView({
                                 border: 'none',
                                 padding: '9px 16px',
                                 fontSize: '13px',
-                                color: '#334155',
+                                color: 'var(--t1)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -641,7 +666,7 @@ export default function FormListView({
                               <span>{isRtl ? 'نسخ النموذج' : 'Duplicate'}</span>
                             </button>
 
-                            <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+                            <div style={{ height: '1px', background: 'var(--edge)', margin: '4px 0' }} />
 
                             <button
                               onClick={() => {
@@ -655,7 +680,7 @@ export default function FormListView({
                                 border: 'none',
                                 padding: '9px 16px',
                                 fontSize: '13px',
-                                color: '#dc2626',
+                                color: '#ef4444',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -682,23 +707,23 @@ export default function FormListView({
                   key={form.id}
                   onClick={() => onSelectForm(form)}
                   style={{
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--edge)',
                     borderRadius: '12px',
                     padding: '20px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#2563eb';
+                    e.currentTarget.style.borderColor = 'var(--a)';
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.06)';
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.borderColor = 'var(--edge)';
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)';
+                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -707,8 +732,8 @@ export default function FormListView({
                         width: '36px',
                         height: '36px',
                         borderRadius: '8px',
-                        background: '#eff6ff',
-                        color: '#2563eb',
+                        background: 'rgba(37, 99, 235, 0.15)',
+                        color: 'var(--a)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -716,18 +741,18 @@ export default function FormListView({
                     >
                       <FileText size={18} />
                     </div>
-                    <span style={{ fontSize: '11px', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--t2)', background: 'var(--surface2)', padding: '2px 8px', borderRadius: '4px' }}>
                       {form.fields?.length || 0} {isRtl ? 'حقول' : 'fields'}
                     </span>
                   </div>
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
                     {form.name}
                   </h3>
-                  <p style={{ margin: '0 0 16px 0', fontSize: '12.5px', color: '#64748b' }}>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '12.5px', color: 'var(--t2)' }}>
                     {isRtl ? 'تم التحديث:' : 'Updated:'} {form.lastUpdated || 'Recently'}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
-                    <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: '600' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--edge)', paddingTop: '12px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--a)', fontWeight: '700' }}>
                       {form.submissions?.length || 0} {isRtl ? 'استجابة' : 'submissions'}
                     </span>
                     <button
@@ -738,8 +763,8 @@ export default function FormListView({
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#2563eb',
-                        fontSize: '12px',
+                        color: 'var(--a)',
+                        fontSize: '12.5px',
                         fontWeight: '700',
                         cursor: 'pointer',
                         display: 'flex',
@@ -747,7 +772,7 @@ export default function FormListView({
                         gap: '4px'
                       }}
                     >
-                      <span>{isRtl ? 'فتح' : 'Open'}</span>
+                      <span>{isRtl ? 'فتح بالمنشئ' : 'Open in Builder'}</span>
                       <ChevronRight size={14} />
                     </button>
                   </div>
@@ -762,24 +787,24 @@ export default function FormListView({
       {activeTab === 'analytics' && (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t2)' }}>
                 {isRtl ? 'إجمالي مشاهدات النماذج' : 'Total Form Views'}
               </span>
-              <h2 style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>
+              <h2 style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: '800', color: 'var(--t1)' }}>
                 {totalViews}
               </h2>
             </div>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t2)' }}>
                 {isRtl ? 'إجمالي الاستجابات المستلمة' : 'Total Submissions'}
               </span>
-              <h2 style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: '800', color: '#2563eb' }}>
+              <h2 style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: '800', color: 'var(--a)' }}>
                 {totalSubmissions}
               </h2>
             </div>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t2)' }}>
                 {isRtl ? 'متوسط معدل التحويل' : 'Avg Conversion Rate'}
               </span>
               <h2 style={{ margin: '8px 0 0 0', fontSize: '28px', fontWeight: '800', color: '#16a34a' }}>
@@ -788,16 +813,16 @@ export default function FormListView({
             </div>
           </div>
 
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
               {isRtl ? 'أداء النماذج الفردية' : 'Form Performance Breakdown'}
             </h3>
             {forms.length === 0 ? (
-              <p style={{ color: '#64748b', fontSize: '13.5px' }}>{isRtl ? 'لا توجد بيانات متاحة بعد' : 'No form data available yet'}</p>
+              <p style={{ color: 'var(--t2)', fontSize: '13.5px' }}>{isRtl ? 'لا توجد بيانات متاحة بعد' : 'No form data available yet'}</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isRtl ? 'right' : 'left' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b' }}>
+                  <tr style={{ borderBottom: '1px solid var(--edge)', fontSize: '12px', color: 'var(--t2)' }}>
                     <th style={{ padding: '10px' }}>{isRtl ? 'النموذج' : 'Form'}</th>
                     <th style={{ padding: '10px' }}>{isRtl ? 'المشاهدات' : 'Views'}</th>
                     <th style={{ padding: '10px' }}>{isRtl ? 'الاستجابات' : 'Submissions'}</th>
@@ -810,10 +835,10 @@ export default function FormListView({
                     const subs = f.submissions?.length || f.analytics?.submissions || 0;
                     const cr = views > 0 ? ((subs / views) * 100).toFixed(1) : '0.0';
                     return (
-                      <tr key={f.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '14px 10px', fontWeight: '600', color: '#0f172a' }}>{f.name}</td>
-                        <td style={{ padding: '14px 10px', color: '#64748b' }}>{views}</td>
-                        <td style={{ padding: '14px 10px', color: '#2563eb', fontWeight: '600' }}>{subs}</td>
+                      <tr key={f.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                        <td style={{ padding: '14px 10px', fontWeight: '700', color: 'var(--t1)' }}>{f.name}</td>
+                        <td style={{ padding: '14px 10px', color: 'var(--t2)' }}>{views}</td>
+                        <td style={{ padding: '14px 10px', color: 'var(--a)', fontWeight: '700' }}>{subs}</td>
                         <td style={{ padding: '14px 10px', color: '#16a34a', fontWeight: '700' }}>{cr}%</td>
                       </tr>
                     );
@@ -827,29 +852,29 @@ export default function FormListView({
 
       {/* Submissions Sub-Tab */}
       {activeTab === 'submissions' && (
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
               {isRtl ? 'جميع الاستجابات الواردة' : 'All Form Submissions'}
             </h3>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
+            <span style={{ fontSize: '12px', color: 'var(--t2)' }}>
               {allSubmissions.length} {isRtl ? 'استجابة إجمالية' : 'total submissions'}
             </span>
           </div>
           {allSubmissions.length === 0 ? (
-            <div style={{ padding: '50px 20px', textAlign: 'center', color: '#64748b' }}>
-              <Inbox size={32} style={{ color: '#94a3b8', margin: '0 auto 12px' }} />
-              <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#0f172a' }}>
+            <div style={{ padding: '50px 20px', textAlign: 'center', color: 'var(--t2)' }}>
+              <Inbox size={32} style={{ color: 'var(--t2)', margin: '0 auto 12px' }} />
+              <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
                 {isRtl ? 'لا توجد استجابات بعد' : 'No submissions yet'}
               </h4>
-              <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--t2)' }}>
                 {isRtl ? 'ستظهر الاستجابات هنا بمجرد أن يقوم الزوار بملء نماذجك.' : 'Submissions will appear here once someone fills out your forms.'}
               </p>
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isRtl ? 'right' : 'left' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b' }}>
+                <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)', fontSize: '12px', color: 'var(--t2)' }}>
                   <th style={{ padding: '12px 16px' }}>{isRtl ? 'التاريخ' : 'Submitted At'}</th>
                   <th style={{ padding: '12px 16px' }}>{isRtl ? 'النموذج' : 'Form'}</th>
                   <th style={{ padding: '12px 16px' }}>{isRtl ? 'الاسم' : 'Name'}</th>
@@ -859,12 +884,12 @@ export default function FormListView({
               </thead>
               <tbody>
                 {allSubmissions.map((sub, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '12.5px' }}>{sub.submittedAt || 'Today'}</td>
-                    <td style={{ padding: '14px 16px', fontWeight: '600', color: '#2563eb', fontSize: '13px' }}>{sub.formName}</td>
-                    <td style={{ padding: '14px 16px', color: '#0f172a', fontWeight: '600', fontSize: '13px' }}>{sub.name || sub.firstName ? `${sub.firstName || ''} ${sub.lastName || ''}`.trim() : 'Anonymous'}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{sub.email || '-'}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{sub.phone || '-'}</td>
+                  <tr key={idx} style={{ borderBottom: '1px solid var(--edge)' }}>
+                    <td style={{ padding: '14px 16px', color: 'var(--t2)', fontSize: '12.5px' }}>{sub.submittedAt || 'Today'}</td>
+                    <td style={{ padding: '14px 16px', fontWeight: '700', color: 'var(--a)', fontSize: '13px' }}>{sub.formName}</td>
+                    <td style={{ padding: '14px 16px', color: 'var(--t1)', fontWeight: '700', fontSize: '13px' }}>{sub.name || sub.firstName ? `${sub.firstName || ''} ${sub.lastName || ''}`.trim() : 'Anonymous'}</td>
+                    <td style={{ padding: '14px 16px', color: 'var(--t2)', fontSize: '13px' }}>{sub.email || '-'}</td>
+                    <td style={{ padding: '14px 16px', color: 'var(--t2)', fontSize: '13px' }}>{sub.phone || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -879,15 +904,15 @@ export default function FormListView({
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(0,0,0,0.65)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 99999
           }}
         >
-          <div style={{ background: '#ffffff', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '400px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '400px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
               {isRtl ? 'إنشاء مجلد جديد' : 'Create New Folder'}
             </h3>
             <input
@@ -899,7 +924,9 @@ export default function FormListView({
                 width: '100%',
                 padding: '10px 12px',
                 borderRadius: '8px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--edge)',
+                background: 'var(--surface2)',
+                color: 'var(--t1)',
                 fontSize: '13.5px',
                 marginBottom: '16px',
                 outline: 'none'
@@ -908,13 +935,13 @@ export default function FormListView({
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 onClick={() => setIsFolderModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#64748b', padding: '8px 14px', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--t2)', padding: '8px 14px', cursor: 'pointer' }}
               >
                 {isRtl ? 'إلغاء' : 'Cancel'}
               </button>
               <button
                 onClick={handleCreateFolder}
-                style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: '700', cursor: 'pointer' }}
+                style={{ background: 'var(--a)', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 18px', fontWeight: '700', cursor: 'pointer' }}
               >
                 {isRtl ? 'إنشاء' : 'Create'}
               </button>

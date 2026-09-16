@@ -38,8 +38,8 @@ export default function CreateFormModal({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.55)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(5px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -52,11 +52,12 @@ export default function CreateFormModal({
     >
       <div
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
+          border: '1px solid var(--edge)',
           borderRadius: '16px',
           width: '100%',
           maxWidth: isChoosingTemplate ? '800px' : '640px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -68,13 +69,13 @@ export default function CreateFormModal({
         <div
           style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid var(--edge)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+          <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
             {isChoosingTemplate
               ? (isRtl ? 'اختر قالباً جاهزاً' : 'Choose a Form Template')
               : (isRtl ? 'إنشاء نموذج جديد' : 'Create new form')}
@@ -84,7 +85,7 @@ export default function CreateFormModal({
             style={{
               background: 'none',
               border: 'none',
-              color: '#94a3b8',
+              color: 'var(--t2)',
               cursor: 'pointer',
               padding: '4px',
               borderRadius: '6px',
@@ -101,7 +102,7 @@ export default function CreateFormModal({
         <div style={{ padding: '24px' }}>
           {/* Form Name input */}
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
               {isRtl ? 'اسم النموذج' : 'Form Name'}
             </label>
             <input
@@ -113,28 +114,29 @@ export default function CreateFormModal({
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: '8px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--edge)',
+                background: 'var(--surface2)',
                 fontSize: '14px',
                 outline: 'none',
-                color: '#0f172a'
+                color: 'var(--t1)'
               }}
             />
           </div>
 
           {!isChoosingTemplate ? (
-            /* Cards Selection matching Screenshot 2 */
+            /* Cards Selection matching Screenshot 2 with theme variables */
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               
               {/* Option 1: Start from Scratch */}
               <div
                 onClick={() => setSelectedOption('scratch')}
                 style={{
-                  border: selectedOption === 'scratch' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                  border: selectedOption === 'scratch' ? '2px solid var(--a)' : '1px solid var(--edge)',
                   borderRadius: '12px',
                   padding: '18px',
                   cursor: 'pointer',
                   position: 'relative',
-                  background: selectedOption === 'scratch' ? '#f8faff' : '#ffffff',
+                  background: selectedOption === 'scratch' ? 'rgba(37, 99, 235, 0.08)' : 'var(--surface2)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
@@ -143,10 +145,10 @@ export default function CreateFormModal({
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
                       {isRtl ? 'البدء من الصفر' : 'Start from Scratch'}
                     </h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--t2)' }}>
                       {isRtl ? 'صمم من البداية باستخدام منشئ النماذج' : 'Design from scratch using the form builder'}
                     </p>
                   </div>
@@ -155,8 +157,8 @@ export default function CreateFormModal({
                       width: '18px',
                       height: '18px',
                       borderRadius: '50%',
-                      border: selectedOption === 'scratch' ? '5px solid #2563eb' : '2px solid #cbd5e1',
-                      background: '#fff',
+                      border: selectedOption === 'scratch' ? '5px solid var(--a)' : '2px solid var(--edge)',
+                      background: 'var(--surface)',
                       flexShrink: 0
                     }}
                   />
@@ -167,12 +169,12 @@ export default function CreateFormModal({
                   style={{
                     height: '130px',
                     borderRadius: '8px',
-                    background: '#f8fafc',
-                    border: '1px dashed #cbd5e1',
+                    background: 'var(--surface)',
+                    border: '1px dashed var(--edge)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#94a3b8'
+                    color: 'var(--t2)'
                   }}
                 >
                   <Plus size={36} strokeWidth={1.5} />
@@ -183,12 +185,12 @@ export default function CreateFormModal({
               <div
                 onClick={() => setSelectedOption('templates')}
                 style={{
-                  border: selectedOption === 'templates' ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                  border: selectedOption === 'templates' ? '2px solid var(--a)' : '1px solid var(--edge)',
                   borderRadius: '12px',
                   padding: '18px',
                   cursor: 'pointer',
                   position: 'relative',
-                  background: selectedOption === 'templates' ? '#f8faff' : '#ffffff',
+                  background: selectedOption === 'templates' ? 'rgba(37, 99, 235, 0.08)' : 'var(--surface2)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
@@ -197,10 +199,10 @@ export default function CreateFormModal({
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
                       {isRtl ? 'من القوالب' : 'From templates'}
                     </h3>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--t2)' }}>
                       {isRtl ? 'انطلاقة سريعة مع قوالب احترافية مجهزة' : 'Jump start with an awesome prebuilt form'}
                     </p>
                   </div>
@@ -209,8 +211,8 @@ export default function CreateFormModal({
                       width: '18px',
                       height: '18px',
                       borderRadius: '50%',
-                      border: selectedOption === 'templates' ? '5px solid #2563eb' : '2px solid #cbd5e1',
-                      background: '#fff',
+                      border: selectedOption === 'templates' ? '5px solid var(--a)' : '2px solid var(--edge)',
+                      background: 'var(--surface)',
                       flexShrink: 0
                     }}
                   />
@@ -221,8 +223,8 @@ export default function CreateFormModal({
                   style={{
                     height: '130px',
                     borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                    border: '1px solid #fde68a',
+                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.25) 100%)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -233,24 +235,10 @@ export default function CreateFormModal({
                     overflow: 'hidden'
                   }}
                 >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      right: '-15px',
-                      bottom: '-15px',
-                      width: '80px',
-                      height: '100px',
-                      background: '#ffffff',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                      transform: 'rotate(-10deg)',
-                      opacity: 0.85
-                    }}
-                  />
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#b45309', zIndex: 1 }}>
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#f59e0b', zIndex: 1 }}>
                     {isRtl ? 'أكثر من 1000+ قالب' : 'Over 1000+'}
                   </span>
-                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#92400e', zIndex: 1 }}>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#fbbf24', zIndex: 1 }}>
                     {isRtl ? 'جاهز للاستخدام' : 'Templates'}
                   </span>
                 </div>
@@ -268,11 +256,11 @@ export default function CreateFormModal({
                       key={tpl.id}
                       onClick={() => setSelectedTemplate(tpl)}
                       style={{
-                        border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        border: isSelected ? '2px solid var(--a)' : '1px solid var(--edge)',
                         borderRadius: '12px',
                         padding: '16px',
                         cursor: 'pointer',
-                        background: isSelected ? '#f8faff' : '#ffffff',
+                        background: isSelected ? 'rgba(37, 99, 235, 0.1)' : 'var(--surface2)',
                         transition: 'all 0.2s ease',
                         display: 'flex',
                         flexDirection: 'column',
@@ -282,23 +270,23 @@ export default function CreateFormModal({
                     >
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '700', color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--a)', background: 'rgba(37,99,235,0.15)', padding: '2px 8px', borderRadius: '4px' }}>
                             {tpl.category}
                           </span>
                           {isSelected && (
-                            <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--a)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                               <Check size={12} strokeWidth={3} />
                             </div>
                           )}
                         </div>
-                        <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                        <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '700', color: 'var(--t1)' }}>
                           {isRtl ? tpl.nameAr || tpl.name : tpl.name}
                         </h4>
-                        <p style={{ margin: 0, fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--t2)', lineHeight: 1.4 }}>
                           {tpl.description}
                         </p>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--t3)', borderTop: '1px solid var(--edge)', paddingTop: '8px' }}>
                         {tpl.fields.length} {isRtl ? 'حقول مدمجة' : 'included fields'}
                       </div>
                     </div>
@@ -313,8 +301,8 @@ export default function CreateFormModal({
         <div
           style={{
             padding: '16px 24px',
-            borderTop: '1px solid #f1f5f9',
-            background: '#fafafa',
+            borderTop: '1px solid var(--edge)',
+            background: 'var(--surface2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: isChoosingTemplate ? 'space-between' : 'flex-end',
@@ -326,12 +314,12 @@ export default function CreateFormModal({
               onClick={() => setIsChoosingTemplate(false)}
               style={{
                 background: 'none',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--edge)',
                 borderRadius: '8px',
                 padding: '8px 16px',
                 fontSize: '13px',
                 fontWeight: '600',
-                color: '#475569',
+                color: 'var(--t1)',
                 cursor: 'pointer'
               }}
             >
@@ -347,7 +335,7 @@ export default function CreateFormModal({
                 padding: '8px 16px',
                 fontSize: '13.5px',
                 fontWeight: '600',
-                color: '#64748b',
+                color: 'var(--t2)',
                 cursor: 'pointer'
               }}
             >
@@ -356,7 +344,7 @@ export default function CreateFormModal({
             <button
               onClick={handleCreate}
               style={{
-                background: '#2563eb',
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
@@ -364,7 +352,7 @@ export default function CreateFormModal({
                 fontSize: '13.5px',
                 fontWeight: '700',
                 cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
                 transition: 'all 0.2s ease'
               }}
             >

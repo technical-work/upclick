@@ -49,7 +49,9 @@ import {
   FileCode,
   Tag,
   Sliders,
-  DollarSign
+  DollarSign,
+  Palette,
+  Layers
 } from 'lucide-react';
 import FormIntegrateModal from './FormIntegrateModal';
 import LiveFormModal from './LiveFormModal';
@@ -59,6 +61,7 @@ export default function FormBuilderView({
   isRtl,
   onBack,
   onSaveForm,
+  onOpenVisualBuilder,
   showToast
 }) {
   const [form, setForm] = useState(JSON.parse(JSON.stringify(initialForm)));
@@ -270,7 +273,7 @@ export default function FormBuilderView({
       style={{
         position: 'fixed',
         inset: 0,
-        background: '#f1f5f9',
+        background: 'var(--bg)',
         zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
@@ -278,11 +281,11 @@ export default function FormBuilderView({
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
       }}
     >
-      {/* TOP NAVIGATION BAR matching Screenshots 3, 4, 5 */}
+      {/* TOP NAVIGATION BAR matching Screenshots 3, 4, 5 in dark mode */}
       <header
         style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--edge)',
           height: '56px',
           display: 'flex',
           alignItems: 'center',
@@ -296,13 +299,13 @@ export default function FormBuilderView({
           <button
             onClick={onBack}
             style={{
-              background: '#f8fafc',
-              border: '1px solid #cbd5e1',
+              background: 'var(--surface2)',
+              border: '1px solid var(--edge)',
               borderRadius: '6px',
               padding: '6px 12px',
               fontSize: '13px',
               fontWeight: '600',
-              color: '#334155',
+              color: 'var(--t1)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -317,11 +320,11 @@ export default function FormBuilderView({
             onClick={() => setIsLeftDrawerOpen(!isLeftDrawerOpen)}
             title={isRtl ? 'تبديل قائمة العناصر' : 'Toggle Element Drawer'}
             style={{
-              background: isLeftDrawerOpen ? '#eff6ff' : '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: isLeftDrawerOpen ? 'rgba(37, 99, 235, 0.15)' : 'var(--surface2)',
+              border: '1px solid var(--edge)',
               borderRadius: '6px',
               padding: '6px 8px',
-              color: isLeftDrawerOpen ? '#2563eb' : '#64748b',
+              color: isLeftDrawerOpen ? 'var(--a)' : 'var(--t2)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center'
@@ -330,12 +333,12 @@ export default function FormBuilderView({
             <Plus size={16} />
           </button>
 
-          {/* Desktop / Mobile Switcher matching Screenshot 3 */}
+          {/* Desktop / Mobile Switcher */}
           <div
             style={{
               display: 'flex',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: 'var(--surface2)',
+              border: '1px solid var(--edge)',
               borderRadius: '6px',
               padding: '2px'
             }}
@@ -343,12 +346,11 @@ export default function FormBuilderView({
             <button
               onClick={() => setDeviceMode('desktop')}
               style={{
-                background: deviceMode === 'desktop' ? '#ffffff' : 'none',
+                background: deviceMode === 'desktop' ? 'var(--surface)' : 'none',
                 border: 'none',
-                boxShadow: deviceMode === 'desktop' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 borderRadius: '4px',
                 padding: '5px 8px',
-                color: deviceMode === 'desktop' ? '#2563eb' : '#64748b',
+                color: deviceMode === 'desktop' ? 'var(--a)' : 'var(--t2)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center'
@@ -359,12 +361,11 @@ export default function FormBuilderView({
             <button
               onClick={() => setDeviceMode('mobile')}
               style={{
-                background: deviceMode === 'mobile' ? '#ffffff' : 'none',
+                background: deviceMode === 'mobile' ? 'var(--surface)' : 'none',
                 border: 'none',
-                boxShadow: deviceMode === 'mobile' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 borderRadius: '4px',
                 padding: '5px 8px',
-                color: deviceMode === 'mobile' ? '#2563eb' : '#64748b',
+                color: deviceMode === 'mobile' ? 'var(--a)' : 'var(--t2)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center'
@@ -373,6 +374,28 @@ export default function FormBuilderView({
               <Smartphone size={15} />
             </button>
           </div>
+
+          {onOpenVisualBuilder && (
+            <button
+              onClick={() => onOpenVisualBuilder(form)}
+              style={{
+                background: 'rgba(37, 99, 235, 0.15)',
+                border: '1px solid var(--a)',
+                color: 'var(--a)',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Palette size={14} />
+              <span>{isRtl ? 'المنشئ المرئي الكامل' : 'Open Visual Builder'}</span>
+            </button>
+          )}
         </div>
 
         {/* Center: Form Name with Pen & Sub-Tabs matching Screenshots 3, 4, 5 */}
@@ -385,7 +408,7 @@ export default function FormBuilderView({
               style={{
                 fontSize: '14px',
                 fontWeight: '700',
-                color: '#0f172a',
+                color: 'var(--t1)',
                 border: 'none',
                 background: 'transparent',
                 textAlign: 'center',
@@ -394,7 +417,7 @@ export default function FormBuilderView({
                 width: '180px'
               }}
             />
-            <span style={{ fontSize: '13px', color: '#94a3b8' }}>✏️</span>
+            <span style={{ fontSize: '13px', color: 'var(--t2)' }}>✏️</span>
           </div>
 
           <div style={{ display: 'flex', gap: '16px' }}>
@@ -411,8 +434,8 @@ export default function FormBuilderView({
                 style={{
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeBuilderTab === tab.key ? '2px solid #2563eb' : '2px solid transparent',
-                  color: activeBuilderTab === tab.key ? '#2563eb' : '#64748b',
+                  borderBottom: activeBuilderTab === tab.key ? '2px solid var(--a)' : '2px solid transparent',
+                  color: activeBuilderTab === tab.key ? 'var(--a)' : 'var(--t2)',
                   fontSize: '12.5px',
                   fontWeight: activeBuilderTab === tab.key ? '700' : '500',
                   padding: '2px 4px',
@@ -434,7 +457,7 @@ export default function FormBuilderView({
             style={{
               background: 'none',
               border: 'none',
-              color: historyIdx > 0 ? '#64748b' : '#cbd5e1',
+              color: historyIdx > 0 ? 'var(--t2)' : 'var(--edge)',
               cursor: historyIdx > 0 ? 'pointer' : 'not-allowed',
               padding: '6px'
             }}
@@ -448,7 +471,7 @@ export default function FormBuilderView({
             style={{
               background: 'none',
               border: 'none',
-              color: historyIdx < history.length - 1 ? '#64748b' : '#cbd5e1',
+              color: historyIdx < history.length - 1 ? 'var(--t2)' : 'var(--edge)',
               cursor: historyIdx < history.length - 1 ? 'pointer' : 'not-allowed',
               padding: '6px'
             }}
@@ -459,13 +482,13 @@ export default function FormBuilderView({
           <button
             onClick={() => setIsPreviewOpen(true)}
             style={{
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: 'var(--surface2)',
+              border: '1px solid var(--edge)',
               borderRadius: '6px',
               padding: '7px 12px',
               fontSize: '12.5px',
               fontWeight: '600',
-              color: '#334155',
+              color: 'var(--t1)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -479,13 +502,13 @@ export default function FormBuilderView({
           <button
             onClick={() => setIsIntegrateOpen(true)}
             style={{
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
+              background: 'var(--surface2)',
+              border: '1px solid var(--edge)',
               borderRadius: '6px',
               padding: '7px 12px',
               fontSize: '12.5px',
               fontWeight: '600',
-              color: '#334155',
+              color: 'var(--t1)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -499,7 +522,7 @@ export default function FormBuilderView({
           <button
             onClick={handleSave}
             style={{
-              background: '#2563eb',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '6px',
@@ -510,7 +533,7 @@ export default function FormBuilderView({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 2px 4px rgba(37,99,235,0.25)'
+              boxShadow: '0 2px 8px rgba(37,99,235,0.35)'
             }}
           >
             <Save size={14} />
@@ -523,14 +546,14 @@ export default function FormBuilderView({
       {activeBuilderTab === 'edit' && (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           
-          {/* LEFT DRAWER matching Screenshot 3 */}
+          {/* LEFT DRAWER matching Screenshot 3 with dark mode theme */}
           {isLeftDrawerOpen && (
             <aside
               style={{
                 width: '280px',
-                background: '#ffffff',
-                borderRight: isRtl ? 'none' : '1px solid #e2e8f0',
-                borderLeft: isRtl ? '1px solid #e2e8f0' : 'none',
+                background: 'var(--surface)',
+                borderRight: isRtl ? 'none' : '1px solid var(--edge)',
+                borderLeft: isRtl ? '1px solid var(--edge)' : 'none',
                 display: 'flex',
                 flexDirection: 'column',
                 flexShrink: 0,
@@ -541,39 +564,38 @@ export default function FormBuilderView({
               <div
                 style={{
                   padding: '14px 16px',
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--edge)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between'
                 }}
               >
-                <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--t1)' }}>
                   {isRtl ? 'عناصر النموذج' : 'Form Element'}
                 </span>
                 <button
                   onClick={() => setIsLeftDrawerOpen(false)}
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: '2px' }}
                 >
                   <X size={16} />
                 </button>
               </div>
 
               {/* Drawer Sub-tabs: Quick Add | Add Object Fields */}
-              <div style={{ display: 'flex', padding: '8px 12px', gap: '6px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', padding: '8px 12px', gap: '6px', borderBottom: '1px solid var(--edge)' }}>
                 <button
                   onClick={() => setDrawerTab('quick_add')}
                   style={{
                     flex: 1,
-                    background: drawerTab === 'quick_add' ? '#ffffff' : '#f8fafc',
+                    background: drawerTab === 'quick_add' ? 'var(--surface2)' : 'transparent',
                     border: '1px solid',
-                    borderColor: drawerTab === 'quick_add' ? '#cbd5e1' : '#e2e8f0',
+                    borderColor: drawerTab === 'quick_add' ? 'var(--a)' : 'transparent',
                     borderRadius: '6px',
                     padding: '6px 0',
                     fontSize: '12px',
                     fontWeight: drawerTab === 'quick_add' ? '700' : '500',
-                    color: drawerTab === 'quick_add' ? '#0f172a' : '#64748b',
-                    cursor: 'pointer',
-                    boxShadow: drawerTab === 'quick_add' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                    color: drawerTab === 'quick_add' ? 'var(--a)' : 'var(--t2)',
+                    cursor: 'pointer'
                   }}
                 >
                   {isRtl ? 'إضافة سريعة' : 'Quick Add'}
@@ -582,14 +604,14 @@ export default function FormBuilderView({
                   onClick={() => setDrawerTab('object_fields')}
                   style={{
                     flex: 1,
-                    background: drawerTab === 'object_fields' ? '#ffffff' : '#f8fafc',
+                    background: drawerTab === 'object_fields' ? 'var(--surface2)' : 'transparent',
                     border: '1px solid',
-                    borderColor: drawerTab === 'object_fields' ? '#cbd5e1' : '#e2e8f0',
+                    borderColor: drawerTab === 'object_fields' ? 'var(--a)' : 'transparent',
                     borderRadius: '6px',
                     padding: '6px 0',
                     fontSize: '12px',
                     fontWeight: drawerTab === 'object_fields' ? '700' : '500',
-                    color: drawerTab === 'object_fields' ? '#0f172a' : '#64748b',
+                    color: drawerTab === 'object_fields' ? 'var(--a)' : 'var(--t2)',
                     cursor: 'pointer'
                   }}
                 >
@@ -601,7 +623,7 @@ export default function FormBuilderView({
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
                 {elementCategories.map((cat, catIdx) => (
                   <div key={catIdx} style={{ marginBottom: '18px' }}>
-                    <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--t2)', display: 'block', marginBottom: '8px' }}>
                       {cat.name}
                     </span>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -612,10 +634,10 @@ export default function FormBuilderView({
                             key={itemIdx}
                             onClick={() => handleAddField(item)}
                             style={{
-                              border: '1px solid #e2e8f0',
+                              border: '1px solid var(--edge)',
                               borderRadius: '8px',
                               padding: '10px 8px',
-                              background: '#ffffff',
+                              background: 'var(--surface2)',
                               cursor: 'pointer',
                               display: 'flex',
                               flexDirection: 'column',
@@ -627,12 +649,12 @@ export default function FormBuilderView({
                               position: 'relative'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = '#2563eb';
-                              e.currentTarget.style.background = '#f8faff';
+                              e.currentTarget.style.borderColor = 'var(--a)';
+                              e.currentTarget.style.background = 'rgba(37,99,235,0.12)';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = '#e2e8f0';
-                              e.currentTarget.style.background = '#ffffff';
+                              e.currentTarget.style.borderColor = 'var(--edge)';
+                              e.currentTarget.style.background = 'var(--surface2)';
                             }}
                           >
                             {item.badge && (
@@ -641,22 +663,22 @@ export default function FormBuilderView({
                                   position: 'absolute',
                                   top: '-6px',
                                   right: '6px',
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
+                                  background: 'rgba(37,99,235,0.2)',
+                                  color: 'var(--a)',
                                   fontSize: '9px',
                                   fontWeight: '800',
                                   padding: '1px 4px',
                                   borderRadius: '4px',
-                                  border: '1px solid #bfdbfe'
+                                  border: '1px solid var(--a)'
                                 }}
                               >
                                 {item.badge}
                               </span>
                             )}
-                            <div style={{ color: '#64748b' }}>
+                            <div style={{ color: 'var(--t2)' }}>
                               <Icon size={18} strokeWidth={1.75} />
                             </div>
-                            <span style={{ fontSize: '11px', fontWeight: '600', color: '#334155', lineHeight: 1.2 }}>
+                            <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--t1)', lineHeight: 1.2 }}>
                               {item.label}
                             </span>
                           </div>
@@ -669,7 +691,7 @@ export default function FormBuilderView({
             </aside>
           )}
 
-          {/* CENTER CANVAS matching Screenshot 3 */}
+          {/* CENTER CANVAS matching Screenshot 3 with dark mode theme */}
           <main
             style={{
               flex: 1,
@@ -683,10 +705,10 @@ export default function FormBuilderView({
               style={{
                 width: '100%',
                 maxWidth: deviceMode === 'mobile' ? '380px' : '620px',
-                background: form.settings?.styling?.bg || '#ffffff',
+                background: form.settings?.styling?.bg || 'var(--surface)',
                 borderRadius: form.settings?.styling?.borderRadius || '14px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
-                border: '1px solid #e2e8f0',
+                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
+                border: '1px solid var(--edge)',
                 padding: deviceMode === 'mobile' ? '24px 18px' : '36px 32px',
                 alignSelf: 'flex-start',
                 transition: 'max-width 0.3s ease'
@@ -697,11 +719,11 @@ export default function FormBuilderView({
                 {form.fields?.length === 0 ? (
                   <div
                     style={{
-                      border: '2px dashed #cbd5e1',
+                      border: '2px dashed var(--edge)',
                       borderRadius: '10px',
                       padding: '40px 20px',
                       textAlign: 'center',
-                      color: '#94a3b8'
+                      color: 'var(--t2)'
                     }}
                   >
                     <Plus size={32} style={{ margin: '0 auto 8px auto' }} />
@@ -717,10 +739,10 @@ export default function FormBuilderView({
                         key={field.id}
                         onClick={() => setSelectedFieldId(field.id)}
                         style={{
-                          border: isSelected ? '2px solid #2563eb' : '1px solid transparent',
+                          border: isSelected ? '2px solid var(--a)' : '1px solid transparent',
                           borderRadius: '8px',
                           padding: '8px',
-                          background: isSelected ? 'rgba(37, 99, 235, 0.03)' : 'transparent',
+                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
                           position: 'relative',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
@@ -741,7 +763,8 @@ export default function FormBuilderView({
                               alignItems: 'center',
                               gap: '6px',
                               zIndex: 10,
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                              border: '1px solid var(--edge)'
                             }}
                           >
                             <button
@@ -801,20 +824,20 @@ export default function FormBuilderView({
                               fontSize: '14px',
                               fontWeight: '700',
                               cursor: 'pointer',
-                              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)'
                             }}
                           >
                             {field.label || 'Submit'}
                           </button>
                         ) : field.type === 'consent_checkbox' ? (
-                          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: '#475569', lineHeight: 1.45, cursor: 'pointer' }}>
+                          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: 'var(--t2)', lineHeight: 1.45, cursor: 'pointer' }}>
                             <input type="checkbox" readOnly checked={false} style={{ marginTop: '2px' }} />
                             <span>{field.label}</span>
                           </label>
                         ) : field.type === 'textarea' ? (
                           <div>
-                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                              {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                              {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                             </label>
                             <textarea
                               rows={2}
@@ -824,21 +847,22 @@ export default function FormBuilderView({
                                 width: '100%',
                                 padding: '9px 12px',
                                 borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
+                                border: '1px solid var(--edge)',
+                                background: 'var(--surface2)',
+                                color: 'var(--t1)',
                                 fontSize: '13px',
-                                background: '#ffffff',
                                 outline: 'none'
                               }}
                             />
                           </div>
                         ) : (
                           <div>
-                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
-                              {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
+                              {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                             </label>
                             <div style={{ position: 'relative' }}>
                               {field.type === 'email' && (
-                                <Mail size={14} style={{ position: 'absolute', [isRtl ? 'right' : 'left']: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                <Mail size={14} style={{ position: 'absolute', [isRtl ? 'right' : 'left']: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)' }} />
                               )}
                               <input
                                 type="text"
@@ -850,9 +874,10 @@ export default function FormBuilderView({
                                   [isRtl && field.type === 'email' ? 'paddingRight' : !isRtl && field.type === 'email' ? 'paddingLeft' : 'padding']: '9px 12px',
                                   ...(field.type === 'email' ? { [isRtl ? 'paddingRight' : 'paddingLeft']: '34px' } : {}),
                                   borderRadius: '8px',
-                                  border: '1px solid #cbd5e1',
+                                  border: '1px solid var(--edge)',
+                                  background: 'var(--surface2)',
+                                  color: 'var(--t1)',
                                   fontSize: '13px',
-                                  background: '#ffffff',
                                   outline: 'none'
                                 }}
                               />
@@ -867,10 +892,10 @@ export default function FormBuilderView({
 
               {/* Privacy / Terms footer link matching Screenshot 3 */}
               {form.settings?.showTermsLinks !== false && (
-                <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: '#2563eb' }}>
-                  <a href="#privacy" onClick={(e) => e.preventDefault()} style={{ color: '#2563eb', textDecoration: 'none', margin: '0 6px' }}>Privacy Policy</a>
+                <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: 'var(--a)' }}>
+                  <a href="#privacy" onClick={(e) => e.preventDefault()} style={{ color: 'var(--a)', textDecoration: 'none', margin: '0 6px' }}>Privacy Policy</a>
                   <span>|</span>
-                  <a href="#terms" onClick={(e) => e.preventDefault()} style={{ color: '#2563eb', textDecoration: 'none', margin: '0 6px' }}>Terms of Service</a>
+                  <a href="#terms" onClick={(e) => e.preventDefault()} style={{ color: 'var(--a)', textDecoration: 'none', margin: '0 6px' }}>Terms of Service</a>
                 </div>
               )}
             </div>
@@ -881,9 +906,9 @@ export default function FormBuilderView({
             <aside
               style={{
                 width: '280px',
-                background: '#ffffff',
-                borderLeft: isRtl ? 'none' : '1px solid #e2e8f0',
-                borderRight: isRtl ? '1px solid #e2e8f0' : 'none',
+                background: 'var(--surface)',
+                borderLeft: isRtl ? 'none' : '1px solid var(--edge)',
+                borderRight: isRtl ? '1px solid var(--edge)' : 'none',
                 padding: '16px',
                 overflowY: 'auto',
                 display: 'flex',
@@ -892,46 +917,46 @@ export default function FormBuilderView({
                 zIndex: 20
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--edge)', paddingBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--t1)' }}>
                   {isRtl ? 'خصائص الحقل' : 'Field Properties'}
                 </span>
                 <button
                   onClick={() => setSelectedFieldId(null)}
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer' }}
                 >
                   <X size={15} />
                 </button>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--t1)', marginBottom: '4px' }}>
                   {isRtl ? 'نص التسمية (Label)' : 'Field Label'}
                 </label>
                 <input
                   type="text"
                   value={selectedField.label}
                   onChange={(e) => handleUpdateField(selectedField.id, { label: e.target.value })}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--edge)', background: 'var(--surface2)', color: 'var(--t1)', fontSize: '13px' }}
                 />
               </div>
 
               {selectedField.type !== 'submit' && selectedField.type !== 'consent_checkbox' && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--t1)', marginBottom: '4px' }}>
                     {isRtl ? 'النص التوضيحي (Placeholder)' : 'Placeholder'}
                   </label>
                   <input
                     type="text"
                     value={selectedField.placeholder || ''}
                     onChange={(e) => handleUpdateField(selectedField.id, { placeholder: e.target.value })}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--edge)', background: 'var(--surface2)', color: 'var(--t1)', fontSize: '13px' }}
                   />
                 </div>
               )}
 
               {selectedField.type !== 'submit' && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: '600', color: '#334155', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={!!selectedField.required}
@@ -943,7 +968,7 @@ export default function FormBuilderView({
 
               {selectedField.type === 'submit' && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--t1)', marginBottom: '4px' }}>
                     {isRtl ? 'لون الزر' : 'Button Color'}
                   </label>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -951,25 +976,25 @@ export default function FormBuilderView({
                       type="color"
                       value={selectedField.buttonColor || '#2563eb'}
                       onChange={(e) => handleUpdateField(selectedField.id, { buttonColor: e.target.value })}
-                      style={{ width: '36px', height: '36px', borderRadius: '6px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                      style={{ width: '36px', height: '36px', borderRadius: '6px', border: '1px solid var(--edge)', cursor: 'pointer' }}
                     />
                     <input
                       type="text"
                       value={selectedField.buttonColor || '#2563eb'}
                       onChange={(e) => handleUpdateField(selectedField.id, { buttonColor: e.target.value })}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '6px', border: '1px solid var(--edge)', background: 'var(--surface2)', color: 'var(--t1)', fontSize: '13px' }}
                     />
                   </div>
                 </div>
               )}
 
-              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+              <div style={{ borderTop: '1px solid var(--edge)', paddingTop: '12px' }}>
                 <button
                   onClick={() => handleDeleteField(selectedField.id)}
                   style={{
-                    background: '#fef2f2',
-                    color: '#dc2626',
-                    border: '1px solid #fecaca',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
                     borderRadius: '6px',
                     padding: '8px',
                     width: '100%',
@@ -999,20 +1024,20 @@ export default function FormBuilderView({
             style={{
               width: '100%',
               maxWidth: '720px',
-              background: '#ffffff',
+              background: 'var(--surface)',
               borderRadius: '14px',
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--edge)',
               padding: '28px',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+              boxShadow: '0 8px 25px rgba(0,0,0,0.2)'
             }}
           >
-            {/* Section 1: On Submit matching Screenshot 4 */}
+            {/* Section 1: On Submit */}
             <div style={{ marginBottom: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
                   {isRtl ? 'عند الإرسال (On Submit)' : 'On Submit'}
                 </h3>
-                <Monitor size={15} style={{ color: '#94a3b8' }} />
+                <Monitor size={15} style={{ color: 'var(--t2)' }} />
               </div>
 
               {/* On Submit Type Dropdown */}
@@ -1033,10 +1058,10 @@ export default function FormBuilderView({
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid var(--edge)',
                     fontSize: '13.5px',
-                    background: '#ffffff',
-                    color: '#0f172a',
+                    background: 'var(--surface2)',
+                    color: 'var(--t1)',
                     outline: 'none'
                   }}
                 >
@@ -1048,7 +1073,7 @@ export default function FormBuilderView({
               {form.settings?.onSubmitType === 'redirect' ? (
                 /* Redirect URL Input */
                 <div>
-                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
                     {isRtl ? 'رابط التحويل المخصص' : 'Target URL'}
                   </label>
                   <input
@@ -1069,28 +1094,29 @@ export default function FormBuilderView({
                       width: '100%',
                       padding: '10px 14px',
                       borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--edge)',
+                      background: 'var(--surface2)',
                       fontSize: '13.5px',
-                      color: '#0f172a',
+                      color: 'var(--t1)',
                       outline: 'none'
                     }}
                   />
                 </div>
               ) : (
-                /* Rich Text WYSIWYG Editor matching Screenshot 4 */
+                /* Rich Text WYSIWYG Editor */
                 <div>
                   {/* Top WYSIWYG formatting bar */}
                   <div
                     style={{
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--surface2)',
+                      border: '1px solid var(--edge)',
                       borderBottom: 'none',
                       borderRadius: '8px 8px 0 0',
                       padding: '8px 12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
-                      color: '#475569'
+                      color: 'var(--t1)'
                     }}
                   >
                     <button
@@ -1114,7 +1140,7 @@ export default function FormBuilderView({
                   {/* WYSIWYG Textarea */}
                   <textarea
                     rows={5}
-                    value={form.settings?.messageHtml || '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: #64748b; margin: 0;">Thank you for taking the time to complete this form.</p></div>'}
+                    value={form.settings?.messageHtml || '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: inherit; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: var(--t2); margin: 0;">Thank you for taking the time to complete this form.</p></div>'}
                     onChange={(e) => {
                       const next = {
                         ...form,
@@ -1128,27 +1154,28 @@ export default function FormBuilderView({
                     style={{
                       width: '100%',
                       padding: '14px',
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--edge)',
                       borderTop: 'none',
                       borderBottom: 'none',
+                      background: 'var(--surface)',
                       fontSize: '13px',
                       fontFamily: 'monospace',
-                      color: '#0f172a',
+                      color: 'var(--t1)',
                       outline: 'none'
                     }}
                   />
 
-                  {/* Bottom WYSIWYG formatting bar matching Screenshot 4 */}
+                  {/* Bottom WYSIWYG formatting bar */}
                   <div
                     style={{
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
+                      background: 'var(--surface2)',
+                      border: '1px solid var(--edge)',
                       borderRadius: '0 0 8px 8px',
                       padding: '8px 12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
-                      color: '#475569',
+                      color: 'var(--t1)',
                       fontSize: '12px',
                       fontWeight: '600'
                     }}
@@ -1161,23 +1188,24 @@ export default function FormBuilderView({
                     <Underline size={14} />
                   </div>
 
-                  {/* Real-time Preview Box matching Screenshot 4 */}
+                  {/* Real-time Preview Box */}
                   <div style={{ marginTop: '20px' }}>
-                    <span style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#64748b', marginBottom: '8px' }}>
+                    <span style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: 'var(--t2)', marginBottom: '8px' }}>
                       {isRtl ? 'المعاينة المباشرة (Preview)' : 'Preview'}
                     </span>
                     <div
                       style={{
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--surface2)',
+                        border: '1px solid var(--edge)',
                         borderRadius: '10px',
                         padding: '24px',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        color: 'var(--t1)'
                       }}
                       dangerouslySetInnerHTML={{
                         __html:
                           form.settings?.messageHtml ||
-                          '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: #64748b; margin: 0;">Thank you for taking the time to complete this form.</p></div>'
+                          '<div style="text-align:center; padding: 20px 0;"><div style="font-size: 40px; margin-bottom: 12px;">😀</div><h3 style="font-size: 20px; font-weight: 700; color: inherit; margin: 0 0 8px 0;">We appreciate your feedback!</h3><p style="font-size: 14px; color: var(--t2); margin: 0;">Thank you for taking the time to complete this form.</p></div>'
                       }}
                     />
                   </div>
@@ -1185,19 +1213,19 @@ export default function FormBuilderView({
               )}
             </div>
 
-            {/* Message Styling Collapsible Section matching Screenshot 4 */}
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-              <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+            {/* Message Styling Collapsible Section */}
+            <div style={{ borderTop: '1px solid var(--edge)', paddingTop: '20px' }}>
+              <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '700', color: 'var(--t1)' }}>
                 {isRtl ? 'تنسيق المظهر (Message Styling)' : 'Message Styling'}
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--t2)', marginBottom: '6px' }}>
                     Background
                   </label>
                   <input
                     type="color"
-                    value={form.settings?.styling?.bg || '#ffffff'}
+                    value={form.settings?.styling?.bg || '#0f172a'}
                     onChange={(e) => {
                       const next = {
                         ...form,
@@ -1208,11 +1236,11 @@ export default function FormBuilderView({
                       };
                       pushHistory(next);
                     }}
-                    style={{ width: '100%', height: '36px', borderRadius: '6px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '36px', borderRadius: '6px', border: '1px solid var(--edge)', cursor: 'pointer' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--t2)', marginBottom: '6px' }}>
                     Corner Radius
                   </label>
                   <select
@@ -1227,7 +1255,7 @@ export default function FormBuilderView({
                       };
                       pushHistory(next);
                     }}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--edge)', background: 'var(--surface2)', color: 'var(--t1)', fontSize: '13px' }}
                   >
                     <option value="4px">Small (4px)</option>
                     <option value="8px">Medium (8px)</option>
@@ -1236,7 +1264,7 @@ export default function FormBuilderView({
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--t2)', marginBottom: '6px' }}>
                     Font
                   </label>
                   <select
@@ -1251,7 +1279,7 @@ export default function FormBuilderView({
                       };
                       pushHistory(next);
                     }}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--edge)', background: 'var(--surface2)', color: 'var(--t1)', fontSize: '13px' }}
                   >
                     <option value="Inter">Inter</option>
                     <option value="Roboto">Roboto</option>
@@ -1271,7 +1299,7 @@ export default function FormBuilderView({
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             
-            {/* Submissions Filter Toolbar matching Screenshot 5 */}
+            {/* Submissions Filter Toolbar */}
             <div
               style={{
                 display: 'flex',
@@ -1286,15 +1314,15 @@ export default function FormBuilderView({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--edge)',
                   borderRadius: '8px',
                   padding: '7px 12px',
                   fontSize: '13px',
-                  color: '#334155'
+                  color: 'var(--t1)'
                 }}
               >
-                <Calendar size={15} style={{ color: '#94a3b8' }} />
+                <Calendar size={15} style={{ color: 'var(--t2)' }} />
                 <span>{dateRange}</span>
               </div>
 
@@ -1304,11 +1332,11 @@ export default function FormBuilderView({
                 }}
                 title="Refresh"
                 style={{
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--edge)',
                   borderRadius: '8px',
                   padding: '8px 10px',
-                  color: '#64748b',
+                  color: 'var(--t2)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center'
@@ -1318,11 +1346,11 @@ export default function FormBuilderView({
               </button>
             </div>
 
-            {/* Submissions Container matching Screenshot 5 */}
+            {/* Submissions Container */}
             <div
               style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: 'var(--surface)',
+                border: '1px solid var(--edge)',
                 borderRadius: '12px',
                 overflow: 'hidden'
               }}
@@ -1331,7 +1359,7 @@ export default function FormBuilderView({
               <div
                 style={{
                   padding: '14px 20px',
-                  borderBottom: '1px solid #e2e8f0',
+                  borderBottom: '1px solid var(--edge)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -1339,17 +1367,17 @@ export default function FormBuilderView({
                   gap: '12px'
                 }}
               >
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
                   {isRtl ? 'جميع الاستجابات' : 'All submissions'}
                 </h3>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--t2)' }}>
                     ⊞ 4/13 {isRtl ? 'أعمدة' : 'columns'}
                   </span>
 
                   <div style={{ position: 'relative', width: '200px' }}>
-                    <Search size={14} style={{ position: 'absolute', [isRtl ? 'right' : 'left']: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <Search size={14} style={{ position: 'absolute', [isRtl ? 'right' : 'left']: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--t2)' }} />
                     <input
                       type="text"
                       placeholder={isRtl ? 'بحث...' : 'Search'}
@@ -1360,7 +1388,9 @@ export default function FormBuilderView({
                         padding: '6px 10px',
                         [isRtl ? 'paddingRight' : 'paddingLeft']: '28px',
                         borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid var(--edge)',
+                        background: 'var(--surface2)',
+                        color: 'var(--t1)',
                         fontSize: '12.5px',
                         outline: 'none'
                       }}
@@ -1369,29 +1399,29 @@ export default function FormBuilderView({
                 </div>
               </div>
 
-              {/* Submissions Table / Empty State matching Screenshot 5 */}
+              {/* Submissions Table / Empty State */}
               {(form.submissions || []).length === 0 ? (
-                <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--t2)' }}>
                   <div
                     style={{
                       width: '64px',
                       height: '64px',
                       borderRadius: '50%',
-                      background: '#f8fafc',
-                      border: '1px dashed #cbd5e1',
+                      background: 'var(--surface2)',
+                      border: '1px dashed var(--edge)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       margin: '0 auto 16px auto',
-                      color: '#94a3b8'
+                      color: 'var(--t2)'
                     }}
                   >
                     <FileText size={28} />
                   </div>
-                  <h4 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
                     {isRtl ? 'لا توجد استجابات بعد' : 'No submissions yet'}
                   </h4>
-                  <p style={{ margin: '0 auto 20px auto', fontSize: '13px', color: '#64748b', maxWidth: '380px' }}>
+                  <p style={{ margin: '0 auto 20px auto', fontSize: '13px', color: 'var(--t2)', maxWidth: '380px' }}>
                     {isRtl
                       ? 'ستظهر الاستجابات هنا بمجرد أن يقوم شخص ما بتعبئة النموذج الخاص بك.'
                       : 'Submissions will appear here once someone fills out your form.'}
@@ -1399,7 +1429,7 @@ export default function FormBuilderView({
                   <button
                     onClick={() => setIsPreviewOpen(true)}
                     style={{
-                      background: '#2563eb',
+                      background: 'var(--a)',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '6px',
@@ -1415,7 +1445,7 @@ export default function FormBuilderView({
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isRtl ? 'right' : 'left' }}>
                   <thead>
-                    <tr style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', fontSize: '12.5px', color: '#64748b' }}>
+                    <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)', fontSize: '12.5px', color: 'var(--t2)' }}>
                       <th style={{ padding: '12px 16px', width: '40px' }}>
                         <input type="checkbox" />
                       </th>
@@ -1427,20 +1457,20 @@ export default function FormBuilderView({
                   </thead>
                   <tbody>
                     {(form.submissions || []).map((sub, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--edge)' }}>
                         <td style={{ padding: '14px 16px' }}>
                           <input type="checkbox" />
                         </td>
-                        <td style={{ padding: '14px 16px', color: '#64748b', fontSize: '13px' }}>
+                        <td style={{ padding: '14px 16px', color: 'var(--t2)', fontSize: '13px' }}>
                           {sub.submittedAt || 'Today'}
                         </td>
-                        <td style={{ padding: '14px 16px', color: '#2563eb', fontWeight: '600', fontSize: '13px' }}>
+                        <td style={{ padding: '14px 16px', color: 'var(--a)', fontWeight: '700', fontSize: '13px' }}>
                           {sub.name || 'Lead'}
                         </td>
-                        <td style={{ padding: '14px 16px', color: '#0f172a', fontWeight: '600', fontSize: '13px' }}>
+                        <td style={{ padding: '14px 16px', color: 'var(--t1)', fontWeight: '700', fontSize: '13px' }}>
                           {sub.name || '-'}
                         </td>
-                        <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>
+                        <td style={{ padding: '14px 16px', color: 'var(--t2)', fontSize: '13px' }}>
                           {sub.email || '-'}
                         </td>
                       </tr>
@@ -1457,12 +1487,12 @@ export default function FormBuilderView({
       {/* NOTIFICATIONS TAB */}
       {activeBuilderTab === 'notifications' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 20px', display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: '100%', maxWidth: '640px', background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '28px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>
+          <div style={{ width: '100%', maxWidth: '640px', background: 'var(--surface)', borderRadius: '14px', border: '1px solid var(--edge)', padding: '28px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: 'var(--t1)' }}>
               {isRtl ? 'إشعارات البريد الإلكتروني' : 'Email Notifications'}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', fontWeight: '600', color: '#0f172a', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', fontWeight: '600', color: 'var(--t1)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={form.notifications?.notifyOwner !== false}
@@ -1478,7 +1508,7 @@ export default function FormBuilderView({
               </label>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: 'var(--t1)', marginBottom: '6px' }}>
                   {isRtl ? 'إرسال الإشعارات إلى البريد:' : 'Recipient Email Address:'}
                 </label>
                 <input
@@ -1492,7 +1522,7 @@ export default function FormBuilderView({
                     pushHistory(next);
                   }}
                   placeholder="admin@yourbusiness.com"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--edge)', background: 'var(--surface2)', color: 'var(--t1)', fontSize: '13.5px' }}
                 />
               </div>
             </div>
@@ -1505,16 +1535,16 @@ export default function FormBuilderView({
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 20px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ width: '100%', maxWidth: '720px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Views</span>
-                <h2 style={{ margin: '6px 0 0 0', fontSize: '26px', fontWeight: '800', color: '#0f172a' }}>{form.analytics?.views || 0}</h2>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t2)' }}>Views</span>
+                <h2 style={{ margin: '6px 0 0 0', fontSize: '26px', fontWeight: '800', color: 'var(--t1)' }}>{form.analytics?.views || 0}</h2>
               </div>
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Submissions</span>
-                <h2 style={{ margin: '6px 0 0 0', fontSize: '26px', fontWeight: '800', color: '#2563eb' }}>{form.submissions?.length || 0}</h2>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t2)' }}>Submissions</span>
+                <h2 style={{ margin: '6px 0 0 0', fontSize: '26px', fontWeight: '800', color: 'var(--a)' }}>{form.submissions?.length || 0}</h2>
               </div>
-              <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b' }}>Conversion</span>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--t2)' }}>Conversion</span>
                 <h2 style={{ margin: '6px 0 0 0', fontSize: '26px', fontWeight: '800', color: '#16a34a' }}>
                   {(form.analytics?.views || 0) > 0 ? (((form.submissions?.length || 0) / form.analytics.views) * 100).toFixed(1) : '0.0'}%
                 </h2>

@@ -120,6 +120,7 @@ export default function SitesView() {
   const [builderWebsiteMode, setBuilderWebsiteMode] = useState(false);
   const [builderWebinarMode, setBuilderWebinarMode] = useState(false);
   const [builderBlogMode, setBuilderBlogMode] = useState(false);
+  const [builderFormMode, setBuilderFormMode] = useState(false);
   const [storeActivePageIdx, setStoreActivePageIdx] = useState(0);
   const [websiteActivePageIdx, setWebsiteActivePageIdx] = useState(0);
   const [webinarActivePageIdx, setWebinarActivePageIdx] = useState(0);
@@ -501,7 +502,7 @@ export default function SitesView() {
     const owned = stampSiteOwner(newForm, accountUid);
     const nextForms = [owned, ...forms];
     saveForms(nextForms);
-    setSelectedForm(owned);
+    handleOpenBuilderForForm(owned);
     if (showToast) showToast(isRtl ? 'تم إنشاء النموذج بنجاح' : 'Form created successfully');
   };
 
@@ -511,7 +512,7 @@ export default function SitesView() {
     const owned = stampSiteOwner(newForm, accountUid);
     const nextForms = [owned, ...forms];
     saveForms(nextForms);
-    setSelectedForm(owned);
+    handleOpenBuilderForForm(owned);
     if (showToast) showToast(isRtl ? 'تم إنشاء النموذج من القالب بنجاح' : 'Form created from template');
   };
 
@@ -565,6 +566,49 @@ export default function SitesView() {
       }
     };
     handleUpdateForm(updated);
+  };
+
+  const handleOpenBuilderForForm = (formToOpen) => {
+    setSelectedForm(formToOpen);
+    setBuilderFormMode(true);
+    setBuilderBlogMode(false);
+    setBuilderStoreMode(false);
+    setBuilderWebsiteMode(false);
+    setBuilderWebinarMode(false);
+    setIsBuilderOpen(true);
+  };
+
+  const updateActiveFormCanvas = (newCanvas) => {
+    if (!selectedForm) return;
+    const updatedForm = {
+      ...selectedForm,
+      canvas: newCanvas,
+      lastUpdated: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleUpdateForm(updatedForm);
+  };
+
+  const updateActiveFormStep = (patch) => {
+    if (!selectedForm) return;
+    const updatedForm = {
+      ...selectedForm,
+      ...patch,
+      lastUpdated: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleUpdateForm(updatedForm);
+  };
+
+  const handlePublishFormInBuilder = async () => {
+    if (!selectedForm) return;
+    const updatedForm = {
+      ...selectedForm,
+      status: 'published',
+      published: true,
+      lastUpdated: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    handleUpdateForm(updatedForm);
+    if (showToast) showToast(isRtl ? 'تم حفظ ونشر النموذج بنجاح 🚀' : 'Form published successfully 🚀');
+    return updatedForm;
   };
 
   // Webinar Management Handlers
@@ -1456,8 +1500,70 @@ export default function SitesView() {
         steps: selectedStore.pages || []
       };
     }
+    if (builderFormMode && selectedForm) {
+      const formFields = (selectedForm.fields && selectedForm.fields.length > 0)
+        ? selectedForm.fields
+        : [
+            { id: 'f_name', label: 'Full Name', type: 'text', placeholder: 'Enter your name', required: true },
+            { id: 'f_email', label: 'Email Address', type: 'email', placeholder: 'you@example.com', required: true },
+            { id: 'f_phone', label: 'Phone Number', type: 'tel', placeholder: '+1 (555) 000-0000', required: false }
+          ];
+
+      const formStepCanvas = (selectedForm.canvas && selectedForm.canvas.length > 0)
+        ? selectedForm.canvas
+        : [
+            {
+              id: `el_headline_${selectedForm.id}`,
+              type: 'headline',
+              content: selectedForm.name || 'Get In Touch',
+              fontSize: '32px',
+              weight: '800',
+              align: 'center',
+              margin: '0 0 8px'
+            },
+            ...(selectedForm.description ? [{
+              id: `el_sub_${selectedForm.id}`,
+              type: 'subheadline',
+              content: selectedForm.description,
+              fontSize: '16px',
+              weight: '500',
+              color: '#64748b',
+              align: 'center',
+              margin: '0 0 24px'
+            }] : []),
+            {
+              id: `el_form_${selectedForm.id}`,
+              type: 'form',
+              title: selectedForm.name || 'Sign Up',
+              subtitle: selectedForm.description || '',
+              fields: formFields,
+              buttonText: selectedForm.styling?.buttonText || selectedForm.buttonText || 'Submit Form',
+              buttonBg: selectedForm.styling?.buttonColor || '#2563eb',
+              bg: selectedForm.styling?.backgroundColor || '#ffffff',
+              color: selectedForm.styling?.textColor || '#0f172a',
+              radius: `${selectedForm.styling?.borderRadius || 16}px`,
+              maxWidth: '520px',
+              margin: '0 auto 24px'
+            }
+          ];
+
+      return {
+        id: selectedForm.id,
+        name: `${selectedForm.name} (Form Builder)`,
+        steps: [
+          {
+            id: selectedForm.id,
+            name: selectedForm.name,
+            path: `/${selectedForm.id}`,
+            published: selectedForm.status === 'published' || selectedForm.published === true,
+            page: DEFAULT_PAGE,
+            canvas: formStepCanvas
+          }
+        ]
+      };
+    }
     return selectedFunnel;
-  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, selectedFunnel]);
+  }, [builderBlogMode, selectedBlogSite, builderWebsiteMode, selectedWebsite, builderWebinarMode, selectedWebinar, builderStoreMode, selectedStore, builderFormMode, selectedForm, selectedFunnel]);
 
   const builderStorePreview = useMemo(() => {
     if (!builderStoreMode || !selectedStore) return null;
@@ -1483,17 +1589,20 @@ export default function SitesView() {
         <StorePreviewContext.Provider value={builderStorePreview}>
         <BuilderWorkspace
           funnel={builderFunnel}
-          stepIndex={builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : activeStepIndex)))}
-          onChangeStep={builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex)))}
+          stepIndex={builderBlogMode ? blogActivePostIdx : (builderWebsiteMode ? websiteActivePageIdx : (builderWebinarMode ? webinarActivePageIdx : (builderStoreMode ? storeActivePageIdx : (builderFormMode ? 0 : activeStepIndex))))}
+          onChangeStep={builderBlogMode ? setBlogActivePostIdx : (builderWebsiteMode ? setWebsiteActivePageIdx : (builderWebinarMode ? setWebinarActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : (builderFormMode ? () => {} : setActiveStepIndex))))}
           onClose={() => {
             setIsBuilderOpen(false);
             setBuilderStoreMode(false);
             setBuilderWebsiteMode(false);
             setBuilderWebinarMode(false);
             setBuilderBlogMode(false);
+            setBuilderFormMode(false);
           }}
           onUpdateCanvas={(newCanvas) => {
-            if (builderBlogMode && selectedBlogSite) {
+            if (builderFormMode && selectedForm) {
+              updateActiveFormCanvas(newCanvas);
+            } else if (builderBlogMode && selectedBlogSite) {
               updateActiveBlogPostCanvas(newCanvas);
             } else if (builderWebsiteMode && selectedWebsite) {
               updateActiveWebsitePageCanvas(newCanvas);
@@ -1506,7 +1615,9 @@ export default function SitesView() {
             }
           }}
           onUpdateStep={(patch) => {
-            if (builderBlogMode && selectedBlogSite) {
+            if (builderFormMode && selectedForm) {
+              updateActiveFormStep(patch);
+            } else if (builderBlogMode && selectedBlogSite) {
               updateActiveBlogPost(patch);
             } else if (builderWebsiteMode && selectedWebsite) {
               updateActiveWebsitePage(patch);
@@ -1518,7 +1629,7 @@ export default function SitesView() {
               updateActiveStep(patch);
             }
           }}
-          onPublish={builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep)))}
+          onPublish={builderFormMode ? handlePublishFormInBuilder : (builderBlogMode ? handlePublishBlogPostInBuilder : (builderWebsiteMode ? handlePublishWebsitePage : (builderWebinarMode ? handlePublishWebinarPage : (builderStoreMode ? handlePublishStorePage : handlePublishStep))))}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>
@@ -1844,19 +1955,21 @@ export default function SitesView() {
           />
         )
       ) : (activeSubTab === 'forms' || activeSubTab === 'surveys') ? (
-        selectedForm ? (
+        selectedForm && !isBuilderOpen ? (
           <FormBuilderView
             form={selectedForm}
             isRtl={isRtl}
             onBack={() => setSelectedForm(null)}
             onSaveForm={handleUpdateForm}
+            onOpenVisualBuilder={() => handleOpenBuilderForForm(selectedForm)}
             showToast={showToast}
           />
         ) : (
           <FormListView
             forms={forms}
             isRtl={isRtl}
-            onSelectForm={(f) => setSelectedForm(f)}
+            onSelectForm={(f) => handleOpenBuilderForForm(f)}
+            onOpenFormEditor={(f) => setSelectedForm(f)}
             onOpenCreateModal={() => setIsCreateFormModalOpen(true)}
             onDuplicateForm={handleDuplicateForm}
             onDeleteForm={handleDeleteForm}
