@@ -192,11 +192,39 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
     return computeBuckets(users, form.trialOnly);
   }, [users, form.trialOnly]);
 
+  const loadSavedTemplatesFromLocalAndApi = useCallback(async () => {
+    let localList = [];
+    try {
+      const cached = localStorage.getItem('upklick_saved_email_templates');
+      if (cached) {
+        localList = JSON.parse(cached) || [];
+        if (Array.isArray(localList) && localList.length > 0) {
+          setCustomTemplates(localList);
+        }
+      }
+    } catch {}
+
+    try {
+      const data = await adminFetch('/api/admin/outreach/templates');
+      if (data.templates && Array.isArray(data.templates)) {
+        const map = new Map();
+        data.templates.forEach((t) => map.set(t.id, t));
+        localList.forEach((t) => { if (!map.has(t.id)) map.set(t.id, t); });
+        const merged = Array.from(map.values());
+        setCustomTemplates(merged);
+        try {
+          localStorage.setItem('upklick_saved_email_templates', JSON.stringify(merged));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('[loadSavedTemplatesFromLocalAndApi]', err);
+    }
+  }, []);
+
   const loadCore = useCallback(async () => {
     const results = await Promise.allSettled([
       adminFetch('/api/admin/outreach/status'),
-      adminFetch('/api/admin/outreach/campaigns'),
-      adminFetch('/api/admin/outreach/templates')
+      adminFetch('/api/admin/outreach/campaigns')
     ]);
 
     if (results[0].status === 'fulfilled') {
@@ -210,10 +238,12 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
       setCampaigns(emailOnly);
     }
 
-    if (results[2].status === 'fulfilled') {
-      setCustomTemplates(results[2].value.templates || []);
-    }
-  }, []);
+    await loadSavedTemplatesFromLocalAndApi();
+  }, [loadSavedTemplatesFromLocalAndApi]);
+
+  useEffect(() => {
+    loadSavedTemplatesFromLocalAndApi();
+  }, [loadSavedTemplatesFromLocalAndApi]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -792,13 +822,33 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
                 </div>
               ) : (
                 customTemplates.length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', background: 'var(--bg3)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text2)', fontWeight: 700 }}>
+                  <div style={{ padding: '28px 20px', textAlign: 'center', background: 'var(--bg3)', borderRadius: '14px', border: '1px dashed var(--line)' }}>
+                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎨</div>
+                    <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--text)', fontWeight: 800 }}>
                       {t('لا توجد تصاميم محفوظة بعد في مكتبتك', 'No custom saved templates yet')}
                     </p>
-                    <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: 'var(--text3)' }}>
-                      {t('افتح مصمم الإيميلات واحفظ أي تصميم بالنقر على "حفظ كقالب مخصص"!', 'Open visual builder and click "Save as Template" to build your reusable library!')}
+                    <p style={{ margin: '6px 0 16px', fontSize: '12px', color: 'var(--text3)' }}>
+                      {t('افتح مصمم الإيميلات واحفظ أي تصميم بالنقر على "حفظ كقالب مخصص" لتتمكن من استخدامه في أي حملة!', 'Open visual builder and click "Save as Template" to reuse anytime!')}
                     </p>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => setIsBuilderOpen(true)}
+                        style={{ background: 'linear-gradient(135deg, #FF6B35 0%, #6C35FF 100%)', border: 'none', fontWeight: 800 }}
+                      >
+                        <Palette size={13} />
+                        <span>{t('فتح المصمم وحفظ تصميم جديد', 'Open Designer & Save Template')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => loadSavedTemplatesFromLocalAndApi()}
+                      >
+                        <RefreshCw size={13} />
+                        <span>{t('تحديث', 'Refresh')}</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
@@ -1278,12 +1328,21 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
       {/* Visual Email Builder Modal */}
       <EmailBuilderModal
         isOpen={isBuilderOpen}
-        onClose={() => setIsBuilderOpen(false)}
+        onClose={() => {
+          setIsBuilderOpen(false);
+          loadSavedTemplatesFromLocalAndApi();
+        }}
         initialBlocks={form.emailDesign?.blocks || null}
         initialTheme={form.emailDesign?.theme || null}
         campaignName={form.name}
         onSave={handleBuilderSave}
         onSendTestEmail={handleSendTestEmail}
+        onTemplatesUpdated={(newTmpls) => {
+          setCustomTemplates(newTmpls);
+          try {
+            localStorage.setItem('upklick_saved_email_templates', JSON.stringify(newTmpls));
+          } catch {}
+        }}
         isRTL={isRTL}
       />
 

@@ -134,6 +134,7 @@ export default function EmailBuilderModal({
   campaignName = '',
   onSave,
   onSendTestEmail,
+  onTemplatesUpdated,
   isRTL = true
 }) {
   const [blocks, setBlocks] = useState([]);
@@ -177,19 +178,34 @@ export default function EmailBuilderModal({
 
   // Load Custom Saved Templates
   const loadCustomTemplates = async () => {
+    let localList = [];
+    try {
+      const cached = localStorage.getItem('upklick_saved_email_templates');
+      if (cached) {
+        localList = JSON.parse(cached) || [];
+        if (Array.isArray(localList) && localList.length > 0) {
+          setSavedTemplates(localList);
+        }
+      }
+    } catch {}
+
     try {
       const data = await adminFetch('/api/admin/outreach/templates');
       if (data.templates && Array.isArray(data.templates)) {
-        setSavedTemplates(data.templates);
+        const map = new Map();
+        data.templates.forEach((item) => map.set(item.id, item));
+        localList.forEach((item) => {
+          if (!map.has(item.id)) map.set(item.id, item);
+        });
+        const merged = Array.from(map.values());
+        setSavedTemplates(merged);
         try {
-          localStorage.setItem('upklick_saved_email_templates', JSON.stringify(data.templates));
+          localStorage.setItem('upklick_saved_email_templates', JSON.stringify(merged));
         } catch {}
+        if (onTemplatesUpdated) onTemplatesUpdated(merged);
       }
     } catch {
-      try {
-        const cached = localStorage.getItem('upklick_saved_email_templates');
-        if (cached) setSavedTemplates(JSON.parse(cached));
-      } catch {}
+      // Local list already populated
     }
   };
 
@@ -419,6 +435,7 @@ export default function EmailBuilderModal({
       try {
         localStorage.setItem('upklick_saved_email_templates', JSON.stringify(updated));
       } catch {}
+      if (onTemplatesUpdated) onTemplatesUpdated(updated);
       setSaveTemplateModalOpen(false);
       setNewTemplateName('');
       setNewTemplateDesc('');
@@ -440,6 +457,7 @@ export default function EmailBuilderModal({
       try {
         localStorage.setItem('upklick_saved_email_templates', JSON.stringify(updated));
       } catch {}
+      if (onTemplatesUpdated) onTemplatesUpdated(updated);
       setSaveTemplateModalOpen(false);
       setNewTemplateName('');
       setNewTemplateDesc('');
@@ -460,6 +478,7 @@ export default function EmailBuilderModal({
     try {
       localStorage.setItem('upklick_saved_email_templates', JSON.stringify(updated));
     } catch {}
+    if (onTemplatesUpdated) onTemplatesUpdated(updated);
     setDeleteTemplateConfirm(null);
   };
 
