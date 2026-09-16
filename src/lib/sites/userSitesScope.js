@@ -1,5 +1,6 @@
 export const LEGACY_FUNNELS_KEY = 'upklick_funnels_v1';
 export const LEGACY_STORES_KEY = 'upklick_stores_v1';
+export const LEGACY_WEBSITES_KEY = 'upklick_websites_v1';
 
 export function funnelsStorageKey(uid) {
   return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
@@ -7,6 +8,10 @@ export function funnelsStorageKey(uid) {
 
 export function storesStorageKey(uid) {
   return uid ? `${LEGACY_STORES_KEY}_${uid}` : LEGACY_STORES_KEY;
+}
+
+export function websitesStorageKey(uid) {
+  return uid ? `${LEGACY_WEBSITES_KEY}_${uid}` : LEGACY_WEBSITES_KEY;
 }
 
 export function stampSiteOwner(item, uid) {
@@ -82,6 +87,7 @@ export function clearLegacySiteKeys() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(LEGACY_FUNNELS_KEY);
   localStorage.removeItem(LEGACY_STORES_KEY);
+  localStorage.removeItem(LEGACY_WEBSITES_KEY);
 }
 
 export function findLocalStoreById(storeId) {
@@ -91,6 +97,21 @@ export function findLocalStoreById(storeId) {
       const key = localStorage.key(i);
       if (!key || !key.startsWith(LEGACY_STORES_KEY)) continue;
       const found = readJsonList(key).find((s) => s?.id === storeId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function findLocalWebsiteById(websiteId) {
+  if (!websiteId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_WEBSITES_KEY)) continue;
+      const found = readJsonList(key).find((w) => w?.id === websiteId);
       if (found) return found;
     }
   } catch {

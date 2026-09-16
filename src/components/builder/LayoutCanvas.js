@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import ElementRenderer from './ElementRenderer';
 import { isRow } from '@/lib/builder/layoutTree';
+import { getBuilderString } from '@/lib/builder/builderTranslations';
 
 function slotKey(dest, slot) {
   if (dest.kind === 'column') return `col:${dest.rowId}:${dest.colId}:${slot}`;
@@ -34,6 +35,7 @@ export default function LayoutCanvas({
   dragOver,
   setDragOver,
   stackColumns,
+  lang = 'en',
   onSelect,
   onDrop,
   onMove,
@@ -66,10 +68,12 @@ export default function LayoutCanvas({
           justifyContent: 'center'
         }}
       >
-        {isTarget && <span style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4 }}><Plus size={14} /> Drop here</span>}
+        {isTarget && <span style={{ fontSize: 11, fontWeight: 800, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4 }}><Plus size={14} /> {getBuilderString('dropHere', lang)}</span>}
       </div>
     );
   };
+
+  const isAr = lang === 'ar';
 
   return (
     <div>
@@ -132,10 +136,12 @@ export default function LayoutCanvas({
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ background: '#2563eb', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4 }}>
-                    ROW · {el.columns?.length || 0} COLUMNS
+                    {isAr ? `صف · ${el.columns?.length || 0} أعمدة` : `ROW · ${el.columns?.length || 0} COLUMNS`}
                   </span>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); onAddColumn(el.id); }} style={{ border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+ Column</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onAddColumn(el.id); }} style={{ border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      {isAr ? '+ عمود' : '+ Column'}
+                    </button>
                     <button type="button" onClick={(e) => { e.stopPropagation(); onMove(el.id, 'up'); }} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 6, padding: 4, cursor: 'pointer' }}><MoveUp size={12} /></button>
                     <button type="button" onClick={(e) => { e.stopPropagation(); onMove(el.id, 'down'); }} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 6, padding: 4, cursor: 'pointer' }}><MoveDown size={12} /></button>
                     <button type="button" onClick={(e) => { e.stopPropagation(); onDuplicate(el.id); }} style={{ border: '1px solid #e2e8f0', background: '#fff', borderRadius: 6, padding: 4, cursor: 'pointer' }}><Copy size={12} /></button>
@@ -164,7 +170,9 @@ export default function LayoutCanvas({
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: '#64748b' }}>COLUMN {colIdx + 1}</span>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: '#64748b' }}>
+                            {isAr ? `عمود ${colIdx + 1}` : `COLUMN ${colIdx + 1}`}
+                          </span>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button type="button" onClick={(e) => { e.stopPropagation(); onMoveColumn(el.id, col.id, 'left'); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><MoveLeft size={12} /></button>
                             <button type="button" onClick={(e) => { e.stopPropagation(); onMoveColumn(el.id, col.id, 'right'); }} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><MoveRight size={12} /></button>
@@ -181,6 +189,7 @@ export default function LayoutCanvas({
                           dragOver={dragOver}
                           setDragOver={setDragOver}
                           stackColumns={stackColumns}
+                          lang={lang}
                           onSelect={onSelect}
                           onDrop={onDrop}
                           onMove={onMove}
@@ -198,14 +207,14 @@ export default function LayoutCanvas({
                           onClick={(e) => { e.stopPropagation(); onSetTarget(colTarget); onOpenPalette('elements'); }}
                           style={{ width: '100%', marginTop: 6, border: '1px dashed #cbd5e1', background: '#fff', color: '#2563eb', borderRadius: 6, padding: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                         >
-                          + Add element
+                          {getBuilderString('addElement', lang)}
                         </button>
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onAddRowInside(el.id, col.id); }}
                           style={{ width: '100%', marginTop: 6, border: '1px dashed #86efac', background: '#f0fdf4', color: '#15803d', borderRadius: 6, padding: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                         >
-                          + Add row in this column
+                          {getBuilderString('addRowInCol', lang)}
                         </button>
                       </div>
                     );

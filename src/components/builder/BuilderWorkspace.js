@@ -7,6 +7,7 @@ import {
   Code,
   Eye,
   ExternalLink,
+  Globe,
   Monitor,
   Plus,
   Redo2,
@@ -15,6 +16,8 @@ import {
   X
 } from 'lucide-react';
 import { CheckCircle2 } from 'lucide-react';
+import { useBusiness } from '../../context/BusinessContext';
+import { getBuilderString } from '@/lib/builder/builderTranslations';
 import {
   createElement,
   createElements,
@@ -70,6 +73,31 @@ export default function BuilderWorkspace({
       return { ...DEFAULT_PAGE };
     }
   }, [pageKey]);
+
+  const businessContext = useBusiness?.() || {};
+  const appLang = businessContext.lang || 'ar';
+  const setAppLang = businessContext.setLang;
+  const [currentLang, setCurrentLang] = useState(appLang);
+
+  useEffect(() => {
+    if (businessContext.lang && businessContext.lang !== currentLang) {
+      setCurrentLang(businessContext.lang);
+    }
+  }, [businessContext.lang]);
+
+  const toggleLanguage = () => {
+    const nextLang = currentLang === 'ar' ? 'en' : 'ar';
+    setCurrentLang(nextLang);
+    if (setAppLang) {
+      try {
+        setAppLang(nextLang);
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
+
+  const isAr = currentLang === 'ar';
 
   const [mounted, setMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
@@ -269,16 +297,18 @@ export default function BuilderWorkspace({
       <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 50, position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={16} style={{ transform: isAr ? 'rotate(180deg)' : 'none' }} /> {getBuilderString('back', currentLang)}
           </button>
           <div style={{ height: 20, width: 1, background: '#e2e8f0' }} />
-          <span style={{ background: '#ecfdf5', color: '#15803d', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>{saveState}</span>
+          <span style={{ background: '#ecfdf5', color: '#15803d', fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+            {saveState === 'Saved' ? getBuilderString('saved', currentLang) : getBuilderString('saving', currentLang)}
+          </span>
           <button
             type="button"
             onClick={() => setIsDrawerOpen(!isDrawerOpen)}
             style={{ background: isDrawerOpen ? '#eff6ff' : '#fff', color: isDrawerOpen ? '#2563eb' : '#475569', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            <Plus size={16} /> {isDrawerOpen ? 'Hide drawer' : '+ Add element'}
+            <Plus size={16} /> {isDrawerOpen ? getBuilderString('hideDrawer', currentLang) : getBuilderString('showDrawer', currentLang)}
           </button>
         </div>
 
@@ -287,19 +317,39 @@ export default function BuilderWorkspace({
             {funnel?.steps?.map((st, idx) => <option key={st.id} value={idx}>{st.name}</option>)}
           </select>
           <div style={{ display: 'flex', background: '#f1f5f9', padding: 2, borderRadius: 6, border: '1px solid #e2e8f0' }}>
-            <button type="button" onClick={() => setBuilderDevice('desktop')} style={{ background: builderDevice === 'desktop' ? '#fff' : 'none', border: 'none', color: builderDevice === 'desktop' ? '#2563eb' : '#64748b', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}><Monitor size={16} /></button>
-            <button type="button" onClick={() => setBuilderDevice('mobile')} style={{ background: builderDevice === 'mobile' ? '#fff' : 'none', border: 'none', color: builderDevice === 'mobile' ? '#2563eb' : '#64748b', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}><Smartphone size={16} /></button>
+            <button type="button" title={getBuilderString('desktop', currentLang)} onClick={() => setBuilderDevice('desktop')} style={{ background: builderDevice === 'desktop' ? '#fff' : 'none', border: 'none', color: builderDevice === 'desktop' ? '#2563eb' : '#64748b', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}><Monitor size={16} /></button>
+            <button type="button" title={getBuilderString('mobile', currentLang)} onClick={() => setBuilderDevice('mobile')} style={{ background: builderDevice === 'mobile' ? '#fff' : 'none', border: 'none', color: builderDevice === 'mobile' ? '#2563eb' : '#64748b', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}><Smartphone size={16} /></button>
           </div>
-          <button type="button" onClick={() => applyHistory(historyIndex.current - 1)} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, padding: 6, cursor: 'pointer' }}><Undo2 size={15} /></button>
-          <button type="button" onClick={() => applyHistory(historyIndex.current + 1)} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, padding: 6, cursor: 'pointer' }}><Redo2 size={15} /></button>
+          <button type="button" title={getBuilderString('undo', currentLang)} onClick={() => applyHistory(historyIndex.current - 1)} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, padding: 6, cursor: 'pointer' }}><Undo2 size={15} /></button>
+          <button type="button" title={getBuilderString('redo', currentLang)} onClick={() => applyHistory(historyIndex.current + 1)} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, padding: 6, cursor: 'pointer' }}><Redo2 size={15} /></button>
           <button type="button" onClick={() => setIsCodeModalOpen(true)} style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Code size={16} color="#2563eb" /> CSS
+            <Code size={16} color="#2563eb" /> {getBuilderString('css', currentLang)}
           </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            title={isAr ? 'Switch to English' : 'التحويل إلى العربية'}
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              color: '#0f172a',
+              padding: '6px 12px',
+              borderRadius: 6,
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <Globe size={15} color="#2563eb" /> {isAr ? 'English' : 'عربي'}
+          </button>
           <button type="button" onClick={() => window.open(savedUrl, '_blank')} style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#334155', padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Eye size={15} /> Preview
+            <Eye size={15} /> {getBuilderString('preview', currentLang)}
           </button>
           <button
             type="button"
@@ -309,7 +359,7 @@ export default function BuilderWorkspace({
             }}
             style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', padding: '6px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
           >
-            Publish
+            {getBuilderString('publish', currentLang)}
           </button>
         </div>
       </div>
@@ -319,11 +369,11 @@ export default function BuilderWorkspace({
           <div style={{ display: 'flex', height: '100%', background: '#fff', borderRight: '1px solid #e2e8f0', zIndex: 40, position: 'relative' }}>
             <div style={{ width: 85, borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 12, overflowY: 'auto' }}>
               {[
-                { id: 'rows', label: 'Rows' },
-                { id: 'elements', label: 'Elements' },
-                { id: 'prebuilt', label: 'Prebuilt' },
-                { id: 'inspector', label: 'Inspector' },
-                { id: 'page', label: 'Page' }
+                { id: 'rows', label: getBuilderString('tabRows', currentLang) },
+                { id: 'elements', label: getBuilderString('tabElements', currentLang) },
+                { id: 'prebuilt', label: getBuilderString('tabPrebuilt', currentLang) },
+                { id: 'inspector', label: getBuilderString('tabInspector', currentLang) },
+                { id: 'page', label: getBuilderString('tabPage', currentLang) }
               ].map((item) => (
                 <button
                   key={item.id}
@@ -339,7 +389,15 @@ export default function BuilderWorkspace({
             <div style={{ width: 320, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ margin: 0, fontSize: 13.5, fontWeight: 800 }}>
-                  {navTab === 'inspector' ? 'Customize element' : navTab === 'page' ? 'Page settings' : navTab === 'prebuilt' ? 'Prebuilt sections' : navTab === 'rows' ? 'Rows & columns' : 'Add any element'}
+                  {navTab === 'inspector'
+                    ? getBuilderString('titleInspector', currentLang)
+                    : navTab === 'page'
+                    ? getBuilderString('titlePage', currentLang)
+                    : navTab === 'prebuilt'
+                    ? getBuilderString('titlePrebuilt', currentLang)
+                    : navTab === 'rows'
+                    ? getBuilderString('titleRows', currentLang)
+                    : getBuilderString('titleElements', currentLang)}
                 </h4>
                 <button type="button" onClick={() => setIsDrawerOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={16} /></button>
               </div>
@@ -348,13 +406,13 @@ export default function BuilderWorkspace({
                 <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
                   {activeTarget?.kind === 'column' && (
                     <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: 8, marginBottom: 12, fontSize: 11, color: '#15803d', fontWeight: 700 }}>
-                      New elements will drop into the selected column.
+                      {getBuilderString('columnTargetNotice', currentLang)}
                     </div>
                   )}
-                  <ElementInspector element={selectedElement} onChange={(key, value) => selectedElement && updateProp(selectedElement.id, key, value)} />
+                  <ElementInspector element={selectedElement} lang={currentLang} onChange={(key, value) => selectedElement && updateProp(selectedElement.id, key, value)} />
                   {selectedElement?.type === 'row' && (
                     <button type="button" onClick={() => applyCanvas(addColumn(canvas, selectedElement.id))} style={{ width: '100%', marginTop: 8, border: '1px dashed #2563eb', background: '#eff6ff', color: '#2563eb', borderRadius: 8, padding: 9, fontWeight: 700, cursor: 'pointer' }}>
-                      + Add another column
+                      {getBuilderString('addAnotherColumn', currentLang)}
                     </button>
                   )}
                 </div>
@@ -363,11 +421,11 @@ export default function BuilderWorkspace({
               {navTab === 'page' && (
                 <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
                   {[
-                    ['background', 'Page background', 'color'],
-                    ['textColor', 'Default text', 'color'],
-                    ['maxWidth', 'Content width', 'number'],
-                    ['paddingY', 'Vertical padding', 'number'],
-                    ['paddingX', 'Side padding', 'number']
+                    ['background', getBuilderString('pageBg', currentLang), 'color'],
+                    ['textColor', getBuilderString('pageTextColor', currentLang), 'color'],
+                    ['maxWidth', getBuilderString('pageMaxWidth', currentLang), 'number'],
+                    ['paddingY', getBuilderString('pagePaddingY', currentLang), 'number'],
+                    ['paddingX', getBuilderString('pagePaddingX', currentLang), 'number']
                   ].map(([key, label, kind]) => (
                     <div key={key} style={{ marginBottom: 14 }}>
                       <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>{label}</label>
@@ -382,7 +440,7 @@ export default function BuilderWorkspace({
                     </div>
                   ))}
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>Font family</label>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>{getBuilderString('fontFamily', currentLang)}</label>
                     <select className="inp" value={page.fontFamily} onChange={(e) => onUpdateStep({ page: { ...page, fontFamily: e.target.value } })} style={{ width: '100%' }}>
                       {PAGE_FONTS.map((font) => <option key={font.id} value={font.id}>{font.label}</option>)}
                     </select>
@@ -392,7 +450,7 @@ export default function BuilderWorkspace({
                     onClick={() => onUpdateStep({ page: { ...page, showBranding: !page.showBranding } })}
                     style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid #cbd5e1', background: page.showBranding ? '#eff6ff' : '#f8fafc', color: page.showBranding ? '#2563eb' : '#64748b', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
                   >
-                    {page.showBranding ? 'Branding footer on' : 'Branding footer off'}
+                    {page.showBranding ? getBuilderString('brandingFooterOn', currentLang) : getBuilderString('brandingFooterOff', currentLang)}
                   </button>
                 </div>
               )}
@@ -402,6 +460,7 @@ export default function BuilderWorkspace({
                   search={elementsSearch}
                   onSearch={setElementsSearch}
                   mode={navTab}
+                  lang={currentLang}
                   prebuiltCategory={prebuiltCategory}
                   onPrebuiltCategory={setPrebuiltCategory}
                   onAdd={(type) => addByType(type)}
@@ -443,12 +502,14 @@ export default function BuilderWorkspace({
                 style={{ border: '2px dashed #cbd5e1', borderRadius: 12, padding: '80px 20px', textAlign: 'center', cursor: 'pointer' }}
               >
                 <Plus size={36} style={{ color: '#94a3b8', marginBottom: 8 }} />
-                <h4 style={{ margin: '0 0 6px', fontSize: 17 }}>Add a row, then drop elements into columns</h4>
-                <p style={{ margin: 0, color: '#94a3b8' }}>1, 2, 3 or 4 columns. Stack extra rows. Put many blocks in the same column.</p>
+                <h4 style={{ margin: '0 0 6px', fontSize: 17 }}>{getBuilderString('emptyCanvasTitle', currentLang)}</h4>
+                <p style={{ margin: 0, color: '#94a3b8' }}>{getBuilderString('emptyCanvasDesc', currentLang)}</p>
               </div>
             ) : (
               <div style={{ border: '2px solid #22c55e', borderRadius: 10, padding: 24, position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -12, left: 16, background: '#22c55e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '1px 8px', borderRadius: 4 }}>SECTION</span>
+                <span style={{ position: 'absolute', top: -12, left: isAr ? 'auto' : 16, right: isAr ? 16 : 'auto', background: '#22c55e', color: '#fff', fontSize: 10, fontWeight: 800, padding: '1px 8px', borderRadius: 4 }}>
+                  {getBuilderString('section', currentLang)}
+                </span>
                 <LayoutCanvas
                   items={canvas}
                   dest={{ kind: 'root' }}
@@ -457,6 +518,7 @@ export default function BuilderWorkspace({
                   dragOver={dragOver}
                   setDragOver={setDragOver}
                   stackColumns={builderDevice === 'mobile'}
+                  lang={currentLang}
                   onSelect={(id) => { setSelectedElementId(id); setNavTab('inspector'); }}
                   onDrop={handleDrop}
                   onMove={(id, direction) => applyCanvas(moveInList(canvas, id, direction))}
@@ -475,10 +537,10 @@ export default function BuilderWorkspace({
                   onOpenPalette={openPalette}
                 />
                 <button type="button" onClick={() => { setActiveTarget({ kind: 'root' }); openPalette('elements'); }} style={{ width: '100%', background: '#f1f5f9', border: '1px dashed #cbd5e1', borderRadius: 6, padding: 10, color: '#2563eb', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
-                  + Add element
+                  {getBuilderString('addElement', currentLang)}
                 </button>
                 <button type="button" onClick={() => { setActiveTarget({ kind: 'root' }); addByType('row_2'); }} style={{ width: '100%', background: '#f0fdf4', border: '1px dashed #22c55e', borderRadius: 6, padding: 10, color: '#15803d', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
-                  + Add row
+                  {getBuilderString('addRow', currentLang)}
                 </button>
               </div>
             )}
@@ -490,14 +552,18 @@ export default function BuilderWorkspace({
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999999, padding: 20 }}>
           <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 16, width: '100%', maxWidth: 750, color: '#f8fafc' }}>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><Code size={18} color="#38bdf8" /> Custom page CSS</h3>
+              <h3 style={{ margin: 0, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Code size={18} color="#38bdf8" /> {getBuilderString('customCssTitle', currentLang)}
+              </h3>
               <button type="button" onClick={() => setIsCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={18} /></button>
             </div>
             <div style={{ padding: 20 }}>
               <textarea className="inp uk-builder-code" rows={12} value={page.customCss || ''} onChange={(e) => onUpdateStep({ page: { ...page, customCss: e.target.value } })} style={{ width: '100%', fontFamily: 'monospace', fontSize: 13, background: '#020617', color: '#38bdf8', border: '1px solid #334155' }} />
             </div>
             <div style={{ padding: '14px 24px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setIsCodeModalOpen(false)} style={{ background: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 700, cursor: 'pointer' }}>Apply CSS</button>
+              <button type="button" onClick={() => setIsCodeModalOpen(false)} style={{ background: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: 6, padding: '8px 20px', fontWeight: 700, cursor: 'pointer' }}>
+                {getBuilderString('applyCss', currentLang)}
+              </button>
             </div>
           </div>
         </div>
@@ -510,34 +576,34 @@ export default function BuilderWorkspace({
               <div style={{ width: 56, height: 56, background: '#dcfce7', color: '#16a34a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                 <CheckCircle2 size={32} />
               </div>
-              <h3 style={{ margin: '0 0 6px', fontSize: 20 }}>Page published</h3>
-              <p style={{ color: '#64748b', fontSize: 13.5, margin: '0 0 20px' }}>Published URL is the live snapshot. Saved URL always shows your latest edits.</p>
-              <div style={{ textAlign: 'left', marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Published URL</div>
+              <h3 style={{ margin: '0 0 6px', fontSize: 20 }}>{getBuilderString('pagePublishedTitle', currentLang)}</h3>
+              <p style={{ color: '#64748b', fontSize: 13.5, margin: '0 0 20px' }}>{getBuilderString('pagePublishedDesc', currentLang)}</p>
+              <div style={{ textAlign: isAr ? 'right' : 'left', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>{getBuilderString('publishedUrl', currentLang)}</div>
                 <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 10 }}>
                   <input readOnly value={liveUrl} style={{ border: 'none', background: 'none', width: '100%', fontSize: 13, fontWeight: 600, outline: 'none' }} />
                   <button type="button" onClick={() => { navigator.clipboard.writeText(liveUrl); setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: copiedLink ? '#16a34a' : '#2563eb' }}>
-                    {copiedLink ? 'Copied' : 'Copy'}
+                    {copiedLink ? getBuilderString('copied', currentLang) : getBuilderString('copy', currentLang)}
                   </button>
                 </div>
               </div>
-              <div style={{ textAlign: 'left', marginBottom: 20 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Saved URL</div>
+              <div style={{ textAlign: isAr ? 'right' : 'left', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>{getBuilderString('savedUrl', currentLang)}</div>
                 <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 10 }}>
                   <input readOnly value={savedUrl} style={{ border: 'none', background: 'none', width: '100%', fontSize: 13, fontWeight: 600, outline: 'none' }} />
                   <button type="button" onClick={() => { navigator.clipboard.writeText(savedUrl); }} style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#2563eb' }}>
-                    Copy
+                    {getBuilderString('copy', currentLang)}
                   </button>
                 </div>
               </div>
               <button type="button" onClick={() => window.open(liveUrl, '_blank')} style={{ width: '100%', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, padding: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
-                <ExternalLink size={16} /> Open published URL
+                <ExternalLink size={16} /> {getBuilderString('openPublished', currentLang)}
               </button>
               <button type="button" onClick={() => window.open(savedUrl, '_blank')} style={{ width: '100%', background: '#fff', color: '#2563eb', border: '1px solid #cbd5e1', borderRadius: 8, padding: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
-                <Eye size={16} /> Open saved URL
+                <Eye size={16} /> {getBuilderString('openSaved', currentLang)}
               </button>
               <button type="button" onClick={() => { setIsPublishModalOpen(false); onClose(); }} style={{ width: '100%', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: 8, padding: 10, fontWeight: 600, cursor: 'pointer' }}>
-                Return to dashboard
+                {getBuilderString('returnDashboard', currentLang)}
               </button>
             </div>
           </div>

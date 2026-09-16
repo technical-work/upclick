@@ -964,6 +964,204 @@ export function defaultStoreCanvas(pageType = 'catalog', title = 'Products List'
   ];
 }
 
+export function createCanvasForPageType(pageType = 'landing', title = 'Home', websiteName = 'UpKlick') {
+  const brand = websiteName || 'UpKlick';
+  const navHeader = createElement('store_header', {
+    brand,
+    links: [
+      { label: 'Home', href: '/' },
+      { label: 'Products', href: '/products' },
+      { label: 'About Us', href: '/about' },
+      { label: 'Contact', href: '/contact' }
+    ],
+    cartCount: 0,
+    bg: '#ffffff',
+    color: '#0f172a'
+  });
+  const foot = createElement('footer', { brand });
+
+  switch (pageType) {
+    case 'store':
+    case 'catalog':
+    case 'products':
+      return [
+        navHeader,
+        createElement('store_hero_banner', {
+          title: title || 'Explore Our Collections 🛍️',
+          subtitle: 'Discover trending products with fast delivery and high quality guarantee.',
+          bgImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&auto=format&fit=crop&q=80'
+        }),
+        createElement('store_filter_bar'),
+        createElement('store_products_grid'),
+        createElement('features_grid', {
+          title: 'Why Shop With Us',
+          items: [
+            { icon: '🚀', title: 'Fast Express Delivery', desc: 'Fast shipping directly to your doorstep with tracking.' },
+            { icon: '🔒', title: '100% Secure Checkout', desc: 'Encrypted payments via cards, cash on delivery, and wallets.' },
+            { icon: '⭐', title: 'Quality Guarantee', desc: 'Handpicked verified products with easy 14-day returns.' }
+          ]
+        }),
+        createElement('faq', {
+          title: 'Frequently Asked Questions',
+          items: [
+            { q: 'How long does shipping take?', a: 'Standard shipping takes 2-4 business days across all regions.' },
+            { q: 'Can I return or exchange items?', a: 'Yes, we offer hassle-free 14-day returns on all eligible products.' },
+            { q: 'What payment methods are supported?', a: 'We accept Credit/Debit cards, Cash on Delivery, and electronic wallets.' }
+          ]
+        }),
+        foot
+      ];
+
+    case 'detail':
+    case 'product_detail':
+      return [
+        navHeader,
+        createElement('store_product_detail'),
+        createElement('headline', { content: 'Related Products You May Like 🔥', fontSize: '26px', align: 'left', margin: '40px 0 16px' }),
+        createElement('store_products_grid'),
+        createElement('faq', {
+          title: 'Product Specifications & Warranty',
+          items: [
+            { q: 'What is included in the package?', a: 'Main product, accessories, user guide, and 1-year official warranty certificate.' },
+            { q: 'How does the warranty work?', a: 'Contact our support team anytime with your order ID for instant assistance or replacements.' }
+          ]
+        }),
+        foot
+      ];
+
+    case 'cart':
+      return [
+        navHeader,
+        createElement('headline', { content: 'Your Shopping Cart 🛒', fontSize: '32px', align: 'center', margin: '24px 0 8px' }),
+        createElement('paragraph', { content: 'Review your selected items and proceed to secure checkout.', align: 'center' }),
+        createElement('store_cart'),
+        createElement('notice', { title: 'Free Shipping Activated!', content: 'Your order qualifies for complimentary express shipping today.' }),
+        foot
+      ];
+
+    case 'checkout':
+      return [
+        navHeader,
+        createElement('badge', { content: '🔒 256-Bit SSL Encrypted & Protected Checkout' }),
+        createElement('headline', { content: 'Complete Your Order 💳', fontSize: '32px', align: 'center', margin: '16px 0 24px' }),
+        createElement('store_checkout'),
+        foot
+      ];
+
+    case 'thankyou':
+    case 'confirmation':
+      return [
+        navHeader,
+        createElement('badge', { content: 'Order Confirmed #UK-' + Math.floor(10000 + Math.random() * 90000), color: '#16a34a', bg: '#dcfce7' }),
+        createElement('headline', { content: 'Thank You for Your Order! 🎉', fontSize: '36px', align: 'center', color: '#16a34a', margin: '16px 0 8px' }),
+        createElement('paragraph', { content: 'We have received your order and our fulfillment team is preparing it for dispatch.', align: 'center', fontSize: '16px' }),
+        createElement('notice', { title: 'Order Details Dispatched', content: 'A confirmation email with your invoice and tracking number has been sent.' }),
+        createElement('features_grid', {
+          title: 'Order Progress Timeline',
+          items: [
+            { icon: '📦', title: '1. Processing', desc: 'Items packed carefully in our fulfillment hub.' },
+            { icon: '🚚', title: '2. Shipping', desc: 'Courier dispatches your parcel with SMS tracking.' },
+            { icon: '🏠', title: '3. Delivery', desc: 'Safely delivered to your door in 2-4 business days.' }
+          ]
+        }),
+        createElement('button_group', {
+          align: 'center',
+          items: [
+            { content: 'Continue Shopping 🛍️', bg: '#2563eb', color: '#ffffff', link: '/products' },
+            { content: 'Contact Customer Support 💬', bg: '#f8fafc', color: '#0f172a', link: '/contact' }
+          ]
+        }),
+        foot
+      ];
+
+    case 'contact':
+      return [
+        navHeader,
+        createElement('headline', { content: 'Get in Touch With Us 💬', fontSize: '36px', align: 'center' }),
+        createElement('paragraph', { content: 'Have a question, feedback, or need assistance? Fill out the form or reach us directly.', align: 'center' }),
+        createElement('form', {
+          title: 'Send Us a Direct Message',
+          buttonText: 'Send Message 🚀',
+          fields: [
+            { label: 'Full Name', type: 'text', placeholder: 'John Doe', required: true },
+            { label: 'Email Address', type: 'email', placeholder: 'john@example.com', required: true },
+            { label: 'Phone / WhatsApp', type: 'text', placeholder: '+1 (555) 000-0000', required: false },
+            { label: 'Subject', type: 'text', placeholder: 'Inquiry...', required: true },
+            { label: 'Message', type: 'textarea', placeholder: 'Write your message...', required: true }
+          ]
+        }),
+        createElement('features_grid', {
+          title: 'Support Channels',
+          items: [
+            { icon: '📞', title: 'Direct Call Support', desc: 'Available Mon - Fri, 9am to 6pm.' },
+            { icon: '📧', title: 'Email Support', desc: 'support@upklick.com' },
+            { icon: '📍', title: 'Headquarters', desc: 'Tech City, Innovation Hub.' }
+          ]
+        }),
+        createElement('whatsapp_button', { content: 'Chat With Us on WhatsApp', phone: '201000000000' }),
+        foot
+      ];
+
+    case 'about':
+      return [
+        navHeader,
+        createElement('badge', { content: 'About Our Brand & Vision' }),
+        createElement('headline', { content: 'Crafting World-Class Digital Experiences 🚀', fontSize: '38px', align: 'center' }),
+        createElement('paragraph', { content: 'We empower ambitious businesses to build high-converting storefronts, engage audiences, and scale seamlessly.', align: 'center', fontSize: '18px' }),
+        createElement('image', { src: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&auto=format&fit=crop&q=80', alt: 'Our Team', radius: '16px' }),
+        createElement('features_grid', {
+          title: 'Our Core Values',
+          items: [
+            { icon: '🎯', title: 'Obsessive Quality', desc: 'Every component is built for speed, aesthetics, and conversions.' },
+            { icon: '⚡', title: 'High Performance', desc: 'Lightning-fast load times and smooth animations.' },
+            { icon: '🤝', title: 'Dedicated Support', desc: '24/7 client assistance to ensure your business succeeds.' }
+          ]
+        }),
+        createElement('quote', {
+          content: 'This platform allowed us to launch in 48 hours and scale our revenue by 300%. Unmatched experience!',
+          author: 'Karim Mansour',
+          role: 'Founder & Managing Director'
+        }),
+        createElement('button', { content: 'Browse Our Products 🌟', link: '/products' }),
+        foot
+      ];
+
+    case 'landing':
+    default:
+      return [
+        navHeader,
+        createElement('badge', { content: '✨ High-Converting Landing Page' }),
+        createElement('headline', { content: title || 'Welcome to ' + brand + ' 🚀', fontSize: '42px', align: 'center', weight: '900' }),
+        createElement('paragraph', { content: 'A complete, dynamic page builder experience designed to scale your business effortlessly.', align: 'center', fontSize: '18px' }),
+        createElement('button_group', {
+          align: 'center',
+          items: [
+            { content: 'Get Started Now →', bg: '#2563eb', color: '#ffffff', link: '/products' },
+            { content: 'Learn More', bg: '#f8fafc', color: '#0f172a', link: '/about' }
+          ]
+        }),
+        createElement('image', { src: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&auto=format&fit=crop&q=80', alt: 'Showcase', radius: '16px' }),
+        createElement('features_grid', {
+          title: 'Packed With Powerful Capabilities',
+          items: [
+            { icon: '🎨', title: 'Visual Drag & Drop', desc: 'Effortlessly customize layout, text, colors, and media.' },
+            { icon: '📱', title: '100% Mobile Ready', desc: 'Looks stunning on smartphones, tablets, and desktops.' },
+            { icon: '⚡', title: 'Blazing Fast Performance', desc: 'Optimized static generation for instant load times.' }
+          ]
+        }),
+        createElement('faq', {
+          title: 'Got Questions? We Have Answers',
+          items: [
+            { q: 'Can I customize everything on this page?', a: 'Yes! Click any element in the visual builder to edit copy, colors, alignments, and lists.' },
+            { q: 'How do I connect my custom domain?', a: 'Go to Website Settings → Custom Domains to link your domain with free automated SSL.' }
+          ]
+        }),
+        createElement('button', { content: 'Start Building Now 🚀' }),
+        foot
+      ];
+  }
+}
+
 export function normalizeFormFields(fields) {
   if (!Array.isArray(fields)) return [];
   return fields.map((field) => {

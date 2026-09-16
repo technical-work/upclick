@@ -19,8 +19,17 @@ import {
   sitesForUser,
   stampSiteOwner,
   storesStorageKey,
+  websitesStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
+import WebsiteListView from '../sites/websites/WebsiteListView';
+import WebsiteDetailView from '../sites/websites/WebsiteDetailView';
+import CreateWebsiteModal from '../sites/websites/CreateWebsiteModal';
+import {
+  PREBUILT_WEBSITE_TEMPLATES,
+  createBlankWebsite,
+  createWebsiteFromTemplate
+} from '../sites/websites/websiteTemplates';
 import { 
   Plus, 
   Search, 
@@ -57,26 +66,33 @@ export default function SitesView() {
   const isRtl = lang === 'ar';
   const persistTimer = useRef(null);
   const storePersistTimer = useRef(null);
+  const websitePersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
-  const [activeSubTab, setActiveSubTab] = useState('stores'); // Defaults to stores or funnels
+  const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
   const [selectedFunnel, setSelectedFunnel] = useState(null);
   const [selectedStore, setSelectedStore] = useState(null);
+  const [selectedWebsite, setSelectedWebsite] = useState(null);
   const [detailTab, setDetailTab] = useState('steps');
   const [stepOverviewTab, setStepOverviewTab] = useState('overview');
   
   // Builder state
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [builderStoreMode, setBuilderStoreMode] = useState(false);
+  const [builderWebsiteMode, setBuilderWebsiteMode] = useState(false);
   const [storeActivePageIdx, setStoreActivePageIdx] = useState(0);
+  const [websiteActivePageIdx, setWebsiteActivePageIdx] = useState(0);
 
   const [copiedKey, setCopiedKey] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modals
+  // Funnel Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createOption, setCreateOption] = useState('blank'); // 'blank' | 'ai' | 'templates'
   const [newFunnelName, setNewFunnelName] = useState('');
+
+  // Website Modal
+  const [isCreateWebsiteModalOpen, setIsCreateWebsiteModalOpen] = useState(false);
 
   // Add Step Modal
   const [isAddStepModalOpen, setIsAddStepModalOpen] = useState(false);
@@ -87,9 +103,10 @@ export default function SitesView() {
   // Active step index inside detail builder
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
-  // Load funnels / stores for the signed-in user only
+  // Load funnels / stores / websites for the signed-in user only
   const [funnels, setFunnels] = useState([]);
   const [stores, setStores] = useState([]);
+  const [websites, setWebsites] = useState([]);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -104,8 +121,10 @@ export default function SitesView() {
     if (!accountUid) {
       setFunnels([]);
       setStores([]);
+      setWebsites([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
+      setSelectedWebsite(null);
       loadedAccountUid.current = '';
       return;
     }
@@ -114,21 +133,32 @@ export default function SitesView() {
     if (userChanged) {
       setSelectedFunnel(null);
       setSelectedStore(null);
+      setSelectedWebsite(null);
       loadedAccountUid.current = accountUid;
     }
 
     const gcBelongsToAccount = GC?._accountUid === accountUid;
     const scopedFunnels = sitesForUser(readJsonList(funnelsStorageKey(accountUid)), accountUid);
     const scopedStores = sitesForUser(readJsonList(storesStorageKey(accountUid)), accountUid);
+    const scopedWebsites = sitesForUser(readJsonList(websitesStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
     const gcStores = gcBelongsToAccount
       ? sitesForUser(GC?.upclickStores?.stores, accountUid)
       : [];
+    const gcWebsites = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickWebsites?.websites, accountUid)
+      : [];
 
     const nextFunnels = gcFunnels.length ? gcFunnels : scopedFunnels;
     const nextStores = gcStores.length ? gcStores : scopedStores;
+    
+    // If user has no websites stored yet, initialize default prebuilts
+    const initialWebsitesSeed = (!scopedWebsites.length && !gcWebsites.length)
+      ? PREBUILT_WEBSITE_TEMPLATES.map(t => createWebsiteFromTemplate(t.id, '', accountUid))
+      : [];
+    const nextWebsites = gcWebsites.length ? gcWebsites : (scopedWebsites.length ? scopedWebsites : initialWebsitesSeed);
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
@@ -144,7 +174,14 @@ export default function SitesView() {
       if (listsHaveSameItems(prev, prevMine)) return prev;
       return prevMine;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores]);
+    setWebsites((prev) => {
+      if (userChanged) return nextWebsites;
+      const prevMine = sitesForUser(prev, accountUid);
+      if (!prevMine.length && nextWebsites.length) return nextWebsites;
+      if (listsHaveSameItems(prev, prevMine)) return prev;
+      return prevMine;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites]);
 
   const saveFunnels = (updatedList) => {
     if (!accountUid) return;
@@ -180,6 +217,23 @@ export default function SitesView() {
     }, 700);
   };
 
+  const saveWebsites = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setWebsites(mine);
+    writeJsonList(websitesStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (websitePersistTimer.current) clearTimeout(websitePersistTimer.current);
+    websitePersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickWebsites: {
+          websites: mine
+        }
+      });
+    }, 700);
+  };
+
   // Sync selectedFunnel
   useEffect(() => {
     if (!selectedFunnel) return;
@@ -193,6 +247,128 @@ export default function SitesView() {
     const match = stores.find((s) => s.id === selectedStore.id);
     if (match && match !== selectedStore) setSelectedStore(match);
   }, [stores, selectedStore]);
+
+  // Sync selectedWebsite
+  useEffect(() => {
+    if (!selectedWebsite) return;
+    const match = websites.find((w) => w.id === selectedWebsite.id);
+    if (match && match !== selectedWebsite) setSelectedWebsite(match);
+  }, [websites, selectedWebsite]);
+
+  // Website Management Handlers
+  const handleCreateWebsiteBlank = (name) => {
+    const newSite = createBlankWebsite(name, accountUid);
+    const owned = stampSiteOwner(newSite, accountUid);
+    const nextWebsites = [owned, ...websites];
+    saveWebsites(nextWebsites);
+    setSelectedWebsite(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء الموقع بنجاح' : 'Website created successfully');
+  };
+
+  const handleCreateWebsiteFromTemplate = (templateId, customName) => {
+    const newSite = createWebsiteFromTemplate(templateId, customName, accountUid);
+    const owned = stampSiteOwner(newSite, accountUid);
+    const nextWebsites = [owned, ...websites];
+    saveWebsites(nextWebsites);
+    setSelectedWebsite(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء الموقع من القالب بنجاح' : 'Website created from template');
+  };
+
+  const handleDuplicateWebsite = (websiteId) => {
+    const target = websites.find(w => w.id === websiteId);
+    if (!target) return;
+    const cloned = {
+      ...target,
+      id: 'web_' + Date.now(),
+      name: `${target.name} (Copy)`,
+      ownerUid: accountUid,
+      published: false,
+      publishedAt: null,
+      domain: '',
+      domainStatus: '',
+      lastUpdated: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
+    };
+    const nextWebsites = [cloned, ...websites];
+    saveWebsites(nextWebsites);
+    if (showToast) showToast(isRtl ? 'تم تكرار الموقع' : 'Website duplicated');
+  };
+
+  const handleDeleteWebsite = (websiteId) => {
+    const nextWebsites = websites.filter(w => w.id !== websiteId);
+    saveWebsites(nextWebsites);
+    if (selectedWebsite?.id === websiteId) {
+      setSelectedWebsite(null);
+    }
+    if (showToast) showToast(isRtl ? 'تم حذف الموقع بنجاح' : 'Website deleted successfully');
+  };
+
+  const handleUpdateWebsite = (updatedWebsite) => {
+    const owned = stampSiteOwner(updatedWebsite, accountUid);
+    const prev = websites.find((w) => w.id === owned.id);
+    if (prev === owned) {
+      setSelectedWebsite(owned);
+      return;
+    }
+    const nextWebsites = websites.map(w => w.id === owned.id ? owned : w);
+    saveWebsites(nextWebsites);
+    setSelectedWebsite(owned);
+  };
+
+  const updateActiveWebsitePage = (patch) => {
+    if (!selectedWebsite || !selectedWebsite.pages) return;
+    const targetPage = selectedWebsite.pages[websiteActivePageIdx] || selectedWebsite.pages[0];
+    if (!targetPage) return;
+
+    const updatedPage = { ...targetPage, ...patch };
+    const updatedPages = selectedWebsite.pages.map((p, idx) => idx === websiteActivePageIdx ? updatedPage : p);
+    const updatedWebsite = { ...selectedWebsite, pages: updatedPages };
+    handleUpdateWebsite(updatedWebsite);
+  };
+
+  const updateActiveWebsitePageCanvas = (newCanvas) => {
+    updateActiveWebsitePage({ canvas: newCanvas });
+  };
+
+  const handlePublishWebsitePage = async () => {
+    if (!selectedWebsite?.pages) return;
+    const targetPage = selectedWebsite.pages[websiteActivePageIdx] || selectedWebsite.pages[0];
+    if (!targetPage) return;
+    const publishedPatch = {
+      published: true,
+      publishedAt: new Date().toISOString(),
+      publishedCanvas: JSON.parse(JSON.stringify(targetPage.canvas || [])),
+      publishedPage: { ...DEFAULT_PAGE, ...(targetPage.page || {}) }
+    };
+    const updatedPage = { ...targetPage, ...publishedPatch };
+    const updatedPages = selectedWebsite.pages.map((p, idx) => idx === websiteActivePageIdx ? updatedPage : p);
+    const updatedWebsite = { ...selectedWebsite, published: true, publishedAt: new Date().toISOString(), pages: updatedPages };
+    handleUpdateWebsite(updatedWebsite);
+    try {
+      await publishFunnelPublic({
+        funnel: {
+          id: updatedWebsite.id,
+          name: updatedWebsite.name,
+          domain: updatedWebsite.domain,
+          steps: updatedWebsite.pages
+        },
+        ownerUid,
+        defaultStepIdx: websiteActivePageIdx
+      });
+      if (updatedWebsite.domain) {
+        await connectFunnelDomain({
+          funnelId: updatedWebsite.id,
+          ownerUid,
+          host: updatedWebsite.domain,
+          previousHost: ''
+        });
+      }
+      if (showToast) showToast(isRtl ? 'تم نشر الصفحة على رابط الإنتاج' : 'Website page published to live URL');
+      return updatedWebsite;
+    } catch (err) {
+      console.error(err);
+      if (showToast) showToast(isRtl ? 'حُفظ محلياً، لكن النشر العام فشل.' : 'Saved locally, but public publish failed.');
+    }
+  };
 
   // Store Management Handlers
   const handleCreateStore = (newStore) => {
@@ -523,15 +699,22 @@ export default function SitesView() {
   ];
 
   const builderFunnel = useMemo(() => {
+    if (builderWebsiteMode && selectedWebsite) {
+      return {
+        id: selectedWebsite.id,
+        name: selectedWebsite.name,
+        steps: selectedWebsite.pages || []
+      };
+    }
     if (builderStoreMode && selectedStore) {
       return {
         id: selectedStore.id,
         name: selectedStore.name,
-        steps: selectedStore.pages
+        steps: selectedStore.pages || []
       };
     }
     return selectedFunnel;
-  }, [builderStoreMode, selectedStore, selectedFunnel]);
+  }, [builderWebsiteMode, selectedWebsite, builderStoreMode, selectedStore, selectedFunnel]);
 
   const builderStorePreview = useMemo(() => {
     if (!builderStoreMode || !selectedStore) return null;
@@ -557,27 +740,32 @@ export default function SitesView() {
         <StorePreviewContext.Provider value={builderStorePreview}>
         <BuilderWorkspace
           funnel={builderFunnel}
-          stepIndex={builderStoreMode ? storeActivePageIdx : activeStepIndex}
-          onChangeStep={builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex}
+          stepIndex={builderWebsiteMode ? websiteActivePageIdx : (builderStoreMode ? storeActivePageIdx : activeStepIndex)}
+          onChangeStep={builderWebsiteMode ? setWebsiteActivePageIdx : (builderStoreMode ? setStoreActivePageIdx : setActiveStepIndex)}
           onClose={() => {
             setIsBuilderOpen(false);
             setBuilderStoreMode(false);
+            setBuilderWebsiteMode(false);
           }}
           onUpdateCanvas={(newCanvas) => {
-            if (builderStoreMode && selectedStore) {
+            if (builderWebsiteMode && selectedWebsite) {
+              updateActiveWebsitePageCanvas(newCanvas);
+            } else if (builderStoreMode && selectedStore) {
               updateActiveStorePageCanvas(newCanvas);
             } else {
               updateActiveStepCanvas(newCanvas);
             }
           }}
           onUpdateStep={(patch) => {
-            if (builderStoreMode && selectedStore) {
+            if (builderWebsiteMode && selectedWebsite) {
+              updateActiveWebsitePage(patch);
+            } else if (builderStoreMode && selectedStore) {
               updateActiveStorePage(patch);
             } else {
               updateActiveStep(patch);
             }
           }}
-          onPublish={builderStoreMode ? handlePublishStorePage : handlePublishStep}
+          onPublish={builderWebsiteMode ? handlePublishWebsitePage : (builderStoreMode ? handlePublishStorePage : handlePublishStep)}
           isStore={builderStoreMode}
         />
         </StorePreviewContext.Provider>
@@ -601,7 +789,8 @@ export default function SitesView() {
               key={tab.key}
               onClick={() => {
                 setActiveSubTab(tab.key);
-                if (tab.key !== 'funnels' && tab.key !== 'websites') setSelectedFunnel(null);
+                if (tab.key !== 'funnels') setSelectedFunnel(null);
+                if (tab.key !== 'websites') setSelectedWebsite(null);
                 if (tab.key !== 'stores') setSelectedStore(null);
               }}
               style={{
@@ -620,6 +809,18 @@ export default function SitesView() {
               }}
             >
               {tab.label}
+              {tab.key === 'websites' && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {websites.length}
+                </span>
+              )}
               {tab.key === 'stores' && (
                 <span style={{
                   background: 'rgba(37, 99, 235, 0.12)',
@@ -640,7 +841,7 @@ export default function SitesView() {
             if (activeSubTab === 'stores' && selectedStore) {
               setStoreForceTab('settings');
             } else {
-              alert(isRtl ? 'إعدادات الفانلز' : 'Funnels Settings');
+              alert(isRtl ? 'إعدادات المواقع' : 'Settings');
             }
           }}
           style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer', padding: '8px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
@@ -649,8 +850,34 @@ export default function SitesView() {
         </button>
       </div>
 
-      {/* RENDER STORES VIEW WHEN SUBTAB IS 'stores' */}
-      {activeSubTab === 'stores' ? (
+      {/* RENDER WEBSITES VIEW WHEN SUBTAB IS 'websites' */}
+      {activeSubTab === 'websites' ? (
+        selectedWebsite ? (
+          <WebsiteDetailView
+            website={selectedWebsite}
+            isRtl={isRtl}
+            ownerUid={ownerUid}
+            showToast={showToast}
+            onBack={() => setSelectedWebsite(null)}
+            onOpenBuilderForPage={(pageIdx) => {
+              setBuilderWebsiteMode(true);
+              setWebsiteActivePageIdx(pageIdx);
+              setIsBuilderOpen(true);
+            }}
+            onUpdateWebsite={handleUpdateWebsite}
+            onPublishWebsite={handlePublishWebsitePage}
+          />
+        ) : (
+          <WebsiteListView
+            websites={websites}
+            isRtl={isRtl}
+            onSelectWebsite={(w) => setSelectedWebsite(w)}
+            onOpenCreateModal={() => setIsCreateWebsiteModalOpen(true)}
+            onDuplicateWebsite={handleDuplicateWebsite}
+            onDeleteWebsite={handleDeleteWebsite}
+          />
+        )
+      ) : activeSubTab === 'stores' ? (
         selectedStore ? (
           <StoreDetailView
             store={selectedStore}
@@ -678,7 +905,7 @@ export default function SitesView() {
           />
         )
       ) : (
-        /* RENDER FUNNELS & WEBSITES VIEW */
+        /* RENDER FUNNELS VIEW */
         selectedFunnel ? (
           <div style={{ padding: '0 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -785,7 +1012,7 @@ export default function SitesView() {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: 12, fontWeight: 700, color: isPublished ? '#16a34a' : '#f97316' }}>
-                                  {isPublished
+                                   {isPublished
                                     ? (isRtl ? 'منشور' : `Published${currentStep.publishedAt ? ` · ${new Date(currentStep.publishedAt).toLocaleString()}` : ''}`)
                                     : (isRtl ? 'لم يُنشر بعد — يظهر آخر حفظ في Saved URL' : 'Not published yet — Saved URL shows your latest edits')}
                                 </span>
@@ -838,7 +1065,7 @@ export default function SitesView() {
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                             <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                               <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--a)', letterSpacing: '0.5px' }}>🚩 CONTROL</span>
-                              <div onClick={() => { setBuilderStoreMode(false); setIsBuilderOpen(true); }} style={{ height: '220px', border: '1px solid var(--edge)', borderRadius: '10px', background: currentStep.page?.bg || '#0f172a', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
+                              <div onClick={() => { setBuilderStoreMode(false); setBuilderWebsiteMode(false); setIsBuilderOpen(true); }} style={{ height: '220px', border: '1px solid var(--edge)', borderRadius: '10px', background: currentStep.page?.bg || '#0f172a', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
                                 <div style={{
                                   position: 'absolute',
                                   top: 0,
@@ -868,7 +1095,7 @@ export default function SitesView() {
                                 </div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                <button type="button" onClick={() => { setBuilderStoreMode(false); setIsBuilderOpen(true); }} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><span>Edit</span><ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} /></button>
+                                <button type="button" onClick={() => { setBuilderStoreMode(false); setBuilderWebsiteMode(false); setIsBuilderOpen(true); }} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><span>Edit</span><ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} /></button>
                                 <button type="button" title={isRtl ? 'فتح الرابط المحفوظ' : 'Open saved URL'} onClick={() => openUrl(urls.saved)} className="btn btn-ghost" style={{ padding: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
                                   <Eye size={16} /><span style={{ fontSize: 12, fontWeight: 700 }}>Saved</span>
                                 </button>
@@ -930,11 +1157,11 @@ export default function SitesView() {
             )}
           </div>
         ) : (
-          /* Funnels / Websites List View */
+          /* Funnels List View */
           <div style={{ padding: '0 24px' }}>
             <div style={{ marginBottom: '20px' }}>
               <h1 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--t1)', margin: '0 0 4px' }}>
-                {activeSubTab === 'websites' ? (isRtl ? 'المواقع الإلكترونية' : 'Websites') : (isRtl ? 'الفانلز ومسارات البيع' : 'Funnels')}
+                {isRtl ? 'الفانلز ومسارات البيع' : 'Funnels'}
               </h1>
               <p style={{ color: 'var(--t2)', fontSize: '13.5px', margin: 0 }}>
                 {isRtl ? 'أنشئ وأدر صفحات ومسارات البيع لجمع العملاء المحتملين وتلقي المدفوعات.' : 'Create and manage funnels to generate leads, appointments and receive payments.'}
@@ -999,6 +1226,15 @@ export default function SitesView() {
           </div>
         </div>
       )}
+
+      {/* CREATE WEBSITE MODAL */}
+      <CreateWebsiteModal
+        isOpen={isCreateWebsiteModalOpen}
+        onClose={() => setIsCreateWebsiteModalOpen(false)}
+        onCreateBlank={handleCreateWebsiteBlank}
+        onCreateFromTemplate={handleCreateWebsiteFromTemplate}
+        isRtl={isRtl}
+      />
 
       {/* ADD STEP MODAL */}
       {isAddStepModalOpen && (
