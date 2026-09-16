@@ -203,7 +203,7 @@ export const ELEMENT_REGISTRY = {
       { key: 'fields', label: 'Form fields', type: 'items', itemFields: [
         { key: 'label', label: 'Label', type: 'text' },
         { key: 'placeholder', label: 'Placeholder', type: 'text' },
-        { key: 'type', label: 'Field Type', type: 'select', options: ['text', 'first_name', 'last_name', 'email', 'phone', 'number', 'textarea', 'date_of_birth', 'dropdown', 'consent_checkbox'] },
+        { key: 'type', label: 'Field Type', type: 'select', options: ['text', 'first_name', 'last_name', 'full_name', 'email', 'phone', 'number', 'textarea', 'date_of_birth', 'dropdown', 'radio', 'checkbox', 'consent_checkbox', 'address', 'city', 'state', 'postal_code', 'country', 'url'] },
         { key: 'width', label: 'Width', type: 'select', options: ['100%', '50%'] },
         { key: 'required', label: 'Required', type: 'toggle' }
       ]}
@@ -1428,7 +1428,7 @@ export function normalizeFormFields(fields) {
         label: field.label || 'Field',
         type: field.type || 'text',
         placeholder: field.placeholder !== undefined ? field.placeholder : (field.label || ''),
-        required: field.required !== false,
+        required: Boolean(field.required),
         width: field.width || '100%',
         options: field.options || []
       };

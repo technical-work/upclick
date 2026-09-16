@@ -346,3 +346,36 @@ export function getFieldI18nLabel(fieldKey, fieldLabel, lang = 'en') {
   }
   return fieldLabel || fieldKey;
 }
+
+export const FIELD_OPTION_LABELS = {
+  text: { ar: '📝 نص عادي (Text)', en: '📝 Single Line Text' },
+  first_name: { ar: '👤 الاسم الأول (First Name)', en: '👤 First Name' },
+  last_name: { ar: '👥 اسم العائلة (Last Name)', en: '👥 Last Name' },
+  full_name: { ar: '👤 الاسم الكامل (Full Name)', en: '👤 Full Name' },
+  email: { ar: '✉️ البريد الإلكتروني (Email)', en: '✉️ Email Address' },
+  phone: { ar: '📞 رقم الهاتف / واتساب (Phone)', en: '📞 Phone Number' },
+  number: { ar: '🔢 رقم / كمية (Number)', en: '🔢 Number' },
+  textarea: { ar: '📄 نص متعدد الأسطر (Textarea)', en: '📄 Multi-line Textarea' },
+  date_of_birth: { ar: '📅 تاريخ الميلاد / تاريخ (Date)', en: '📅 Date of Birth / Date' },
+  date: { ar: '📅 تاريخ (Date)', en: '📅 Date' },
+  dropdown: { ar: '▼ قائمة منسدلة (Dropdown)', en: '▼ Dropdown Select' },
+  select: { ar: '▼ قائمة منسدلة (Select)', en: '▼ Select' },
+  radio: { ar: '🔘 اختيار مفرد (Radio)', en: '🔘 Radio Choices' },
+  checkbox: { ar: '☑️ مربعات اختيار (Checkbox)', en: '☑️ Multiple Checkbox' },
+  consent_checkbox: { ar: '🛡️ موافقة SMS والشروط (Consent)', en: '🛡️ SMS & Policy Consent' },
+  address: { ar: '📍 العنوان (Street Address)', en: '📍 Street Address' },
+  city: { ar: '🏙️ المدينة (City)', en: '🏙️ City' },
+  state: { ar: '🗺️ المحافظة / الولاية (State)', en: '🗺️ State / Province' },
+  postal_code: { ar: '📮 الرمز البريدي (Postal Code)', en: '📮 Postal / ZIP Code' },
+  country: { ar: '🌐 الدولة (Country)', en: '🌐 Country' },
+  url: { ar: '🔗 رابط ويب (Website URL)', en: '🔗 Website URL' },
+  '100%': { ar: '100% (عرض كامل)', en: '100% (Full Width)' },
+  '50%': { ar: '50% (نصف سطر)', en: '50% (Half Width)' }
+};
+
+export function getFieldOptionLabel(opt, lang = 'en') {
+  if (FIELD_OPTION_LABELS[opt]) {
+    return lang === 'ar' ? FIELD_OPTION_LABELS[opt].ar : FIELD_OPTION_LABELS[opt].en;
+  }
+  return opt;
+}

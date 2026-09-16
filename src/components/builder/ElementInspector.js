@@ -4,7 +4,7 @@ import React from 'react';
 import { Plus, Sliders, Trash2 } from 'lucide-react';
 import { getElementDef } from '@/lib/builder/elementRegistry';
 import { htmlLooksFullscreen } from '@/lib/builder/customHtml';
-import { getBuilderString, getElementI18nLabel, getFieldI18nLabel } from '@/lib/builder/builderTranslations';
+import { getBuilderString, getElementI18nLabel, getFieldI18nLabel, getFieldOptionLabel } from '@/lib/builder/builderTranslations';
 
 const labelStyle = { fontSize: '11px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' };
 const inputStyle = { width: '100%', fontSize: '12.5px', boxSizing: 'border-box' };
@@ -61,7 +61,9 @@ function FieldControl({ field, value, onChange, lang = 'en' }) {
     return (
       <select className="inp" value={value || ''} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
         {(field.options || []).map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt} value={opt}>
+            {getFieldOptionLabel(opt, lang)}
+          </option>
         ))}
       </select>
     );

@@ -146,18 +146,76 @@ export default function PublicFormRunner({ formId }) {
                   );
                 }
 
-                if (field.type === 'consent_checkbox') {
+                if (field.type === 'consent_checkbox' || field.type === 'checkbox') {
                   return (
-                    <label key={field.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '12px', color: '#475569', lineHeight: 1.45, cursor: 'pointer' }}>
+                    <label key={field.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '12.5px', color: '#475569', lineHeight: 1.45, cursor: 'pointer' }}>
                       <input
                         type="checkbox"
                         required={field.required}
                         checked={!!formData[field.id]}
                         onChange={(e) => handleChange(field.id, e.target.checked)}
-                        style={{ marginTop: '2px' }}
+                        style={{ marginTop: '2px', cursor: 'pointer', width: '16px', height: '16px' }}
                       />
-                      <span>{field.label}</span>
+                      <span>{field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}</span>
                     </label>
+                  );
+                }
+
+                if (field.type === 'radio') {
+                  const options = Array.isArray(field.options) && field.options.length ? field.options : ['Option 1', 'Option 2', 'Option 3'];
+                  return (
+                    <div key={field.id}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {options.map((opt, optIdx) => (
+                          <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name={field.id}
+                              value={opt}
+                              required={field.required}
+                              checked={formData[field.id] === opt}
+                              onChange={(e) => handleChange(field.id, e.target.value)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                            <span>{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (field.type === 'dropdown' || field.type === 'select') {
+                  const options = Array.isArray(field.options) && field.options.length ? field.options : ['Option 1', 'Option 2', 'Option 3'];
+                  return (
+                    <div key={field.id}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
+                        {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
+                      </label>
+                      <select
+                        required={field.required}
+                        value={formData[field.id] || ''}
+                        onChange={(e) => handleChange(field.id, e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '13.5px',
+                          color: '#0f172a',
+                          outline: 'none',
+                          background: '#ffffff'
+                        }}
+                      >
+                        <option value="">{field.placeholder || 'Select an option...'}</option>
+                        {options.map((opt, optIdx) => (
+                          <option key={optIdx} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
                   );
                 }
 
@@ -188,13 +246,26 @@ export default function PublicFormRunner({ formId }) {
                   );
                 }
 
+                const inputType =
+                  field.type === 'email'
+                    ? 'email'
+                    : field.type === 'phone' || field.type === 'tel'
+                    ? 'tel'
+                    : field.type === 'number'
+                    ? 'number'
+                    : field.type === 'date_of_birth' || field.type === 'date'
+                    ? 'date'
+                    : field.type === 'url'
+                    ? 'url'
+                    : 'text';
+
                 return (
                   <div key={field.id}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>
                       {field.label} {field.required && <span style={{ color: '#dc2626' }}>*</span>}
                     </label>
                     <input
-                      type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
+                      type={inputType}
                       required={field.required}
                       value={formData[field.id] || ''}
                       onChange={(e) => handleChange(field.id, e.target.value)}

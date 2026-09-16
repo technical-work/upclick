@@ -333,7 +333,7 @@ function FormBlock({ el, interactive }) {
                   ? 'date'
                   : 'text';
 
-              if (field.type === 'consent_checkbox') {
+              if (field.type === 'consent_checkbox' || field.type === 'checkbox') {
                 return (
                   <div key={fieldId} style={{ width: '100%', margin: '4px 0' }}>
                     <label
@@ -341,8 +341,8 @@ function FormBlock({ el, interactive }) {
                         display: 'flex',
                         alignItems: 'flex-start',
                         gap: '10px',
-                        fontSize: '12px',
-                        color: '#64748b',
+                        fontSize: '12.5px',
+                        color: '#475569',
                         lineHeight: 1.5,
                         cursor: 'pointer'
                       }}
@@ -352,10 +352,37 @@ function FormBlock({ el, interactive }) {
                         required={field.required}
                         checked={!!formValues[fieldId]}
                         onChange={(e) => handleFieldChange(fieldId, e.target.checked)}
-                        style={{ marginTop: '3px', cursor: 'pointer' }}
+                        style={{ marginTop: '3px', cursor: 'pointer', width: '16px', height: '16px' }}
                       />
-                      <span>{field.label}</span>
+                      <span>{field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}</span>
                     </label>
+                  </div>
+                );
+              }
+
+              if (field.type === 'radio') {
+                const options = Array.isArray(field.options) && field.options.length ? field.options : ['Option 1', 'Option 2', 'Option 3'];
+                return (
+                  <div key={fieldId} style={{ width: '100%', margin: '4px 0' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: labelColor, marginBottom: '6px' }}>
+                      {field.label} {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {options.map((opt, optIdx) => (
+                        <label key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name={fieldId}
+                            value={opt}
+                            required={field.required}
+                            checked={formValues[fieldId] === opt}
+                            onChange={(e) => handleFieldChange(fieldId, e.target.value)}
+                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 );
               }
@@ -392,7 +419,7 @@ function FormBlock({ el, interactive }) {
               }
 
               if (field.type === 'dropdown' || field.type === 'select') {
-                const options = Array.isArray(field.options) ? field.options : ['Option 1', 'Option 2', 'Option 3'];
+                const options = Array.isArray(field.options) && field.options.length ? field.options : ['Option 1', 'Option 2', 'Option 3'];
                 return (
                   <div key={fieldId} style={{ width: isHalfWidth ? 'calc(50% - 7px)' : '100%', minWidth: '220px', flex: isHalfWidth ? '1 1 calc(50% - 7px)' : '1 1 100%' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: labelColor, marginBottom: '6px' }}>
