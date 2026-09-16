@@ -1216,7 +1216,6 @@ export default function SitesView() {
     { key: 'webinars', label: isRtl ? 'الويبينارات' : 'Webinars' },
     { key: 'analytics', label: isRtl ? 'التحليلات' : 'Analytics' },
     { key: 'blogs', label: isRtl ? 'المدونات' : 'Blogs' },
-    { key: 'wordpress', label: isRtl ? 'ووردبريس' : 'WordPress' },
     { key: 'client-portal', label: isRtl ? 'بوابة العملاء' : 'Client Portal' },
     { key: 'forms', label: isRtl ? 'النماذج' : 'Forms' },
     { key: 'surveys', label: isRtl ? 'الاستبيانات' : 'Surveys' },
