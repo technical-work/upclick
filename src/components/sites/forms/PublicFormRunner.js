@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { findLocalFormById, saveFormSubmission, trackFormView } from '@/lib/sites/userSitesScope';
+import ElementRenderer from '@/components/builder/ElementRenderer';
 
 export default function PublicFormRunner({ formId }) {
   const [form, setForm] = useState(null);
@@ -36,6 +37,32 @@ export default function PublicFormRunner({ formId }) {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#0f172a', padding: '20px', textAlign: 'center' }}>
         <h2 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>Form Not Found</h2>
         <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>This form may have been removed or unpublished.</p>
+      </div>
+    );
+  }
+
+  // If the form has a visual builder canvas, render the full interactive canvas!
+  if (form.canvas && form.canvas.length > 0) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: '#f8fafc',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 16px',
+          fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: '720px', margin: '0 auto' }}>
+          {form.canvas.map((el) => (
+            <div key={el.id} style={{ margin: '16px 0' }}>
+              <ElementRenderer el={{ ...el, formId: form.id }} interactive />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

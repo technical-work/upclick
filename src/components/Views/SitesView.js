@@ -582,9 +582,20 @@ export default function SitesView() {
 
   const updateActiveFormCanvas = (newCanvas) => {
     if (!selectedForm) return;
+    const formBlock = (newCanvas || []).find((el) => el.type === 'form');
     const updatedForm = {
       ...selectedForm,
       canvas: newCanvas,
+      fields: formBlock?.fields || selectedForm.fields,
+      styling: {
+        ...selectedForm.styling,
+        ...(formBlock ? {
+          buttonText: formBlock.buttonText || selectedForm.styling?.buttonText,
+          buttonColor: formBlock.buttonBg || selectedForm.styling?.buttonColor,
+          backgroundColor: formBlock.bg || selectedForm.styling?.backgroundColor,
+          textColor: formBlock.color || selectedForm.styling?.textColor
+        } : {})
+      },
       lastUpdated: new Date().toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
     };
     handleUpdateForm(updatedForm);
