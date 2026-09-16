@@ -707,14 +707,27 @@ export default function SitesView() {
     if (!selectedQuiz) return;
     const targetQIdx = quizActiveSlideIdx || 0;
     const formBlock = (newCanvas || []).find((el) => el.type === 'form');
+    const firstField = formBlock?.fields?.[0];
+    const headlineBlock = (newCanvas || []).find((el) => el.type === 'headline');
+    const paraBlock = (newCanvas || []).find((el) => el.type === 'paragraph');
+
     const updatedQuestions = [...(selectedQuiz.questions || [])];
     const targetQ = updatedQuestions[targetQIdx] || { id: `q_${targetQIdx + 1}` };
+
+    const detectedCorrectAnswer = firstField?.correctAnswer !== undefined ? firstField.correctAnswer : (targetQ.correctAnswer || (firstField?.options && firstField.options[0]) || '');
+    const detectedPoints = Number(firstField?.points !== undefined ? firstField.points : (targetQ.points !== undefined ? targetQ.points : 25));
+    const detectedExplanation = firstField?.explanation !== undefined ? firstField.explanation : (targetQ.explanation || '');
+
     updatedQuestions[targetQIdx] = {
       ...targetQ,
       canvas: newCanvas,
-      title: formBlock?.title || targetQ.title,
-      description: formBlock?.subtitle || targetQ.description,
-      options: formBlock?.fields?.[0]?.options || targetQ.options
+      title: firstField?.label || formBlock?.title || headlineBlock?.content || targetQ.title,
+      description: formBlock?.subtitle || paraBlock?.content || targetQ.description,
+      type: firstField?.type || targetQ.type || 'radio',
+      options: firstField?.options || targetQ.options,
+      correctAnswer: detectedCorrectAnswer,
+      points: detectedPoints,
+      explanation: detectedExplanation
     };
 
     const updatedQuiz = {
@@ -2247,7 +2260,7 @@ export default function SitesView() {
               {
                 id: `el_quiz_block_${q.id}`,
                 type: 'form',
-                title: `Question ${qIdx + 1} (${q.points || 20} pts)`,
+                title: `Question ${qIdx + 1} (${q.points !== undefined ? q.points : 25} pts)`,
                 subtitle: q.explanation ? `💡 Explanation: ${q.explanation}` : (isRtl ? 'اختر الإجابة الصحيحة' : 'Select the correct answer'),
                 fields: [
                   {
@@ -2255,6 +2268,9 @@ export default function SitesView() {
                     label: q.title || `Question ${qIdx + 1}`,
                     type: q.type || 'radio',
                     options: q.options || ['Option 1', 'Option 2', 'Option 3'],
+                    correctAnswer: q.correctAnswer || (q.options && q.options[0]) || '',
+                    points: q.points !== undefined ? q.points : 25,
+                    explanation: q.explanation || '',
                     required: true,
                     width: '100%'
                   }

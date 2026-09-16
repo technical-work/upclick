@@ -50,7 +50,31 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
   // Extract questions from quiz object
   const questions = React.useMemo(() => {
     if (!quiz) return [];
-    if (Array.isArray(quiz.questions) && quiz.questions.length > 0) return quiz.questions;
+    if (Array.isArray(quiz.questions) && quiz.questions.length > 0) {
+      return quiz.questions.map((q, idx) => {
+        const formBlock = Array.isArray(q.canvas) ? q.canvas.find((el) => el.type === 'form') : null;
+        const formField = formBlock?.fields?.[0];
+        const headlineBlock = Array.isArray(q.canvas) ? q.canvas.find((el) => el.type === 'headline') : null;
+        const paraBlock = Array.isArray(q.canvas) ? q.canvas.find((el) => el.type === 'paragraph') : null;
+
+        const options = formField?.options || q.options || ['Option A', 'Option B', 'Option C', 'Option D'];
+        const correctAnswer = formField?.correctAnswer || q.correctAnswer || (isRtl ? q.correctAnswerAr : null) || options[0] || '';
+        const points = Number(formField?.points !== undefined ? formField.points : (q.points !== undefined ? q.points : 25));
+        const explanation = formField?.explanation || q.explanation || (isRtl ? q.explanationAr : '') || '';
+
+        return {
+          ...q,
+          id: q.id || `q_${idx + 1}`,
+          title: formField?.label || formBlock?.title || headlineBlock?.content || (isRtl ? q.titleAr || q.title : q.title) || `Question ${idx + 1}`,
+          description: formBlock?.subtitle || paraBlock?.content || (isRtl ? q.descriptionAr || q.description : q.description) || '',
+          type: formField?.type || q.type || 'radio',
+          options,
+          correctAnswer,
+          points,
+          explanation
+        };
+      });
+    }
     if (Array.isArray(quiz.slides) && quiz.slides.length > 0) {
       return quiz.slides.map((s, idx) => {
         const el = s.elements?.[0] || {};
@@ -61,7 +85,7 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
           type: el.type || 'radio',
           options: el.options || ['Option A', 'Option B', 'Option C', 'Option D'],
           correctAnswer: el.correctAnswer || el.options?.[0] || 'Option A',
-          points: el.points || 20,
+          points: el.points || 25,
           explanation: el.explanation || ''
         };
       });
@@ -77,7 +101,7 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
         explanation: 'This is the verified correct answer.'
       }
     ];
-  }, [quiz]);
+  }, [quiz, isRtl]);
 
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentStepIndex];
@@ -139,11 +163,18 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
     const answerBreakdown = [];
 
     questions.forEach((q) => {
-      const pts = Number(q.points) || 20;
+      const pts = Number(q.points) || 25;
       maxScore += pts;
       const selected = answers[q.id];
       const correct = q.correctAnswer || (isRtl ? q.correctAnswerAr : null) || q.options?.[0];
-      const isCorrect = selected === correct || (isRtl && selected === q.correctAnswerAr);
+
+      const clean = (s) => String(s || '').trim().toLowerCase();
+      const isCorrect = Boolean(
+        selected && correct && (
+          clean(selected) === clean(correct) ||
+          (isRtl && q.correctAnswerAr && clean(selected) === clean(q.correctAnswerAr))
+        )
+      );
 
       if (isCorrect) {
         totalScore += pts;
@@ -152,7 +183,7 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
       answerBreakdown.push({
         questionId: q.id,
         questionTitle: (isRtl ? q.titleAr || q.title : q.title) || 'Question',
-        selectedAnswer: selected || 'No Answer',
+        selectedAnswer: selected || (isRtl ? 'لم تتم الإجابة' : 'No Answer'),
         correctAnswer: correct,
         isCorrect,
         pointsAwarded: isCorrect ? pts : 0,
