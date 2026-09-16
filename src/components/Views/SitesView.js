@@ -1938,33 +1938,22 @@ export default function SitesView() {
           />
         )
       ) : (activeSubTab === 'forms' || activeSubTab === 'surveys') ? (
-        selectedForm && !isBuilderOpen ? (
-          <FormBuilderView
-            form={selectedForm}
-            isRtl={isRtl}
-            onBack={() => setSelectedForm(null)}
-            onSaveForm={handleUpdateForm}
-            onOpenVisualBuilder={() => handleOpenBuilderForForm(selectedForm)}
-            showToast={showToast}
-          />
-        ) : (
-          <FormListView
-            forms={forms}
-            isRtl={isRtl}
-            onSelectForm={(f) => handleOpenBuilderForForm(f)}
-            onOpenFormEditor={(f) => setSelectedForm(f)}
-            onOpenCreateModal={() => setIsCreateFormModalOpen(true)}
-            onDuplicateForm={handleDuplicateForm}
-            onDeleteForm={handleDeleteForm}
-            onOpenSubmissions={(f) => setSelectedForm(f)}
-            onOpenIntegrate={(f) => {
-              setIntegratingForm(f);
-              setIsIntegrateFormModalOpen(true);
-            }}
-            onPreviewLiveForm={(f) => setPreviewingLiveForm(f)}
-            showToast={showToast}
-          />
-        )
+        <FormListView
+          forms={forms}
+          isRtl={isRtl}
+          onSelectForm={(f) => handleOpenBuilderForForm(f)}
+          onOpenFormEditor={(f) => handleOpenBuilderForForm(f)}
+          onOpenCreateModal={() => setIsCreateFormModalOpen(true)}
+          onDuplicateForm={handleDuplicateForm}
+          onDeleteForm={handleDeleteForm}
+          onOpenSubmissions={(f) => setPreviewingLiveForm(f)}
+          onOpenIntegrate={(f) => {
+            setIntegratingForm(f);
+            setIsIntegrateFormModalOpen(true);
+          }}
+          onPreviewLiveForm={(f) => setPreviewingLiveForm(f)}
+          showToast={showToast}
+        />
       ) : (
         /* RENDER FUNNELS VIEW */
         selectedFunnel ? (

@@ -554,30 +554,6 @@ export default function FormListView({
                               <span>{isRtl ? 'فتح في المنشئ المرئي' : 'Open in Visual Builder'}</span>
                             </button>
 
-                            {onOpenFormEditor && (
-                              <button
-                                onClick={() => {
-                                  setActiveMenuId(null);
-                                  onOpenFormEditor(form);
-                                }}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: '9px 16px',
-                                  fontSize: '13px',
-                                  color: 'var(--t1)',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  textAlign: isRtl ? 'right' : 'left'
-                                }}
-                              >
-                                <SlidersHorizontal size={14} />
-                                <span>{isRtl ? 'خصائص وحقول النموذج' : 'Form Fields & Settings'}</span>
-                              </button>
-                            )}
-
                             <button
                               onClick={() => {
                                 setActiveMenuId(null);
