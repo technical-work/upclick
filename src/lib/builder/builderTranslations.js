@@ -343,9 +343,7 @@ export const FIELD_LABELS_I18N = {
   'Correct Answer': { ar: 'الإجابة النموذجية الصحيحة', en: 'Correct Answer' },
   'correctAnswer': { ar: 'الإجابة النموذجية الصحيحة', en: 'Correct Answer' },
   'Points': { ar: 'درجة / نقاط السؤال', en: 'Points' },
-  'points': { ar: 'درجة / نقاط السؤال', en: 'Points' },
-  'Explanation': { ar: 'توضيح وشرح الإجابة', en: 'Answer Explanation' },
-  'explanation': { ar: 'توضيح وشرح الإجابة', en: 'Answer Explanation' }
+  'points': { ar: 'درجة / نقاط السؤال', en: 'Points' }
 };
 
 export function getBuilderString(key, lang = 'en') {

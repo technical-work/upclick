@@ -707,23 +707,6 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
                           {ans.correctAnswer}
                         </div>
                       )}
-
-                      {ans.explanation && (
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: '#cbd5e1',
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            padding: '8px 12px',
-                            borderRadius: '6px',
-                            marginTop: '8px',
-                            borderLeft: isRtl ? 'none' : '3px solid #60a5fa',
-                            borderRight: isRtl ? '3px solid #60a5fa' : 'none'
-                          }}
-                        >
-                          💡 {ans.explanation}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

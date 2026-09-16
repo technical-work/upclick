@@ -695,8 +695,7 @@ export default function SitesView() {
           type: 'radio',
           options: ['Correct Choice (Option A)', 'Option B', 'Option C', 'Option D'],
           correctAnswer: 'Correct Choice (Option A)',
-          points: 25,
-          explanation: 'This is the verified correct answer.'
+          points: 25
         },
         {
           id: 'q2',
@@ -705,8 +704,7 @@ export default function SitesView() {
           type: 'radio',
           options: ['Option A', 'Correct Choice (Option B)', 'Option C'],
           correctAnswer: 'Correct Choice (Option B)',
-          points: 25,
-          explanation: 'Option B is correct.'
+          points: 25
         },
         {
           id: 'q3',
@@ -715,8 +713,7 @@ export default function SitesView() {
           type: 'radio',
           options: ['Option A', 'Option B', 'Correct Choice (Option C)'],
           correctAnswer: 'Correct Choice (Option C)',
-          points: 50,
-          explanation: 'Option C satisfies the question.'
+          points: 50
         }
       ],
       settings: {
@@ -832,8 +829,7 @@ export default function SitesView() {
       type: 'radio',
       options: isRtl ? ['الخيار 1 (الإجابة الصحيحة)', 'الخيار 2', 'الخيار 3', 'الخيار 4'] : ['Correct Choice (Option A)', 'Option B', 'Option C', 'Option D'],
       correctAnswer: isRtl ? 'الخيار 1 (الإجابة الصحيحة)' : 'Correct Choice (Option A)',
-      points: 25,
-      explanation: isRtl ? 'توضيح وشرح الإجابة الصحيحة لهذا السؤال.' : 'This is the verified correct answer.'
+      points: 25
     };
 
     const updatedQuestions = [...currentQuestions, newQuestion];
@@ -2324,7 +2320,7 @@ export default function SitesView() {
                 id: `el_quiz_block_${q.id}`,
                 type: 'form',
                 title: `Question ${qIdx + 1} (${q.points !== undefined ? q.points : 25} pts)`,
-                subtitle: q.explanation ? `💡 Explanation: ${q.explanation}` : (isRtl ? 'اختر الإجابة الصحيحة' : 'Select the correct answer'),
+                subtitle: isRtl ? 'اختر الإجابة الصحيحة' : 'Select the correct answer',
                 fields: [
                   {
                     id: q.id,
@@ -2333,7 +2329,6 @@ export default function SitesView() {
                     options: q.options || ['Option 1', 'Option 2', 'Option 3'],
                     correctAnswer: q.correctAnswer || (q.options && q.options[0]) || '',
                     points: q.points !== undefined ? q.points : 25,
-                    explanation: q.explanation || '',
                     required: true,
                     width: '100%'
                   }

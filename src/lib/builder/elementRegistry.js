@@ -207,7 +207,6 @@ export const ELEMENT_REGISTRY = {
         { key: 'options', label: 'Options / Choices', type: 'options', placeholder: 'Option 1, Option 2, Option 3' },
         { key: 'correctAnswer', label: 'Correct Answer', type: 'text', placeholder: 'Select or type correct answer...' },
         { key: 'points', label: 'Points', type: 'number', placeholder: '10' },
-        { key: 'explanation', label: 'Explanation', type: 'textarea', placeholder: 'Explanation displayed after answering...' },
         { key: 'width', label: 'Width', type: 'select', options: ['100%', '50%'] },
         { key: 'required', label: 'Required', type: 'toggle' }
       ]}

@@ -540,8 +540,7 @@ function ItemsEditor({ value, itemFields, onChange, lang = 'en' }) {
             required: false,
             options: isRtl ? ['الخيار 1', 'الخيار 2', 'الخيار 3'] : ['Option 1', 'Option 2', 'Option 3'],
             correctAnswer: '',
-            points: 10,
-            explanation: ''
+            points: 10
           };
           (itemFields || []).forEach((field) => {
             if (blank[field.key] === undefined) {

@@ -431,11 +431,6 @@ export default function QuizSubmissionsModal({
                         <strong>{isRtl ? 'الإجابة الصحيحة:' : 'Correct Answer:'}</strong> {ans.correctAnswer}
                       </div>
                     )}
-                    {ans.explanation && (
-                      <div style={{ fontSize: '11.5px', color: 'var(--t2)', background: 'var(--surface)', padding: '6px 10px', borderRadius: '6px', marginTop: '6px' }}>
-                        💡 {ans.explanation}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

@@ -1439,12 +1439,6 @@ export default function QuizListView({
                       <strong>{isRtl ? 'الإجابة الصحيحة:' : 'Correct Answer:'}</strong> {ans.correctAnswer}
                     </div>
                   )}
-
-                  {ans.explanation && (
-                    <div style={{ fontSize: '11.5px', color: 'var(--t2)', background: 'var(--surface)', padding: '8px', borderRadius: '6px', marginTop: '6px', borderLeft: '3px solid var(--a)' }}>
-                      💡 {ans.explanation}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
