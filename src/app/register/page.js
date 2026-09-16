@@ -353,9 +353,12 @@ export default function RegisterPage() {
       } catch (tErr) { }
 
       Tracking.identify(uid, { email, name, phone: formattedPhone });
-      if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
-        window.fbq('track', 'CompleteRegistration', { email, name });
-        window.fbq('track', 'Lead', { email, name });
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('upklick_show_fb_reward', 'true');
+        if (typeof window.fbq === 'function') {
+          window.fbq('track', 'CompleteRegistration', { email, name });
+          window.fbq('track', 'Lead', { email, name });
+        }
       }
       Tracking.track('CompleteRegistration', { email, name });
       Tracking.lead({ source: 'registration_page', name, email, phone: formattedPhone });

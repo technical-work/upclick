@@ -23,6 +23,7 @@ import LandingPagePreviewModal from '@/components/Modals/LandingPagePreviewModal
 import DigitalProductDetailModal from '@/components/Modals/DigitalProductDetailModal';
 import SocialConnectModal from '@/components/Modals/SocialConnectModal';
 import UpgradeToolModal from '@/components/Modals/UpgradeToolModal';
+import FacebookCommunityRewardModal from '@/components/Modals/FacebookCommunityRewardModal';
 
 // Sub-views
 import HomeView from '@/components/Views/HomeView';
@@ -63,6 +64,32 @@ function DashboardShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [verifyingStripe, setVerifyingStripe] = useState(false);
+  const [showFbRewardModal, setShowFbRewardModal] = useState(false);
+
+  // Trigger Facebook Community Reward Modal for new accounts or unclaimed users
+  useEffect(() => {
+    if (!userData || userData.role === 'admin' || userData.role === 'super_admin') return;
+
+    const isClaimed = userData.facebookRewardClaimed === true;
+    const isDismissed = typeof window !== 'undefined' && localStorage.getItem('upklick_fb_reward_dismissed') === 'true';
+    const forceShow = typeof window !== 'undefined' && sessionStorage.getItem('upklick_show_fb_reward') === 'true';
+
+    if (!isClaimed && (forceShow || !isDismissed)) {
+      const timer = setTimeout(() => {
+        setShowFbRewardModal(true);
+        if (forceShow && typeof window !== 'undefined') {
+          sessionStorage.removeItem('upklick_show_fb_reward');
+        }
+      }, 1400);
+      return () => clearTimeout(timer);
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    const handleOpenFbModal = () => setShowFbRewardModal(true);
+    window.addEventListener('open_fb_reward_modal', handleOpenFbModal);
+    return () => window.removeEventListener('open_fb_reward_modal', handleOpenFbModal);
+  }, []);
 
   const stripeStatus = searchParams?.get('stripe');
   const stripeKind = searchParams?.get('kind');
@@ -446,6 +473,10 @@ function DashboardShell() {
       <LandingPagePreviewModal />
       <DigitalProductDetailModal />
       <SocialConnectModal />
+      <FacebookCommunityRewardModal
+        isOpen={showFbRewardModal}
+        onClose={() => setShowFbRewardModal(false)}
+      />
 
       {lockedToolModal?.isOpen && (
         <UpgradeToolModal
