@@ -241,14 +241,24 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
     await loadSavedTemplatesFromLocalAndApi();
   }, [loadSavedTemplatesFromLocalAndApi]);
 
-  useEffect(() => {
-    loadSavedTemplatesFromLocalAndApi();
-  }, [loadSavedTemplatesFromLocalAndApi]);
+  const processScheduledDue = useCallback(async () => {
+    try {
+      const res = await adminFetch('/api/admin/outreach/campaigns/dispatch', { method: 'POST' });
+      if (res && (res.processedCount > 0 || res.dispatchedCount > 0)) {
+        await loadCore();
+      }
+    } catch {}
+  }, [loadCore]);
 
   useEffect(() => {
     if (!currentUser) return;
     loadCore().catch((err) => setError(err.message));
-  }, [currentUser, loadCore]);
+    processScheduledDue();
+    const timer = setInterval(() => {
+      processScheduledDue();
+    }, 20000);
+    return () => clearInterval(timer);
+  }, [currentUser, loadCore, processScheduledDue]);
 
   useEffect(() => {
     if (!info) return undefined;
@@ -531,14 +541,27 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
         </div>
 
         {/* Scheduled KPI */}
-        <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(245,158,11,0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Clock size={20} />
+        <div className="card" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(245,158,11,0.12)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text3)', fontWeight: 700 }}>{t('المجدولة قيد الانتظار', 'Scheduled Queued')}</div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text)' }}>{scheduledCount}</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text3)', fontWeight: 700 }}>{t('المجدولة قيد الانتظار', 'Scheduled Queued')}</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text)' }}>{scheduledCount}</div>
-          </div>
+          {scheduledCount > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={processScheduledDue}
+              style={{ fontSize: '11px', padding: '4px 8px', background: 'linear-gradient(135deg, #FF6B35 0%, #6C35FF 100%)', border: 'none', fontWeight: 800 }}
+              title={t('معالجة وإرسال الحملات المستحقة الآن', 'Process due scheduled campaigns now')}
+            >
+              ⚡ {t('معالجة الآن', 'Process')}
+            </button>
+          )}
         </div>
 
       </div>
@@ -1288,6 +1311,30 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
                     </td>
                     <td style={{ padding: '14px 16px' }}>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {(c.status === 'scheduled' || c.status === 'paused') && (
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            style={{ background: 'linear-gradient(135deg, #FF6B35 0%, #6C35FF 100%)', border: 'none', color: '#fff', fontSize: '11px', padding: '4px 9px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}
+                            disabled={busy === c.id}
+                            onClick={async () => {
+                              setBusy(c.id);
+                              try {
+                                await adminFetch(`/api/admin/outreach/campaigns/${c.id}`, { method: 'PATCH', body: { action: 'send_now' } });
+                                setInfo(t('جارٍ إرسال الحملة فوراً الآن 🚀', 'Campaign dispatch started 🚀'));
+                                await loadCore();
+                              } catch (err) {
+                                setError(err.message);
+                              } finally {
+                                setBusy('');
+                              }
+                            }}
+                            title={t('بدء إرسال الحملة الآن فوراً', 'Send campaign immediately now')}
+                          >
+                            <Send size={11} />
+                            <span>{busy === c.id ? t('جارٍ الإرسال…', 'Sending…') : t('إرسال الآن', 'Send Now')}</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"

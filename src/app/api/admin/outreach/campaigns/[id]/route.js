@@ -91,6 +91,22 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ success: true, campaign: serializeCampaign(updated) });
   }
 
+  if (action === 'send_now' || action === 'dispatch_now') {
+    if (['completed', 'cancelled'].includes(current.status)) {
+      return NextResponse.json({ error: 'Campaign already finished' }, { status: 400 });
+    }
+    const { claimCampaignLock, dispatchCampaignBatch } = await import('@/lib/outreach/dispatch');
+    const crypto = (await import('crypto')).default;
+    const lockId = crypto.randomBytes(8).toString('hex');
+    const claimed = await claimCampaignLock(auth.adminDb, id, lockId);
+    let batchResult = null;
+    if (claimed.claimed) {
+      batchResult = await dispatchCampaignBatch(auth.adminDb, id, { id, ...current, ...claimed.campaign });
+    }
+    const updated = await ref.get();
+    return NextResponse.json({ success: true, campaign: serializeCampaign(updated), batchResult });
+  }
+
   if (current.status !== 'draft') {
     return NextResponse.json({ error: 'Only drafts can be edited' }, { status: 400 });
   }
