@@ -449,25 +449,33 @@
 
     /* GET APP BUTTON & PREMIUM BILINGUAL MODAL */
     .btn-get-app {
-      background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(108, 53, 255, 0.2));
-      border: 1.5px solid rgba(255, 107, 53, 0.45);
+      background: linear-gradient(135deg, rgba(255, 107, 53, 0.16), rgba(108, 53, 255, 0.16));
+      border: 1px solid rgba(255, 107, 53, 0.4);
       color: #fff !important;
-      font-weight: 800;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 5px 12px;
+      height: 32px;
+      line-height: 1;
+      border-radius: 10px;
       cursor: pointer;
-      box-shadow: 0 4px 18px rgba(255, 107, 53, 0.2);
+      box-shadow: 0 2px 10px rgba(255, 107, 53, 0.15);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .btn-get-app:hover {
       background: linear-gradient(135deg, var(--or), var(--pu));
       border-color: transparent;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(108, 53, 255, 0.45);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px rgba(108, 53, 255, 0.35);
     }
 
     #get-app-modal {
@@ -2883,16 +2891,23 @@
       }
 
       .hdr-btns {
-        gap: 6px
+        gap: 6px;
       }
 
       .hdr-btns .btn-ghost:not(:last-child) {
-        display: none
+        display: none;
       }
 
       .hdr-btns .btn-prime {
-        padding: 8px 16px;
-        font-size: 13px
+        padding: 7px 14px;
+        font-size: 12.5px;
+      }
+
+      .btn-get-app {
+        font-size: 11px;
+        padding: 4px 9px;
+        height: 28px;
+        gap: 4px;
       }
 
       .mob-menu-btn {
@@ -3568,7 +3583,7 @@
       </nav>
       <div class="hdr-btns">
         <button type="button" class="btn btn-get-app" onclick="openGetAppModal()" data-t="landing-btn-getapp" title="تثبيت التطبيق">
-          📲 GET APP
+          📲 حمّل التطبيق
         </button>
         <button class="btn btn-ghost" onclick="toggleLang(this)"
           style="padding:7px 14px;font-size:13px" data-t="landing-btn-lang">عربي</button>
@@ -3590,7 +3605,7 @@
     <div class="mob-nav-body">
       <a href="javascript:void(0)" onclick="openGetAppModal(); toggleMobNav(false);" style="background: rgba(255, 107, 53, 0.08); border: 1px solid rgba(255, 107, 53, 0.2); border-radius: 12px; margin-bottom: 6px;">
         <span class="mob-nav-icon" style="background: var(--or-d); color: var(--or);">📲</span>
-        <span style="color: var(--or); font-weight: 700;" data-t="landing-btn-getapp-full">📲 GET APP (Install App)</span>
+        <span style="color: var(--or); font-weight: 700;" data-t="landing-btn-getapp-full">📲 حمّل التطبيق</span>
       </a>
       <a href="#preview" onclick="toggleMobNav(false)">
         <span class="mob-nav-icon">⌂</span>
@@ -3622,7 +3637,7 @@
       <button type="button" class="btn btn-get-app btn-xl" onclick="openGetAppModal(); toggleMobNav(false);"
         style="width: 100%; justify-content: center; margin-bottom: 10px;"
         data-t="landing-btn-getapp-full">
-        📲 GET APP (Install App)
+        📲 حمّل التطبيق
       </button>
       <a href="/register?cta=start_free" class="btn btn-prime btn-xl"
         style="width: 100%; justify-content: center; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);"
@@ -4814,7 +4829,7 @@
     // ── TRANSLATIONS DEFAULTS ──
     var EN_DEFAULTS = {
       'landing-btn-getapp': '📲 GET APP',
-      'landing-btn-getapp-full': '📲 GET APP (Install App)',
+      'landing-btn-getapp-full': '📲 GET APP',
       'landing-hero-cta-app': '📲 GET APP',
       'landing-getapp-title': 'Install UpKlick Web App',
       'landing-getapp-sub': 'Add UpKlick icon directly to your mobile home screen for 1-tap instant launch, full-screen view, and lightning speed.',
@@ -4823,7 +4838,7 @@
       'landing-getapp-ios-s3': 'Tap <b>"Add"</b> at the top right — Done! 🎉',
       'landing-getapp-android-btn': '📲 Install App on Phone Now',
       'landing-getapp-desktop-msg': 'On Desktop: Click the <b>Install (⊞)</b> icon in your browser address bar.',
-      'landing-getapp-pill': '📲 Get UpKlick App — Install to Home Screen',
+      'landing-getapp-pill': '📲 Get UpKlick App',
       'landing-nav-dashboard': 'Dashboard',
       'landing-nav-tools': 'Tools',
       'landing-nav-forwho': 'For Who',
@@ -5024,8 +5039,8 @@
     };
 
     var AR_DEFAULTS = {
-      'landing-btn-getapp': '📲 حمّل التطبيق (GET APP)',
-      'landing-btn-getapp-full': '📲 حمّل التطبيق (GET APP)',
+      'landing-btn-getapp': '📲 حمّل التطبيق',
+      'landing-btn-getapp-full': '📲 حمّل التطبيق',
       'landing-hero-cta-app': '📲 حمّل التطبيق',
       'landing-getapp-title': 'تثبيت تطبيق UpKlick على هاتفك',
       'landing-getapp-sub': 'أضف أيقونة تطبيق UpKlick إلى شاشة هاتفك الرئيسية للوصول بلمسة واحدة وشاشة كاملة وسرعة فائقة.',
@@ -5034,7 +5049,7 @@
       'landing-getapp-ios-s3': 'اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉',
       'landing-getapp-android-btn': '📲 تثبيت التطبيق على هاتفك الآن',
       'landing-getapp-desktop-msg': 'على متصفح الكمبيوتر: انقر على أيقونة <b>التثبيت (⊞)</b> في شريط العنوان بالأعلى.',
-      'landing-getapp-pill': '📲 حمّل تطبيق UpKlick — ثبّته على شاشة هاتفك',
+      'landing-getapp-pill': '📲 حمّل تطبيق UpKlick',
       'landing-nav-dashboard': 'الرئيسية',
       'landing-nav-tools': 'الأدوات',
       'landing-nav-forwho': 'لمن',
@@ -5777,8 +5792,8 @@
   </script>
   <!-- Floating Mobile Install Pill -->
   <div id="mobile-install-pill" onclick="openGetAppModal()">
-    <span style="font-size: 20px;">📲</span>
-    <span style="font-size: 13px; font-weight: 700; color: #fff;" data-t="landing-getapp-pill">حمّل تطبيق UpKlick على هاتفك</span>
+    <span style="font-size: 18px;">📲</span>
+    <span style="font-size: 12px; font-weight: 700; color: #fff;" data-t="landing-getapp-pill">📲 حمّل تطبيق UpKlick</span>
   </div>
 
   <!-- ══════════════ GET APP MODAL (BILINGUAL & PREMIUM) ══════════════ -->
@@ -5966,6 +5981,201 @@
   </div>
 
   <script>
+    // ══════════════ GET APP MODAL & PWA SCRIPT ══════════════
+    var deferredPwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPwaPrompt = e;
+      var triggerBtn = document.getElementById('pwa-install-trigger-btn');
+      if (triggerBtn) {
+        triggerBtn.classList.add('ready');
+      }
+    });
+
+    var modalTranslations = {
+      ar: {
+        title: 'تثبيت تطبيق UpKlick على هاتفك',
+        sub: 'أضف أيقونة تطبيق UpKlick إلى شاشة هاتفك الرئيسية للوصول بلمسة واحدة وشاشة كاملة وسرعة فائقة.',
+        rating: '4.9 / 5',
+        reviews: '(+2,400 تقييم)',
+        size: '< 1 ميجابايت',
+        free: 'مجاني 100%',
+        tabIos: 'iPhone (iOS)',
+        tabAndroid: 'Android',
+        tabDesktop: 'الكمبيوتر (Desktop)',
+        iosNote: 'ملاحظة: يتطلب التثبيت على الآيفون فتح الموقع في متصفح <b>Safari</b>.',
+        iosS1: 'اضغط على زر <b>المشاركة (Share ⎋)</b> في شريط Safari السفلي.',
+        iosS2: 'مرر للأسفل في القائمة واختر <b>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen ⊞)</b>.',
+        iosS3: 'اضغط على <b>"إضافة (Add)"</b> في الزاوية العلوية — مبروك! 🎉',
+        androidBtn: 'تثبيت التطبيق على هاتفك الآن',
+        orManual: 'أو بخطوات يدوية سهلة',
+        androidS1: 'افتح قائمة خيارات المتصفح <b>(⋮ الثلاث نقاط)</b> في الزاوية العلوية.',
+        androidS2: 'اختر <b>"تثبيت التطبيق" (Install app)</b> أو <b>"إضافة إلى الشاشة الرئيسية"</b>.',
+        androidS3: 'اضغط <b>"تثبيت"</b> واستمتع بالتطبيق بشاشة كاملة وسرعة فائقة! 🎉',
+        desktopNote: 'يعمل على متصفحات Chrome, Edge, Brave و Safari على Windows و Mac.',
+        desktopS1: 'انقر على أيقونة <b>التثبيت (⊞ أو 📥)</b> في شريط العنوان أعلى المتصفح.',
+        desktopS2: 'اضغط على <b>"تثبيت (Install)"</b> ليفتح UpKlick كتطبيق سطح مكتب مستقل.',
+        feat1: 'شاشة كاملة',
+        feat2: 'لمسة واحدة',
+        feat3: 'خفيف وسريع',
+        feat4: 'سحابي وآمن',
+        dismiss: 'أو تابع التصفح على الويب ←'
+      },
+      en: {
+        title: 'Install UpKlick Web App',
+        sub: 'Add UpKlick icon directly to your mobile home screen for 1-tap instant launch, full-screen view, and lightning speed.',
+        rating: '4.9 / 5',
+        reviews: '(+2,400 Reviews)',
+        size: '< 1 MB',
+        free: '100% Free',
+        tabIos: 'iPhone (iOS)',
+        tabAndroid: 'Android',
+        tabDesktop: 'Desktop PC / Mac',
+        iosNote: 'Note: On iPhone, please open this site in <b>Safari browser</b>.',
+        iosS1: 'Tap the <b>Share icon (⎋)</b> at the bottom of Safari.',
+        iosS2: 'Scroll down and select <b>"Add to Home Screen" (⊞)</b>.',
+        iosS3: 'Tap <b>"Add"</b> at the top right — Done! 🎉',
+        androidBtn: 'Install App on Phone Now',
+        orManual: 'Or with easy manual steps',
+        androidS1: 'Open browser options menu <b>(⋮ 3 dots)</b> at top right.',
+        androidS2: 'Choose <b>"Install app"</b> or <b>"Add to Home screen"</b>.',
+        androidS3: 'Tap <b>"Install"</b> and enjoy the full-screen app! 🎉',
+        desktopNote: 'Compatible with Chrome, Edge, Brave & Safari on Windows & Mac.',
+        desktopS1: 'Click the <b>Install (⊞ or 📥)</b> icon in your browser address bar.',
+        desktopS2: 'Click <b>"Install"</b> to run UpKlick as a standalone desktop app.',
+        feat1: 'Full Screen',
+        feat2: '1-Tap Launch',
+        feat3: 'Fast & Light',
+        feat4: 'Cloud & Safe',
+        dismiss: 'Or continue browsing on web ←'
+      }
+    };
+
+    var currentModalLang = 'ar';
+
+    function openGetAppModal(forcedTab) {
+      var modal = document.getElementById('get-app-modal');
+      if (!modal) return;
+
+      // Sync modal language with global _lang
+      currentModalLang = (typeof _lang !== 'undefined' && _lang === 'en') ? 'en' : 'ar';
+      updateModalTexts(currentModalLang);
+
+      // Auto detect device if not specified
+      if (!forcedTab) {
+        var ua = navigator.userAgent || '';
+        if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+          switchModalTab('ios');
+        } else if (/Android/.test(ua)) {
+          switchModalTab('android');
+        } else {
+          switchModalTab('desktop');
+        }
+      } else {
+        switchModalTab(forcedTab);
+      }
+
+      modal.style.display = 'flex';
+      setTimeout(function () {
+        modal.classList.add('active');
+      }, 10);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeGetAppModal() {
+      var modal = document.getElementById('get-app-modal');
+      if (!modal) return;
+      modal.classList.remove('active');
+      setTimeout(function () {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }, 300);
+    }
+
+    function switchModalLang(lang) {
+      currentModalLang = lang;
+      updateModalTexts(lang);
+    }
+
+    function updateModalTexts(lang) {
+      var data = modalTranslations[lang] || modalTranslations.ar;
+      
+      var btnAr = document.getElementById('modal-lang-ar');
+      var btnEn = document.getElementById('modal-lang-en');
+      if (btnAr && btnEn) {
+        btnAr.classList.toggle('active', lang === 'ar');
+        btnEn.classList.toggle('active', lang === 'en');
+      }
+
+      var setEl = function (id, html) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+      };
+
+      setEl('modal-app-title', data.title);
+      setEl('modal-app-sub', data.sub);
+      setEl('modal-spec-rating', data.rating);
+      setEl('modal-spec-reviews', data.reviews);
+      setEl('modal-spec-size', data.size);
+      setEl('modal-spec-free', data.free);
+      setEl('modal-tab-ios-lbl', data.tabIos);
+      setEl('modal-tab-android-lbl', data.tabAndroid);
+      setEl('modal-tab-desktop-lbl', data.tabDesktop);
+      setEl('modal-ios-note', data.iosNote);
+      setEl('modal-ios-s1', data.iosS1);
+      setEl('modal-ios-s2', data.iosS2);
+      setEl('modal-ios-s3', data.iosS3);
+      setEl('modal-android-install-btn', data.androidBtn);
+      setEl('modal-or-manual', data.orManual);
+      setEl('modal-android-s1', data.androidS1);
+      setEl('modal-android-s2', data.androidS2);
+      setEl('modal-android-s3', data.androidS3);
+      setEl('modal-desktop-note', data.desktopNote);
+      setEl('modal-desktop-s1', data.desktopS1);
+      setEl('modal-desktop-s2', data.desktopS2);
+      setEl('modal-feat-1', data.feat1);
+      setEl('modal-feat-2', data.feat2);
+      setEl('modal-feat-3', data.feat3);
+      setEl('modal-feat-4', data.feat4);
+      setEl('modal-dismiss-text', data.dismiss);
+    }
+
+    function switchModalTab(tabKey) {
+      ['ios', 'android', 'desktop'].forEach(function (k) {
+        var panel = document.getElementById('get-app-' + k + '-panel');
+        var btn = document.getElementById('tab-btn-' + k);
+        if (panel) panel.style.display = (k === tabKey) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', k === tabKey);
+      });
+    }
+
+    function triggerPWAInstall() {
+      if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        deferredPwaPrompt.userChoice.then(function (choice) {
+          if (choice.outcome === 'accepted') {
+            closeGetAppModal();
+          }
+          deferredPwaPrompt = null;
+        });
+      } else {
+        var step1 = document.getElementById('modal-android-s1');
+        if (step1) {
+          step1.parentElement.style.borderColor = 'var(--or)';
+          setTimeout(function() {
+            step1.parentElement.style.borderColor = '';
+          }, 2000);
+        }
+      }
+    }
+
+    // Escape Key to close modal
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        closeGetAppModal();
+      }
+    });
+
     // PWA & Service Worker Registration
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
       window.addEventListener('load', function() {
