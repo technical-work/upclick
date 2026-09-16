@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, Sliders, Trash2 } from 'lucide-react';
+import { Plus, Sliders, Trash2, CheckCircle2, Star } from 'lucide-react';
 import { getElementDef } from '@/lib/builder/elementRegistry';
 import { htmlLooksFullscreen } from '@/lib/builder/customHtml';
 import { getBuilderString, getElementI18nLabel, getFieldI18nLabel, getFieldOptionLabel } from '@/lib/builder/builderTranslations';
@@ -112,7 +112,7 @@ function ListEditor({ value, onChange, lang = 'en' }) {
   );
 }
 
-function OptionsManager({ value, onChange, lang = 'en' }) {
+function OptionsManager({ value, onChange, lang = 'en', correctAnswer = '', onSelectCorrectAnswer }) {
   const isRtl = lang === 'ar';
   const [bulkInput, setBulkInput] = React.useState('');
   const [showBulk, setShowBulk] = React.useState(false);
@@ -129,9 +129,13 @@ function OptionsManager({ value, onChange, lang = 'en' }) {
     : (isRtl ? ['الخيار 1', 'الخيار 2', 'الخيار 3'] : ['Option 1', 'Option 2', 'Option 3']);
 
   const handleUpdateOption = (index, newVal) => {
+    const oldVal = options[index];
     const updated = [...options];
     updated[index] = newVal;
     onChange(updated);
+    if (correctAnswer && correctAnswer === oldVal && onSelectCorrectAnswer) {
+      onSelectCorrectAnswer(newVal);
+    }
   };
 
   const handleAddOption = () => {
@@ -141,12 +145,20 @@ function OptionsManager({ value, onChange, lang = 'en' }) {
   };
 
   const handleRemoveOption = (indexToRemove) => {
+    const removedVal = options[indexToRemove];
     if (options.length <= 1) {
-      onChange(isRtl ? ['الخيار 1'] : ['Option 1']);
+      const def = isRtl ? ['الخيار 1'] : ['Option 1'];
+      onChange(def);
+      if (correctAnswer === removedVal && onSelectCorrectAnswer) {
+        onSelectCorrectAnswer(def[0]);
+      }
       return;
     }
     const updated = options.filter((_, idx) => idx !== indexToRemove);
     onChange(updated);
+    if (correctAnswer === removedVal && onSelectCorrectAnswer) {
+      onSelectCorrectAnswer(updated[0] || '');
+    }
   };
 
   const handleBulkAdd = () => {
@@ -156,6 +168,15 @@ function OptionsManager({ value, onChange, lang = 'en' }) {
       onChange([...options, ...parts]);
       setBulkInput('');
       setShowBulk(false);
+    }
+  };
+
+  const handleToggleCorrect = (opt) => {
+    if (!onSelectCorrectAnswer) return;
+    if (correctAnswer === opt) {
+      onSelectCorrectAnswer('');
+    } else {
+      onSelectCorrectAnswer(opt);
     }
   };
 
@@ -220,62 +241,117 @@ function OptionsManager({ value, onChange, lang = 'en' }) {
 
       {/* Editable Option Rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
-        {options.map((opt, optIdx) => (
-          <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span
+        {options.map((opt, optIdx) => {
+          const isCorrect = Boolean(correctAnswer && opt === correctAnswer);
+          return (
+            <div
+              key={optIdx}
               style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '6px',
-                background: '#eff6ff',
-                color: '#2563eb',
-                fontSize: '11px',
-                fontWeight: '800',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                border: '1px solid #dbeafe'
+                gap: '6px',
+                padding: '4px 6px',
+                borderRadius: '8px',
+                background: isCorrect ? '#f0fdf4' : 'transparent',
+                border: isCorrect ? '1.5px solid #10b981' : '1px solid transparent',
+                transition: 'all 0.15s ease'
               }}
             >
-              {optIdx + 1}
-            </span>
-            <input
-              type="text"
-              className="inp"
-              value={opt}
-              onChange={(e) => handleUpdateOption(optIdx, e.target.value)}
-              placeholder={isRtl ? `الخيار ${optIdx + 1}...` : `Option ${optIdx + 1}...`}
-              style={{
-                flex: 1,
-                fontSize: '12px',
-                padding: '6px 10px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px'
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveOption(optIdx)}
-              title={isRtl ? 'حذف هذا الخيار' : 'Delete Option'}
-              style={{
-                width: '28px',
-                height: '28px',
-                border: '1px solid #fee2e2',
-                background: '#fef2f2',
-                color: '#dc2626',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                flexShrink: 0
-              }}
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
-        ))}
+              <span
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '6px',
+                  background: isCorrect ? '#10b981' : '#eff6ff',
+                  color: isCorrect ? '#ffffff' : '#2563eb',
+                  fontSize: '11px',
+                  fontWeight: '800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  border: isCorrect ? '1px solid #059669' : '1px solid #dbeafe'
+                }}
+              >
+                {optIdx + 1}
+              </span>
+              <input
+                type="text"
+                className="inp"
+                value={opt}
+                onChange={(e) => handleUpdateOption(optIdx, e.target.value)}
+                placeholder={isRtl ? `الخيار ${optIdx + 1}...` : `Option ${optIdx + 1}...`}
+                style={{
+                  flex: 1,
+                  fontSize: '12px',
+                  padding: '6px 10px',
+                  border: isCorrect ? '1px solid #86efac' : '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  fontWeight: isCorrect ? '700' : 'normal',
+                  color: isCorrect ? '#065f46' : '#0f172a',
+                  borderRadius: '6px'
+                }}
+              />
+
+              {/* Set as Correct Answer Button */}
+              {onSelectCorrectAnswer && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleCorrect(opt)}
+                  title={isCorrect ? (isRtl ? 'إلغاء تحديد هذه كإجابة صحيحة' : 'Unmark correct answer') : (isRtl ? 'تعيين هذا الخيار كإجابة صحيحة لهذا السؤال' : 'Mark this option as correct answer')}
+                  style={{
+                    border: isCorrect ? '1px solid #10b981' : '1px dashed #94a3b8',
+                    background: isCorrect ? '#ecfdf5' : '#f8fafc',
+                    color: isCorrect ? '#047857' : '#475569',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    fontSize: '11px',
+                    fontWeight: isCorrect ? '800' : '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {isCorrect ? (
+                    <>
+                      <CheckCircle2 size={13} style={{ color: '#10b981' }} />
+                      <span>{isRtl ? '✅ الإجابة الصحيحة' : '✅ Correct'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Star size={12} style={{ color: '#94a3b8' }} />
+                      <span>{isRtl ? '⭐ تعيين كصحيح' : '⭐ Set Correct'}</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleRemoveOption(optIdx)}
+                title={isRtl ? 'حذف هذا الخيار' : 'Delete Option'}
+                style={{
+                  width: '28px',
+                  height: '28px',
+                  border: '1px solid #fee2e2',
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* Add New Option Button */}
@@ -302,6 +378,66 @@ function OptionsManager({ value, onChange, lang = 'en' }) {
         <Plus size={13} strokeWidth={3} />
         {isRtl ? 'إضافة خيار جديد إلى القائمة' : 'Add another option to list'}
       </button>
+
+      {/* Dedicated Target Correct Answer Selector Dropdown */}
+      {onSelectCorrectAnswer && (
+        <div
+          style={{
+            marginTop: '10px',
+            padding: '10px 12px',
+            background: correctAnswer ? '#f0fdf4' : '#f8fafc',
+            border: `1.5px solid ${correctAnswer ? '#86efac' : '#e2e8f0'}`,
+            borderRadius: '9px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span style={{ fontSize: '11.5px', fontWeight: '800', color: correctAnswer ? '#166534' : '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🎯 {isRtl ? 'الإجابة النموذجية الصحيحة:' : 'Target Correct Answer:'}
+            </span>
+            {correctAnswer ? (
+              <span style={{ fontSize: '10.5px', background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', padding: '1px 7px', borderRadius: '999px', fontWeight: '800' }}>
+                {isRtl ? '✅ تم التعيين' : '✅ Selected'}
+              </span>
+            ) : (
+              <span style={{ fontSize: '10.5px', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '1px 7px', borderRadius: '999px', fontWeight: '700' }}>
+                {isRtl ? '⚠️ لم تُحدد بعد' : '⚠️ Not Set'}
+              </span>
+            )}
+          </div>
+          <select
+            className="inp"
+            value={correctAnswer || ''}
+            onChange={(e) => onSelectCorrectAnswer(e.target.value)}
+            style={{
+              width: '100%',
+              fontSize: '12px',
+              padding: '7px 10px',
+              background: '#ffffff',
+              borderColor: correctAnswer ? '#10b981' : '#cbd5e1',
+              fontWeight: correctAnswer ? '700' : 'normal',
+              color: correctAnswer ? '#065f46' : '#1e293b',
+              borderRadius: '6px'
+            }}
+          >
+            <option value="">{isRtl ? '-- اضغط هنا لاختيار الإجابة الصحيحة من القائمة --' : '-- Choose the correct answer from list --'}</option>
+            {options.map((opt, oIdx) => (
+              <option key={oIdx} value={opt}>
+                {oIdx + 1}. {opt} {opt === correctAnswer ? (isRtl ? '  ✅ [الإجابة الصحيحة]' : '  ✅ [Correct Answer]') : ''}
+              </option>
+            ))}
+          </select>
+          {correctAnswer ? (
+            <div style={{ marginTop: '6px', fontSize: '11px', color: '#047857', fontWeight: '600' }}>
+              ✨ {isRtl ? `تم اعتماد الخيار (${correctAnswer}) كإجابة صحيحة يحصل الطالب/المختبر على النقاط عند اختياره.` : `Option (${correctAnswer}) is marked as the correct answer for automated grading.`}
+            </div>
+          ) : (
+            <div style={{ marginTop: '6px', fontSize: '10.5px', color: '#64748b' }}>
+              💡 {isRtl ? 'اضغط على زر "⭐ تعيين كصحيح" بجانب الخيار المطلوب بالأعلى أو اختره مباشرة من هذه القائمة.' : 'Click "⭐ Set Correct" beside the desired option above or select it directly from this dropdown.'}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ marginTop: '8px', fontSize: '10.5px', color: '#64748b', lineHeight: 1.4 }}>
         💡 {isRtl ? 'اكتب اسم الخيار مباشرة في الحقل ليظهر فوراً في القائمة المنسدلة في صفحتك.' : 'Type your choices directly above. Changes appear live on your form.'}
@@ -341,6 +477,11 @@ function ItemsEditor({ value, itemFields, onChange, lang = 'en' }) {
                 <div key={field.key} style={{ marginBottom: 10 }}>
                   <OptionsManager
                     value={item?.[field.key] || (isRtl ? ['الخيار 1', 'الخيار 2', 'الخيار 3'] : ['Option 1', 'Option 2', 'Option 3'])}
+                    correctAnswer={item?.correctAnswer || ''}
+                    onSelectCorrectAnswer={(ans) => {
+                      const copy = items.map((row, idx) => idx === i ? { ...row, correctAnswer: ans } : row);
+                      onChange(copy);
+                    }}
                     onChange={(next) => {
                       const copy = items.map((row, idx) => idx === i ? { ...row, [field.key]: next } : row);
                       onChange(copy);
@@ -349,6 +490,11 @@ function ItemsEditor({ value, itemFields, onChange, lang = 'en' }) {
                   />
                 </div>
               );
+            }
+
+            if (field.key === 'correctAnswer') {
+              const hasOptions = item?.type === 'dropdown' || item?.type === 'select' || item?.type === 'radio' || item?.type === 'checkbox';
+              if (hasOptions) return null;
             }
 
             return (
@@ -389,7 +535,10 @@ function ItemsEditor({ value, itemFields, onChange, lang = 'en' }) {
             placeholder: '',
             width: '100%',
             required: false,
-            options: isRtl ? ['الخيار 1', 'الخيار 2', 'الخيار 3'] : ['Option 1', 'Option 2', 'Option 3']
+            options: isRtl ? ['الخيار 1', 'الخيار 2', 'الخيار 3'] : ['Option 1', 'Option 2', 'Option 3'],
+            correctAnswer: '',
+            points: 10,
+            explanation: ''
           };
           (itemFields || []).forEach((field) => {
             if (blank[field.key] === undefined) {

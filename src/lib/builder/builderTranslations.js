@@ -327,7 +327,13 @@ export const FIELD_LABELS_I18N = {
   'Required': { ar: 'حقل إلزامي', en: 'Required' },
   'Label': { ar: 'تسمية الحقل', en: 'Label' },
   'Options / Choices': { ar: 'خيارات القائمة / الاختيارات', en: 'Options / Choices' },
-  'options': { ar: 'خيارات القائمة', en: 'Options' }
+  'options': { ar: 'خيارات القائمة', en: 'Options' },
+  'Correct Answer': { ar: 'الإجابة النموذجية الصحيحة', en: 'Correct Answer' },
+  'correctAnswer': { ar: 'الإجابة النموذجية الصحيحة', en: 'Correct Answer' },
+  'Points': { ar: 'درجة / نقاط السؤال', en: 'Points' },
+  'points': { ar: 'درجة / نقاط السؤال', en: 'Points' },
+  'Explanation': { ar: 'توضيح وشرح الإجابة', en: 'Answer Explanation' },
+  'explanation': { ar: 'توضيح وشرح الإجابة', en: 'Answer Explanation' }
 };
 
 export function getBuilderString(key, lang = 'en') {

@@ -205,6 +205,9 @@ export const ELEMENT_REGISTRY = {
         { key: 'placeholder', label: 'Placeholder', type: 'text' },
         { key: 'type', label: 'Field Type', type: 'select', options: ['text', 'first_name', 'last_name', 'full_name', 'email', 'phone', 'number', 'textarea', 'date_of_birth', 'dropdown', 'radio', 'checkbox', 'consent_checkbox', 'address', 'city', 'state', 'postal_code', 'country', 'url'] },
         { key: 'options', label: 'Options / Choices', type: 'options', placeholder: 'Option 1, Option 2, Option 3' },
+        { key: 'correctAnswer', label: 'Correct Answer', type: 'text', placeholder: 'Select or type correct answer...' },
+        { key: 'points', label: 'Points', type: 'number', placeholder: '10' },
+        { key: 'explanation', label: 'Explanation', type: 'textarea', placeholder: 'Explanation displayed after answering...' },
         { key: 'width', label: 'Width', type: 'select', options: ['100%', '50%'] },
         { key: 'required', label: 'Required', type: 'toggle' }
       ]}
@@ -1432,7 +1435,10 @@ export function normalizeFormFields(fields) {
         placeholder: field.placeholder !== undefined ? field.placeholder : (field.label || ''),
         required: Boolean(field.required),
         width: field.width || '100%',
-        options: field.options || ['Option 1', 'Option 2', 'Option 3']
+        options: field.options || ['Option 1', 'Option 2', 'Option 3'],
+        correctAnswer: field.correctAnswer !== undefined ? field.correctAnswer : '',
+        points: field.points !== undefined ? field.points : 10,
+        explanation: field.explanation || ''
       };
     });
 }
