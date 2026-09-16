@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import LiveSiteView from '@/components/sites/LiveSiteView';
+import PublicFormRunner from '@/components/sites/forms/PublicFormRunner';
 
 function PublicSiteContent() {
   const params = useParams();
@@ -15,6 +16,14 @@ function PublicSiteContent() {
   const path = segments.length ? `/${segments.join('/')}` : '/';
   const productId = searchParams?.get('productId') || '';
   const isStore = funnelId.startsWith('store_');
+
+  // Handle /s/form/[formId] or /s/form_[id]
+  if (rawFunnelId === 'form' && segments[0]) {
+    return <PublicFormRunner formId={segments[0]} />;
+  }
+  if (funnelId.startsWith('form_')) {
+    return <PublicFormRunner formId={funnelId} />;
+  }
 
   return (
     <LiveSiteView

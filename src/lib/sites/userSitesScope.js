@@ -3,6 +3,7 @@ export const LEGACY_STORES_KEY = 'upklick_stores_v1';
 export const LEGACY_WEBSITES_KEY = 'upklick_websites_v1';
 export const LEGACY_WEBINARS_KEY = 'upklick_webinars_v1';
 export const LEGACY_BLOGS_KEY = 'upklick_blogs_v1';
+export const LEGACY_FORMS_KEY = 'upklick_forms_v1';
 
 export function funnelsStorageKey(uid) {
   return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
@@ -22,6 +23,10 @@ export function webinarsStorageKey(uid) {
 
 export function blogsStorageKey(uid) {
   return uid ? `${LEGACY_BLOGS_KEY}_${uid}` : LEGACY_BLOGS_KEY;
+}
+
+export function formsStorageKey(uid) {
+  return uid ? `${LEGACY_FORMS_KEY}_${uid}` : LEGACY_FORMS_KEY;
 }
 
 export function stampSiteOwner(item, uid) {
@@ -100,6 +105,7 @@ export function clearLegacySiteKeys() {
   localStorage.removeItem(LEGACY_WEBSITES_KEY);
   localStorage.removeItem(LEGACY_WEBINARS_KEY);
   localStorage.removeItem(LEGACY_BLOGS_KEY);
+  localStorage.removeItem(LEGACY_FORMS_KEY);
 }
 
 export function findLocalStoreById(storeId) {
@@ -156,6 +162,21 @@ export function findLocalBlogById(blogId) {
       const key = localStorage.key(i);
       if (!key || !key.startsWith(LEGACY_BLOGS_KEY)) continue;
       const found = readJsonList(key).find((b) => b?.id === blogId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function findLocalFormById(formId) {
+  if (!formId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FORMS_KEY)) continue;
+      const found = readJsonList(key).find((b) => b?.id === formId);
       if (found) return found;
     }
   } catch {

@@ -22,6 +22,7 @@ import {
   websitesStorageKey,
   webinarsStorageKey,
   blogsStorageKey,
+  formsStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
 import WebsiteListView from '../sites/websites/WebsiteListView';
@@ -46,6 +47,12 @@ import CreateBlogSiteView from '../sites/blogs/CreateBlogSiteView';
 import BlogSiteDetailView from '../sites/blogs/BlogSiteDetailView';
 import BlogPostEditor from '../sites/blogs/BlogPostEditor';
 import LiveBlogReaderModal from '../sites/blogs/LiveBlogReaderModal';
+import FormListView from '../sites/forms/FormListView';
+import FormBuilderView from '../sites/forms/FormBuilderView';
+import CreateFormModal from '../sites/forms/CreateFormModal';
+import FormIntegrateModal from '../sites/forms/FormIntegrateModal';
+import LiveFormModal from '../sites/forms/LiveFormModal';
+import { createBlankForm, createFormFromTemplate } from '../sites/forms/formTemplates';
 import { 
   Plus, 
   Search, 
@@ -86,6 +93,7 @@ export default function SitesView() {
   const websitePersistTimer = useRef(null);
   const webinarPersistTimer = useRef(null);
   const blogPersistTimer = useRef(null);
+  const formPersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
   const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
@@ -94,10 +102,15 @@ export default function SitesView() {
   const [selectedWebsite, setSelectedWebsite] = useState(null);
   const [selectedWebinar, setSelectedWebinar] = useState(null);
   const [selectedBlogSite, setSelectedBlogSite] = useState(null);
+  const [selectedForm, setSelectedForm] = useState(null);
   const [isCreatingBlogSite, setIsCreatingBlogSite] = useState(false);
   const [isEditingBlogSite, setIsEditingBlogSite] = useState(false);
   const [activeBlogPost, setActiveBlogPost] = useState(null);
   const [previewingPost, setPreviewingPost] = useState(null);
+  const [isCreateFormModalOpen, setIsCreateFormModalOpen] = useState(false);
+  const [isIntegrateFormModalOpen, setIsIntegrateFormModalOpen] = useState(false);
+  const [integratingForm, setIntegratingForm] = useState(null);
+  const [previewingLiveForm, setPreviewingLiveForm] = useState(null);
   const [detailTab, setDetailTab] = useState('steps');
   const [stepOverviewTab, setStepOverviewTab] = useState('overview');
   
@@ -135,12 +148,13 @@ export default function SitesView() {
   // Active step index inside detail builder
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
-  // Load funnels / stores / websites / webinars / blogs for the signed-in user only
+  // Load funnels / stores / websites / webinars / blogs / forms for the signed-in user only
   const [funnels, setFunnels] = useState([]);
   const [stores, setStores] = useState([]);
   const [websites, setWebsites] = useState([]);
   const [webinars, setWebinars] = useState([]);
   const [blogs, setBlogs] = useState([]);
+  const [forms, setForms] = useState([]);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -158,11 +172,13 @@ export default function SitesView() {
       setWebsites([]);
       setWebinars([]);
       setBlogs([]);
+      setForms([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
       setSelectedWebinar(null);
       setSelectedBlogSite(null);
+      setSelectedForm(null);
       setActiveBlogPost(null);
       loadedAccountUid.current = '';
       return;
@@ -175,6 +191,7 @@ export default function SitesView() {
       setSelectedWebsite(null);
       setSelectedWebinar(null);
       setSelectedBlogSite(null);
+      setSelectedForm(null);
       setActiveBlogPost(null);
       loadedAccountUid.current = accountUid;
     }
@@ -185,6 +202,7 @@ export default function SitesView() {
     const scopedWebsites = sitesForUser(readJsonList(websitesStorageKey(accountUid)), accountUid);
     const scopedWebinars = sitesForUser(readJsonList(webinarsStorageKey(accountUid)), accountUid);
     const scopedBlogs = sitesForUser(readJsonList(blogsStorageKey(accountUid)), accountUid);
+    const scopedForms = sitesForUser(readJsonList(formsStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
@@ -199,6 +217,9 @@ export default function SitesView() {
       : [];
     const gcBlogs = gcBelongsToAccount
       ? sitesForUser(GC?.upclickBlogs?.blogs, accountUid)
+      : [];
+    const gcForms = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickForms?.forms, accountUid)
       : [];
 
     // Sanitizers to clear any legacy demo stats from stored funnels, stores, webinars
@@ -289,6 +310,7 @@ export default function SitesView() {
     const nextWebsites = dedupeSitesList((gcWebsites.length ? gcWebsites : scopedWebsites).filter(w => !isAutoSeededWebsite(w)), 'website');
     const nextWebinars = dedupeSitesList((gcWebinars.length ? gcWebinars : scopedWebinars).filter(w => !isAutoSeededWebinar(w)).map(sanitizeWebinar), 'webinar');
     const nextBlogs = dedupeSitesList(gcBlogs.length ? gcBlogs : scopedBlogs, 'blogsite');
+    const nextForms = dedupeSitesList(gcForms.length ? gcForms : scopedForms, 'form');
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
@@ -320,7 +342,30 @@ export default function SitesView() {
       if (!prevMine.length && nextBlogs.length) return nextBlogs;
       return nextBlogs;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, isRtl]);
+    setForms((prev) => {
+      if (userChanged) return nextForms;
+      const prevMine = sitesForUser(prev, accountUid);
+      if (!prevMine.length && nextForms.length) return nextForms;
+      return nextForms;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, GC?.upclickForms?.forms, isRtl]);
+
+  const saveForms = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setForms(mine);
+    writeJsonList(formsStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (formPersistTimer.current) clearTimeout(formPersistTimer.current);
+    formPersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickForms: {
+          forms: mine
+        }
+      });
+    }, 700);
+  };
 
   const saveFunnels = (updatedList) => {
     if (!accountUid) return;
@@ -441,6 +486,86 @@ export default function SitesView() {
     const match = webinars.find((w) => w.id === selectedWebinar.id);
     if (match && match !== selectedWebinar) setSelectedWebinar(match);
   }, [webinars, selectedWebinar]);
+
+  // Sync selectedForm
+  useEffect(() => {
+    if (!selectedForm) return;
+    const match = forms.find((f) => f.id === selectedForm.id);
+    if (match && match !== selectedForm) setSelectedForm(match);
+  }, [forms, selectedForm]);
+
+  // Form Management Handlers
+  const handleCreateFormBlank = (name) => {
+    const author = user?.displayName || user?.email?.split('@')[0] || 'User';
+    const newForm = createBlankForm(name, accountUid, author);
+    const owned = stampSiteOwner(newForm, accountUid);
+    const nextForms = [owned, ...forms];
+    saveForms(nextForms);
+    setSelectedForm(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء النموذج بنجاح' : 'Form created successfully');
+  };
+
+  const handleCreateFormFromTemplate = (template, customName) => {
+    const author = user?.displayName || user?.email?.split('@')[0] || 'User';
+    const newForm = createFormFromTemplate(template, customName, accountUid, author);
+    const owned = stampSiteOwner(newForm, accountUid);
+    const nextForms = [owned, ...forms];
+    saveForms(nextForms);
+    setSelectedForm(owned);
+    if (showToast) showToast(isRtl ? 'تم إنشاء النموذج من القالب بنجاح' : 'Form created from template');
+  };
+
+  const handleUpdateForm = (updatedForm) => {
+    const owned = stampSiteOwner(updatedForm, accountUid);
+    const nextForms = forms.map((f) => (f.id === owned.id ? owned : f));
+    saveForms(nextForms);
+    setSelectedForm(owned);
+  };
+
+  const handleDuplicateForm = (formToDup) => {
+    const dup = {
+      ...JSON.parse(JSON.stringify(formToDup)),
+      id: `form_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: `${formToDup.name} (Copy)`,
+      lastUpdated: new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      submissions: [],
+      analytics: { views: 0, submissions: 0 }
+    };
+    const owned = stampSiteOwner(dup, accountUid);
+    const nextForms = [owned, ...forms];
+    saveForms(nextForms);
+    if (showToast) showToast(isRtl ? 'تم تكرار النموذج' : 'Form duplicated');
+  };
+
+  const handleDeleteForm = (formId) => {
+    const nextForms = forms.filter((f) => f.id !== formId);
+    saveForms(nextForms);
+    if (selectedForm?.id === formId) setSelectedForm(null);
+    if (showToast) showToast(isRtl ? 'تم حذف النموذج' : 'Form deleted');
+  };
+
+  const handleSubmitLiveFormResponse = (formId, submission) => {
+    const target = forms.find((f) => f.id === formId);
+    if (!target) return;
+    const subs = [submission, ...(target.submissions || [])];
+    const views = (target.analytics?.views || 0) + 1;
+    const updated = {
+      ...target,
+      submissions: subs,
+      analytics: {
+        views,
+        submissions: subs.length
+      }
+    };
+    handleUpdateForm(updated);
+  };
 
   // Webinar Management Handlers
   const handleCreateWebinar = (params) => {
@@ -1421,6 +1546,7 @@ export default function SitesView() {
                 if (tab.key !== 'websites') setSelectedWebsite(null);
                 if (tab.key !== 'webinars') setSelectedWebinar(null);
                 if (tab.key !== 'stores') setSelectedStore(null);
+                if (tab.key !== 'forms' && tab.key !== 'surveys') setSelectedForm(null);
                 if (tab.key !== 'blogs') {
                   setSelectedBlogSite(null);
                   setActiveBlogPost(null);
@@ -1490,6 +1616,18 @@ export default function SitesView() {
                   borderRadius: '4px'
                 }}>
                   {blogs.length}
+                </span>
+              )}
+              {(tab.key === 'forms' || tab.key === 'surveys') && forms.length > 0 && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {forms.length}
                 </span>
               )}
             </button>
@@ -1702,6 +1840,32 @@ export default function SitesView() {
             onOpenSettings={() => {
               if (showToast) showToast(isRtl ? 'إعدادات المدونات العامة' : 'Global Blog Settings');
             }}
+            showToast={showToast}
+          />
+        )
+      ) : (activeSubTab === 'forms' || activeSubTab === 'surveys') ? (
+        selectedForm ? (
+          <FormBuilderView
+            form={selectedForm}
+            isRtl={isRtl}
+            onBack={() => setSelectedForm(null)}
+            onSaveForm={handleUpdateForm}
+            showToast={showToast}
+          />
+        ) : (
+          <FormListView
+            forms={forms}
+            isRtl={isRtl}
+            onSelectForm={(f) => setSelectedForm(f)}
+            onOpenCreateModal={() => setIsCreateFormModalOpen(true)}
+            onDuplicateForm={handleDuplicateForm}
+            onDeleteForm={handleDeleteForm}
+            onOpenSubmissions={(f) => setSelectedForm(f)}
+            onOpenIntegrate={(f) => {
+              setIntegratingForm(f);
+              setIsIntegrateFormModalOpen(true);
+            }}
+            onPreviewLiveForm={(f) => setPreviewingLiveForm(f)}
             showToast={showToast}
           />
         )
@@ -2089,6 +2253,38 @@ export default function SitesView() {
         post={previewingPost}
         blogSite={selectedBlogSite}
         isRtl={isRtl}
+        showToast={showToast}
+      />
+
+      {/* CREATE FORM MODAL matching Screenshot 2 */}
+      <CreateFormModal
+        isOpen={isCreateFormModalOpen}
+        onClose={() => setIsCreateFormModalOpen(false)}
+        onCreateBlank={handleCreateFormBlank}
+        onCreateFromTemplate={handleCreateFormFromTemplate}
+        isRtl={isRtl}
+        nextFormNumber={forms.length + 1}
+      />
+
+      {/* INTEGRATE FORM MODAL */}
+      <FormIntegrateModal
+        isOpen={isIntegrateFormModalOpen}
+        onClose={() => {
+          setIsIntegrateFormModalOpen(false);
+          setIntegratingForm(null);
+        }}
+        form={integratingForm}
+        isRtl={isRtl}
+        showToast={showToast}
+      />
+
+      {/* LIVE FORM SUBMISSION / PREVIEW MODAL */}
+      <LiveFormModal
+        isOpen={!!previewingLiveForm}
+        onClose={() => setPreviewingLiveForm(null)}
+        form={previewingLiveForm}
+        isRtl={isRtl}
+        onSubmitResponse={handleSubmitLiveFormResponse}
         showToast={showToast}
       />
 
