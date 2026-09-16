@@ -306,22 +306,25 @@ function DashboardShell() {
 
         {/* Restricted content area containing only BillingView */}
         <div style={{
-          maxWidth: '1200px',
+          maxWidth: '1380px',
+          width: '100%',
           margin: '0 auto',
-          padding: '24px',
+          padding: '24px 20px 80px',
+          boxSizing: 'border-box',
+          zoom: 1.18,
           animation: 'fadeSlide 0.4s ease'
         }}>
           {/* A callout explaining the situation */}
-          <div className="card mb" style={{ borderColor: 'rgba(239, 68, 68, 0.2)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(8, 12, 20, 0.2) 100%)', display: 'flex', gap: '14px', alignItems: 'center', padding: '16px' }}>
-            <span style={{ fontSize: '24px' }}>⚠️</span>
+          <div className="card mb" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(8, 12, 20, 0.3) 100%)', display: 'flex', gap: '16px', alignItems: 'center', padding: '18px 20px', borderRadius: '16px', marginBottom: '24px' }}>
+            <span style={{ fontSize: '28px' }}>⚠️</span>
             <div style={{ textAlign: 'start' }}>
-              <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '14px', fontWeight: '700' }}>
+              <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '15.5px', fontWeight: '800' }}>
                 {isTrialExpired()
                   ? (lang === 'ar' ? 'انتهت فترة التجربة المجانية' : 'Free Trial Expired')
                   : (lang === 'ar' ? 'انتهت صلاحية اشتراكك' : 'Subscription Expired')
                 }
               </h4>
-              <p style={{ margin: '4px 0 0', color: 'var(--t2)', fontSize: '12.5px', lineHeight: '1.5' }}>
+              <p style={{ margin: '6px 0 0', color: 'var(--t2)', fontSize: '13.5px', lineHeight: '1.6' }}>
                 {isTrialExpired()
                   ? (lang === 'ar'
                     ? `انتهت فترة التجربة المجانية في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
