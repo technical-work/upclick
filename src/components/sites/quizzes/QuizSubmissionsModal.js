@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Download,
@@ -14,6 +14,7 @@ import {
   Eye,
   FileQuestion
 } from 'lucide-react';
+import { findLocalQuizById } from '@/lib/sites/userSitesScope';
 
 export default function QuizSubmissionsModal({
   quiz,
@@ -24,10 +25,28 @@ export default function QuizSubmissionsModal({
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'passed' | 'failed'
   const [searchQuery, setSearchQuery] = useState('');
   const [inspectingSub, setInspectingSub] = useState(null);
+  const [liveQuiz, setLiveQuiz] = useState(quiz);
+
+  useEffect(() => {
+    if (!quiz?.id) return;
+    setLiveQuiz(quiz);
+    const updateFromLocal = () => {
+      const fresh = findLocalQuizById(quiz.id);
+      if (fresh) setLiveQuiz(fresh);
+    };
+    updateFromLocal();
+    window.addEventListener('upclick_quiz_submission', updateFromLocal);
+    window.addEventListener('storage', updateFromLocal);
+    return () => {
+      window.removeEventListener('upclick_quiz_submission', updateFromLocal);
+      window.removeEventListener('storage', updateFromLocal);
+    };
+  }, [quiz?.id]);
 
   if (!quiz) return null;
 
-  const submissions = Array.isArray(quiz.submissions) ? quiz.submissions : [];
+  const activeQuiz = liveQuiz || quiz;
+  const submissions = Array.isArray(activeQuiz.submissions) ? activeQuiz.submissions : [];
 
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((sub) => {

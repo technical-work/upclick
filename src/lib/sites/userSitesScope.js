@@ -343,13 +343,26 @@ export function trackSurveyView(surveyId) {
   }
 }
 
+function isQuizKey(key) {
+  if (!key) return false;
+  return key.startsWith(LEGACY_QUIZZES_KEY) || key.startsWith('upklick_quizzes') || key.startsWith('upclick_quizzes') || key.includes('quizzes');
+}
+
+function matchesQuizId(targetId, searchId) {
+  if (!targetId || !searchId) return false;
+  if (targetId === searchId) return true;
+  const cleanT = String(targetId).trim().replace(/^(quiz_|qz_)+/g, '');
+  const cleanS = String(searchId).trim().replace(/^(quiz_|qz_)+/g, '');
+  return cleanT.toLowerCase() === cleanS.toLowerCase();
+}
+
 export function findLocalQuizById(quizId) {
   if (!quizId || typeof window === 'undefined') return null;
   try {
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key || !key.startsWith(LEGACY_QUIZZES_KEY)) continue;
-      const found = readJsonList(key).find((q) => q?.id === quizId);
+      if (!isQuizKey(key)) continue;
+      const found = readJsonList(key).find((q) => matchesQuizId(q?.id, quizId));
       if (found) return found;
     }
   } catch {
@@ -359,32 +372,40 @@ export function findLocalQuizById(quizId) {
 }
 
 export function saveQuizSubmission(quizId, submission) {
-  if (!quizId || !submission || typeof window === 'undefined') return;
+  if (!quizId || !submission || typeof window === 'undefined') return null;
+  let updatedQuiz = null;
   try {
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key || !key.startsWith(LEGACY_QUIZZES_KEY)) continue;
+      if (!isQuizKey(key)) continue;
       const list = readJsonList(key);
       let changed = false;
       const nextList = list.map((q) => {
-        if (q?.id === quizId) {
+        if (matchesQuizId(q?.id, quizId)) {
           changed = true;
-          const subs = [submission, ...(q.submissions || [])];
-          const views = (q.analytics?.views || 0) + 1;
+          const currentSubs = Array.isArray(q.submissions) ? q.submissions : [];
+          const filteredSubs = submission.id
+            ? currentSubs.filter((s) => s.id !== submission.id)
+            : currentSubs;
+          const subs = [submission, ...filteredSubs];
           const attempts = subs.length;
           const passedCount = subs.filter((s) => s.passed).length;
+          const passRate = attempts > 0 ? Math.round((passedCount / attempts) * 100) : 0;
           const avgScore = attempts > 0 ? Math.round(subs.reduce((acc, s) => acc + (s.percentage || 0), 0) / attempts) : 0;
-          return {
+          const views = Math.max(q.analytics?.views || 0, attempts + 1);
+
+          updatedQuiz = {
             ...q,
             submissions: subs,
             analytics: {
               views,
               attempts,
               passedCount,
-              passRate: attempts > 0 ? Math.round((passedCount / attempts) * 100) : 0,
+              passRate,
               avgScore
             }
           };
+          return updatedQuiz;
         }
         return q;
       });
@@ -392,9 +413,16 @@ export function saveQuizSubmission(quizId, submission) {
         writeJsonList(key, nextList);
       }
     }
+
+    try {
+      window.dispatchEvent(new CustomEvent('upclick_quiz_submission', { detail: { quizId, submission, updatedQuiz } }));
+      window.dispatchEvent(new CustomEvent('upclick_quiz_updated', { detail: { quizId, updatedQuiz } }));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
   } catch (err) {
     console.error('Failed to save quiz submission:', err);
   }
+  return updatedQuiz;
 }
 
 export function trackQuizView(quizId) {
@@ -402,14 +430,14 @@ export function trackQuizView(quizId) {
   try {
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key || !key.startsWith(LEGACY_QUIZZES_KEY)) continue;
+      if (!isQuizKey(key)) continue;
       const list = readJsonList(key);
       let changed = false;
       const nextList = list.map((q) => {
-        if (q?.id === quizId) {
+        if (matchesQuizId(q?.id, quizId)) {
           changed = true;
           const views = (q.analytics?.views || 0) + 1;
-          const attempts = q.submissions?.length || 0;
+          const attempts = Array.isArray(q.submissions) ? q.submissions.length : (q.analytics?.attempts || 0);
           return {
             ...q,
             analytics: {
@@ -425,8 +453,12 @@ export function trackQuizView(quizId) {
         writeJsonList(key, nextList);
       }
     }
+    try {
+      window.dispatchEvent(new CustomEvent('upclick_quiz_updated', { detail: { quizId } }));
+    } catch (e) {}
   } catch (err) {
     console.error('Failed to track quiz view:', err);
   }
 }
+
 

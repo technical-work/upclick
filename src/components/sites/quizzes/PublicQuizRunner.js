@@ -202,9 +202,9 @@ export default function PublicQuizRunner({ quiz: initialQuiz, quizId, isRtl = fa
       percentage,
       passed,
       answers: answerBreakdown,
-      name: respondentLead.name || '',
-      email: respondentLead.email || '',
-      phone: respondentLead.phone || '',
+      name: respondentLead.name || leadData.name || (isRtl ? 'مُختبر مباشر' : 'Live Participant'),
+      email: respondentLead.email || leadData.email || '',
+      phone: respondentLead.phone || leadData.phone || '',
       submittedAt: new Date().toISOString()
     };
 

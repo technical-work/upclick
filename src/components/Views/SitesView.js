@@ -412,7 +412,39 @@ export default function SitesView() {
 
   const saveQuizzes = (updatedList) => {
     if (!accountUid) return;
-    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    const existingStored = readJsonList(quizzesStorageKey(accountUid));
+    const existingMap = new Map((existingStored || []).map((q) => [q.id, q]));
+
+    const mine = (updatedList || []).map((item) => {
+      const stamped = stampSiteOwner(item, accountUid);
+      const existing = existingMap.get(stamped.id);
+      if (existing) {
+        const itemSubs = Array.isArray(stamped.submissions) ? stamped.submissions : [];
+        const existSubs = Array.isArray(existing.submissions) ? existing.submissions : [];
+        const itemSubIds = new Set(itemSubs.map((s) => s.id));
+        const mergedSubs = [...itemSubs, ...existSubs.filter((s) => !itemSubIds.has(s.id))];
+
+        const attempts = mergedSubs.length;
+        const passedCount = mergedSubs.filter((s) => s.passed).length;
+        const passRate = attempts > 0 ? Math.round((passedCount / attempts) * 100) : 0;
+        const avgScore = attempts > 0 ? Math.round(mergedSubs.reduce((acc, s) => acc + (s.percentage || 0), 0) / attempts) : 0;
+        const views = Math.max(stamped.analytics?.views || 0, existing.analytics?.views || 0, attempts);
+
+        return {
+          ...stamped,
+          submissions: mergedSubs,
+          analytics: {
+            views,
+            attempts,
+            passedCount,
+            passRate,
+            avgScore
+          }
+        };
+      }
+      return stamped;
+    });
+
     setQuizzes(mine);
     writeJsonList(quizzesStorageKey(accountUid), mine);
     clearLegacySiteKeys();
@@ -601,6 +633,37 @@ export default function SitesView() {
     const match = quizzes.find((q) => q.id === selectedQuiz.id);
     if (match && match !== selectedQuiz) setSelectedQuiz(match);
   }, [quizzes, selectedQuiz]);
+
+  // Live listener for Quiz Submissions and Analytics across tabs and modals
+  useEffect(() => {
+    if (!accountUid) return;
+    const reloadQuizzesFromStorage = () => {
+      try {
+        const stored = readJsonList(quizzesStorageKey(accountUid));
+        const scoped = sitesForUser(stored, accountUid);
+        if (scoped && scoped.length > 0) {
+          setQuizzes((prev) => {
+            const isDifferent = JSON.stringify(scoped) !== JSON.stringify(prev);
+            return isDifferent ? scoped : prev;
+          });
+        }
+      } catch (err) {
+        console.error('Error reloading quizzes from storage:', err);
+      }
+    };
+
+    window.addEventListener('storage', reloadQuizzesFromStorage);
+    window.addEventListener('upclick_quiz_submission', reloadQuizzesFromStorage);
+    window.addEventListener('upclick_quiz_updated', reloadQuizzesFromStorage);
+    window.addEventListener('focus', reloadQuizzesFromStorage);
+
+    return () => {
+      window.removeEventListener('storage', reloadQuizzesFromStorage);
+      window.removeEventListener('upclick_quiz_submission', reloadQuizzesFromStorage);
+      window.removeEventListener('upclick_quiz_updated', reloadQuizzesFromStorage);
+      window.removeEventListener('focus', reloadQuizzesFromStorage);
+    };
+  }, [accountUid]);
 
   // Quiz Management Handlers
   const handleOpenBuilderForQuiz = (quizToOpen) => {

@@ -89,10 +89,29 @@ export default function QuizListView({
 
   // Aggregate analytics
   const totalViews = useMemo(() => quizzes.reduce((acc, q) => acc + (q.analytics?.views || (q.submissions?.length ? q.submissions.length * 2 + 5 : 0)), 0), [quizzes]);
-  const totalAttempts = useMemo(() => allSubmissions.length, [allSubmissions]);
-  const passedAttempts = useMemo(() => allSubmissions.filter(s => s.passed).length, [allSubmissions]);
+  const totalAttempts = useMemo(() => {
+    return quizzes.reduce((acc, q) => acc + Math.max(q.submissions?.length || 0, q.analytics?.attempts || 0), 0);
+  }, [quizzes]);
+  const passedAttempts = useMemo(() => {
+    return quizzes.reduce((acc, q) => {
+      const subs = q.submissions || [];
+      if (subs.length > 0) {
+        return acc + subs.filter(s => s.passed).length;
+      }
+      return acc + (q.analytics?.passedCount || (q.analytics?.passRate ? Math.round((q.analytics.passRate / 100) * (q.analytics?.attempts || 0)) : 0));
+    }, 0);
+  }, [quizzes]);
   const avgPassRate = totalAttempts > 0 ? Math.round((passedAttempts / totalAttempts) * 100) : 0;
-  const avgScore = totalAttempts > 0 ? Math.round(allSubmissions.reduce((acc, s) => acc + (s.percentage || 0), 0) / totalAttempts) : 0;
+  const avgScore = useMemo(() => {
+    if (allSubmissions.length > 0) {
+      return Math.round(allSubmissions.reduce((acc, s) => acc + (s.percentage || 0), 0) / allSubmissions.length);
+    }
+    const scoredQuizzes = quizzes.filter(q => (q.analytics?.avgScore || 0) > 0);
+    if (scoredQuizzes.length > 0) {
+      return Math.round(scoredQuizzes.reduce((acc, q) => acc + q.analytics.avgScore, 0) / scoredQuizzes.length);
+    }
+    return 0;
+  }, [allSubmissions, quizzes]);
 
   const handleStartRename = (quiz) => {
     setRenamingQuizId(quiz.id);
@@ -629,9 +648,13 @@ export default function QuizListView({
                 <tbody>
                   {filteredQuizzes.map((quiz) => {
                     const qQuestions = quiz.questions || (quiz.slides ? quiz.slides.map(s => s.elements || []).flat() : []);
-                    const qSubmissions = quiz.submissions || [];
-                    const qPassed = qSubmissions.filter(s => s.passed).length;
-                    const qPassRate = qSubmissions.length > 0 ? Math.round((qPassed / qSubmissions.length) * 100) : 0;
+                    const qSubmissions = Array.isArray(quiz.submissions) ? quiz.submissions : [];
+                    const qAttempts = Math.max(qSubmissions.length, quiz.analytics?.attempts || 0);
+                    const qPassed = qSubmissions.length > 0
+                      ? qSubmissions.filter(s => s.passed).length
+                      : (quiz.analytics?.passedCount !== undefined ? quiz.analytics.passedCount : (quiz.analytics?.passRate ? Math.round((quiz.analytics.passRate / 100) * qAttempts) : 0));
+                    const qPassRate = qAttempts > 0 ? Math.round((qPassed / qAttempts) * 100) : (quiz.analytics?.passRate || 0);
+                    const quizRunnerUrl = `/s/${quiz.id.startsWith('quiz_') ? quiz.id : `quiz_${quiz.id}`}`;
 
                     return (
                       <tr
@@ -726,13 +749,13 @@ export default function QuizListView({
                               fontSize: '13px'
                             }}
                           >
-                            {qSubmissions.length} {isRtl ? 'محاولة' : 'attempts'}
+                            {qAttempts} {isRtl ? 'محاولة' : 'attempts'}
                           </button>
                         </td>
                         <td style={{ padding: '14px 16px', fontSize: '13px' }}>
                           <span
                             style={{
-                              color: qPassRate >= (quiz.passingScore || 70) ? '#10b981' : '#f59e0b',
+                              color: qAttempts === 0 ? 'var(--t2)' : (qPassRate >= (quiz.passingScore || 70) ? '#10b981' : '#f59e0b'),
                               fontWeight: '700'
                             }}
                           >
@@ -782,7 +805,7 @@ export default function QuizListView({
                             </button>
 
                             <button
-                              onClick={() => window.open(`/s/quiz_${quiz.id}`, '_blank')}
+                              onClick={() => window.open(quizRunnerUrl, '_blank')}
                               style={{
                                 background: 'none',
                                 border: '1px solid var(--edge)',
@@ -932,9 +955,13 @@ export default function QuizListView({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
               {filteredQuizzes.map((quiz) => {
                 const qQuestions = quiz.questions || (quiz.slides ? quiz.slides.map(s => s.elements || []).flat() : []);
-                const qSubmissions = quiz.submissions || [];
-                const qPassed = qSubmissions.filter(s => s.passed).length;
-                const qPassRate = qSubmissions.length > 0 ? Math.round((qPassed / qSubmissions.length) * 100) : 0;
+                const qSubmissions = Array.isArray(quiz.submissions) ? quiz.submissions : [];
+                const qAttempts = Math.max(qSubmissions.length, quiz.analytics?.attempts || 0);
+                const qPassed = qSubmissions.length > 0
+                  ? qSubmissions.filter(s => s.passed).length
+                  : (quiz.analytics?.passedCount !== undefined ? quiz.analytics.passedCount : (quiz.analytics?.passRate ? Math.round((quiz.analytics.passRate / 100) * qAttempts) : 0));
+                const qPassRate = qAttempts > 0 ? Math.round((qPassed / qAttempts) * 100) : (quiz.analytics?.passRate || 0);
+                const quizRunnerUrl = `/s/${quiz.id.startsWith('quiz_') ? quiz.id : `quiz_${quiz.id}`}`;
 
                 return (
                   <div
@@ -995,12 +1022,12 @@ export default function QuizListView({
                           <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--t1)' }}>{qQuestions.length || 3}</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{isRtl ? 'الاجتياز' : 'Pass Min'}</div>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#2563eb' }}>{quiz.passingScore || 70}%</div>
+                          <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{isRtl ? 'المحاولات' : 'Attempts'}</div>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#2563eb' }}>{qAttempts}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: '11px', color: 'var(--t2)' }}>{isRtl ? 'النجاح' : 'Pass Rate'}</div>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#10b981' }}>{qPassRate}%</div>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: qAttempts === 0 ? 'var(--t2)' : (qPassRate >= (quiz.passingScore || 70) ? '#10b981' : '#f59e0b') }}>{qPassRate}%</div>
                         </div>
                       </div>
                     </div>
@@ -1048,7 +1075,7 @@ export default function QuizListView({
                           <Share2 size={14} />
                         </button>
                         <button
-                          onClick={() => window.open(`/s/quiz_${quiz.id}`, '_blank')}
+                          onClick={() => window.open(quizRunnerUrl, '_blank')}
                           style={{
                             background: 'var(--surface2)',
                             border: '1px solid var(--edge)',
@@ -1102,6 +1129,80 @@ export default function QuizListView({
               </div>
               <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--a)' }}>{avgPassRate}%</div>
             </div>
+          </div>
+
+          {/* Performance Breakdown per Quiz Table */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--edge)', borderRadius: '12px', overflow: 'hidden', marginTop: '16px' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--edge)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--t1)' }}>
+                {isRtl ? 'تفاصيل أداء كل اختبار' : 'Detailed Quiz Performance'}
+              </h4>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isRtl ? 'right' : 'left' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--edge)' }}>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: 'var(--t2)' }}>{isRtl ? 'اسم الاختبار' : 'Quiz'}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: 'var(--t2)' }}>{isRtl ? 'المحاولات' : 'Attempts'}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: 'var(--t2)' }}>{isRtl ? 'الناجحين' : 'Passes'}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: 'var(--t2)' }}>{isRtl ? 'نسبة النجاح' : 'Pass Rate'}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: 'var(--t2)' }}>{isRtl ? 'متوسط الدرجة' : 'Avg Score'}</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: 'var(--t2)', textAlign: 'center' }}>{isRtl ? 'الإجراء' : 'Action'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredQuizzes.map((quiz) => {
+                  const subs = Array.isArray(quiz.submissions) ? quiz.submissions : [];
+                  const attempts = Math.max(subs.length, quiz.analytics?.attempts || 0);
+                  const passed = subs.length > 0
+                    ? subs.filter(s => s.passed).length
+                    : (quiz.analytics?.passedCount !== undefined ? quiz.analytics.passedCount : (quiz.analytics?.passRate ? Math.round((quiz.analytics.passRate / 100) * attempts) : 0));
+                  const passRate = attempts > 0 ? Math.round((passed / attempts) * 100) : (quiz.analytics?.passRate || 0);
+                  const singleAvgScore = attempts > 0 && subs.length > 0
+                    ? Math.round(subs.reduce((acc, s) => acc + (s.percentage || 0), 0) / subs.length)
+                    : (quiz.analytics?.avgScore || 0);
+
+                  return (
+                    <tr key={quiz.id} style={{ borderBottom: '1px solid var(--edge)' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--t1)' }}>{quiz.name}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--t2)' }}>ID: {quiz.id} • Min: {quiz.passingScore || 70}%</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: '13.5px', fontWeight: '700', color: 'var(--t1)' }}>
+                        {attempts}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: '13px', color: '#10b981', fontWeight: '700' }}>
+                        {passed}
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: '13.5px', fontWeight: '800' }}>
+                        <span style={{ color: attempts === 0 ? 'var(--t2)' : (passRate >= (quiz.passingScore || 70) ? '#10b981' : '#f59e0b') }}>
+                          {passRate}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontSize: '13.5px', fontWeight: '800', color: '#a855f7' }}>
+                        {singleAvgScore}%
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <button
+                          onClick={() => setSelectedQuizForSubmissions(quiz)}
+                          style={{
+                            background: 'var(--surface2)',
+                            border: '1px solid var(--edge)',
+                            color: 'var(--a)',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isRtl ? 'عرض المحاولات' : 'View Submissions'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

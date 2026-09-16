@@ -23,7 +23,7 @@ export default function QuizIntegrateModal({
   if (!quiz) return null;
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.upklick.io';
-  const directUrl = `${origin}/s/quiz_${quiz.id}`;
+  const directUrl = `${origin}/s/${quiz.id.startsWith('quiz_') ? quiz.id : `quiz_${quiz.id}`}`;
   const iframeCode = `<iframe src="${directUrl}" width="100%" height="680" frameborder="0" style="border:none; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.15);" allow="camera; microphone; autoplay"></iframe>`;
   const popupCode = `<button onclick="window.open('${directUrl}', 'upklickQuiz', 'width=700,height=800')" style="background:#2563eb; color:#fff; padding:12px 24px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">${isRtl ? 'ابدأ الاختبار الآن' : 'Take Quiz Now'}</button>`;
 
