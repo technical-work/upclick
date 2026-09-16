@@ -1,13 +1,42 @@
-import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { headers } from 'next/headers';
 import { adminDb } from '@/utils/firebaseAdmin';
+import LiveSiteView from '@/components/sites/LiveSiteView';
+import { normalizeHost } from '@/lib/sites/publicSite';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = String(host || '').toLowerCase().split(':')[0].trim();
+  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return extras.includes(clean);
+}
+
+export default async function RootPage() {
+  const headersList = await headers();
+  const host = headersList.get('x-custom-domain') || headersList.get('host') || '';
+  const cleanHost = normalizeHost(host);
+
+  // If accessed on a custom domain, render the live site / funnel root directly
+  if (!isPlatformHostname(cleanHost)) {
+    return <LiveSiteView host={cleanHost} path="/" />;
+  }
+
   const filePath = path.join(process.cwd(), 'public', 'landing-page.html');
-  let html = fs.readFileSync(filePath, 'utf8');
+  let html = '';
+  try {
+    html = fs.readFileSync(filePath, 'utf8');
+  } catch (e) {
+    html = '<!DOCTYPE html><html><body><h1>UpKlick</h1></body></html>';
+  }
 
   try {
     if (adminDb) {
@@ -60,10 +89,10 @@ fbq('track', 'PageView');
     console.error("Error injecting tracking scripts into landing page:", err);
   }
 
-  return new NextResponse(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-    },
-  });
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+      style={{ width: '100%', minHeight: '100vh', margin: 0, padding: 0 }}
+    />
+  );
 }

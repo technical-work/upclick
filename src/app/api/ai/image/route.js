@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { creditFieldsAfterDeduction } from '@/lib/credits/buckets';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -137,8 +138,11 @@ export async function POST(request) {
     }
 
     // 5. Deduct credits & Log when image generation finishes successfully
+    const creditFields = creditFieldsAfterDeduction(userData, finalCreditsDeduction);
     await userRef.update({
-      aiCredits: FieldValue.increment(-finalCreditsDeduction)
+      aiCredits: FieldValue.increment(-finalCreditsDeduction),
+      creditsUsed: creditFields.creditsUsed,
+      creditBucket: creditFields.creditBucket
     });
 
     await adminDb.collection('ai_logs').add({

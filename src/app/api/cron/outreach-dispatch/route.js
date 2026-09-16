@@ -1,0 +1,83 @@
+import { NextResponse } from 'next/server';
+import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
+import { verifyCronRequest, verifyAdminRequest } from '@/lib/admin/verifyAdminRequest';
+import { claimCampaignLock, dispatchCampaignBatch } from '@/lib/outreach/dispatch';
+import crypto from 'crypto';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+export async function GET(req) {
+  return handleDispatch(req);
+}
+
+export async function POST(req) {
+  return handleDispatch(req);
+}
+
+async function handleDispatch(req) {
+  let authOk = false;
+  let adminDb = null;
+
+  // 1. Check Cron Secret
+  const cron = verifyCronRequest(req);
+  if (cron.ok) {
+    authOk = true;
+    const admin = await getFirebaseAdmin();
+    adminDb = admin.adminDb;
+  } else {
+    // 2. Check Admin Bearer Token
+    const adminAuth = await verifyAdminRequest(req);
+    if (adminAuth.ok) {
+      authOk = true;
+      adminDb = adminAuth.adminDb;
+    }
+  }
+
+  if (!authOk || !adminDb) {
+    return NextResponse.json({ error: 'Unauthorized. Requires CRON_SECRET or Admin Token.' }, { status: 401 });
+  }
+
+  try {
+    const now = Date.now();
+    const sendingSnap = await adminDb.collection('campaigns').where('status', '==', 'sending').limit(10).get();
+    const scheduledSnap = await adminDb.collection('campaigns').where('status', '==', 'scheduled').limit(10).get();
+
+    const due = [];
+    sendingSnap.docs.forEach((d) => due.push(d));
+    scheduledSnap.docs.forEach((d) => {
+      const data = d.data() || {};
+      let at = 0;
+      if (data.scheduledAt?.toMillis) at = data.scheduledAt.toMillis();
+      else if (data.scheduledAt?.seconds) at = data.scheduledAt.seconds * 1000;
+      else if (data.scheduledAt) {
+        const parsed = new Date(data.scheduledAt).getTime();
+        if (!isNaN(parsed)) at = parsed;
+      }
+      if (!at || at <= now) due.push(d);
+    });
+
+    const results = [];
+    for (const doc of due) {
+      const lockId = crypto.randomBytes(8).toString('hex');
+      const claimed = await claimCampaignLock(adminDb, doc.id, lockId);
+      if (!claimed.claimed) {
+        results.push({ id: doc.id, skipped: claimed.reason });
+        continue;
+      }
+      const batchResult = await dispatchCampaignBatch(adminDb, doc.id, claimed.campaign);
+      results.push({ id: doc.id, ...batchResult });
+    }
+
+    return NextResponse.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      campaigns: results.length,
+      results
+    });
+  } catch (err) {
+    console.error('[cron/outreach-dispatch]', err);
+    return NextResponse.json({ success: false, error: err.message || 'Dispatch failed' }, { status: 500 });
+  }
+}

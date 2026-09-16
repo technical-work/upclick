@@ -79,7 +79,7 @@ export async function POST(req) {
       }
     }
 
-    // 3. Send email via Resend
+    // 3. Send email via emailService (Amazon SES)
     const emailResult = await emailService.sendPasswordResetEmail({
       to: cleanEmail,
       name: userName,

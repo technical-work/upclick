@@ -5,6 +5,21 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { BusinessProvider, useBusiness } from '@/context/BusinessContext';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
+import LiveSiteView from '@/components/sites/LiveSiteView';
+import { normalizeHost } from '@/lib/sites/publicSite';
+
+function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = host.toLowerCase().split(':')[0].trim();
+  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return extras.includes(clean);
+}
 
 // Core layout components
 import Sidebar from '@/components/Sidebar';
@@ -53,6 +68,8 @@ import NicheStudioView from '@/components/Views/NicheStudioView';
 import DesignStudioView from '@/components/Views/DesignStudioView';
 import BillingView from '@/components/Views/BillingView';
 import SupportView from '@/components/Views/SupportView';
+import SitesView from '@/components/Views/SitesView';
+import DomainsView from '@/components/Views/DomainsView';
 function DashboardShell() {
   const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
@@ -61,6 +78,7 @@ function DashboardShell() {
   const [verifyingStripe, setVerifyingStripe] = useState(false);
 
   const stripeStatus = searchParams?.get('stripe');
+  const stripeKind = searchParams?.get('kind');
   const sessionId = searchParams?.get('session_id');
 
   useEffect(() => {
@@ -73,6 +91,24 @@ function DashboardShell() {
           const data = await res.json();
           if (!res.ok) {
             throw new Error(data.error || 'Failed to verify session');
+          }
+          if (stripeKind === 'domain' || data.kind === 'domain') {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('upklick_current_page', 'my-domains');
+            }
+            if (data.success === false && data.error) {
+              alert(lang === 'ar'
+                ? `تم استلام الدفع لكن التسجيل لم يكتمل: ${data.error}`
+                : `Payment received, but registration is pending: ${data.error}`
+              );
+            } else {
+              alert(lang === 'ar'
+                ? 'تم دفع النطاق بنجاح. سيظهر في «نطاقاتي» بعد إتمام التسجيل.'
+                : 'Domain payment confirmed. It will appear under My Domains once registration finishes.'
+              );
+            }
+            window.location.href = '/dashboard';
+            return;
           }
           alert(lang === 'ar'
             ? 'تم تفعيل الاشتراك بنجاح! شكراً لك.'
@@ -92,7 +128,7 @@ function DashboardShell() {
           setVerifyingStripe(false);
         });
     }
-  }, [stripeStatus, sessionId, user?.uid, userData?.adminId, lang]);
+  }, [stripeStatus, stripeKind, sessionId, user?.uid, userData?.adminId, lang]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -178,10 +214,18 @@ function DashboardShell() {
   if (isExpired) {
     return (
       <div style={{
-        minHeight: '100vh',
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        overflowY: 'auto',
+        overflowX: 'hidden',
         backgroundColor: '#0a0a0f',
         backgroundImage: 'radial-gradient(circle at top right, rgba(255, 107, 53, 0.08), transparent 40%), radial-gradient(circle at bottom left, rgba(108, 53, 255, 0.08), transparent 40%)',
-        fontFamily: '"IBM Plex Sans Arabic", "DM Sans", sans-serif',
+        fontFamily: lang === 'ar' ? '"IBM Plex Sans Arabic", sans-serif' : '"DM Sans", sans-serif',
+        direction: lang === 'ar' ? 'rtl' : 'ltr',
+        zIndex: 9999,
+        boxSizing: 'border-box'
       }}>
         {/* Minimal restricted Topbar/Header */}
         <div style={{
@@ -193,7 +237,9 @@ function DashboardShell() {
           alignItems: 'center',
           position: 'sticky',
           top: 0,
-          zIndex: 100
+          zIndex: 100,
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {(() => {
@@ -260,22 +306,25 @@ function DashboardShell() {
 
         {/* Restricted content area containing only BillingView */}
         <div style={{
-          maxWidth: '1200px',
+          maxWidth: '1380px',
+          width: '100%',
           margin: '0 auto',
-          padding: '24px',
+          padding: '24px 20px 80px',
+          boxSizing: 'border-box',
+          zoom: 1.18,
           animation: 'fadeSlide 0.4s ease'
         }}>
           {/* A callout explaining the situation */}
-          <div className="card mb" style={{ borderColor: 'rgba(239, 68, 68, 0.2)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(8, 12, 20, 0.2) 100%)', display: 'flex', gap: '14px', alignItems: 'center', padding: '16px' }}>
-            <span style={{ fontSize: '24px' }}>⚠️</span>
+          <div className="card mb" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(8, 12, 20, 0.3) 100%)', display: 'flex', gap: '16px', alignItems: 'center', padding: '18px 20px', borderRadius: '16px', marginBottom: '24px' }}>
+            <span style={{ fontSize: '28px' }}>⚠️</span>
             <div style={{ textAlign: 'start' }}>
-              <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '14px', fontWeight: '700' }}>
+              <h4 style={{ margin: 0, color: 'var(--t1)', fontSize: '15.5px', fontWeight: '800' }}>
                 {isTrialExpired()
                   ? (lang === 'ar' ? 'انتهت فترة التجربة المجانية' : 'Free Trial Expired')
                   : (lang === 'ar' ? 'انتهت صلاحية اشتراكك' : 'Subscription Expired')
                 }
               </h4>
-              <p style={{ margin: '4px 0 0', color: 'var(--t2)', fontSize: '12.5px', lineHeight: '1.5' }}>
+              <p style={{ margin: '6px 0 0', color: 'var(--t2)', fontSize: '13.5px', lineHeight: '1.6' }}>
                 {isTrialExpired()
                   ? (lang === 'ar'
                     ? `انتهت فترة التجربة المجانية في ${tenantConfig?.appName || 'UpKlick'}. للاستمرار في الاستخدام يرجى تجديد اشتراكك بالأسفل وإرسال إثبات الدفع، أو الدعم الفني.`
@@ -300,7 +349,7 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses'].includes(currentPage);
+    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses', 'sites', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(currentPage);
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -364,6 +413,13 @@ function DashboardShell() {
         return <BillingView />;
       case 'support':
         return <SupportView />;
+      case 'sites':
+        return <SitesView />;
+      case 'domains':
+      case 'my-domains':
+      case 'domain-pricing':
+      case 'domain-settings':
+        return <DomainsView />;
       default:
         return <HomeView />;
     }
@@ -422,6 +478,24 @@ function DashboardShell() {
 }
 
 export default function Home() {
+  const [isCustomDomain, setIsCustomDomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      return !isPlatformHostname(h);
+    }
+    return false;
+  });
+  const [currentHost, setCurrentHost] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return normalizeHost(window.location.hostname);
+    }
+    return '';
+  });
+
+  if (isCustomDomain && currentHost) {
+    return <LiveSiteView host={currentHost} path="/dashboard" />;
+  }
+
   return (
     <BusinessProvider>
       <Suspense fallback={
@@ -607,11 +681,11 @@ function EmailVerificationLock({ user, lang, logout }) {
         }}>
           {isAr ? (
             <>
-              أرسلنا رمز التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني <strong>{user?.email}</strong> عبر <strong>Resend</strong>.
+              أرسلنا رمز التفعيل المكون من 6 أرقام إلى بريدك الإلكتروني <strong>{user?.email}</strong>.
             </>
           ) : (
             <>
-              We sent a 6-digit verification code to <strong>{user?.email}</strong> via <strong>Resend</strong>.
+              We sent a 6-digit verification code to <strong>{user?.email}</strong>.
             </>
           )}
         </p>

@@ -6,6 +6,21 @@ import { db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Tracking } from '../../lib/tracking';
 import TrackingScripts from '../../components/TrackingScripts';
+import LiveSiteView from '@/components/sites/LiveSiteView';
+import { normalizeHost } from '@/lib/sites/publicSite';
+
+function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = host.toLowerCase().split(':')[0].trim();
+  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return extras.includes(clean);
+}
 
 export default function PublicBioPage() {
   const { username } = useParams();
@@ -13,8 +28,31 @@ export default function PublicBioPage() {
 
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('links'); // 'links' or 'cv'
+  const [isCustomDomain, setIsCustomDomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      return !isPlatformHostname(h);
+    }
+    return false;
+  });
+  const [currentHost, setCurrentHost] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return normalizeHost(window.location.hostname);
+    }
+    return '';
+  });
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      setCurrentHost(h);
+      if (!isPlatformHostname(h)) {
+        setIsCustomDomain(true);
+        setLoading(false);
+        return;
+      }
+    }
+
     if (!username) return;
 
     const fetchProfile = async () => {
@@ -36,6 +74,17 @@ export default function PublicBioPage() {
 
     fetchProfile();
   }, [username]);
+
+  // If visiting on a custom domain, render the Funnel / Store live site
+  if (isCustomDomain && currentHost) {
+    const cleanPath = username ? `/${username}` : '/';
+    return (
+      <LiveSiteView
+        host={currentHost}
+        path={cleanPath}
+      />
+    );
+  }
 
   // Loading state
   if (loading) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { DEFAULT_AI_TOOLS } from '@/constants/aiTools';
+import { creditFieldsAfterDeduction } from '@/lib/credits/buckets';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -187,13 +188,18 @@ export async function POST(request) {
       }
     }
 
+    const isStreaming = body.stream !== false;
+
     // Prepare OpenAI request payload
     const openAiPayload = {
       model: configuredModel,
       messages: requestMessages,
-      stream: true,
-      stream_options: { include_usage: true }
+      stream: isStreaming
     };
+
+    if (isStreaming) {
+      openAiPayload.stream_options = { include_usage: true };
+    }
 
     if (globalData.aiTemperature !== undefined) {
       openAiPayload.temperature = Number(globalData.aiTemperature);
@@ -204,7 +210,7 @@ export async function POST(request) {
       openAiPayload.max_tokens = 4096;
     }
 
-    // 4. Request OpenAI API with Streaming enabled
+    // 4. Request OpenAI API
     const res = await fetch(targetEndpoint, {
       method: 'POST',
       headers: {
@@ -224,6 +230,51 @@ export async function POST(request) {
         openAiError = errJson.error?.message || openAiError;
       } catch (e) {}
       return NextResponse.json({ error: openAiError }, { status: res.status });
+    }
+
+    // If Non-Streaming mode is requested (e.g. from Builder AI / Store Generator)
+    if (!isStreaming) {
+      const data = await res.json();
+      const fullResponseText = data.choices?.[0]?.message?.content || '';
+      const promptTokens = data.usage?.prompt_tokens || Math.max(1, Math.ceil(JSON.stringify(messages).length / 3.0));
+      const completionTokens = data.usage?.completion_tokens || Math.max(1, Math.ceil(fullResponseText.length / 3.0));
+
+      const rates = getModelRates(configuredModel);
+      const cost = (promptTokens * rates.input) + (completionTokens * rates.output);
+      const actualDeduction = finalCreditsDeduction > 0 ? finalCreditsDeduction : Math.max(1, Math.ceil(cost * creditsPerDollar));
+
+      const creditFields = creditFieldsAfterDeduction(userData, actualDeduction);
+      await userRef.update({
+        aiCredits: FieldValue.increment(-actualDeduction),
+        creditsUsed: creditFields.creditsUsed,
+        creditBucket: creditFields.creditBucket
+      });
+
+      await adminDb.collection('ai_logs').add({
+        userId,
+        userEmail: userData.email || '',
+        userName: userData.name || '',
+        model: configuredModel,
+        inputTokens: promptTokens,
+        outputTokens: completionTokens,
+        cost: cost,
+        creditsDeducted: actualDeduction,
+        tool: tool || 'Builder AI',
+        timestamp: new Date()
+      });
+
+      await adminDb.collection('tenants').doc('global').update({
+        totalAiSpend: FieldValue.increment(cost),
+        totalAiTokens: FieldValue.increment(promptTokens + completionTokens),
+        totalAiCalls: FieldValue.increment(1)
+      });
+
+      return NextResponse.json({
+        text: fullResponseText,
+        message: data.choices?.[0]?.message,
+        usage: data.usage,
+        creditsDeducted: actualDeduction
+      });
     }
 
     // 5. Create a readable stream to pipe to client
@@ -291,8 +342,11 @@ export async function POST(request) {
             const cost = (promptTokens * rates.input) + (completionTokens * rates.output);
             const actualDeduction = finalCreditsDeduction > 0 ? finalCreditsDeduction : Math.max(1, Math.ceil(cost * creditsPerDollar));
 
+            const creditFields = creditFieldsAfterDeduction(userData, actualDeduction);
             await userRef.update({
-              aiCredits: FieldValue.increment(-actualDeduction)
+              aiCredits: FieldValue.increment(-actualDeduction),
+              creditsUsed: creditFields.creditsUsed,
+              creditBucket: creditFields.creditBucket
             });
 
             await adminDb.collection('ai_logs').add({

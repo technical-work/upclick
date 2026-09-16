@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { resolveStripeSecret, stripeClient } from '@/lib/stripe/secret';
+import { fulfillDomainOrder } from '@/lib/domains/fulfillOrder';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,43 +30,13 @@ export async function GET(req) {
       .get();
     const alreadyVerified = !alreadyVerifiedSnap.empty;
 
-    let secretKey = '';
-
-    if (adminId && adminId !== 'global') {
-      const tenantDoc = await adminDb.collection('tenants').doc(adminId).get();
-      if (tenantDoc.exists) {
-        const data = tenantDoc.data();
-        const stripeConfig = data.paymentMethods?.stripe;
-        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
-          secretKey = stripeConfig.secretKey;
-        }
-      }
-    }
-
-    // Fallback to global config if no tenant key is found or adminId is global/missing
-    if (!secretKey) {
-      const globalDoc = await adminDb.collection('tenants').doc('global').get();
-      if (globalDoc.exists) {
-        const data = globalDoc.data();
-        const stripeConfig = data.paymentMethods?.stripe;
-        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
-          secretKey = stripeConfig.secretKey;
-        }
-      }
-    }
-
-    // Fallback to environment variables if still not found
-    if (!secretKey && process.env.STRIPE_SECRET_KEY) {
-      secretKey = process.env.STRIPE_SECRET_KEY;
-    }
+    let secretKey = await resolveStripeSecret(adminDb, adminId);
 
     if (!secretKey) {
       return NextResponse.json({ error: 'Stripe API key is not configured' }, { status: 400 });
     }
 
-    const stripe = new Stripe(secretKey, {
-      apiVersion: '2023-10-16',
-    });
+    const stripe = stripeClient(secretKey);
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
@@ -74,6 +45,55 @@ export async function GET(req) {
     }
 
     const metadata = session.metadata || {};
+    if (metadata.kind === 'domain' && metadata.domainOrderId) {
+      const orderRef = adminDb.collection('domain_orders').doc(metadata.domainOrderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) {
+        return NextResponse.json({ error: 'Domain order not found' }, { status: 404 });
+      }
+      await orderRef.set({
+        status: orderSnap.data().status === 'completed' ? 'completed' : 'paid',
+        payment_id: session.id,
+        stripeSessionId: sessionId,
+        paid_at: FieldValue.serverTimestamp(),
+        updated_at: FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      const result = await fulfillDomainOrder(adminDb, {
+        orderId: metadata.domainOrderId,
+        paymentId: session.id,
+        stripeSessionId: sessionId
+      });
+
+      if (!alreadyVerified) {
+        const userId = metadata.userId || orderSnap.data().user_id;
+        const userSnap = userId ? await adminDb.collection('users').doc(userId).get() : null;
+        const userData = userSnap?.exists ? userSnap.data() : {};
+        await adminDb.collection('payments').add({
+          userId,
+          userName: userData.name || userData.email?.split('@')[0] || 'User',
+          userEmail: userData.email || '',
+          adminId: userData.adminId || null,
+          amount: parseFloat(metadata.amount || session.amount_total / 100),
+          currency: metadata.currency || 'USD',
+          paymentMethod: 'stripe',
+          planDuration: 'domain',
+          kind: 'domain',
+          domainOrderId: metadata.domainOrderId,
+          domain: metadata.domain || '',
+          status: 'approved',
+          approvedAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          stripeSessionId: sessionId
+        });
+      }
+
+      return NextResponse.json({
+        success: result.ok,
+        kind: 'domain',
+        error: result.ok ? undefined : result.error
+      });
+    }
 
     if (alreadyVerified) {
       return NextResponse.json({ success: true, message: 'Already verified' });

@@ -5,6 +5,7 @@ import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { clearLegacySiteKeys } from '../lib/sites/userSitesScope';
 
 const AuthContext = createContext({});
 
@@ -69,6 +70,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('ba_onboard_done');
       localStorage.removeItem('ba_context');
       localStorage.removeItem('ba_notes');
+      clearLegacySiteKeys();
     }
     router.push('/login');
   };

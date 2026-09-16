@@ -1,0 +1,548 @@
+export const LEGACY_FUNNELS_KEY = 'upklick_funnels_v1';
+export const LEGACY_STORES_KEY = 'upklick_stores_v1';
+export const LEGACY_WEBSITES_KEY = 'upklick_websites_v1';
+export const LEGACY_WEBINARS_KEY = 'upklick_webinars_v1';
+export const LEGACY_BLOGS_KEY = 'upklick_blogs_v1';
+export const LEGACY_FORMS_KEY = 'upklick_forms_v1';
+export const LEGACY_SURVEYS_KEY = 'upklick_surveys_v1';
+export const LEGACY_QUIZZES_KEY = 'upklick_quizzes_v1';
+export const LEGACY_QR_CODES_KEY = 'upklick_qr_codes_v1';
+
+export function funnelsStorageKey(uid) {
+  return uid ? `${LEGACY_FUNNELS_KEY}_${uid}` : LEGACY_FUNNELS_KEY;
+}
+
+export function storesStorageKey(uid) {
+  return uid ? `${LEGACY_STORES_KEY}_${uid}` : LEGACY_STORES_KEY;
+}
+
+export function websitesStorageKey(uid) {
+  return uid ? `${LEGACY_WEBSITES_KEY}_${uid}` : LEGACY_WEBSITES_KEY;
+}
+
+export function webinarsStorageKey(uid) {
+  return uid ? `${LEGACY_WEBINARS_KEY}_${uid}` : LEGACY_WEBINARS_KEY;
+}
+
+export function blogsStorageKey(uid) {
+  return uid ? `${LEGACY_BLOGS_KEY}_${uid}` : LEGACY_BLOGS_KEY;
+}
+
+export function formsStorageKey(uid) {
+  return uid ? `${LEGACY_FORMS_KEY}_${uid}` : LEGACY_FORMS_KEY;
+}
+
+export function surveysStorageKey(uid) {
+  return uid ? `${LEGACY_SURVEYS_KEY}_${uid}` : LEGACY_SURVEYS_KEY;
+}
+
+export function quizzesStorageKey(uid) {
+  return uid ? `${LEGACY_QUIZZES_KEY}_${uid}` : LEGACY_QUIZZES_KEY;
+}
+
+export function qrCodesStorageKey(uid) {
+  return uid ? `${LEGACY_QR_CODES_KEY}_${uid}` : LEGACY_QR_CODES_KEY;
+}
+
+export function stampSiteOwner(item, uid) {
+  if (!item || !uid) return item;
+  if (item.ownerUid === uid) return item;
+  return { ...item, ownerUid: uid };
+}
+
+export function listsHaveSameItems(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+const DEMO_SITE_IDS = new Set(['f1', 'f2', 'store_1', 'store_2', 'store_3', 'store_4']);
+
+export function isSiteOwnedByUser(item, uid) {
+  if (!item || !uid) return false;
+  if (DEMO_SITE_IDS.has(String(item.id))) return false;
+  const owner = item.ownerUid || item.createdBy || '';
+  return owner === uid;
+}
+
+export function sitesForUser(list, uid) {
+  return (Array.isArray(list) ? list : [])
+    .filter((item) => isSiteOwnedByUser(item, uid))
+    .map((item) => stampSiteOwner(item, uid));
+}
+
+/** Load from this user's Firestore document. Never keep another account's items.
+ *  Untagged legacy items are kept only when the document has no foreign-owned rows. */
+export function sitesFromAccountDocument(list, uid) {
+  const arr = Array.isArray(list) ? list : [];
+  if (!uid) return [];
+  const owned = sitesForUser(arr, uid);
+  const foreign = arr.filter((item) => {
+    const owner = item?.ownerUid || item?.createdBy || '';
+    return owner && owner !== uid && !DEMO_SITE_IDS.has(String(item.id));
+  });
+  if (owned.length || foreign.length) return owned;
+  return arr
+    .filter((item) => item && !DEMO_SITE_IDS.has(String(item.id)) && !item.ownerUid && !item.createdBy)
+    .map((item) => stampSiteOwner(item, uid));
+}
+
+export function mergeUserSites(existing = [], mine = [], uid) {
+  const stamped = (Array.isArray(mine) ? mine : [])
+    .filter((item) => item)
+    .map((item) => stampSiteOwner(item, uid));
+  return stamped;
+}
+
+export function readJsonList(key) {
+  if (typeof window === 'undefined' || !key) return [];
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeJsonList(key, list) {
+  if (typeof window === 'undefined' || !key) return;
+  localStorage.setItem(key, JSON.stringify(list || []));
+}
+
+export function clearLegacySiteKeys() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(LEGACY_FUNNELS_KEY);
+  localStorage.removeItem(LEGACY_STORES_KEY);
+  localStorage.removeItem(LEGACY_WEBSITES_KEY);
+  localStorage.removeItem(LEGACY_WEBINARS_KEY);
+  localStorage.removeItem(LEGACY_BLOGS_KEY);
+  localStorage.removeItem(LEGACY_FORMS_KEY);
+}
+
+export function findLocalStoreById(storeId) {
+  if (!storeId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_STORES_KEY)) continue;
+      const found = readJsonList(key).find((s) => s?.id === storeId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function findLocalWebsiteById(websiteId) {
+  if (!websiteId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_WEBSITES_KEY)) continue;
+      const found = readJsonList(key).find((w) => w?.id === websiteId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function findLocalFunnelById(funnelId) {
+  if (!funnelId || typeof window === 'undefined') return null;
+  const hit = readJsonList(LEGACY_FUNNELS_KEY).find((f) => f?.id === funnelId);
+  if (hit) return hit;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FUNNELS_KEY)) continue;
+      const found = readJsonList(key).find((f) => f?.id === funnelId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function findLocalBlogById(blogId) {
+  if (!blogId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_BLOGS_KEY)) continue;
+      const found = readJsonList(key).find((b) => b?.id === blogId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function findLocalFormById(formId) {
+  if (!formId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FORMS_KEY)) continue;
+      const found = readJsonList(key).find((b) => b?.id === formId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function saveFormSubmission(formId, submission) {
+  if (!formId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FORMS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((f) => {
+        if (f?.id === formId) {
+          changed = true;
+          const subs = [submission, ...(f.submissions || [])];
+          const views = (f.analytics?.views || 0) + 1;
+          return {
+            ...f,
+            submissions: subs,
+            analytics: {
+              views,
+              submissions: subs.length
+            }
+          };
+        }
+        return f;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to save form submission:', err);
+  }
+}
+
+export function trackFormView(formId) {
+  if (!formId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_FORMS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((f) => {
+        if (f?.id === formId) {
+          changed = true;
+          const views = (f.analytics?.views || 0) + 1;
+          return {
+            ...f,
+            analytics: {
+              ...(f.analytics || {}),
+              views
+            }
+          };
+        }
+        return f;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to track form view:', err);
+  }
+}
+
+export function findLocalSurveyById(surveyId) {
+  if (!surveyId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_SURVEYS_KEY)) continue;
+      const found = readJsonList(key).find((s) => s?.id === surveyId);
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function saveSurveySubmission(surveyId, submission) {
+  if (!surveyId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_SURVEYS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((s) => {
+        if (s?.id === surveyId) {
+          changed = true;
+          const subs = [submission, ...(s.submissions || [])];
+          const views = (s.analytics?.views || 0) + 1;
+          const completions = (s.analytics?.completions || 0) + 1;
+          return {
+            ...s,
+            submissions: subs,
+            analytics: {
+              views,
+              completions,
+              submissions: subs.length,
+              completionRate: views > 0 ? Math.round((completions / views) * 100) : 100
+            }
+          };
+        }
+        return s;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to save survey submission:', err);
+  }
+}
+
+export function trackSurveyView(surveyId) {
+  if (!surveyId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LEGACY_SURVEYS_KEY)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((s) => {
+        if (s?.id === surveyId) {
+          changed = true;
+          const views = (s.analytics?.views || 0) + 1;
+          const completions = s.analytics?.completions || s.submissions?.length || 0;
+          return {
+            ...s,
+            analytics: {
+              ...(s.analytics || {}),
+              views,
+              completionRate: views > 0 ? Math.round((completions / views) * 100) : 0
+            }
+          };
+        }
+        return s;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to track survey view:', err);
+  }
+}
+
+function isQuizKey(key) {
+  if (!key) return false;
+  return key.startsWith(LEGACY_QUIZZES_KEY) || key.startsWith('upklick_quizzes') || key.startsWith('upclick_quizzes') || key.includes('quizzes');
+}
+
+function matchesQuizId(targetId, searchId) {
+  if (!targetId || !searchId) return false;
+  if (targetId === searchId) return true;
+  const cleanT = String(targetId).trim().replace(/^(quiz_|qz_)+/g, '');
+  const cleanS = String(searchId).trim().replace(/^(quiz_|qz_)+/g, '');
+  return cleanT.toLowerCase() === cleanS.toLowerCase();
+}
+
+export function findLocalQuizById(quizId) {
+  if (!quizId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQuizKey(key)) continue;
+      const found = readJsonList(key).find((q) => matchesQuizId(q?.id, quizId));
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function saveQuizSubmission(quizId, submission) {
+  if (!quizId || !submission || typeof window === 'undefined') return null;
+  let updatedQuiz = null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQuizKey(key)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((q) => {
+        if (matchesQuizId(q?.id, quizId)) {
+          changed = true;
+          const currentSubs = Array.isArray(q.submissions) ? q.submissions : [];
+          const filteredSubs = submission.id
+            ? currentSubs.filter((s) => s.id !== submission.id)
+            : currentSubs;
+          const subs = [submission, ...filteredSubs];
+          const attempts = subs.length;
+          const passedCount = subs.filter((s) => s.passed).length;
+          const passRate = attempts > 0 ? Math.round((passedCount / attempts) * 100) : 0;
+          const avgScore = attempts > 0 ? Math.round(subs.reduce((acc, s) => acc + (s.percentage || 0), 0) / attempts) : 0;
+          const views = Math.max(q.analytics?.views || 0, attempts + 1);
+
+          updatedQuiz = {
+            ...q,
+            submissions: subs,
+            analytics: {
+              views,
+              attempts,
+              passedCount,
+              passRate,
+              avgScore
+            }
+          };
+          return updatedQuiz;
+        }
+        return q;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent('upclick_quiz_submission', { detail: { quizId, submission, updatedQuiz } }));
+      window.dispatchEvent(new CustomEvent('upclick_quiz_updated', { detail: { quizId, updatedQuiz } }));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  } catch (err) {
+    console.error('Failed to save quiz submission:', err);
+  }
+  return updatedQuiz;
+}
+
+export function trackQuizView(quizId) {
+  if (!quizId || typeof window === 'undefined') return;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQuizKey(key)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((q) => {
+        if (matchesQuizId(q?.id, quizId)) {
+          changed = true;
+          const views = (q.analytics?.views || 0) + 1;
+          const attempts = Array.isArray(q.submissions) ? q.submissions.length : (q.analytics?.attempts || 0);
+          return {
+            ...q,
+            analytics: {
+              ...(q.analytics || {}),
+              views,
+              attempts
+            }
+          };
+        }
+        return q;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('upclick_quiz_updated', { detail: { quizId } }));
+    } catch (e) {}
+  } catch (err) {
+    console.error('Failed to track quiz view:', err);
+  }
+}
+
+function isQRCodeKey(key) {
+  if (!key) return false;
+  return key.startsWith(LEGACY_QR_CODES_KEY) || key.startsWith('upklick_qr_codes') || key.startsWith('upclick_qr_codes') || key.includes('qr_codes');
+}
+
+function matchesQRCodeId(targetId, searchId) {
+  if (!targetId || !searchId) return false;
+  if (targetId === searchId) return true;
+  const cleanT = String(targetId).trim().replace(/^(qr_|qrcode_|QR-)+/g, '');
+  const cleanS = String(searchId).trim().replace(/^(qr_|qrcode_|QR-)+/g, '');
+  return cleanT.toLowerCase() === cleanS.toLowerCase();
+}
+
+export function findLocalQRCodeById(qrId) {
+  if (!qrId || typeof window === 'undefined') return null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQRCodeKey(key)) continue;
+      const found = readJsonList(key).find((q) => matchesQRCodeId(q?.id, qrId));
+      if (found) return found;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function trackQRCodeScan(qrId) {
+  if (!qrId || typeof window === 'undefined') return null;
+  let updatedQR = null;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!isQRCodeKey(key)) continue;
+      const list = readJsonList(key);
+      let changed = false;
+      const nextList = list.map((qr) => {
+        if (matchesQRCodeId(qr?.id, qrId)) {
+          changed = true;
+          const totalScans = (qr.analytics?.totalScans || qr.scans || 0) + 1;
+          const uniqueScans = (qr.analytics?.uniqueScans || 0) + 1;
+          const logs = [
+            {
+              id: `scan_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              scannedAt: new Date().toISOString(),
+              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
+              device: typeof navigator !== 'undefined' && /mobile/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop'
+            },
+            ...(Array.isArray(qr.scanLogs) ? qr.scanLogs : [])
+          ];
+          updatedQR = {
+            ...qr,
+            scans: totalScans,
+            analytics: {
+              ...(qr.analytics || {}),
+              totalScans,
+              uniqueScans
+            },
+            scanLogs: logs
+          };
+          return updatedQR;
+        }
+        return qr;
+      });
+      if (changed) {
+        writeJsonList(key, nextList);
+      }
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('upclick_qr_codes_updated', { detail: { qrId, updatedQR } }));
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  } catch (err) {
+    console.error('Failed to track QR code scan:', err);
+  }
+  return updatedQR;
+}
+
+

@@ -59,6 +59,12 @@ import PaymentSettingsPage from './PaymentSettingsPage';
 import AiSettingsPage from './AiSettingsPage';
 import PlansSettingsPage from './PlansSettingsPage';
 import TrackingSettingsPage from './TrackingSettingsPage';
+import OutreachPage from './OutreachPage';
+import EmailCampaignsView from '@/components/outreach/EmailCampaignsView';
+import WhatsAppOutreachView from '@/components/outreach/WhatsAppOutreachView';
+import DomainsPage from './DomainsPage';
+import LiveSiteView from '@/components/sites/LiveSiteView';
+import { normalizeHost } from '@/lib/sites/publicSite';
 
 const secondaryFirebaseConfig = {
   apiKey: "AIzaSyCaswftcLmfIepG_F8fzizqGXFl5mnXvj8",
@@ -101,6 +107,8 @@ const AVAILABLE_TOOLS = [
   { key: 'tiktok-trends', labelAr: 'اتجاهات التواصل', labelEn: 'Social Trends' },
   { key: 'bio', labelAr: 'رابط البايو', labelEn: 'Bio Link' },
   { key: 'landing', labelAr: 'صفحة الهبوط بالذكاء', labelEn: 'Landing Page AI' },
+  { key: 'sites', labelAr: 'الفانلز', labelEn: 'Funnels' },
+  { key: 'domains', labelAr: 'النطاقات', labelEn: 'Domains' },
   { key: 'digital', labelAr: 'المنتجات الرقمية', labelEn: 'Digital Products' },
   { key: 'niche', labelAr: 'استوديو العلامة التجارية', labelEn: 'Niche & Brand Studio' },
   { key: 'community', labelAr: 'مركز المجتمع', labelEn: 'Community Hub' },
@@ -591,7 +599,7 @@ const AdminSupportTab = ({ isRTL, t }) => {
 };
 
 const getUserUsageStats = (user) => {
-  if (!user) return { timeSpent: 0, tasksCompleted: 0, classification: 'inactive', classLabelAr: 'خامل', classLabelEn: 'Inactive', classColor: 'var(--text3)', classBg: 'rgba(255,255,255,0.02)', sections: [] };
+  if (!user) return { timeSpent: 0, tasksCompleted: 0, consumedCredits: 0, classification: 'inactive', classLabelAr: 'خامل', classLabelEn: 'Inactive', classColor: 'var(--text3)', classBg: 'rgba(255,255,255,0.02)', sections: [] };
 
   // Calculate real tasks completed dynamically from user.GC
   let tasksCompleted = 0;
@@ -632,7 +640,14 @@ const getUserUsageStats = (user) => {
 
   // Calculate real hours spent
   const realSeconds = user.totalTimeSpent || 0;
-  const timeSpent = realSeconds > 0 ? Number((realSeconds / 3600).toFixed(2)) : 0; // convert seconds to hours with decimals
+  const timeSpent = realSeconds > 0 ? Number((realSeconds / 3600).toFixed(2)) : 0;
+
+  // Calculate Consumed AI Credits
+  const currentCr = user.aiCredits !== undefined ? Number(user.aiCredits) : 500;
+  const initialCr = user.initialCredits !== undefined ? Number(user.initialCredits) : 500;
+  const consumedCredits = user.creditsUsed !== undefined
+    ? Number(user.creditsUsed)
+    : (user.aiCreditsUsed !== undefined ? Number(user.aiCreditsUsed) : Math.max(0, initialCr - currentCr));
 
   // Section breakdown
   const su = user.sectionUsage || {};
@@ -657,33 +672,31 @@ const getUserUsageStats = (user) => {
     };
   }).sort((a, b) => b.pct - a.pct);
 
-  // Classify based on real metrics
+  // Classify based on consumed credits, time spent, and completed tasks
   let classification = 'inactive';
   let classLabelAr = 'خامل (Inactive)';
   let classLabelEn = 'Inactive';
   let classColor = 'var(--text3)';
   let classBg = 'rgba(255, 255, 255, 0.02)';
 
-  if (timeSpent > 90 && tasksCompleted > 30) {
+  if (consumedCredits > 100 || (timeSpent > 50 && tasksCompleted > 10)) {
     classification = 'power';
     classLabelAr = 'عميل خارق (Power)';
     classLabelEn = 'Power User';
     classColor = 'var(--green)';
     classBg = 'rgba(0, 217, 139, 0.08)';
-  } else if (timeSpent >= 1 || tasksCompleted >= 1) {
-    if (timeSpent > 50) {
-      classification = 'active';
-      classLabelAr = 'نشط (Active)';
-      classLabelEn = 'Active';
-      classColor = 'var(--accent)';
-      classBg = 'rgba(236, 92, 49, 0.08)';
-    } else {
-      classification = 'moderate';
-      classLabelAr = 'متوسط (Moderate)';
-      classLabelEn = 'Moderate';
-      classColor = 'var(--purple)';
-      classBg = 'rgba(108, 53, 255, 0.08)';
-    }
+  } else if (consumedCredits > 10 || timeSpent > 5 || tasksCompleted >= 2) {
+    classification = 'active';
+    classLabelAr = 'نشط (Active)';
+    classLabelEn = 'Active';
+    classColor = 'var(--accent)';
+    classBg = 'rgba(236, 92, 49, 0.08)';
+  } else if (consumedCredits > 0 || timeSpent > 0.05 || tasksCompleted >= 1) {
+    classification = 'moderate';
+    classLabelAr = 'متوسط (Moderate)';
+    classLabelEn = 'Moderate';
+    classColor = 'var(--purple)';
+    classBg = 'rgba(108, 53, 255, 0.08)';
   }
 
   // Fallback defaults for sections if they have no time logged yet to look clean in UI
@@ -699,6 +712,7 @@ const getUserUsageStats = (user) => {
   return {
     timeSpent,
     tasksCompleted,
+    consumedCredits,
     classification,
     classLabelAr,
     classLabelEn,
@@ -863,6 +877,7 @@ const AdminDashboard = () => {
         roleCategory: newCat,
         isTeamMember: newCat === 'team'
       }, { merge: true });
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, roleCategory: newCat, isTeamMember: newCat === 'team' } : u));
     } catch (err) {
       console.error("Error toggling user category:", err);
     }
@@ -871,10 +886,10 @@ const AdminDashboard = () => {
   const fetchUsers = () => {
     setLoading(true);
     const q = collection(db, 'users');
-
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const allUsers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsers(allUsers);
+      setLoading(false);
 
       const now = new Date();
       const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -905,13 +920,10 @@ const AdminDashboard = () => {
       }
 
       setGrowthData(last7);
-      setLoading(false);
     }, (err) => {
-      console.error(err);
-      setError(t('admin.errorSyncUsers'));
+      console.error("Error fetching users snapshot:", err);
       setLoading(false);
     });
-
     return unsubscribe;
   };
 
@@ -1184,6 +1196,9 @@ const AdminDashboard = () => {
         subscriptionDuration: newUser.subscriptionType === 'lifetime' ? null : newUser.subscriptionDuration,
         expiresAt: expiresAt,
         aiCredits: newUser.aiCredits !== '' ? Number(newUser.aiCredits) : globalDefaultCredits,
+        initialCredits: newUser.aiCredits !== '' ? Number(newUser.aiCredits) : globalDefaultCredits,
+        creditsUsed: 0,
+        creditBucket: 'unused',
         createdAt: serverTimestamp(),
         allowedTools: newUser.allowedTools || AVAILABLE_TOOLS.map(t => t.key)
       });
@@ -1191,7 +1206,6 @@ const AdminDashboard = () => {
       await signOut(secondaryAuth);
       setShowAddModal(false);
       setNewUser({ name: '', email: '', password: '', phoneNumber: '', licenseKey: '', role: 'user', country: 'EG', subscriptionType: 'months', subscriptionDuration: '1', allowedTools: AVAILABLE_TOOLS.map(t => t.key) });
-      fetchUsers();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1201,8 +1215,10 @@ const AdminDashboard = () => {
 
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [isExportingUsers, setIsExportingUsers] = useState(false);
 
   const exportUsersToCSV = () => {
+    const listToExport = filteredUsers.length > 0 ? filteredUsers : users;
     const headers = [
       isRTL ? 'اسم المستخدم' : 'Name',
       isRTL ? 'البريد الإلكتروني' : 'Email',
@@ -1215,7 +1231,7 @@ const AdminDashboard = () => {
       isRTL ? 'نشاط التفاعل' : 'Activity Status'
     ];
 
-    const rows = filteredUsers.map(u => {
+    const rows = listToExport.map(u => {
       const trialDet = getTrialStatusDetailed(u);
       const actStatus = getUserActivityStatus(u);
       return [
@@ -1822,7 +1838,9 @@ const AdminDashboard = () => {
     if (activityFilter === 'time_desc') {
       const statsA = getUserUsageStats(a);
       const statsB = getUserUsageStats(b);
-      return statsB.timeSpent - statsA.timeSpent;
+      const scoreA = (statsA.consumedCredits * 10) + (statsA.timeSpent * 5) + statsA.tasksCompleted;
+      const scoreB = (statsB.consumedCredits * 10) + (statsB.timeSpent * 5) + statsB.tasksCompleted;
+      return scoreB - scoreA;
     }
     return getJoinMs(b) - getJoinMs(a);
   });
@@ -1830,14 +1848,17 @@ const AdminDashboard = () => {
   const [userPage, setUserPage] = useState(1);
   const USERS_PER_PAGE = 10;
 
-  const [salesPage, setSalesPage] = useState(1);
-  const SALES_PER_PAGE = 10;
-
-  const dateLocale = isRTL ? 'ar-EG' : 'en-US';
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   useEffect(() => {
     setUserPage(1);
   }, [searchTerm, activityFilter, roleCategoryFilter, dateRangePreset, startDate, endDate]);
+
+  const dateLocale = isRTL ? 'ar-EG' : 'en-US';
+
+  const [salesPage, setSalesPage] = useState(1);
+  const SALES_PER_PAGE = 10;
 
   useEffect(() => {
     setSalesPage(1);
@@ -1867,9 +1888,6 @@ const AdminDashboard = () => {
     if (!dateObj || isNaN(dateObj.getTime())) return '—';
     return dateObj.toLocaleDateString(dateLocale, { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
-
-  const totalUserPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE) || 1;
-  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   const phoneSpanStyle = {
     position: 'absolute',
@@ -1908,6 +1926,9 @@ const AdminDashboard = () => {
              activeTab === 'payments' ? t('admin.paymentsTitle') :
              activeTab === 'support' ? (isRTL ? 'الدعم الفني والشكاوى' : 'Support Tickets') :
              activeTab === 'tracking' ? t('nav.trackingSettings') :
+             activeTab === 'email-campaigns' || activeTab === 'outreach' ? (isRTL ? 'حملات وجدولة الإيميل' : 'Email Campaigns & Builder') :
+             activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp' ? (isRTL ? 'جدولة ورسائل الواتساب' : 'WhatsApp Outreach') :
+             activeTab === 'domains' ? (isRTL ? 'النطاقات والمسجّل' : 'Domains & Registrar') :
              t('admin.statsTitle')}
           </h2>
           <p style={{ color: 'var(--text2)', fontSize: '14px' }}>
@@ -1918,6 +1939,9 @@ const AdminDashboard = () => {
              activeTab === 'payments' ? t('admin.paymentsDesc') :
              activeTab === 'support' ? (isRTL ? 'متابعة وحل مشكلات العملاء وفتح المحادثات الفورية' : 'Manage customer issues and open chat threads') :
              activeTab === 'tracking' ? (isRTL ? 'إدارة وتتبع أكواد البيكسل والتحليلات الخاصة بالمنصة' : 'Manage and track platform pixel and analytics configurations') :
+             activeTab === 'email-campaigns' || activeTab === 'outreach' ? (isRTL ? 'إنشاء وتصميم حملات البريد المرئية بتقنية Drag & Drop مع استهداف دقيق وسجلات إرسال فورية' : 'Create & design visual email campaigns with Drag & Drop builder, audience targeting, and real-time delivery logs') :
+             activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp' ? (isRTL ? 'إرسال حملات الواتساب وقوالب Twilio المعتمدة حسب فئات استهلاك الكريدت' : 'Send approved Twilio WhatsApp campaigns by credit-usage segment') :
+             activeTab === 'domains' ? (isRTL ? 'تسعير النطاقات، الطلبات، وإعادة محاولة التسجيل بعد الدفع' : 'Domain pricing, orders, and retry failed registrar purchases') :
              t('admin.statsDesc')}
           </p>
           {error && <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', padding: '10px 15px', borderRadius: '8px', marginTop: '10px', fontSize: '13px', border: '1px solid rgba(239,68,68,0.2)' }}>⚠️ {error}</div>}
@@ -2936,11 +2960,17 @@ const AdminDashboard = () => {
         <AiSettingsPage />
       ) : activeTab === 'tracking' && userData?.role === 'admin' ? (
         <TrackingSettingsPage />
+      ) : (activeTab === 'email-campaigns' || activeTab === 'outreach') && userData?.role === 'admin' ? (
+        <EmailCampaignsView isRTL={isRTL} users={users} />
+      ) : (activeTab === 'whatsapp-outreach' || activeTab === 'whatsapp') && userData?.role === 'admin' ? (
+        <WhatsAppOutreachView isRTL={isRTL} users={users} />
+      ) : activeTab === 'domains' && userData?.role === 'admin' ? (
+        <DomainsPage isRTL={isRTL} />
       ) : activeTab === 'support' && userData?.role === 'admin' ? (
         <AdminSupportTab isRTL={isRTL} t={t} />
       ) : (
         <div className="card" style={{ padding: '0', overflow: 'hidden', marginBottom: '24px' }}>
-          {/* Summary Stats Bar (Dynamically updated based on Date & Role Category Filters) */}
+          {/* Summary Stats Bar (Dynamically updated based on Date, Role Category, & Activity Filters) */}
           {(() => {
             const dateFilteredUsers = users.filter(u => {
               if (!isDateInSelectedRange(getUserCreatedDate(u), dateRangePreset, startDate, endDate)) return false;
@@ -2948,18 +2978,42 @@ const AdminDashboard = () => {
                 const catKey = getUserCategory(u).key;
                 if (catKey !== roleCategoryFilter) return false;
               }
+              if (activityFilter !== 'all' && activityFilter !== 'time_desc') {
+                if (activityFilter === 'new_users') return isUserNew(u);
+                if (activityFilter === 'active_trial') {
+                  const trialDet = getTrialStatusDetailed(u);
+                  return trialDet && (trialDet.type === 'trial_active' || trialDet.type === 'starter') && !trialDet.expired;
+                }
+                if (activityFilter === 'expired_trial') {
+                  const trialDet = getTrialStatusDetailed(u);
+                  return trialDet && (trialDet.type === 'trial_expired' || trialDet.expired === true);
+                }
+                if (activityFilter === 'paid') {
+                  const trialDet = getTrialStatusDetailed(u);
+                  return trialDet && (trialDet.type === 'paid_active' || trialDet.type === 'lifetime' || (u.planName && u.planName !== 'Starter' && u.planName !== 'Free Trial'));
+                }
+                const uStats = getUserUsageStats(u);
+                if (uStats.classification !== activityFilter) return false;
+              }
               return true;
             });
-            const totalCount = dateFilteredUsers.length;
-            const newCount = dateFilteredUsers.filter(u => isUserNew(u)).length;
-            const activeTrialCount = dateFilteredUsers.filter(u => {
+
+            const isFiltered = dateRangePreset !== 'all' || roleCategoryFilter !== 'all' || (activityFilter !== 'all' && activityFilter !== 'time_desc') || (searchTerm && searchTerm.trim());
+            const displayList = isFiltered ? (filteredUsers.length > 0 || searchTerm ? filteredUsers : dateFilteredUsers) : users;
+
+            const totalCount = displayList.length;
+            const newCount = displayList.filter(u => isUserNew(u)).length;
+            const activeTrialCount = displayList.filter(u => {
               const trialDet = getTrialStatusDetailed(u);
               return trialDet && (trialDet.type === 'trial_active' || trialDet.type === 'starter') && !trialDet.expired;
             }).length;
-            const expiredTrialCount = dateFilteredUsers.filter(u => getTrialStatusDetailed(u).type === 'trial_expired').length;
-            const paidCount = dateFilteredUsers.filter(u => {
+            const expiredTrialCount = displayList.filter(u => {
+              const trialDet = getTrialStatusDetailed(u);
+              return trialDet && (trialDet.type === 'trial_expired' || trialDet.expired === true);
+            }).length;
+            const paidCount = displayList.filter(u => {
               const st = getTrialStatusDetailed(u);
-              return st && (st.type.startsWith('paid') || st.type === 'lifetime');
+              return st && (st.type === 'paid_active' || st.type === 'lifetime' || (u.planName && u.planName !== 'Starter' && u.planName !== 'Free Trial'));
             }).length;
 
             return (
@@ -2973,7 +3027,7 @@ const AdminDashboard = () => {
               }}>
                 <div style={{ background: 'var(--bg3)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--line)' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700' }}>
-                    {isRTL ? (dateRangePreset === 'all' && roleCategoryFilter === 'all' ? '👥 إجمالي المستخدمين' : '👥 مستخدمي الفلتر') : '👥 Period Users'}
+                    {isRTL ? (isFiltered ? '👥 مستخدمي الفلتر' : '👥 إجمالي المستخدمين') : (isFiltered ? '👥 Filter Users' : '👥 Total Users')}
                   </div>
                   <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', marginTop: '2px' }}>{totalCount}</div>
                 </div>
@@ -3611,20 +3665,28 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Key KPIs */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   <div style={{ background: 'var(--bg3)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--line)', textAlign: 'center' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
-                      {isRTL ? 'الوقت المقضي (30 يوم)' : 'Time Spent (30 Days)'}
+                      {isRTL ? 'الوقت المقضي' : 'Time Spent'}
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)' }}>
                       {uStats.timeSpent} {isRTL ? 'ساعة' : 'Hrs'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(236, 92, 49, 0.08)', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(236, 92, 49, 0.2)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '700', marginBottom: '4px' }}>
+                      {isRTL ? 'الكريديت المستهلك' : 'Consumed Credits'}
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                      {uStats.consumedCredits} cr
                     </div>
                   </div>
                   <div style={{ background: 'var(--bg3)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--line)', textAlign: 'center' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
                       {isRTL ? 'العمليات المنجزة' : 'Tasks Completed'}
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', fontFamily: 'var(--mono)' }}>
                       {uStats.tasksCompleted} {isRTL ? 'عملية' : 'Tasks'}
                     </div>
                   </div>
@@ -4244,10 +4306,52 @@ const AdminDashboard = () => {
   );
 };
 
+function isPlatformHostname(host) {
+  if (!host) return true;
+  const clean = host.toLowerCase().split(':')[0].trim();
+  if (['localhost', '127.0.0.1', '0.0.0.0', 'upklick.com', 'www.upklick.com'].includes(clean)) return true;
+  if (clean.endsWith('.vercel.app')) return true;
+  if (clean.includes('ngrok') || clean.includes('trycloudflare')) return true;
+  const extras = String(process.env.NEXT_PUBLIC_APP_HOSTS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  return extras.includes(clean);
+}
+
 export default function AdminDashboardPage() {
+  const [isCustomDomain, setIsCustomDomain] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      return !isPlatformHostname(h);
+    }
+    return false;
+  });
+  const [currentHost, setCurrentHost] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return normalizeHost(window.location.hostname);
+    }
+    return '';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const h = normalizeHost(window.location.hostname);
+      setCurrentHost(h);
+      if (!isPlatformHostname(h)) {
+        setIsCustomDomain(true);
+      }
+    }
+  }, []);
+
+  if (isCustomDomain && currentHost) {
+    return <LiveSiteView host={currentHost} path="/admin" />;
+  }
+
   return (
     <Suspense fallback={<div style={{ padding: '40px', color: 'var(--text2)' }}>Loading admin panel...</div>}>
       <AdminDashboard />
     </Suspense>
   );
 }
+

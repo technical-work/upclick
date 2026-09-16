@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAuth } from '../../context/AuthContext';
 import CustomSelect from '../CustomSelect';
+import { mergeUserSites, sitesForUser, stampSiteOwner } from '@/lib/sites/userSitesScope';
 
 export default function UpClickBuilderView() {
   const {
@@ -14,18 +16,21 @@ export default function UpClickBuilderView() {
     saveGC,
     confirmAction
   } = useBusiness();
+  const { user } = useAuth();
+  const accountUid = user?.uid || '';
 
-  const funnels = GC.upclickFunnels?.funnels || [];
+  const funnels = sitesForUser(GC.upclickFunnels?.funnels, accountUid);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFunnelName, setNewFunnelName] = useState('');
   const [newFunnelType, setNewFunnelType] = useState('Lead Magnet');
 
   const saveFunnels = (updatedFunnels) => {
+    if (!accountUid) return;
     saveGC({
       ...GC,
       upclickFunnels: {
         ...GC.upclickFunnels,
-        funnels: updatedFunnels
+        funnels: mergeUserSites(GC.upclickFunnels?.funnels, updatedFunnels, accountUid)
       }
     });
   };
@@ -37,7 +42,7 @@ export default function UpClickBuilderView() {
       return;
     }
 
-    const newFunnel = {
+    const newFunnel = stampSiteOwner({
       id: Date.now(),
       name: newFunnelName,
       type: newFunnelType,
@@ -45,7 +50,7 @@ export default function UpClickBuilderView() {
       clicks: 0,
       revenue: 0,
       convRate: '0%'
-    };
+    }, accountUid);
 
     const updated = [newFunnel, ...funnels];
     saveFunnels(updated);
@@ -87,7 +92,7 @@ export default function UpClickBuilderView() {
       return;
     }
 
-    const newFunnel = {
+    const newFunnel = stampSiteOwner({
       id: Date.now(),
       name: selected.name,
       type: selected.type,
@@ -95,7 +100,7 @@ export default function UpClickBuilderView() {
       clicks: Math.floor(Math.random() * 400) + 100,
       revenue: Math.floor(Math.random() * 2000) + 500,
       convRate: selected.conv
-    };
+    }, accountUid);
 
     const updated = [newFunnel, ...funnels];
     saveFunnels(updated);
