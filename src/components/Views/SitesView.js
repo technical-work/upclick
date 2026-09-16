@@ -331,6 +331,7 @@ export default function SitesView() {
     const nextWebinars = dedupeSitesList((gcWebinars.length ? gcWebinars : scopedWebinars).filter(w => !isAutoSeededWebinar(w)).map(sanitizeWebinar), 'webinar');
     const nextBlogs = dedupeSitesList(gcBlogs.length ? gcBlogs : scopedBlogs, 'blogsite');
     const nextForms = dedupeSitesList(gcForms.length ? gcForms : scopedForms, 'form');
+    const nextSurveys = dedupeSitesList(gcSurveys.length ? gcSurveys : scopedSurveys, 'survey');
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
