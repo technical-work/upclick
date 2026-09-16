@@ -21,6 +21,7 @@ import {
   storesStorageKey,
   websitesStorageKey,
   webinarsStorageKey,
+  blogsStorageKey,
   writeJsonList
 } from '@/lib/sites/userSitesScope';
 import WebsiteListView from '../sites/websites/WebsiteListView';
@@ -40,6 +41,11 @@ import {
   createWebinarFromTemplate
 } from '../sites/webinars/webinarTemplates';
 import SitesAnalyticsView from '../sites/analytics/SitesAnalyticsView';
+import BlogListView from '../sites/blogs/BlogListView';
+import CreateBlogSiteView from '../sites/blogs/CreateBlogSiteView';
+import BlogSiteDetailView from '../sites/blogs/BlogSiteDetailView';
+import BlogPostEditor from '../sites/blogs/BlogPostEditor';
+import LiveBlogReaderModal from '../sites/blogs/LiveBlogReaderModal';
 import { 
   Plus, 
   Search, 
@@ -79,6 +85,7 @@ export default function SitesView() {
   const storePersistTimer = useRef(null);
   const websitePersistTimer = useRef(null);
   const webinarPersistTimer = useRef(null);
+  const blogPersistTimer = useRef(null);
   const [storeForceTab, setStoreForceTab] = useState('pages');
 
   const [activeSubTab, setActiveSubTab] = useState('websites'); // Defaults to websites as requested
@@ -86,6 +93,11 @@ export default function SitesView() {
   const [selectedStore, setSelectedStore] = useState(null);
   const [selectedWebsite, setSelectedWebsite] = useState(null);
   const [selectedWebinar, setSelectedWebinar] = useState(null);
+  const [selectedBlogSite, setSelectedBlogSite] = useState(null);
+  const [isCreatingBlogSite, setIsCreatingBlogSite] = useState(false);
+  const [isEditingBlogSite, setIsEditingBlogSite] = useState(false);
+  const [activeBlogPost, setActiveBlogPost] = useState(null);
+  const [previewingPost, setPreviewingPost] = useState(null);
   const [detailTab, setDetailTab] = useState('steps');
   const [stepOverviewTab, setStepOverviewTab] = useState('overview');
   
@@ -121,11 +133,12 @@ export default function SitesView() {
   // Active step index inside detail builder
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
-  // Load funnels / stores / websites / webinars for the signed-in user only
+  // Load funnels / stores / websites / webinars / blogs for the signed-in user only
   const [funnels, setFunnels] = useState([]);
   const [stores, setStores] = useState([]);
   const [websites, setWebsites] = useState([]);
   const [webinars, setWebinars] = useState([]);
+  const [blogs, setBlogs] = useState([]);
   const loadedAccountUid = useRef('');
 
   const filteredFunnels = useMemo(() => {
@@ -142,10 +155,13 @@ export default function SitesView() {
       setStores([]);
       setWebsites([]);
       setWebinars([]);
+      setBlogs([]);
       setSelectedFunnel(null);
       setSelectedStore(null);
       setSelectedWebsite(null);
       setSelectedWebinar(null);
+      setSelectedBlogSite(null);
+      setActiveBlogPost(null);
       loadedAccountUid.current = '';
       return;
     }
@@ -156,6 +172,8 @@ export default function SitesView() {
       setSelectedStore(null);
       setSelectedWebsite(null);
       setSelectedWebinar(null);
+      setSelectedBlogSite(null);
+      setActiveBlogPost(null);
       loadedAccountUid.current = accountUid;
     }
 
@@ -164,6 +182,7 @@ export default function SitesView() {
     const scopedStores = sitesForUser(readJsonList(storesStorageKey(accountUid)), accountUid);
     const scopedWebsites = sitesForUser(readJsonList(websitesStorageKey(accountUid)), accountUid);
     const scopedWebinars = sitesForUser(readJsonList(webinarsStorageKey(accountUid)), accountUid);
+    const scopedBlogs = sitesForUser(readJsonList(blogsStorageKey(accountUid)), accountUid);
     const gcFunnels = gcBelongsToAccount
       ? sitesForUser(GC?.upclickFunnels?.funnels, accountUid)
       : [];
@@ -175,6 +194,9 @@ export default function SitesView() {
       : [];
     const gcWebinars = gcBelongsToAccount
       ? sitesForUser(GC?.upclickWebinars?.webinars, accountUid)
+      : [];
+    const gcBlogs = gcBelongsToAccount
+      ? sitesForUser(GC?.upclickBlogs?.blogs, accountUid)
       : [];
 
     // Sanitizers to clear any legacy demo stats from stored funnels, stores, webinars
@@ -264,6 +286,7 @@ export default function SitesView() {
 
     const nextWebsites = dedupeSitesList((gcWebsites.length ? gcWebsites : scopedWebsites).filter(w => !isAutoSeededWebsite(w)), 'website');
     const nextWebinars = dedupeSitesList((gcWebinars.length ? gcWebinars : scopedWebinars).filter(w => !isAutoSeededWebinar(w)).map(sanitizeWebinar), 'webinar');
+    const nextBlogs = dedupeSitesList(gcBlogs.length ? gcBlogs : scopedBlogs, 'blogsite');
 
     setFunnels((prev) => {
       if (userChanged) return nextFunnels;
@@ -289,7 +312,13 @@ export default function SitesView() {
       if (!prevMine.length && nextWebinars.length) return nextWebinars;
       return nextWebinars;
     });
-  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, isRtl]);
+    setBlogs((prev) => {
+      if (userChanged) return nextBlogs;
+      const prevMine = sitesForUser(prev, accountUid);
+      if (!prevMine.length && nextBlogs.length) return nextBlogs;
+      return nextBlogs;
+    });
+  }, [accountUid, GC?._accountUid, GC?.upclickFunnels?.funnels, GC?.upclickStores?.stores, GC?.upclickWebsites?.websites, GC?.upclickWebinars?.webinars, GC?.upclickBlogs?.blogs, isRtl]);
 
   const saveFunnels = (updatedList) => {
     if (!accountUid) return;
@@ -358,6 +387,30 @@ export default function SitesView() {
       });
     }, 700);
   };
+
+  const saveBlogs = (updatedList) => {
+    if (!accountUid) return;
+    const mine = (updatedList || []).map((item) => stampSiteOwner(item, accountUid));
+    setBlogs(mine);
+    writeJsonList(blogsStorageKey(accountUid), mine);
+    clearLegacySiteKeys();
+    if (blogPersistTimer.current) clearTimeout(blogPersistTimer.current);
+    blogPersistTimer.current = setTimeout(() => {
+      saveGC({
+        ...GC,
+        upclickBlogs: {
+          blogs: mine
+        }
+      });
+    }, 700);
+  };
+
+  // Sync selectedBlogSite
+  useEffect(() => {
+    if (!selectedBlogSite) return;
+    const match = blogs.find((b) => b.id === selectedBlogSite.id);
+    if (match && match !== selectedBlogSite) setSelectedBlogSite(match);
+  }, [blogs, selectedBlogSite]);
 
   // Sync selectedFunnel
   useEffect(() => {
@@ -638,6 +691,118 @@ export default function SitesView() {
         if (showToast) showToast(isRtl ? 'تم الحفظ. اضغط «نشر المتجر» لتفعيل الرابط العام.' : 'Saved. Click Publish store to activate the public link.');
       }
     })();
+  };
+
+  // Blog Management Handlers
+  const handleCreateBlogSite = (newSite) => {
+    const stamped = stampSiteOwner(newSite, accountUid);
+    const updated = [stamped, ...blogs];
+    saveBlogs(updated);
+    setIsCreatingBlogSite(false);
+    setSelectedBlogSite(stamped);
+    if (showToast) showToast(isRtl ? 'تم إنشاء موقع المدونة بنجاح 🚀' : 'Blog site created successfully');
+  };
+
+  const handleUpdateBlogSite = (updatedSite) => {
+    const stamped = stampSiteOwner(updatedSite, accountUid);
+    const updated = blogs.map(s => s.id === stamped.id ? stamped : s);
+    saveBlogs(updated);
+    setSelectedBlogSite(stamped);
+  };
+
+  const handleDeleteBlogSite = (siteId) => {
+    const updated = blogs.filter(s => s.id !== siteId);
+    saveBlogs(updated);
+    if (selectedBlogSite?.id === siteId) setSelectedBlogSite(null);
+    if (showToast) showToast(isRtl ? 'تم حذف موقع المدونة' : 'Blog site deleted');
+  };
+
+  const handleDuplicateBlogSite = (site) => {
+    const dup = {
+      ...site,
+      id: `blogsite_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      name: `${site.name} (Copy)`,
+      slug: `${site.slug}-copy`,
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+    const updated = [dup, ...blogs];
+    saveBlogs(updated);
+    if (showToast) showToast(isRtl ? 'تم تكرار موقع المدونة' : 'Blog site duplicated');
+  };
+
+  const handleSaveBlogPost = (updatedPost) => {
+    if (!selectedBlogSite) return;
+    const existingPosts = selectedBlogSite.posts || [];
+    const postIndex = existingPosts.findIndex(p => p.id === updatedPost.id);
+    let newPosts;
+    if (postIndex >= 0) {
+      newPosts = existingPosts.map(p => p.id === updatedPost.id ? updatedPost : p);
+    } else {
+      newPosts = [updatedPost, ...existingPosts];
+    }
+
+    const updatedSite = {
+      ...selectedBlogSite,
+      posts: newPosts,
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+
+    handleUpdateBlogSite(updatedSite);
+    setActiveBlogPost(null);
+  };
+
+  const handleDeleteBlogPost = (postId) => {
+    if (!selectedBlogSite) return;
+    const newPosts = (selectedBlogSite.posts || []).filter(p => p.id !== postId);
+    const updatedSite = {
+      ...selectedBlogSite,
+      posts: newPosts,
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+    handleUpdateBlogSite(updatedSite);
+    if (showToast) showToast(isRtl ? 'تم حذف المقال' : 'Post deleted');
+  };
+
+  const handleDuplicateBlogPost = (postToDup) => {
+    if (!selectedBlogSite) return;
+    const dup = {
+      ...postToDup,
+      id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      title: `${postToDup.title} (Copy)`,
+      slug: `${postToDup.slug}-copy`,
+      status: 'draft',
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+    const newPosts = [dup, ...(selectedBlogSite.posts || [])];
+    const updatedSite = {
+      ...selectedBlogSite,
+      posts: newPosts,
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+    handleUpdateBlogSite(updatedSite);
+    if (showToast) showToast(isRtl ? 'تم تكرار المقال كمسودة' : 'Post duplicated as draft');
+  };
+
+  const handlePublishBlogPost = (postId, targetStatus = 'published') => {
+    if (!selectedBlogSite) return;
+    const updatedPosts = (selectedBlogSite.posts || []).map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          status: targetStatus,
+          publishedAt: targetStatus === 'published' ? new Date().toISOString() : p.publishedAt,
+          lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        };
+      }
+      return p;
+    });
+    const updatedBlogSite = {
+      ...selectedBlogSite,
+      posts: updatedPosts,
+      lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    };
+    handleUpdateBlogSite(updatedBlogSite);
+    if (showToast) showToast(targetStatus === 'published' ? (isRtl ? 'تم نشر المقال بنجاح 🚀' : 'Post published successfully 🚀') : (isRtl ? 'تم نقل المقال للمسودة' : 'Post converted to draft'));
   };
 
   const handleDuplicateStore = (storeId) => {
@@ -925,6 +1090,15 @@ export default function SitesView() {
     </div>
   );
 
+  const connectedDomains = useMemo(() => {
+    const doms = new Set();
+    (websites || []).forEach(w => { if (w.domain) doms.add(w.domain); });
+    (funnels || []).forEach(f => { if (f.domain) doms.add(f.domain); });
+    (stores || []).forEach(s => { if (s.domain) doms.add(s.domain); });
+    (blogs || []).forEach(b => { if (b.domain) doms.add(b.domain); });
+    return Array.from(doms);
+  }, [websites, funnels, stores, blogs]);
+
   // Sub-tabs list matching UpKlick / GoHighLevel
   const subTabs = [
     { key: 'funnels', label: isRtl ? 'الفانلز' : 'Funnels' },
@@ -1049,6 +1223,12 @@ export default function SitesView() {
                 if (tab.key !== 'websites') setSelectedWebsite(null);
                 if (tab.key !== 'webinars') setSelectedWebinar(null);
                 if (tab.key !== 'stores') setSelectedStore(null);
+                if (tab.key !== 'blogs') {
+                  setSelectedBlogSite(null);
+                  setActiveBlogPost(null);
+                  setIsCreatingBlogSite(false);
+                  setIsEditingBlogSite(false);
+                }
               }}
               style={{
                 background: 'none',
@@ -1100,6 +1280,18 @@ export default function SitesView() {
                   borderRadius: '4px'
                 }}>
                   {stores.length}
+                </span>
+              )}
+              {tab.key === 'blogs' && blogs.length > 0 && (
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.12)',
+                  color: '#2563eb',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  padding: '1px 5px',
+                  borderRadius: '4px'
+                }}>
+                  {blogs.length}
                 </span>
               )}
             </button>
@@ -1209,6 +1401,109 @@ export default function SitesView() {
           isRtl={isRtl}
           showToast={showToast}
         />
+      ) : activeSubTab === 'blogs' ? (
+        activeBlogPost ? (
+          <BlogPostEditor
+            post={activeBlogPost}
+            blogSite={selectedBlogSite}
+            isRtl={isRtl}
+            onBack={() => setActiveBlogPost(null)}
+            onSavePost={handleSaveBlogPost}
+            onPublishPost={handlePublishBlogPost}
+            onPreviewPost={(post) => setPreviewingPost(post)}
+            showToast={showToast}
+          />
+        ) : isCreatingBlogSite || isEditingBlogSite ? (
+          <CreateBlogSiteView
+            isRtl={isRtl}
+            initialData={isEditingBlogSite ? selectedBlogSite : null}
+            connectedDomains={connectedDomains}
+            onBack={() => {
+              setIsCreatingBlogSite(false);
+              setIsEditingBlogSite(false);
+            }}
+            onCreateBlogSite={isEditingBlogSite ? handleUpdateBlogSite : handleCreateBlogSite}
+            onOpenDomainSettings={() => {
+              if (showToast) showToast(isRtl ? 'انتقل إلى إعدادات النطاقات لربط دومين مخصص' : 'Manage your domains in Domain Settings');
+            }}
+          />
+        ) : selectedBlogSite ? (
+          <BlogSiteDetailView
+            blogSite={selectedBlogSite}
+            isRtl={isRtl}
+            onBack={() => setSelectedBlogSite(null)}
+            onOpenEditSite={() => setIsEditingBlogSite(true)}
+            onCreateNewPost={() => {
+              const newPost = {
+                id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                title: 'New Blog Post',
+                slug: 'new-blog-post',
+                category: 'General',
+                author: user?.displayName || user?.email?.split('@')[0] || 'Admin',
+                status: 'draft',
+                type: 'standard',
+                coverImage: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1200&q=80',
+                excerpt: '',
+                content: '',
+                words: 0,
+                readTime: '1 min read',
+                lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                seo: { metaTitle: '', metaDescription: '', canonicalUrl: '' },
+                tags: []
+              };
+              setActiveBlogPost(newPost);
+            }}
+            onOpenAiPostCreator={() => {
+              const newAiPost = {
+                id: `post_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                title: 'AI Generated Blog Post',
+                slug: 'ai-generated-blog-post',
+                category: 'Marketing',
+                author: 'Content AI',
+                status: 'draft',
+                type: 'ai',
+                coverImage: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=1200&q=80',
+                excerpt: '',
+                content: '',
+                words: 0,
+                readTime: '1 min read',
+                lastUpdated: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+                seo: { metaTitle: '', metaDescription: '', canonicalUrl: '' },
+                tags: ['AI', 'Content']
+              };
+              setActiveBlogPost(newAiPost);
+            }}
+            onEditPost={(post) => setActiveBlogPost(post)}
+            onDeletePost={handleDeleteBlogPost}
+            onDuplicatePost={handleDuplicateBlogPost}
+            onPublishPost={handlePublishBlogPost}
+            onPreviewPost={(post) => setPreviewingPost(post)}
+            onPreviewLiveBlog={(blog) => {
+              if (blog.posts && blog.posts.length > 0) {
+                setPreviewingPost(blog.posts[0]);
+              } else {
+                if (showToast) showToast(isRtl ? 'أضف مقالات أولاً لمعاينة المدونة مباشرة' : 'Add posts first to preview live blog');
+              }
+            }}
+            showToast={showToast}
+          />
+        ) : (
+          <BlogListView
+            blogSites={blogs}
+            isRtl={isRtl}
+            onSelectBlogSite={(site) => setSelectedBlogSite(site)}
+            onOpenCreateBlogSite={() => {
+              setIsEditingBlogSite(false);
+              setIsCreatingBlogSite(true);
+            }}
+            onDuplicateBlogSite={handleDuplicateBlogSite}
+            onDeleteBlogSite={handleDeleteBlogSite}
+            onOpenSettings={() => {
+              if (showToast) showToast(isRtl ? 'إعدادات المدونات العامة' : 'Global Blog Settings');
+            }}
+            showToast={showToast}
+          />
+        )
       ) : (
         /* RENDER FUNNELS VIEW */
         selectedFunnel ? (
@@ -1585,6 +1880,16 @@ export default function SitesView() {
           </div>
         </div>
       )}
+
+      {/* LIVE BLOG READER MODAL */}
+      <LiveBlogReaderModal
+        isOpen={!!previewingPost}
+        onClose={() => setPreviewingPost(null)}
+        post={previewingPost}
+        blogSite={selectedBlogSite}
+        isRtl={isRtl}
+        showToast={showToast}
+      />
 
     </div>
   );
