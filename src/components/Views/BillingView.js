@@ -56,6 +56,34 @@ export default function BillingView() {
     return num % 1 === 0 ? String(Math.round(num)) : num.toFixed(2);
   };
 
+  // Expiration detection
+  const getMs = (val) => {
+    if (!val) return 0;
+    if (typeof val === 'string') return new Date(val).getTime();
+    if (typeof val === 'number') return val;
+    if (val?.toDate) return val.toDate().getTime();
+    if (val?.seconds) return val.seconds * 1000;
+    return 0;
+  };
+
+  const isTrialExpired = () => {
+    if (!userData?.isTrial || !userData?.trialStartedAt) return false;
+    const trialDays = tenantConfig?.freeTrial?.days || 7;
+    const startMs = getMs(userData.trialStartedAt);
+    if (!startMs) return false;
+    const expiresMs = startMs + trialDays * 86400000;
+    return Date.now() > expiresMs;
+  };
+
+  const isSubscriptionExpired = () => {
+    if (!userData?.expiresAt) return false;
+    const expiresMs = getMs(userData.expiresAt);
+    if (!expiresMs) return false;
+    return Date.now() > expiresMs;
+  };
+
+  const isPlanExpired = userData?.expiresAt ? isSubscriptionExpired() : isTrialExpired();
+
   // Find max credits of user's active plan
   let totalPlanCredits = planStarterCredits;
   let planPriceLabel = `${planStarterPrice} ${currencySymbol} / ${isRTL ? 'شهر' : 'Month'}`;
@@ -592,11 +620,14 @@ export default function BillingView() {
 
                     <button
                       onClick={() => handleOpenPaymentModal({ planName: planStarterName, amount: planStarterPrice, currency: planStarterConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planStarterCredits })}
-                      disabled={currentPlanName.toLowerCase().includes('starter')}
+                      disabled={currentPlanName.toLowerCase().includes('starter') && !isPlanExpired}
                       className="btn btn-prime"
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
+                      style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
-                      {currentPlanName.toLowerCase().includes('starter') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planStarterConfig.ctaText || 'اشتراك') : (planStarterConfig.ctaTextEn || 'Subscribe'))}
+                      {currentPlanName.toLowerCase().includes('starter')
+                        ? (isPlanExpired ? (isRTL ? 'تجديد باقتك الآن 🔄' : 'Renew Plan Now 🔄') : (isRTL ? 'باقتك الحالية' : 'Current Plan'))
+                        : (isRTL ? (planStarterConfig.ctaText || 'اشتراك') : (planStarterConfig.ctaTextEn || 'Subscribe'))
+                      }
                     </button>
                   </div>
                 )}
@@ -628,11 +659,14 @@ export default function BillingView() {
 
                     <button
                       onClick={() => handleOpenPaymentModal({ planName: planGrowthName, amount: planGrowthPrice, currency: planGrowthConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planGrowthCredits })}
-                      disabled={currentPlanName.toLowerCase().includes('growth')}
+                      disabled={currentPlanName.toLowerCase().includes('growth') && !isPlanExpired}
                       className="btn btn-prime"
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
+                      style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
-                      {currentPlanName.toLowerCase().includes('growth') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? (planGrowthConfig.ctaText || 'ترقية') : (planGrowthConfig.ctaTextEn || 'Upgrade'))}
+                      {currentPlanName.toLowerCase().includes('growth')
+                        ? (isPlanExpired ? (isRTL ? 'تجديد باقتك الآن 🔄' : 'Renew Plan Now 🔄') : (isRTL ? 'باقتك الحالية' : 'Current Plan'))
+                        : (isRTL ? (planGrowthConfig.ctaText || 'ترقية') : (planGrowthConfig.ctaTextEn || 'Upgrade'))
+                      }
                     </button>
                   </div>
                 )}
@@ -664,11 +698,14 @@ export default function BillingView() {
 
                     <button
                       onClick={() => handleOpenPaymentModal({ planName: planProName, amount: planProPrice, currency: planProConfig.currency || currencySymbol, planDuration: 'monthly', creditsToAdd: planProCredits })}
-                      disabled={currentPlanName.toLowerCase().includes('pro')}
+                      disabled={currentPlanName.toLowerCase().includes('pro') && !isPlanExpired}
                       className="btn btn-prime"
-                      style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
+                      style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', width: '100%', marginTop: 'auto' }}
                     >
-                      {currentPlanName.toLowerCase().includes('pro') ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? ((planProConfig.ctaText && !planProConfig.ctaText.includes('تجربة')) ? planProConfig.ctaText : 'ترقية الآن') : ((planProConfig.ctaTextEn && !planProConfig.ctaTextEn.includes('Trial')) ? planProConfig.ctaTextEn : 'Upgrade Now'))}
+                      {currentPlanName.toLowerCase().includes('pro')
+                        ? (isPlanExpired ? (isRTL ? 'تجديد باقتك الآن 🔄' : 'Renew Plan Now 🔄') : (isRTL ? 'باقتك الحالية' : 'Current Plan'))
+                        : (isRTL ? ((planProConfig.ctaText && !planProConfig.ctaText.includes('تجربة')) ? planProConfig.ctaText : 'ترقية الآن') : ((planProConfig.ctaTextEn && !planProConfig.ctaTextEn.includes('Trial')) ? planProConfig.ctaTextEn : 'Upgrade Now'))
+                      }
                     </button>
                   </div>
                 )}
@@ -684,11 +721,14 @@ export default function BillingView() {
                       <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--orange)', margin: '8px 0 12px' }}>{plan.price} {currencySymbol}</div>
                       <button
                         onClick={() => handleOpenPaymentModal({ planName: plan.name, amount: Number(plan.price), currency: currencySymbol, planDuration: 'monthly', creditsToAdd: Number(plan.credits) })}
-                        disabled={isCurrent}
+                        disabled={isCurrent && !isPlanExpired}
                         className="btn btn-prime"
-                        style={{ padding: '6px 12px', fontSize: '11.5px', borderRadius: '8px', width: '100%', marginTop: '8px' }}
+                        style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700', borderRadius: '8px', width: '100%', marginTop: '8px' }}
                       >
-                        {isCurrent ? (isRTL ? 'باقتك الحالية' : 'Current Plan') : (isRTL ? 'اشتراك' : 'Subscribe')}
+                        {isCurrent
+                          ? (isPlanExpired ? (isRTL ? 'تجديد باقتك الآن 🔄' : 'Renew Plan Now 🔄') : (isRTL ? 'باقتك الحالية' : 'Current Plan'))
+                          : (isRTL ? 'اشتراك' : 'Subscribe')
+                        }
                       </button>
                     </div>
                   );
