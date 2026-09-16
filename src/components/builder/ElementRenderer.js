@@ -27,6 +27,7 @@ import { normalizeFormFields, toEmbedUrl } from '@/lib/builder/elementRegistry';
 import { htmlLooksFullscreen, sanitizeCustomHtmlForBuilder } from '@/lib/builder/customHtml';
 import { StoreCartPanel, StoreCheckoutForm, StoreFilterBar, useVisibleCatalog } from '@/components/sites/stores/StorefrontBlocks';
 import { formatStoreMoney, useStorePreview } from '@/components/sites/stores/StorePreviewContext';
+import { saveFormSubmission } from '@/lib/sites/userSitesScope';
 
 function wrapBox(el, extra = {}) {
   return {
@@ -181,9 +182,39 @@ function FormBlock({ el, interactive }) {
     e.preventDefault();
     if (!interactive) return;
     setIsSubmitting(true);
+
+    const submissionPayload = {
+      id: `sub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      submittedAt: new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      name: formValues.f_full_name || `${formValues.f_first_name || ''} ${formValues.f_last_name || ''}`.trim() || formValues.name || formValues.f_name || 'Web Visitor',
+      email: formValues.f_email || formValues.email || '',
+      phone: formValues.f_phone || formValues.phone || '',
+      data: { ...formValues }
+    };
+
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const match = path.match(/\/s\/form\/([^\/]+)/);
+      const formId = el.formId || (match ? match[1] : '');
+      if (formId) {
+        saveFormSubmission(formId, submissionPayload);
+      }
+    }
+
     setTimeout(() => {
       setIsSubmitting(false);
-      setSubmitted(true);
+      if (el.redirectUrl) {
+        window.location.href = el.redirectUrl;
+      } else {
+        setSubmitted(true);
+      }
     }, 400);
   };
 
