@@ -12,8 +12,9 @@ export const metadata = {
     title: "UpKlick"
   },
   icons: {
-    icon: "/icon-192.png",
-    apple: "/apple-touch-icon.png"
+    icon: "/browser_pic.png?v=2",
+    shortcut: "/browser_pic.png?v=2",
+    apple: "/browser_pic.png?v=2"
   }
 };
 
@@ -27,11 +28,13 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" type="image/png" href="/browser_pic.png?v=2" />
+        <link rel="shortcut icon" href="/browser_pic.png?v=2" />
+        <link rel="apple-touch-icon" href="/browser_pic.png?v=2" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="UpKlick" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
