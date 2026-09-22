@@ -33,7 +33,8 @@ import {
   LogOut,
   Earth,
   Search,
-  Cog
+  Cog,
+  GraduationCap
 } from 'lucide-react';
 import ToolExplainerModal from './Modals/ToolExplainerModal';
 
@@ -170,7 +171,8 @@ export default function Sidebar() {
       items: [
         { page: 'sites', label: 'Funnels', icon: Globe },
         { page: 'landing', label: 'Landing Page AI', icon: Globe },
-        { page: 'courses', label: 'Memberships & Academy', icon: BookOpen },
+        { page: 'courses', label: 'Courses', icon: BookOpen },
+        { page: 'memberships', label: 'Memberships', icon: GraduationCap },
         { page: 'digital', label: 'Digital Products', icon: Package },
         { page: 'niche', label: 'Niche & Brand Studio', icon: Compass },
         { page: 'community', label: 'Community Hub', icon: Users },

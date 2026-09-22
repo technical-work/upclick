@@ -37,6 +37,7 @@ import StrategyView from '@/components/Views/StrategyView';
 import DigitalProductsView from '@/components/Views/DigitalProductsView';
 import RevenueView from '@/components/Views/RevenueView';
 import CoursesView from '@/components/Views/CoursesView';
+import MembershipsView from '@/components/Views/MembershipsView';
 import LaunchpadView from '@/components/Views/LaunchpadView';
 import AIGrowthIntelView from '@/components/Views/AIGrowthIntelView';
 import SocialTrendsView from '@/components/Views/SocialTrendsView';
@@ -388,8 +389,9 @@ function DashboardShell() {
       case 'revenue':
         return <RevenueView />;
       case 'courses':
-      case 'memberships':
         return <CoursesView />;
+      case 'memberships':
+        return <MembershipsView />;
       case 'launchpad':
         return <LaunchpadView />;
       case 'ai-growth':
