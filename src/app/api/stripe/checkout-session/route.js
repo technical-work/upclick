@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getFirebaseAdmin } from '@/utils/firebaseAdmin';
+import { resolveStripeSecret } from '@/lib/stripe/secret';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// No fallback key for security. Must be configured in Firestore or environment variables.
 
 function mapCurrency(currencyInput) {
   if (!currencyInput) return 'egp';
@@ -17,6 +16,26 @@ function mapCurrency(currencyInput) {
   if (clean === '€' || clean === 'EUR') return 'eur';
   if (clean === '£' || clean === 'GBP') return 'gbp';
   return currencyInput.length === 3 ? currencyInput.toLowerCase() : 'egp';
+}
+
+function sanitizeUserFacingError(err) {
+  const msg = (err?.message || String(err || '')).toLowerCase();
+  
+  if (
+    msg.includes('unauthenticated') ||
+    msg.includes('oauth 2') ||
+    msg.includes('devconsole-project') ||
+    msg.includes('invalid authentication credentials') ||
+    msg.includes('firebase admin')
+  ) {
+    return 'خدمة الدفع بالبطاقة غير متوفرة مؤقتاً. يرجى المحاولة لاحقاً أو استخدام وسيلة دفع بديلة مثل انستاباي وفودافون كاش.';
+  }
+
+  if (msg.includes('api key') || msg.includes('not configured')) {
+    return 'بوابة الدفع بالبطاقة غير مهيأة حالياً. يرجى التواصل مع إدارة المنصة أو اختيار وسيلة دفع أخرى.';
+  }
+
+  return err?.message || 'فشل إتمام طلب الدفع. يرجى المحاولة مرة أخرى.';
 }
 
 export async function POST(req) {
@@ -39,47 +58,21 @@ export async function POST(req) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const { adminDb } = await getFirebaseAdmin();
+    let adminDb = null;
+    try {
+      const adminObj = await getFirebaseAdmin();
+      adminDb = adminObj?.adminDb || null;
+    } catch (adminErr) {
+      console.warn('[Stripe Checkout] Firebase Admin initialization error (proceeding to fallback):', adminErr.message);
+    }
 
-    if (!adminDb) {
+    // Resolve Stripe Secret Key (checks Tenant doc -> Global doc -> Environment Variables)
+    const secretKey = await resolveStripeSecret(adminDb, adminId);
+
+    if (!secretKey) {
       return NextResponse.json({ 
-        error: 'Firebase Admin SDK is not initialized. Please add FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY variables to your .env.local file.' 
-      }, { status: 500 });
-    }
-
-    let secretKey = '';
-
-    // Fetch custom secret key from tenant config if configured
-    if (adminId && adminId !== 'global') {
-      const tenantDoc = await adminDb.collection('tenants').doc(adminId).get();
-      if (tenantDoc.exists) {
-        const data = tenantDoc.data();
-        const stripeConfig = data.paymentMethods?.stripe;
-        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
-          secretKey = stripeConfig.secretKey;
-        }
-      }
-    }
-
-    // Fallback to global config if no tenant key is found or adminId is global/missing
-    if (!secretKey) {
-      const globalDoc = await adminDb.collection('tenants').doc('global').get();
-      if (globalDoc.exists) {
-        const data = globalDoc.data();
-        const stripeConfig = data.paymentMethods?.stripe;
-        if (stripeConfig?.enabled && stripeConfig?.secretKey) {
-          secretKey = stripeConfig.secretKey;
-        }
-      }
-    }
-
-    // Fallback to environment variables if still not found
-    if (!secretKey && process.env.STRIPE_SECRET_KEY) {
-      secretKey = process.env.STRIPE_SECRET_KEY;
-    }
-
-    if (!secretKey) {
-      return NextResponse.json({ error: 'Stripe API key is not configured. Please set it in the admin panel.' }, { status: 400 });
+        error: 'بوابة الدفع بالبطاقة غير مهيأة حالياً. يرجى التواصل مع إدارة المنصة أو الدفع عبر انستاباي / فودافون كاش.' 
+      }, { status: 400 });
     }
 
     const stripe = new Stripe(secretKey, {
@@ -91,14 +84,14 @@ export async function POST(req) {
 
     // Fetch user email if not provided directly
     let userEmail = customer_email || '';
-    if (!userEmail && cleanUserId) {
+    if (!userEmail && cleanUserId && adminDb) {
       try {
         const userSnap = await adminDb.collection('users').doc(cleanUserId).get();
         if (userSnap.exists) {
           userEmail = userSnap.data()?.email || '';
         }
       } catch (e) {
-        console.warn('Could not fetch user email for Stripe checkout:', e.message);
+        console.warn('[Stripe Checkout] Could not fetch user email for Stripe checkout:', e.message);
       }
     }
 
@@ -165,7 +158,8 @@ export async function POST(req) {
 
     return NextResponse.json({ id: session.id, url: session.url });
   } catch (error) {
-    console.error('Stripe checkout session error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Stripe Checkout Session Error]:', error);
+    const friendlyError = sanitizeUserFacingError(error);
+    return NextResponse.json({ error: friendlyError }, { status: 500 });
   }
 }
