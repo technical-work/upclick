@@ -2,6 +2,15 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
+  updateStudentLessonProgress,
+  joinCommunityGroup,
+  saveCourse,
+  DEFAULT_COHORT_COURSES
+} from '../../lib/membershipsService';
+import {
+  LogOut,
+  CheckCircle2,
+  Download,
   Home,
   Users,
   Search,
@@ -167,6 +176,159 @@ export default function CommunityGroupExperience({
   const [liveChatInput, setLiveChatInput] = useState('');
   const liveVideoRef = useRef(null);
   const liveStreamRef = useRef(null);
+
+  // User Profile Dropdown & Manage Account Modal State (Screenshot 1)
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showManageAccountModal, setShowManageAccountModal] = useState(false);
+  const [accountFormData, setAccountFormData] = useState(() => {
+    let initialName = userData?.name || 'Mohamed Hesham';
+    let initialEmail = userData?.email || 'mohamedhesham300000@gmail.com';
+    let initialAvatar = userData?.avatar || '/file.jpg';
+    let initialBio = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`upklick_student_${coachId}`) || localStorage.getItem('upklick_current_student');
+        if (stored) {
+          const p = JSON.parse(stored);
+          if (p.name) initialName = p.name;
+          if (p.email) initialEmail = p.email;
+          if (p.avatar) initialAvatar = p.avatar;
+          if (p.bio) initialBio = p.bio;
+        }
+      } catch (e) {}
+    }
+    return { name: initialName, email: initialEmail, avatar: initialAvatar, bio: initialBio };
+  });
+
+  // Comprehensive Learning ("الشرح") State & Navigation
+  const [activeCourseLearning, setActiveCourseLearning] = useState(null);
+  const [activeLesson, setActiveLesson] = useState(null);
+  const [completedLessons, setCompletedLessons] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`upklick_student_${coachId}`) || localStorage.getItem('upklick_current_student');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          return Array.isArray(parsed.completedLessons) ? parsed.completedLessons : [];
+        }
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [expandedModules, setExpandedModules] = useState({});
+  const [lessonActiveTab, setLessonActiveTab] = useState('explanation'); // 'explanation' | 'resources' | 'qa'
+  const [lessonPlaybackSpeed, setLessonPlaybackSpeed] = useState(1);
+  const [theaterMode, setTheaterMode] = useState(false);
+  const [lessonComments, setLessonComments] = useState({});
+  const [newLessonCommentText, setNewLessonCommentText] = useState('');
+
+  const [linkedCourseIds, setLinkedCourseIds] = useState([]);
+
+  // Course Helpers
+  const availableCourses = useMemo(() => {
+    const list = Array.isArray(courses) && courses.length > 0 ? courses : DEFAULT_COHORT_COURSES;
+    const linked = list.filter(c => (linkedCourseIds || []).includes(c.id));
+    return linked.length > 0 ? linked : list;
+  }, [courses, linkedCourseIds]);
+
+  const getCourseProgress = (c) => {
+    if (!c?.modules) return 0;
+    const allLessonIds = [];
+    c.modules.forEach(m => (m.lessons || []).forEach(l => allLessonIds.push(l.id)));
+    if (allLessonIds.length === 0) return 0;
+    const completedCount = allLessonIds.filter(id => completedLessons.includes(id)).length;
+    return Math.round((completedCount / allLessonIds.length) * 100);
+  };
+
+  const handleOpenCourse = (c) => {
+    setActiveCourseLearning(c);
+    const firstMod = (c.modules || [])[0];
+    const firstLes = (firstMod?.lessons || [])[0];
+    if (firstLes) setActiveLesson(firstLes);
+    if (firstMod) setExpandedModules({ [firstMod.id || 0]: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleLessonComplete = async (courseId, lessonId) => {
+    const isNowCompleted = !completedLessons.includes(lessonId);
+    let updated;
+    if (isNowCompleted) {
+      updated = [...completedLessons, lessonId];
+    } else {
+      updated = completedLessons.filter(id => id !== lessonId);
+    }
+    setCompletedLessons(updated);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const key = `upklick_student_${coachId}`;
+        const stored = localStorage.getItem(key) || localStorage.getItem('upklick_current_student');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.completedLessons = updated;
+          localStorage.setItem(key, JSON.stringify(parsed));
+          localStorage.setItem('upklick_current_student', JSON.stringify(parsed));
+        }
+      } catch (e) {}
+    }
+
+    try {
+      const email = accountFormData.email || 'student@upklick.com';
+      await updateStudentLessonProgress(coachId, email, courseId, lessonId, isNowCompleted);
+    } catch (e) {}
+
+    if (isNowCompleted) {
+      showToast(isRTL ? 'تهانينا! تم إكمال الدرس بنجاح ✓' : 'Lesson marked as completed! ✓');
+    }
+  };
+
+  const handlePrevLesson = () => {
+    if (!activeCourseLearning || !activeLesson) return;
+    const allLessons = [];
+    (activeCourseLearning.modules || []).forEach(m => (m.lessons || []).forEach(l => allLessons.push(l)));
+    const idx = allLessons.findIndex(l => l.id === activeLesson.id);
+    if (idx > 0) setActiveLesson(allLessons[idx - 1]);
+  };
+
+  const handleNextLesson = () => {
+    if (!activeCourseLearning || !activeLesson) return;
+    const allLessons = [];
+    (activeCourseLearning.modules || []).forEach(m => (m.lessons || []).forEach(l => allLessons.push(l)));
+    const idx = allLessons.findIndex(l => l.id === activeLesson.id);
+    if (idx < allLessons.length - 1) setActiveLesson(allLessons[idx + 1]);
+  };
+
+  const handleAddLessonComment = (lessonId) => {
+    if (!newLessonCommentText.trim()) return;
+    const newComment = {
+      id: `lc_${Date.now()}`,
+      author: accountFormData.name || coachName || 'Student',
+      avatar: accountFormData.avatar || '/file.jpg',
+      text: newLessonCommentText.trim(),
+      createdAt: 'Just now'
+    };
+    setLessonComments(prev => ({
+      ...prev,
+      [lessonId]: [newComment, ...(prev[lessonId] || [])]
+    }));
+    setNewLessonCommentText('');
+    showToast(isRTL ? 'تم نشر استفسارك بنجاح!' : 'Your question was posted successfully!');
+  };
+
+  const handleSaveAccountProfile = async () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const key = `upklick_student_${coachId}`;
+        const stored = localStorage.getItem(key) || localStorage.getItem('upklick_current_student');
+        let parsed = stored ? JSON.parse(stored) : {};
+        parsed = { ...parsed, ...accountFormData };
+        localStorage.setItem(key, JSON.stringify(parsed));
+        localStorage.setItem('upklick_current_student', JSON.stringify(parsed));
+      } catch (e) {}
+    }
+    setShowManageAccountModal(false);
+    showToast(isRTL ? 'تم حفظ بيانات الحساب بنجاح!' : 'Account details saved successfully!');
+  };
 
   // Student Join & Profile Completion State (Screenshots 4 & 5)
   const [isJoined, setIsJoined] = useState(() => {
@@ -456,7 +618,6 @@ export default function CommunityGroupExperience({
   });
 
   const [showLinkCourseModal, setShowLinkCourseModal] = useState(false);
-  const [linkedCourseIds, setLinkedCourseIds] = useState([]);
 
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [rewardForm, setRewardForm] = useState({ level: 2, title: '' });
@@ -958,25 +1119,160 @@ export default function CommunityGroupExperience({
             <span style={{ position: 'absolute', top: '2px', right: '2px', width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
           </button>
 
-          {/* User Avatar Circle (SS) */}
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: '#e11d48',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              fontWeight: '800',
-              boxShadow: '0 2px 6px rgba(225, 29, 72, 0.35)',
-              cursor: 'pointer'
-            }}
-            title={coachName}
-          >
-            {authorInitials}
+          {/* User Avatar Circle with Profile Dropdown (Screenshot 1) */}
+          <div style={{ position: 'relative' }}>
+            <div
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                background: '#e11d48',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: '800',
+                boxShadow: '0 2px 6px rgba(225, 29, 72, 0.35)',
+                cursor: 'pointer',
+                overflow: 'hidden'
+              }}
+              title={accountFormData.name || coachName}
+            >
+              {accountFormData.avatar ? (
+                <img src={accountFormData.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                authorInitials
+              )}
+            </div>
+
+            {/* Profile Dropdown (Screenshot 1) */}
+            {showUserDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '46px',
+                  right: 0,
+                  width: '270px',
+                  background: isLight ? '#ffffff' : '#1e293b',
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '16px',
+                  boxShadow: '0 20px 35px -10px rgba(0,0,0,0.2), 0 8px 16px -6px rgba(0,0,0,0.12)',
+                  padding: '24px 20px',
+                  zIndex: 99999,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                {/* Photo with pencil edit icon (Screenshot 1) */}
+                <div style={{ position: 'relative', marginBottom: '14px' }}>
+                  <div style={{
+                    width: '68px',
+                    height: '68px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: '2px solid #ffffff',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                    background: '#e2e8f0'
+                  }}>
+                    <img
+                      src={accountFormData.avatar || '/file.jpg'}
+                      alt="Profile"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      setShowManageAccountModal(true);
+                    }}
+                    title="Edit profile"
+                    style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      right: '-2px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <Sliders size={12} color="#475569" />
+                  </button>
+                </div>
+
+                {/* Name & Email (Screenshot 1) */}
+                <div style={{ fontSize: '16px', fontWeight: '800', color: cText, marginBottom: '2px' }}>
+                  Hi, {(accountFormData.name || 'Mohamed').split(' ')[0]}!
+                </div>
+                <div style={{ fontSize: '12px', color: cTextSub, marginBottom: '18px', wordBreak: 'break-all' }}>
+                  {accountFormData.email || 'student@upklick.com'}
+                </div>
+
+                {/* Manage Your Account Blue Button (Screenshot 1) */}
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    setShowManageAccountModal(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    background: '#1d4ed8',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginBottom: '14px',
+                    boxShadow: '0 2px 6px rgba(29, 78, 216, 0.25)'
+                  }}
+                >
+                  <Settings size={15} />
+                  <span>Manage Your Account</span>
+                </button>
+
+                {/* Log Out Button (Screenshot 1) */}
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.removeItem(`upklick_student_${coachId}`);
+                      localStorage.removeItem('upklick_current_student');
+                      window.location.href = `/portal/${coachId || 'moha'}/login`;
+                    }
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ef4444',
+                    fontSize: '12.5px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px'
+                  }}
+                >
+                  <LogOut size={14} />
+                  <span>LOG OUT</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2156,14 +2452,588 @@ export default function CommunityGroupExperience({
         )}
 
         {/* ========================================================================= */}
-        {/* SUB-VIEW 2: LEARNING TAB (Screenshot 2)                                   */}
+        {/* SUB-VIEW 2: LEARNING TAB - PRODUCTION-READY COURSE LEARNING ("الشرح") */}
         {/* ========================================================================= */}
-        {activeTab === 'learning' && (
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-              {courses
-                .filter(c => linkedCourseIds.includes(c.id))
-                .map(course => (
+        {activeTab === 'learning' && activeCourseLearning && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Top Header & Breadcrumb Bar */}
+            <div style={{
+              background: cCardBg,
+              border: `1px solid ${cBorder}`,
+              borderRadius: '12px',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '16px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button
+                  onClick={() => setActiveCourseLearning(null)}
+                  style={{
+                    background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.08)',
+                    border: `1px solid ${cBorder}`,
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '12.5px',
+                    fontWeight: '700',
+                    color: cText,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                  <span>{isRTL ? 'جميع الكورسات' : 'All Courses'}</span>
+                </button>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: cText }}>
+                      {activeCourseLearning.title}
+                    </h2>
+                    <span style={{
+                      background: '#eff6ff',
+                      color: '#2563eb',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      padding: '2px 8px',
+                      borderRadius: '9999px'
+                    }}>
+                      {activeCourseLearning.category || 'Curriculum'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: cTextSub, marginTop: '2px' }}>
+                    {activeLesson ? activeLesson.title : 'Select a lesson to begin'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Indicator */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '220px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', fontWeight: '700', color: cTextSub, marginBottom: '5px' }}>
+                    <span>{isRTL ? 'نسبة الإنجاز' : 'Course Progress'}</span>
+                    <span style={{ color: '#2563eb' }}>{getCourseProgress(activeCourseLearning)}%</span>
+                  </div>
+                  <div style={{ height: '7px', background: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${getCourseProgress(activeCourseLearning)}%`,
+                      background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
+                      borderRadius: '9999px',
+                      transition: 'width 0.4s ease'
+                    }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Learning Grid: Video Player & Lesson Explanation (Left/Center) + Curriculum (Right) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: theaterMode ? '1fr' : 'minmax(0, 1fr) 340px',
+              gap: '24px',
+              alignItems: 'start'
+            }}>
+              {/* LEFT/CENTER: Player & Tabs */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* VIDEO CONTAINER */}
+                <div style={{
+                  background: '#000000',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  aspectRatio: '16/9',
+                  position: 'relative',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                  border: `1px solid ${cBorder}`
+                }}>
+                  {activeLesson?.videoUrl ? (
+                    activeLesson.videoUrl.includes('youtube.com') || activeLesson.videoUrl.includes('youtu.be') ? (
+                      <iframe
+                        src={activeLesson.videoUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                        title={activeLesson.title}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : activeLesson.videoUrl.includes('vimeo.com') ? (
+                      <iframe
+                        src={activeLesson.videoUrl.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                        title={activeLesson.title}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        src={activeLesson.videoUrl}
+                        controls
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    )
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      background: 'radial-gradient(circle at center, #1e293b 0%, #0f172a 100%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#ffffff',
+                      padding: '20px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        background: 'rgba(37, 99, 235, 0.2)',
+                        border: '2px solid #2563eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '14px'
+                      }}>
+                        <Play size={28} color="#60a5fa" style={{ marginLeft: '4px' }} />
+                      </div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', marginBottom: '6px' }}>
+                        {activeLesson?.title || 'Interactive Lesson'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#94a3b8', maxWidth: '380px' }}>
+                        {isRTL ? 'شرح الدرس وملاحظات التدريب متوفرة بالأسفل' : 'Lesson explanation and study guide available below'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Lesson Actions Toolbar */}
+                <div style={{
+                  background: cCardBg,
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '17px', fontWeight: '800', color: cText }}>
+                      {activeLesson?.title || 'Lesson Title'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: cTextSub, marginTop: '2px' }}>
+                      {activeLesson?.duration ? `Duration: ${activeLesson.duration}` : 'Comprehensive Study Lesson'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={handlePrevLesson}
+                      style={{
+                        background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: cText,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {isRTL ? '← الدرس السابق' : '← Previous'}
+                    </button>
+
+                    {activeLesson && (
+                      <button
+                        onClick={() => handleToggleLessonComplete(activeCourseLearning.id, activeLesson.id)}
+                        style={{
+                          background: completedLessons.includes(activeLesson.id) ? '#10b981' : '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: completedLessons.includes(activeLesson.id)
+                            ? '0 2px 8px rgba(16, 185, 129, 0.3)'
+                            : '0 2px 8px rgba(37, 99, 235, 0.3)'
+                        }}
+                      >
+                        <Check size={15} />
+                        <span>
+                          {completedLessons.includes(activeLesson.id)
+                            ? (isRTL ? 'مكتمل ✓' : 'Completed ✓')
+                            : (isRTL ? 'إكمال الدرس' : 'Mark as Complete')}
+                        </span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleNextLesson}
+                      style={{
+                        background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: cText,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {isRTL ? 'الدرس التالي →' : 'Next →'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3 Detail Tabs: الشرح والملاحظات | الملفات والمرفقات | مناقشة الدرس */}
+                <div style={{
+                  background: cCardBg,
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '12px',
+                  overflow: 'hidden'
+                }}>
+                  {/* Tabs bar */}
+                  <div style={{
+                    display: 'flex',
+                    borderBottom: `1px solid ${cBorder}`,
+                    background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.02)'
+                  }}>
+                    {[
+                      { id: 'explanation', label: isRTL ? 'الشرح والملاحظات' : 'Explanation & Notes' },
+                      { id: 'resources', label: isRTL ? 'المرفقات والملفات' : 'Resources & Files' },
+                      { id: 'qa', label: isRTL ? 'نقاشات الدرس' : 'Lesson Discussion' }
+                    ].map(t => {
+                      const active = lessonActiveTab === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => setLessonActiveTab(t.id)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: active ? '2px solid #2563eb' : '2px solid transparent',
+                            color: active ? '#2563eb' : cTextSub,
+                            fontWeight: active ? '800' : '600',
+                            fontSize: '13px',
+                            padding: '12px 18px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* TAB 1: الشرح والملاحظات */}
+                  {lessonActiveTab === 'explanation' && (
+                    <div style={{ padding: '24px', fontSize: '13.5px', color: cText, lineHeight: '1.8', whiteSpace: 'pre-line' }}>
+                      {activeLesson?.content || (
+                        <div>
+                          <h3 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 10px 0' }}>
+                            {isRTL ? 'شرح الدرس وخطة التطبيق' : 'Lesson Overview & Implementation Notes'}
+                          </h3>
+                          <p style={{ color: cTextSub, margin: 0 }}>
+                            {isRTL
+                              ? 'مرحباً بك في هذا الدرس! استمع للمقطع المرئي جيداً، وقم بتدوين الملاحظات وتطبيق المهام المطلوبة لتحقيق أفضل نتائج ممكنة في هذا البرنامج.'
+                              : 'Welcome to this lesson! Follow along with the video, take notes, and apply the actionable takeaways to master this module.'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: الملفات والمرفقات */}
+                  {lessonActiveTab === 'resources' && (
+                    <div style={{ padding: '24px' }}>
+                      {activeLesson?.resources && activeLesson.resources.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {activeLesson.resources.map((res, rIdx) => (
+                            <div
+                              key={rIdx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '12px 16px',
+                                background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.03)',
+                                border: `1px solid ${cBorder}`,
+                                borderRadius: '8px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <FileText size={18} color="#2563eb" />
+                                <div>
+                                  <div style={{ fontSize: '13px', fontWeight: '700', color: cText }}>{res.name}</div>
+                                  <div style={{ fontSize: '11px', color: cTextSub }}>{res.size || 'PDF Document'}</div>
+                                </div>
+                              </div>
+                              <a
+                                href={res.url || '#'}
+                                download
+                                onClick={(e) => { e.preventDefault(); alert(`Downloading ${res.name}...`); }}
+                                style={{
+                                  background: isLight ? '#ffffff' : 'rgba(255,255,255,0.08)',
+                                  border: `1px solid ${cBorder}`,
+                                  borderRadius: '6px',
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  color: '#2563eb',
+                                  fontWeight: '700',
+                                  textDecoration: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                <Download size={13} /> {isRTL ? 'تحميل' : 'Download'}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '24px 0', color: cTextSub, fontSize: '13px' }}>
+                          {isRTL ? 'لا توجد ملفات مرفقة لهذا الدرس' : 'No downloadable resources attached to this lesson.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 3: مناقشة وأسئلة الدرس */}
+                  {lessonActiveTab === 'qa' && (
+                    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <input
+                          type="text"
+                          placeholder={isRTL ? 'اطرح سؤالاً أو شارك استفسارك حول هذا الدرس...' : 'Ask a question or share your thoughts on this lesson...'}
+                          value={newLessonCommentText}
+                          onChange={(e) => setNewLessonCommentText(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddLessonComment(activeLesson.id); }}
+                          style={{
+                            flex: 1,
+                            background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.05)',
+                            border: `1px solid ${cBorder}`,
+                            borderRadius: '8px',
+                            padding: '10px 14px',
+                            fontSize: '13px',
+                            color: cText,
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          onClick={() => handleAddLessonComment(activeLesson.id)}
+                          style={{
+                            background: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '0 16px',
+                            fontSize: '12.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isRTL ? 'إرسال' : 'Post'}
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {(lessonComments[activeLesson.id] || []).length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '16px 0', color: cTextSub, fontSize: '12.5px' }}>
+                            {isRTL ? 'كن أول من يطرح سؤالاً في هذا الدرس!' : 'Be the first to ask a question on this lesson!'}
+                          </div>
+                        ) : (
+                          (lessonComments[activeLesson.id] || []).map(comm => (
+                            <div
+                              key={comm.id}
+                              style={{
+                                padding: '12px 14px',
+                                background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.03)',
+                                borderRadius: '8px',
+                                border: `1px solid ${cBorder}`
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '700', fontSize: '12.5px', color: cText }}>{comm.author}</span>
+                                <span style={{ fontSize: '11px', color: cTextSub }}>{comm.createdAt}</span>
+                              </div>
+                              <div style={{ fontSize: '13px', color: cTextSub }}>{comm.text}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT SIDEBAR: Curriculum Drawer */}
+              {!theaterMode && (
+                <div style={{
+                  background: cCardBg,
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '12px',
+                  padding: '18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  position: 'sticky',
+                  top: '80px',
+                  maxHeight: 'calc(100vh - 120px)',
+                  overflowY: 'auto'
+                }}>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: cText }}>
+                    {isRTL ? 'فهرس الدروس والمحتوى' : 'Course Curriculum'}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {(activeCourseLearning.modules || []).map((m, mIdx) => {
+                      const modKey = m.id || mIdx;
+                      const isExpanded = expandedModules[modKey] !== false;
+                      return (
+                        <div
+                          key={modKey}
+                          style={{
+                            border: `1px solid ${cBorder}`,
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            background: isLight ? '#ffffff' : 'rgba(255,255,255,0.02)'
+                          }}
+                        >
+                          <div
+                            onClick={() => setExpandedModules(prev => ({ ...prev, [modKey]: !isExpanded }))}
+                            style={{
+                              padding: '12px 14px',
+                              background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.04)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '800', color: cText }}>{m.title}</div>
+                              <div style={{ fontSize: '11px', color: cTextSub }}>{(m.lessons || []).length} {isRTL ? 'دروس' : 'lessons'}</div>
+                            </div>
+                            {isExpanded ? <ChevronDown size={16} color={cTextSub} /> : <ChevronRight size={16} color={cTextSub} />}
+                          </div>
+
+                          {isExpanded && (
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              {(m.lessons || []).map((les) => {
+                                const isCurrent = activeLesson?.id === les.id;
+                                const isDone = completedLessons.includes(les.id);
+                                return (
+                                  <div
+                                    key={les.id}
+                                    onClick={() => setActiveLesson(les)}
+                                    style={{
+                                      padding: '10px 14px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '10px',
+                                      cursor: 'pointer',
+                                      background: isCurrent ? (isLight ? '#eff6ff' : 'rgba(37, 99, 235, 0.15)') : 'transparent',
+                                      borderLeft: isCurrent ? '3px solid #2563eb' : '3px solid transparent',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                                      <div style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        background: isDone ? '#10b981' : (isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)'),
+                                        color: isDone ? '#ffffff' : cTextSub,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                      }}>
+                                        {isDone ? <Check size={12} /> : <Play size={10} style={{ marginLeft: '1px' }} />}
+                                      </div>
+                                      <span style={{
+                                        fontSize: '12.5px',
+                                        fontWeight: isCurrent ? '800' : '500',
+                                        color: isCurrent ? '#2563eb' : cText,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {les.title}
+                                      </span>
+                                    </div>
+
+                                    {les.duration && (
+                                      <span style={{ fontSize: '10.5px', color: cTextSub, flexShrink: 0 }}>
+                                        {les.duration}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* SUB-VIEW 2B: ALL COURSES CATALOG (WHEN NO COURSE ACTIVE) */}
+        {activeTab === 'learning' && !activeCourseLearning && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: cText }}>
+                  {isRTL ? 'المناهج والشروحات التدريبية' : 'Curriculum & Learning Programs'}
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: cTextSub }}>
+                  {isRTL ? 'اختر أي كورس للانتقال إلى شروحات الفيديو والملفات التطبيقية' : 'Select a course to start learning, watch video lessons, and download materials.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowLinkCourseModal(true)}
+                style={{
+                  background: cNavy,
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Plus size={15} />
+                <span>{isRTL ? 'إضافة / ربط كورس' : 'Add Course'}</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {availableCourses.map((course) => {
+                const progress = getCourseProgress(course);
+                const totalLessons = (course.modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
+
+                return (
                   <div
                     key={course.id}
                     style={{
@@ -2173,44 +3043,98 @@ export default function CommunityGroupExperience({
                       overflow: 'hidden',
                       display: 'flex',
                       flexDirection: 'column',
-                      boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.04)' : 'none'
+                      boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.04)' : 'none',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease'
                     }}
                   >
+                    {/* Thumbnail Header */}
                     <div style={{
                       height: '140px',
                       background: course.thumbnailUrl
                         ? `url(${course.thumbnailUrl}) center/cover no-repeat`
-                        : 'linear-gradient(135deg, #1e1b4b, #4338ca)',
-                      position: 'relative'
-                    }} />
-                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: cText }}>
-                        {course.title}
-                      </h4>
-                      <div style={{ fontSize: '12px', color: cTextSub }}>
-                        {course.modules?.length || 0} {isRTL ? 'فصول' : 'modules'} • {course.category || 'Business'}
+                        : 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #8b5cf6 100%)',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: 'rgba(255, 255, 255, 0.25)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#ffffff',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                      }}>
+                        <BookOpen size={24} />
                       </div>
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                      <div>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#2563eb',
+                          background: '#eff6ff',
+                          padding: '2px 8px',
+                          borderRadius: '9999px'
+                        }}>
+                          {course.category || 'Cohort Course'}
+                        </span>
+                        <h4 style={{ margin: '8px 0 4px', fontSize: '16px', fontWeight: '800', color: cText }}>
+                          {course.title}
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '12.5px', color: cTextSub, lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {course.description}
+                        </p>
+                      </div>
+
+                      {/* Progress & Lessons Info */}
+                      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: cTextSub }}>
+                          <span>{course.modules?.length || 0} Modules • {totalLessons} Lessons</span>
+                          <span style={{ fontWeight: '700', color: '#2563eb' }}>{progress}% Complete</span>
+                        </div>
+                        <div style={{ height: '6px', background: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${progress}%`, background: '#2563eb', borderRadius: '9999px' }} />
+                        </div>
+                      </div>
+
+                      {/* Start / Continue Button */}
                       <button
-                        onClick={() => showToast(isRTL ? 'فتح الكورس للتعلم' : 'Opening course viewer...')}
+                        onClick={() => handleOpenCourse(course)}
                         style={{
-                          marginTop: 'auto',
+                          width: '100%',
                           background: cNavy,
                           color: '#ffffff',
                           border: 'none',
                           borderRadius: '8px',
-                          padding: '8px',
-                          fontSize: '12.5px',
+                          padding: '10px',
+                          fontSize: '13px',
                           fontWeight: '700',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 6px rgba(13, 110, 253, 0.25)'
                         }}
                       >
-                        {isRTL ? 'بدء التعلم' : 'Start Course'}
+                        <Play size={14} />
+                        <span>{progress > 0 ? (isRTL ? 'متابعة الشرح' : 'Continue Learning') : (isRTL ? 'بدء التعلم والمشاهدة' : 'Start Course')}</span>
                       </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
 
-              {/* Dashed Add Course Card (Screenshot 2) */}
+              {/* Dashed Add Course Card */}
               <div
                 onClick={() => setShowLinkCourseModal(true)}
                 style={{
@@ -2223,7 +3147,7 @@ export default function CommunityGroupExperience({
                   justifyContent: 'center',
                   cursor: 'pointer',
                   color: cTextSub,
-                  transition: 'border-color 0.2s, background 0.2s',
+                  transition: 'all 0.2s',
                   background: 'transparent'
                 }}
                 onMouseOver={(e) => {
@@ -2237,7 +3161,7 @@ export default function CommunityGroupExperience({
               >
                 <Plus size={24} style={{ marginBottom: '8px' }} />
                 <span style={{ fontSize: '15px', fontWeight: '800' }}>
-                  {isRTL ? '+ إضافة كورس' : '+ Add Course'}
+                  {isRTL ? '+ إضافة كورس جديد' : '+ Add Course'}
                 </span>
               </div>
             </div>
@@ -6427,6 +7351,150 @@ export default function CommunityGroupExperience({
         </div>
       )}
 
+
+      {/* MANAGE YOUR ACCOUNT MODAL (SCREENSHOT 1) */}
+      {showManageAccountModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 999999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: isLight ? '#ffffff' : '#1e293b',
+            border: `1px solid ${cBorder}`,
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '460px',
+            padding: '28px',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: cText }}>
+                {isRTL ? 'إدارة بيانات الحساب' : 'Manage Your Account'}
+              </h3>
+              <button
+                onClick={() => setShowManageAccountModal(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: cTextSub }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: cTextSub, marginBottom: '6px', display: 'block' }}>
+                  {isRTL ? 'الاسم الكامل' : 'Full Name'}
+                </label>
+                <input
+                  type="text"
+                  value={accountFormData.name}
+                  onChange={(e) => setAccountFormData(prev => ({ ...prev, name: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${cBorder}`,
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    color: cText,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: cTextSub, marginBottom: '6px', display: 'block' }}>
+                  {isRTL ? 'البريد الإلكتروني' : 'Email Address'}
+                </label>
+                <input
+                  type="email"
+                  disabled
+                  value={accountFormData.email}
+                  style={{
+                    width: '100%',
+                    background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${cBorder}`,
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    color: cTextSub,
+                    cursor: 'not-allowed'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: cTextSub, marginBottom: '6px', display: 'block' }}>
+                  {isRTL ? 'نبذة تعريفية (Bio)' : 'Bio / Title'}
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder={isRTL ? 'اكتب نبذة مختصرة عنك...' : 'Tell the community about yourself...'}
+                  value={accountFormData.bio}
+                  onChange={(e) => setAccountFormData(prev => ({ ...prev, bio: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${cBorder}`,
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    color: cText,
+                    outline: 'none',
+                    resize: 'none'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: cTextSub, marginBottom: '6px', display: 'block' }}>
+                  {isRTL ? 'رابط الصورة الشخصية' : 'Avatar URL'}
+                </label>
+                <input
+                  type="text"
+                  value={accountFormData.avatar}
+                  onChange={(e) => setAccountFormData(prev => ({ ...prev, avatar: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${cBorder}`,
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '13px',
+                    color: cText,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={handleSaveAccountProfile}
+                style={{
+                  width: '100%',
+                  background: '#1d4ed8',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '11px',
+                  fontSize: '13.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  marginTop: '8px',
+                  boxShadow: '0 2px 8px rgba(29, 78, 216, 0.3)'
+                }}
+              >
+                {isRTL ? 'حفظ التعديلات' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

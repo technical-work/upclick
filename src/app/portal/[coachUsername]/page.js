@@ -1300,11 +1300,225 @@ export default function StudentClientPortalPage() {
                 </h1>
               </div>
 
-              {/* COMMUNITY GROUPS SECTION (Screenshot 3) */}
-              <div>
+              {/* TWO TOP CARDS: RECENTLY OPENED & SHARED FILES (SCREENSHOT 3) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
+                gap: '24px'
+              }}>
+                {/* Left Card: Recently opened (Screenshot 3) */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  padding: '24px 28px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                      Recently opened
+                    </h2>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('all-groups-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#2563eb',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      View all Groups
+                    </button>
+                  </div>
+
+                  {communities.length > 0 ? (
+                    <div
+                      onClick={() => router.push(`/portal/${coachUsername}/community/${communities[0].slug || communities[0].id}`)}
+                      style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        transition: 'all 0.2s ease',
+                        background: '#ffffff'
+                      }}
+                    >
+                      {/* Purple-to-orange gradient cover thumbnail from Screenshot 3 */}
+                      <div style={{
+                        height: '130px',
+                        background: communities[0].coverImageUrl
+                          ? `url(${communities[0].coverImageUrl}) center/cover no-repeat`
+                          : 'linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f97316 100%)'
+                      }} />
+                      <div style={{ padding: '14px 16px', fontWeight: '800', fontSize: '15px', color: '#0f172a' }}>
+                        {communities[0].name || communities[0].title || 'Community Group'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '36px 0', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                      No groups opened yet
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Card: Shared Files (Screenshot 3) */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  padding: '24px 28px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '20px'
+                  }}>
+                    <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                      Shared Files
+                    </h2>
+
+                    <button
+                      onClick={() => setShowAddFileModal(true)}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '6px 14px',
+                        fontSize: '12.5px',
+                        fontWeight: '600',
+                        color: '#334155',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Plus size={14} />
+                      <span>+ Add Files</span>
+                    </button>
+                  </div>
+
+                  {sharedFiles.length === 0 ? (
+                    <div style={{
+                      padding: '36px 0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {/* Blue Folder Graphic */}
+                      <div style={{
+                        width: '68px',
+                        height: '56px',
+                        background: '#60a5fa',
+                        borderRadius: '6px',
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(96, 165, 250, 0.35)',
+                        marginBottom: '14px'
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          top: '-7px',
+                          left: '8px',
+                          width: '26px',
+                          height: '10px',
+                          background: '#3b82f6',
+                          borderRadius: '4px 4px 0 0'
+                        }} />
+                        <div style={{
+                          width: '46px',
+                          height: '32px',
+                          background: '#ffffff',
+                          borderRadius: '4px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.06)'
+                        }} />
+                      </div>
+
+                      <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '500' }}>
+                        You don't have any!
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {sharedFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: '#f8fafc',
+                            borderRadius: '8px',
+                            border: '1px solid #f1f5f9'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FileText size={18} color="#2563eb" />
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{file.name}</div>
+                              <div style={{ fontSize: '11px', color: '#64748b' }}>{file.size}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                              onClick={() => alert(`Opening ${file.name}...`)}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                fontSize: '11.5px',
+                                color: '#2563eb',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Download size={12} /> Download
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSharedFile(file.id)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#94a3b8',
+                                cursor: 'pointer',
+                                padding: '4px'
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ALL COMMUNITY GROUPS SECTION */}
+              <div id="all-groups-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                    Community Groups
+                    All Community Groups
                   </h2>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>
                     {communities.length} {communities.length === 1 ? 'group available' : 'groups available'}
@@ -1450,149 +1664,6 @@ export default function StudentClientPortalPage() {
                         </div>
                       );
                     })}
-                  </div>
-                )}
-              </div>
-
-              {/* SHARED FILES SECTION (Screenshot 3) */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                padding: '24px 28px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '28px'
-                }}>
-                  <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                    Shared Files
-                  </h2>
-
-                  <button
-                    onClick={() => setShowAddFileModal(true)}
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      padding: '6px 14px',
-                      fontSize: '12.5px',
-                      fontWeight: '600',
-                      color: '#334155',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Plus size={14} />
-                    <span>Add Files</span>
-                  </button>
-                </div>
-
-                {/* Empty State / Folder (Screenshot 3) */}
-                {sharedFiles.length === 0 ? (
-                  <div style={{
-                    padding: '36px 0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    {/* Blue Folder Graphic */}
-                    <div style={{
-                      width: '68px',
-                      height: '56px',
-                      background: '#60a5fa',
-                      borderRadius: '6px',
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 12px rgba(96, 165, 250, 0.35)',
-                      marginBottom: '14px'
-                    }}>
-                      <div style={{
-                        position: 'absolute',
-                        top: '-7px',
-                        left: '8px',
-                        width: '26px',
-                        height: '10px',
-                        background: '#3b82f6',
-                        borderRadius: '4px 4px 0 0'
-                      }} />
-                      <div style={{
-                        width: '46px',
-                        height: '32px',
-                        background: '#ffffff',
-                        borderRadius: '4px',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.06)'
-                      }} />
-                    </div>
-
-                    <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '500' }}>
-                      You don't have any!
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {sharedFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '12px 16px',
-                          background: '#f8fafc',
-                          borderRadius: '8px',
-                          border: '1px solid #f1f5f9'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <FileText size={20} color="#2563eb" />
-                          <div>
-                            <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#0f172a' }}>{file.name}</div>
-                            <div style={{ fontSize: '11px', color: '#64748b' }}>{file.size} • Uploaded {file.uploadedBy || 'Portal'}</div>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            onClick={() => alert(`Opening ${file.name}...`)}
-                            style={{
-                              background: 'transparent',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              padding: '6px 12px',
-                              fontSize: '12px',
-                              color: '#2563eb',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            <Download size={13} /> Download
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSharedFile(file.id)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#94a3b8',
-                              cursor: 'pointer',
-                              padding: '6px'
-                            }}
-                            title="Delete file"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>

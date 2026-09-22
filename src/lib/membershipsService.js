@@ -153,10 +153,100 @@ export async function saveCoachPortalSettings(coachId, settings) {
 }
 
 // 2. Courses CRUD
+// Default high-value cohort courses with complete explanations & video lessons
+export const DEFAULT_COHORT_COURSES = [
+  {
+    id: 'course_masterclass_vip',
+    title: 'Executive Growth & High-Ticket Client Acquisition',
+    description: 'The complete step-by-step masterclass on building, scaling, and automating a 7-figure online coaching business.',
+    category: 'Business & Coaching',
+    thumbnailUrl: '',
+    coachId: 'moha',
+    studentCount: 142,
+    createdAt: new Date().toISOString(),
+    modules: [
+      {
+        id: 'mod_1',
+        title: 'Module 1: Foundations of High-Ticket Positioning',
+        lessons: [
+          {
+            id: 'les_1_1',
+            title: 'Lesson 1: Crafting an Irresistible High-Ticket Offer',
+            duration: '14:20',
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            content: `### شرح تفصيلي وملاحظات الدرس (Detailed Lesson Explanation)
+
+في هذا الدرس نتعلم الركائز الأساسية لبناء عرض تدريبي احترافي (High-Ticket Offer) يستهدف العملاء ذوي القيمة العالية:
+1. **تحديد القيمة الجوهرية (Core Value Transformation)**: لا تبع الساعات، بل بع النتيجة المباشرة التي يبحث عنها عميلك.
+2. **هيكلة التسعير (Value-Based Pricing)**: كيف تحدد السعر بناءً على عائد الاستثمار (ROI) للعميل بدلاً من التكاليف.
+3. **ضمانات النتائج والالتزام (Risk Reversal Guarantee)**: تقليل تردد العميل ورفع نسبة الإغلاق.
+
+#### خطوات التطبيق العملية:
+- قم بتحميل كراسة العمل من قسم المرفقات.
+- حدد جمهورك المستهدف وعرّف نقطة الألم الأساسية (Main Pain Point).
+- اكتب مسودة عرضك الأول وشاركه في قسم مناقشات الدرس بالأسفل.`,
+            resources: [
+              { name: 'High-Ticket Offer Blueprint.pdf', size: '2.4 MB', url: '#' },
+              { name: 'Client Avatar Worksheet.xlsx', size: '540 KB', url: '#' }
+            ]
+          },
+          {
+            id: 'les_1_2',
+            title: 'Lesson 2: Target Audience Deep Dive & Dream Buyer Avatar',
+            duration: '18:45',
+            videoUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+            content: `### شرح الدرس: دراسة العميل المثالي بالتفصيل
+
+كيف تحدد بدقة من هو العميل المستعد للاستثمار في برنامجك التدريبي:
+- معرفة التحديات اليومية التي تواجه العميل.
+- رصد الكلمات المفتاحية التي يستخدمها في البحث.
+- كيفية بناء رسائل تسويقية تلامس أهدافه مباشرة وحل مخاوفه قبل اللقاء.`,
+            resources: [
+              { name: 'Audience Research Checklist.pdf', size: '1.1 MB', url: '#' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'mod_2',
+        title: 'Module 2: Funnels, Community Growth & Sales Mastery',
+        lessons: [
+          {
+            id: 'les_2_1',
+            title: 'Lesson 1: The Automated Community Onboarding Funnel',
+            duration: '22:15',
+            videoUrl: 'https://www.youtube.com/watch?v=L_LUpnjgPso',
+            content: `### شرح الدرس: مسار انضمام الأعضاء التلقائي
+
+خطوات ضبط مسار المجتمع والترحيب بالطلاب الجدد لضمان أعلى نسبة تفاعل وإكمال للدروس:
+1. رسائل الترحيب التلقائية عبر الواتساب والبريد الإلكتروني.
+2. توجيه العميل لأول درس فوري للحصول على نتيجة سريعة (Quick Win).
+3. بناء عادة المتابعة اليومية والمشاركة في الفعاليات والتحديات.`,
+            resources: [
+              { name: 'Onboarding Flow Diagram.pdf', size: '3.2 MB', url: '#' }
+            ]
+          },
+          {
+            id: 'les_2_2',
+            title: 'Lesson 2: Live Stream Coaching & Cohort Retention',
+            duration: '16:50',
+            videoUrl: 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+            content: `### شرح الدرس: إدارة جلسات البث المباشر وزيادة تفاعل الطلاب
+
+أفضل الممارسات لعمل جلسات Go Live تفاعلية مع إجابة أسئلة الطلاب وحفظها كدروس مرجعية داخل المجتمع.`,
+            resources: []
+          }
+        ]
+      }
+    ]
+  }
+];
+
 export async function getCoachCourses(coachId) {
-  if (!coachId) return [];
-  const cacheKey = `upklick_courses_${coachId}`;
+  if (!coachId) return DEFAULT_COHORT_COURSES;
+  const cacheKey = `upklick_courses_${coachId.toLowerCase()}`;
   const cached = getLocalCache(cacheKey, []);
+  let list = Array.isArray(cached) ? [...cached] : [];
 
   try {
     const q = query(
@@ -164,15 +254,40 @@ export async function getCoachCourses(coachId) {
       where('coachId', '==', coachId)
     );
     const snap = await getDocs(q);
-    const courses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (courses.length > 0) {
-      setLocalCache(cacheKey, courses);
-      return courses;
+    snap.docs.forEach(d => {
+      const item = { id: d.id, ...d.data() };
+      if (!list.find(existing => existing.id === item.id)) {
+        list.push(item);
+      }
+    });
+  } catch (err) {}
+
+  // Scan all upklick_courses_* in localStorage
+  if (typeof window !== 'undefined') {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('upklick_courses_')) {
+        try {
+          const raw = JSON.parse(localStorage.getItem(k));
+          if (Array.isArray(raw)) {
+            raw.forEach(item => {
+              if (item && item.id && !list.find(existing => existing.id === item.id)) {
+                list.push(item);
+              }
+            });
+          }
+        } catch (e) {}
+      }
     }
-    return Array.isArray(cached) ? cached : [];
-  } catch (err) {
-    return Array.isArray(cached) ? cached : [];
   }
+
+  if (list.length === 0) {
+    list = DEFAULT_COHORT_COURSES;
+    setLocalCache(cacheKey, list);
+  }
+
+  setLocalCache(cacheKey, list);
+  return list;
 }
 
 export function subscribeCoachCourses(coachId, callback) {
