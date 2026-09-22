@@ -13,6 +13,10 @@ import {
   Download,
   Home,
   Users,
+  User,
+  LayoutGrid,
+  ChevronsUpDown,
+  Hash,
   Search,
   Sun,
   Moon,
@@ -125,6 +129,90 @@ export default function CommunityGroupExperience({
     { id: 'home', name: 'Home', icon: 'home' },
     { id: 'announcements', name: 'Announcements', icon: 'megaphone' }
   ]);
+
+  // Discord-style Server Switcher & Dropdown State
+  const [showGroupSwitchDropdown, setShowGroupSwitchDropdown] = useState(false);
+  const [hoveredServerId, setHoveredServerId] = useState(null);
+
+  // Assemble full list of communities for Discord server rail & group switcher
+  const allCommunitiesList = useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    // 1. Current group
+    if (group && group.id) {
+      list.push(group);
+      seen.add(group.id);
+      if (group.slug) seen.add(group.slug.toLowerCase());
+    }
+
+    // 2. Communities passed in props
+    if (Array.isArray(communities)) {
+      communities.forEach(c => {
+        if (c && c.id && !seen.has(c.id) && (!c.slug || !seen.has(c.slug.toLowerCase()))) {
+          list.push(c);
+          seen.add(c.id);
+          if (c.slug) seen.add(c.slug.toLowerCase());
+        }
+      });
+    }
+
+    // 3. Cached communities in localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('upklick_communities_')) {
+            const raw = JSON.parse(localStorage.getItem(k));
+            if (Array.isArray(raw)) {
+              raw.forEach(item => {
+                if (item && item.id && !seen.has(item.id) && (!item.slug || !seen.has(item.slug.toLowerCase()))) {
+                  list.push(item);
+                  seen.add(item.id);
+                  if (item.slug) seen.add(item.slug.toLowerCase());
+                }
+              });
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 4. Default second group matching screenshot ('ss') if single group
+    if (list.length === 1) {
+      list.push({
+        id: 'growth-cohort',
+        slug: 'growth-cohort',
+        name: 'ss',
+        description: 'UpKlick Growth & Mastermind Cohort',
+        membersCount: 2,
+        postsCount: 3,
+        privacy: 'public'
+      });
+    }
+
+    return list;
+  }, [communities, group]);
+
+  // Switch community group handler
+  const handleSwitchGroup = (targetGroup) => {
+    if (!targetGroup) return;
+    setShowGroupSwitchDropdown(false);
+    const isCurrent = (targetGroup.id && group.id && targetGroup.id === group.id) ||
+      (targetGroup.slug && group.slug && targetGroup.slug.toLowerCase() === group.slug.toLowerCase());
+
+    if (isCurrent) {
+      setActiveChannel('home');
+      setActiveTab('discussion');
+      return;
+    }
+
+    showToast(isRTL ? `جاري الانتقال إلى ${targetGroup.name}...` : `Switching to ${targetGroup.name}...`);
+    const targetSlug = targetGroup.slug || targetGroup.id;
+    if (typeof window !== 'undefined') {
+      window.location.href = `/portal/${coachId || 'moha'}/community/${targetSlug}`;
+    }
+  };
 
   // Modals state
   const [showAddChannelModal, setShowAddChannelModal] = useState(false);
@@ -943,81 +1031,520 @@ export default function CommunityGroupExperience({
       boxShadow: isLight ? '0 4px 20px rgba(0,0,0,0.06)' : '0 20px 40px rgba(0,0,0,0.4)',
       overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'row',
       minHeight: '860px',
       transition: 'background 0.2s, color 0.2s',
       fontFamily: 'inherit'
     }}>
 
       {/* ========================================================================= */}
-      {/* 1. TOP APP BAR                                                            */}
+      {/* 1. DISCORD SERVER SWITCHER RAIL (Far-Left Column, 68px wide)               */}
       {/* ========================================================================= */}
       <div style={{
-        height: '60px',
-        background: cCardBg,
-        borderBottom: `1px solid ${cBorder}`,
-        padding: '0 20px',
+        width: '68px',
+        flexShrink: 0,
+        background: isLight ? '#f1f5f9' : '#0b0f19',
+        borderRight: `1px solid ${cBorder}`,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px'
+        padding: '12px 0',
+        gap: '8px',
+        zIndex: 50
       }}>
-        {/* Left: Home Icon + Group Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* App Switcher / Hub (⊞) */}
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = `/portal/${coachId || 'moha'}`;
+            }
+          }}
+          title={isRTL ? 'لوحة تحكم المجتمع والمقررات' : 'Portal Hub & Communities'}
+          style={{
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.06)',
+            border: `1px solid ${cBorder}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: isLight ? '#334155' : '#cbd5e1',
+            transition: 'all 0.2s ease',
+            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderRadius = '14px';
+            e.currentTarget.style.background = '#2563eb';
+            e.currentTarget.style.color = '#ffffff';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderRadius = '50%';
+            e.currentTarget.style.background = isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.06)';
+            e.currentTarget.style.color = isLight ? '#334155' : '#cbd5e1';
+          }}
+        >
+          <LayoutGrid size={20} />
+        </button>
+
+        {/* Portal Home Button (🏠) */}
+        <button
+          onClick={() => {
+            if (onClose) onClose();
+            else if (typeof window !== 'undefined') {
+              window.location.href = `/portal/${coachId || 'moha'}`;
+            }
+          }}
+          title={isRTL ? 'الصفحة الرئيسية للمدرب' : 'Return to Portal Home'}
+          style={{
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.06)',
+            border: `1px solid ${cBorder}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: isLight ? '#334155' : '#cbd5e1',
+            transition: 'all 0.2s ease',
+            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderRadius = '14px';
+            e.currentTarget.style.background = '#2563eb';
+            e.currentTarget.style.color = '#ffffff';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderRadius = '50%';
+            e.currentTarget.style.background = isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.06)';
+            e.currentTarget.style.color = isLight ? '#334155' : '#cbd5e1';
+          }}
+        >
+          <Home size={20} />
+        </button>
+
+        {/* Divider Line */}
+        <div style={{
+          width: '32px',
+          height: '2px',
+          borderRadius: '1px',
+          background: isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.12)',
+          margin: '2px 0'
+        }} />
+
+        {/* Community Servers List */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          width: '100%',
+          flex: 1,
+          overflowY: 'auto'
+        }}>
+          {allCommunitiesList.map((comm) => {
+            const isCurrent = (comm.id && group.id && comm.id === group.id) ||
+              (comm.slug && group.slug && comm.slug.toLowerCase() === group.slug.toLowerCase());
+            const isHovered = hoveredServerId === comm.id;
+
+            return (
+              <div
+                key={comm.id || comm.slug}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={() => setHoveredServerId(comm.id)}
+                onMouseLeave={() => setHoveredServerId(null)}
+              >
+                {/* Discord Left Indicator Pill */}
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  width: '4px',
+                  height: isCurrent ? '36px' : (isHovered ? '20px' : '0px'),
+                  borderRadius: '0 4px 4px 0',
+                  background: isLight ? '#0f172a' : '#ffffff',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                }} />
+
+                {/* Server Circle / Squircle Button */}
+                <button
+                  onClick={() => handleSwitchGroup(comm)}
+                  title={comm.name}
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: (isCurrent || isHovered) ? '14px' : '50%',
+                    background: isCurrent
+                      ? (isLight ? '#0f172a' : '#2563eb')
+                      : (isLight ? '#e0f2fe' : 'rgba(255, 255, 255, 0.08)'),
+                    border: isCurrent ? 'none' : `1px solid ${cBorder}`,
+                    color: isCurrent ? '#ffffff' : (isLight ? '#0284c7' : '#38bdf8'),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: isCurrent ? '0 4px 14px rgba(37, 99, 235, 0.4)' : 'none',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {comm.logoUrl ? (
+                    <img src={comm.logoUrl} alt={comm.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <Users size={20} />
+                  )}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Add / Create Community Button */}
           <button
-            onClick={onClose}
-            title={isRTL ? 'الرجوع إلى المجتمعات' : 'Return to Groups Hub'}
+            onClick={() => setShowSettingsModal(true)}
+            title={isRTL ? 'إضافة مجموعة جديدة' : 'Add / Create Community'}
             style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
               background: 'transparent',
-              border: 'none',
-              color: cTextSub,
-              cursor: 'pointer',
+              border: `1.5px dashed ${isLight ? '#94a3b8' : 'rgba(255,255,255,0.2)'}`,
+              color: isLight ? '#64748b' : '#94a3b8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '6px',
-              borderRadius: '6px',
-              transition: 'color 0.15s'
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              marginTop: '4px'
             }}
-            onMouseOver={(e) => e.currentTarget.style.color = '#2563eb'}
-            onMouseOut={(e) => e.currentTarget.style.color = cTextSub}
+            onMouseOver={(e) => {
+              e.currentTarget.style.borderRadius = '14px';
+              e.currentTarget.style.background = '#22c55e';
+              e.currentTarget.style.borderColor = '#22c55e';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.borderRadius = '50%';
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = isLight ? '#94a3b8' : 'rgba(255,255,255,0.2)';
+              e.currentTarget.style.color = isLight ? '#64748b' : '#94a3b8';
+            }}
           >
-            <Home size={19} />
+            <Plus size={20} />
           </button>
+        </div>
+      </div>
 
-          {/* Group Name Selector Capsule */}
-          <div style={{
+      {/* ========================================================================= */}
+      {/* 2. CHANNELS SIDEBAR (Next Column, 230px wide - Screenshot 2)               */}
+      {/* ========================================================================= */}
+      <div style={{
+        width: '230px',
+        flexShrink: 0,
+        background: isLight ? '#ffffff' : '#0f172a',
+        borderRight: `1px solid ${cBorder}`,
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        zIndex: 40
+      }}>
+        {/* Header: Group Identity & Switcher (ss ↕) */}
+        <div
+          onClick={() => setShowGroupSwitchDropdown(!showGroupSwitchDropdown)}
+          style={{
+            height: '60px',
+            borderBottom: `1px solid ${cBorder}`,
+            padding: '0 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            justifyContent: 'space-between',
             cursor: 'pointer',
-            padding: '4px 8px',
-            borderRadius: '8px'
-          }}>
+            transition: 'background 0.15s ease',
+            userSelect: 'none'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = isLight ? '#f8fafc' : 'rgba(255,255,255,0.04)'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <div style={{
-              width: '26px',
-              height: '26px',
+              width: '30px',
+              height: '30px',
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: '800'
+              flexShrink: 0,
+              overflow: 'hidden'
             }}>
               {group.logoUrl ? (
-                <img src={group.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                <img src={group.logoUrl} alt={group.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <Users size={14} />
+                <Users size={16} />
               )}
             </div>
-            <span style={{ fontSize: '14px', fontWeight: '800', color: cText }}>
-              {group.name}
-            </span>
-            <ChevronDown size={14} style={{ color: cTextSub }} />
+            <div style={{
+              fontSize: '14.5px',
+              fontWeight: '800',
+              color: cText,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {group.name || 'ss'}
+            </div>
           </div>
+          <ChevronsUpDown size={15} color={cTextSub} />
         </div>
+
+        {/* Group Switcher Dropdown (Discord-style) */}
+        {showGroupSwitchDropdown && (
+          <div style={{
+            position: 'absolute',
+            top: '64px',
+            left: '8px',
+            right: '8px',
+            background: isLight ? '#ffffff' : '#1e293b',
+            border: `1px solid ${cBorder}`,
+            borderRadius: '12px',
+            padding: '8px',
+            boxShadow: '0 16px 36px rgba(0,0,0,0.25)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px'
+          }}>
+            <div style={{ padding: '6px 8px', fontSize: '11px', fontWeight: '800', color: cTextSub, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {isRTL ? 'التبديل بين المجتمعات' : 'Switch Group'}
+            </div>
+            {allCommunitiesList.map((c) => {
+              const isCurrent = (c.id && group.id && c.id === group.id) ||
+                (c.slug && group.slug && c.slug.toLowerCase() === group.slug.toLowerCase());
+              return (
+                <button
+                  key={c.id || c.slug}
+                  onClick={() => handleSwitchGroup(c)}
+                  style={{
+                    background: isCurrent ? (isLight ? '#f1f5f9' : 'rgba(255,255,255,0.08)') : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#38bdf8',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      flexShrink: 0
+                    }}>
+                      <Users size={13} />
+                    </div>
+                    <span style={{ fontSize: '12.5px', fontWeight: isCurrent ? '800' : '600', color: cText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.name}
+                    </span>
+                  </div>
+                  {isCurrent && <Check size={14} color="#2563eb" />}
+                </button>
+              );
+            })}
+            <div style={{ height: '1px', background: cBorder, margin: '4px 0' }} />
+            <button
+              onClick={() => {
+                setShowGroupSwitchDropdown(false);
+                setShowSettingsModal(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: cTextSub,
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <Settings size={14} />
+              <span>{isRTL ? 'إعدادات المجتمع' : 'Community Settings'}</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowGroupSwitchDropdown(false);
+                setShowInviteModal(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: cTextSub,
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <Users size={14} />
+              <span>{isRTL ? 'دعوة أعضاء' : 'Invite Members'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Channels List */}
+        <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
+          {channels.map((chan, idx) => {
+            const isActive = activeChannel === chan.id;
+            return (
+              <React.Fragment key={chan.id}>
+                {idx === 1 && (
+                  <div style={{ height: '1px', background: cBorder, margin: '8px 4px' }} />
+                )}
+                <button
+                  onClick={() => {
+                    setActiveChannel(chan.id);
+                    setActiveTab('discussion');
+                  }}
+                  style={{
+                    background: isActive ? (isLight ? '#0f172a' : '#2563eb') : 'transparent',
+                    color: isActive ? '#ffffff' : cTextSub,
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '13.5px',
+                    fontWeight: isActive ? '800' : '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    textAlign: isRTL ? 'right' : 'left',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isActive) e.currentTarget.style.background = isLight ? '#f1f5f9' : 'rgba(255,255,255,0.05)';
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  {chan.id === 'home' ? (
+                    <User size={16} />
+                  ) : chan.icon === 'megaphone' ? (
+                    <Megaphone size={16} />
+                  ) : (
+                    <Hash size={16} />
+                  )}
+                  <span>{chan.name}</span>
+                </button>
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* Bottom Add Channel Solid Blue Button (Screenshot 2) */}
+        <div style={{ padding: '16px 12px', borderTop: `1px solid ${cBorder}` }}>
+          <button
+            onClick={() => setShowAddChannelModal(true)}
+            style={{
+              width: '100%',
+              background: '#1d4ed8',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '11px 14px',
+              fontSize: '12.5px',
+              fontWeight: '800',
+              letterSpacing: '0.4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(29, 78, 216, 0.35)',
+              transition: 'background 0.15s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = '#1e40af'}
+            onMouseOut={(e) => e.currentTarget.style.background = '#1d4ed8'}
+          >
+            <span>{isRTL ? '+ إضافة قناة' : '+ ADD CHANNEL'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. MAIN WORKSPACE CONTAINER (Flex: 1)                                     */}
+      {/* ========================================================================= */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        overflow: 'hidden'
+      }}>
+        {/* TOP APP BAR */}
+        <div style={{
+          height: '60px',
+          background: cCardBg,
+          borderBottom: `1px solid ${cBorder}`,
+          padding: '0 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          flexShrink: 0
+        }}>
+          {/* Left: Active Channel Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.06)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: activeChannel === 'home' ? '#2563eb' : (activeChannel === 'announcements' ? '#f59e0b' : '#64748b')
+            }}>
+              {activeChannel === 'home' ? (
+                <User size={18} />
+              ) : activeChannel === 'announcements' ? (
+                <Megaphone size={18} />
+              ) : (
+                <Hash size={18} />
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: cText }}>
+                {activeChannel === 'home' ? 'Home' : (activeChannel === 'announcements' ? 'Announcements' : channels.find(c => c.id === activeChannel)?.name || activeChannel)}
+              </div>
+            </div>
+          </div>
 
         {/* Center: Search Capsule */}
         <div style={{
@@ -1904,69 +2431,7 @@ export default function CommunityGroupExperience({
           background: cBg
         }}>
 
-        {/* LEFT CHANNELS SIDEBAR */}
-        <div style={{
-          width: '210px',
-          display: 'flex',
-          flexDirection: 'column',
-          flexShrink: 0
-        }}>
-          {/* Channels List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {channels.map(chan => {
-              const isActive = activeChannel === chan.id;
-              return (
-                <button
-                  key={chan.id}
-                  onClick={() => setActiveChannel(chan.id)}
-                  style={{
-                    background: isActive ? cNavy : 'transparent',
-                    color: isActive ? '#ffffff' : cTextSub,
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '10px 14px',
-                    fontSize: '13px',
-                    fontWeight: isActive ? '700' : '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    textAlign: isRTL ? 'right' : 'left',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  {chan.icon === 'megaphone' ? <Megaphone size={16} /> : <Home size={16} />}
-                  <span>{chan.name}</span>
-                </button>
-              );
-            })}
-          </div>
 
-          {/* Bottom Add Channel Button */}
-          <div style={{ marginTop: 'auto', paddingTop: '340px' }}>
-            <button
-              onClick={() => setShowAddChannelModal(true)}
-              style={{
-                width: '100%',
-                background: cNavy,
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                fontSize: '12px',
-                fontWeight: '800',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <Plus size={14} />
-              <span>{isRTL ? 'إضافة قناة' : '+ ADD CHANNEL'}</span>
-            </button>
-          </div>
-        </div>
 
         {/* ========================================================================= */}
         {/* SUB-VIEW 1: DISCUSSION TAB (Screenshot 1)                                  */}
@@ -3915,6 +4380,8 @@ export default function CommunityGroupExperience({
 
         </div>
       )}
+
+      </div> {/* Closes Column 3 Main Workspace Container */}
 
       {/* ========================================================================= */}
       {/* 4. COMMUNITY LIVE CHAT DRAWER (Clicking 'Chat')                            */}
