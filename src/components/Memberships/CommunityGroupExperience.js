@@ -132,7 +132,9 @@ export default function CommunityGroupExperience({
   ]);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -2364,64 +2366,267 @@ export default function CommunityGroupExperience({
         </div>
       )}
 
-      {/* MODAL: INVITE MEMBERS */}
+      {/* MODAL: INVITE MEMBERS (GoHighLevel / ClientClub Replica) */}
       {showInviteModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: cCardBg, border: `1px solid ${cBorder}`, borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: cText }}>
-                {isRTL ? 'دعوة أعضاء للمجتمع' : 'Invite Members'}
-              </h3>
-              <button onClick={() => setShowInviteModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: cTextSub }}><X size={16} /></button>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: cCardBg,
+            border: `1px solid ${cBorder}`,
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '540px',
+            boxShadow: isLight ? '0 20px 40px rgba(0,0,0,0.15)' : '0 25px 50px rgba(0,0,0,0.6)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px 16px 24px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              borderBottom: `1px solid ${cBorder}`
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: cText }}>
+                  {isRTL ? 'دعوة عضو' : 'Invite Member'}
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                  {isRTL ? 'ابنِ مجتمعك بدعوة أعضاء جدد' : 'Build your community by inviting a new member'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: cTextSub,
+                  padding: '4px',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Modal Body */}
+            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column' }}>
+
+              {/* Section 1: Share your group link */}
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '6px' }}>
-                  {isRTL ? 'رابط المجتمع المباشر' : 'Direct Share Link'}
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ fontSize: '13.5px', fontWeight: '700', color: cText, marginBottom: '10px' }}>
+                  {isRTL ? 'مشاركة رابط المجموعة' : 'Share your group link'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'stretch' }}>
                   <input
                     type="text"
                     readOnly
-                    value={`${window.location.origin}/portal/${userData?.username || 'coach'}/community/${group.slug || 'group'}`}
-                    style={{ flex: 1, background: isLight ? '#f1f5f9' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: cText, outline: 'none' }}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/portal/${userData?.username || 'coach'}/community/${group.slug || 'group'}`}
+                    style={{
+                      flex: 1,
+                      background: isLight ? '#ffffff' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${cBorder}`,
+                      borderRight: isRTL ? `1px solid ${cBorder}` : 'none',
+                      borderLeft: isRTL ? 'none' : `1px solid ${cBorder}`,
+                      borderRadius: isRTL ? '0 6px 6px 0' : '6px 0 0 6px',
+                      padding: '9px 14px',
+                      fontSize: '12px',
+                      color: cTextSub,
+                      outline: 'none',
+                      textOverflow: 'ellipsis'
+                    }}
                   />
                   <button
+                    type="button"
                     onClick={copyGroupLink}
-                    style={{ background: cNavy, color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{
+                      background: cNavy,
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: isRTL ? '6px 0 0 6px' : '0 6px 6px 0',
+                      padding: '0 22px',
+                      fontSize: '11.5px',
+                      fontWeight: '800',
+                      letterSpacing: '0.5px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
                   >
-                    {copiedLink ? <Check size={14} /> : <Copy size={14} />}
-                    <span>{copiedLink ? (isRTL ? 'تم النسخ!' : 'Copied!') : (isRTL ? 'نسخ' : 'Copy')}</span>
+                    {copiedLink ? (isRTL ? 'تم النسخ!' : 'COPIED!') : (isRTL ? 'نسخ' : 'COPY')}
                   </button>
                 </div>
               </div>
 
+              {/* Divider */}
+              <div style={{ height: '1px', background: cBorder, margin: '22px 0' }} />
+
+              {/* Section 2: Invite via Email */}
               <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '6px' }}>
-                  {isRTL ? 'إرسال دعوة عبر البريد' : 'Send Invite via Email'}
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="student@example.com"
-                    style={{ flex: 1, background: isLight ? '#f8fafc' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', fontSize: '12.5px', color: cText, outline: 'none' }}
-                  />
-                  <button
-                    onClick={() => {
-                      if (!inviteEmail) return;
-                      showToast(isRTL ? `تم إرسال الدعوة إلى ${inviteEmail}` : `Invitation sent to ${inviteEmail}`);
-                      setInviteEmail('');
-                      setShowInviteModal(false);
-                    }}
-                    style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-                    {isRTL ? 'إرسال' : 'Send Invite'}
-                  </button>
+                <div style={{ fontSize: '13.5px', fontWeight: '700', color: cText }}>
+                  {isRTL ? 'دعوة عبر البريد الإلكتروني' : 'Invite via Email'}
+                </div>
+                <p style={{ margin: '3px 0 16px 0', fontSize: '11.5px', color: cTextSub }}>
+                  {isRTL
+                    ? 'سيتم قبول الأعضاء المدعوين تلقائياً للانضمام إلى المجموعة'
+                    : 'Invited members will be auto approved to join group'}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Name Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: cText, width: '130px', flexShrink: 0 }}>
+                      {isRTL ? 'الاسم' : 'Name'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={isRTL ? 'أدخل الاسم' : 'Enter Name'}
+                      value={inviteName}
+                      onChange={(e) => setInviteName(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: isLight ? '#ffffff' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '6px',
+                        padding: '9px 14px',
+                        fontSize: '12.5px',
+                        color: cText,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  {/* Email Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: cText, width: '130px', flexShrink: 0 }}>
+                      {isRTL ? 'البريد الإلكتروني' : 'Email'}
+                    </label>
+                    <input
+                      type="email"
+                      placeholder={isRTL ? 'أدخل البريد الإلكتروني' : 'Enter Email'}
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: isLight ? '#ffffff' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '6px',
+                        padding: '9px 14px',
+                        fontSize: '12.5px',
+                        color: cText,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  {/* Give Administrative Privileges */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    marginTop: '6px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: cText }}>
+                        {isRTL ? 'منح صلاحيات إدارية' : 'Give Administrative Privileges'}
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: cTextSub, marginTop: '2px' }}>
+                        {isRTL
+                          ? 'السماح لهذا العضو بالقيام بجميع الإجراءات الإدارية'
+                          : 'Allow this member to perform all administrative actions'}
+                      </div>
+                    </div>
+
+                    {/* iOS Switch */}
+                    <div
+                      role="switch"
+                      aria-checked={inviteIsAdmin}
+                      onClick={() => setInviteIsAdmin(!inviteIsAdmin)}
+                      style={{
+                        width: '38px',
+                        height: '22px',
+                        borderRadius: '9999px',
+                        background: inviteIsAdmin ? '#2563eb' : (isLight ? '#cbd5e1' : '#475569'),
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        flexShrink: 0
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          background: '#ffffff',
+                          position: 'absolute',
+                          top: '3px',
+                          left: inviteIsAdmin ? '19px' : '3px',
+                          transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Action Button: SEND INVITE */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginTop: '26px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!inviteEmail.trim()) {
+                      showToast(isRTL ? 'يرجى إدخال البريد الإلكتروني للمدعو' : 'Please enter member email');
+                      return;
+                    }
+                    showToast(
+                      isRTL
+                        ? `تم إرسال الدعوة بنجاح إلى ${inviteName.trim() ? inviteName.trim() + ' (' + inviteEmail.trim() + ')' : inviteEmail.trim()}`
+                        : `Invitation sent successfully to ${inviteName.trim() ? inviteName.trim() + ' (' + inviteEmail.trim() + ')' : inviteEmail.trim()}`
+                    );
+                    setInviteEmail('');
+                    setInviteName('');
+                    setInviteIsAdmin(false);
+                    setShowInviteModal(false);
+                  }}
+                  style={{
+                    background: cNavy,
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '10px 24px',
+                    fontSize: '12px',
+                    fontWeight: '800',
+                    letterSpacing: '0.5px',
+                    cursor: 'pointer',
+                    boxShadow: isLight ? '0 2px 8px rgba(26, 54, 93, 0.25)' : '0 2px 8px rgba(37, 99, 235, 0.4)'
+                  }}
+                >
+                  {isRTL ? 'إرسال الدعوة' : 'SEND INVITE'}
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
