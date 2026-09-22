@@ -5672,9 +5672,10 @@ export default function MembershipsView() {
                           </div>
                         </div>
 
-                        {/* Login Button */}
-                        <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                        {/* Action Buttons: Enter Community & Direct Portal Preview */}
+                        <div style={{ marginTop: 'auto', paddingTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <button
+                            type="button"
                             onClick={() => {
                               setActiveCommunityGroup(group);
                               setCommunityActiveTab('discussion');
@@ -5688,19 +5689,62 @@ export default function MembershipsView() {
                             }}
                             className="btn glow-btn"
                             style={{
-                              width: '100%',
-                              background: '#2563eb',
+                              flex: 1,
+                              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                               color: '#ffffff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              padding: '10px 0',
-                              fontSize: '13px',
-                              fontWeight: '700',
-                              textAlign: 'center',
-                              cursor: 'pointer'
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '10px',
+                              padding: '11px 16px',
+                              fontSize: '13.5px',
+                              fontWeight: '800',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              cursor: 'pointer',
+                              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                             }}
                           >
-                            {isRTL ? 'دخول المجتمع (Login)' : 'Login'}
+                            <span>{isRTL ? 'دخول المجتمع' : 'Enter Community'}</span>
+                            {isRTL ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+                          </button>
+
+                          <button
+                            type="button"
+                            title={isRTL ? 'معاينة رابط المجتمع في بوابة الطالب' : 'Open in Client Portal'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const coachSlug = (userData?.username || coachName || 'coach').toLowerCase().replace(/[^a-z0-9]/g, '-');
+                              const targetSlug = group.slug || group.id;
+                              window.open(`/portal/${coachSlug}/community/${targetSlug}`, '_blank');
+                            }}
+                            style={{
+                              width: '42px',
+                              height: '42px',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.12)',
+                              borderRadius: '10px',
+                              color: '#94a3b8',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              flexShrink: 0
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                              e.currentTarget.style.color = '#ffffff';
+                              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                              e.currentTarget.style.color = '#94a3b8';
+                              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                            }}
+                          >
+                            <ExternalLink size={16} />
                           </button>
                         </div>
                       </div>
