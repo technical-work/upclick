@@ -318,6 +318,11 @@ export default function MembershipsView() {
           }
           setPortalSettings(merged);
           setSettingsForm(merged);
+
+          // Ensure portal settings are associated with this coachId & defaultSlug in cache and DB
+          if (!settings?.coachId || settings?.portalSlug !== merged.portalSlug) {
+            saveCoachPortalSettings(coachId, merged).catch(() => {});
+          }
         }
       } catch (err) {
         console.warn('Error loading settings:', err);

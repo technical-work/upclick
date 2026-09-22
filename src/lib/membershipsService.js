@@ -54,75 +54,90 @@ function setLocalCache(key, value) {
 // 1. Portal Settings
 export async function getCoachPortalSettings(coachIdOrSlug) {
   if (!coachIdOrSlug) return DEFAULT_PORTAL_SETTINGS;
-  const cacheKey = `upklick_portal_${coachIdOrSlug.toLowerCase()}`;
+  const cleanKey = coachIdOrSlug.toLowerCase().trim();
+  const cacheKey = `upklick_portal_${cleanKey}`;
   const cached = getLocalCache(cacheKey);
 
-  // Check if any portal in localStorage matches this slug
-  if (typeof window !== 'undefined') {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('upklick_portal_')) {
-        try {
-          const item = JSON.parse(localStorage.getItem(k));
-          if (item?.portalSlug?.toLowerCase() === coachIdOrSlug.toLowerCase()) {
-            return item;
-          }
-        } catch (e) {}
-      }
-    }
+  // If cached and belongs strictly to this slug or coachId, return it
+  if (cached && (cached.portalSlug?.toLowerCase() === cleanKey || cached.coachId?.toLowerCase() === cleanKey)) {
+    return cached;
   }
 
   try {
-    // Check by doc ID first (coachId)
+    // 1. Check by doc ID first (coachId / UID)
     const docRef = doc(db, 'coach_portals', coachIdOrSlug);
     const snap = await getDoc(docRef);
     if (snap.exists()) {
-      const merged = { id: snap.id, ...DEFAULT_PORTAL_SETTINGS, ...snap.data() };
+      const merged = { id: snap.id, coachId: snap.id, ...DEFAULT_PORTAL_SETTINGS, ...snap.data() };
       setLocalCache(cacheKey, merged);
+      if (merged.portalSlug) {
+        setLocalCache(`upklick_portal_${merged.portalSlug.toLowerCase()}`, merged);
+      }
       return merged;
     }
 
-    // Otherwise search by portalSlug
+    // 2. Otherwise search by portalSlug
     const q = query(
       collection(db, 'coach_portals'),
-      where('portalSlug', '==', coachIdOrSlug.toLowerCase())
+      where('portalSlug', '==', cleanKey)
     );
     const querySnap = await getDocs(q);
     if (!querySnap.empty) {
       const first = querySnap.docs[0];
-      const merged = { id: first.id, ...DEFAULT_PORTAL_SETTINGS, ...first.data() };
+      const merged = { id: first.id, coachId: first.data().coachId || first.id, ...DEFAULT_PORTAL_SETTINGS, ...first.data() };
       setLocalCache(cacheKey, merged);
+      if (merged.coachId) {
+        setLocalCache(`upklick_portal_${merged.coachId.toLowerCase()}`, merged);
+      }
       return merged;
     }
 
-    // Check if coach exists in users collection
+    // 3. Check if coach exists in users collection (by UID or username)
     try {
       const userDoc = await getDoc(doc(db, 'users', coachIdOrSlug));
       if (userDoc.exists()) {
         const u = userDoc.data();
         const synthesized = {
           ...DEFAULT_PORTAL_SETTINGS,
-          coachId: coachIdOrSlug,
-          portalTitle: `${u.name || u.email?.split('@')[0] || 'Coach'} Academy`,
-          portalSlug: (u.name || u.email?.split('@')[0] || 'coach').toLowerCase().replace(/\s+/g, '-')
+          coachId: userDoc.id,
+          portalTitle: `${u.name || u.email?.split('@')[0] || coachIdOrSlug} Academy`,
+          portalSlug: cleanKey
         };
         setLocalCache(cacheKey, synthesized);
         return synthesized;
       }
+
+      const uQuery = query(collection(db, 'users'), where('username', '==', cleanKey));
+      const uSnap = await getDocs(uQuery);
+      if (!uSnap.empty) {
+        const uFirst = uSnap.docs[0];
+        const u = uFirst.data();
+        const synthesized = {
+          ...DEFAULT_PORTAL_SETTINGS,
+          coachId: uFirst.id,
+          portalTitle: `${u.name || u.email?.split('@')[0] || coachIdOrSlug} Academy`,
+          portalSlug: cleanKey
+        };
+        setLocalCache(cacheKey, synthesized);
+        setLocalCache(`upklick_portal_${uFirst.id.toLowerCase()}`, synthesized);
+        return synthesized;
+      }
     } catch (_) {}
 
-    return cached || {
+    const fallback = {
       ...DEFAULT_PORTAL_SETTINGS,
       coachId: coachIdOrSlug,
-      portalTitle: `${coachIdOrSlug.toUpperCase()} MasterClass Academy`,
-      portalSlug: coachIdOrSlug.toLowerCase()
+      portalTitle: `${coachIdOrSlug} Academy`,
+      portalSlug: cleanKey
     };
+    setLocalCache(cacheKey, fallback);
+    return fallback;
   } catch (err) {
     return cached || {
       ...DEFAULT_PORTAL_SETTINGS,
       coachId: coachIdOrSlug,
-      portalTitle: `${coachIdOrSlug.toUpperCase()} MasterClass Academy`,
-      portalSlug: coachIdOrSlug.toLowerCase()
+      portalTitle: `${coachIdOrSlug} Academy`,
+      portalSlug: cleanKey
     };
   }
 }
@@ -242,52 +257,52 @@ export const DEFAULT_COHORT_COURSES = [
   }
 ];
 
-export async function getCoachCourses(coachId) {
-  if (!coachId) return DEFAULT_COHORT_COURSES;
-  const cacheKey = `upklick_courses_${coachId.toLowerCase()}`;
-  const cached = getLocalCache(cacheKey, []);
-  let list = Array.isArray(cached) ? [...cached] : [];
+export async function getCoachCourses(coachId, altCoachId) {
+  if (!coachId && !altCoachId) return [];
+  const primaryId = coachId || altCoachId;
+  const cacheKey = `upklick_courses_${primaryId.toLowerCase()}`;
+  let list = [];
 
   try {
-    const q = query(
+    const q1 = query(
       collection(db, 'courses'),
-      where('coachId', '==', coachId)
+      where('coachId', '==', primaryId)
     );
-    const snap = await getDocs(q);
-    snap.docs.forEach(d => {
+    const snap1 = await getDocs(q1);
+    snap1.docs.forEach(d => {
       const item = { id: d.id, ...d.data() };
       if (!list.find(existing => existing.id === item.id)) {
         list.push(item);
       }
     });
-  } catch (err) {}
 
-  // Scan all upklick_courses_* in localStorage
-  if (typeof window !== 'undefined') {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('upklick_courses_')) {
-        try {
-          const raw = JSON.parse(localStorage.getItem(k));
-          if (Array.isArray(raw)) {
-            raw.forEach(item => {
-              if (item && item.id && !list.find(existing => existing.id === item.id)) {
-                list.push(item);
-              }
-            });
+    if (altCoachId && altCoachId !== primaryId) {
+      try {
+        const q2 = query(
+          collection(db, 'courses'),
+          where('coachId', '==', altCoachId)
+        );
+        const snap2 = await getDocs(q2);
+        snap2.docs.forEach(d => {
+          const item = { id: d.id, ...d.data() };
+          if (!list.find(existing => existing.id === item.id)) {
+            list.push(item);
           }
-        } catch (e) {}
-      }
+        });
+      } catch (_) {}
     }
-  }
 
-  if (list.length === 0) {
-    list = DEFAULT_COHORT_COURSES;
     setLocalCache(cacheKey, list);
+    if (altCoachId && altCoachId !== primaryId) {
+      setLocalCache(`upklick_courses_${altCoachId.toLowerCase()}`, list);
+    }
+    return list;
+  } catch (err) {
+    const cached = getLocalCache(cacheKey, []);
+    return Array.isArray(cached)
+      ? cached.filter(c => c && (c.coachId === primaryId || (altCoachId && c.coachId === altCoachId)))
+      : [];
   }
-
-  setLocalCache(cacheKey, list);
-  return list;
 }
 
 export function subscribeCoachCourses(coachId, callback) {
@@ -375,7 +390,6 @@ export async function deleteCourse(courseId, coachId) {
 export async function getCoachStudents(coachId) {
   if (!coachId) return [];
   const cacheKey = `upklick_students_${coachId}`;
-  const cached = getLocalCache(cacheKey, []);
 
   try {
     const q = query(
@@ -384,13 +398,11 @@ export async function getCoachStudents(coachId) {
     );
     const snap = await getDocs(q);
     const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (students.length > 0) {
-      setLocalCache(cacheKey, students);
-      return students;
-    }
-    return cached;
+    setLocalCache(cacheKey, students);
+    return students;
   } catch (err) {
-    return cached;
+    const cached = getLocalCache(cacheKey, []);
+    return Array.isArray(cached) ? cached : [];
   }
 }
 
@@ -524,50 +536,55 @@ export async function updateStudentLessonProgress(coachId, studentEmail, courseI
 }
 
 // 5. Communities & Discussions
-export async function getCoachCommunities(coachId) {
-  if (!coachId) return [];
-  const cacheKey = `upklick_communities_${coachId}`;
-  const cached = getLocalCache(cacheKey, []);
-  let list = Array.isArray(cached) ? [...cached] : [];
+export async function getCoachCommunities(coachId, altCoachId) {
+  if (!coachId && !altCoachId) return [];
+  const primaryId = coachId || altCoachId;
+  const cacheKey = `upklick_communities_${primaryId}`;
+  let list = [];
 
-  // 1. Try Firestore by coachId
+  // 1. Authoritative Firestore query for this coach's communities
   try {
-    const q = query(
+    const q1 = query(
       collection(db, 'portal_communities'),
-      where('coachId', '==', coachId)
+      where('coachId', '==', primaryId)
     );
-    const snap = await getDocs(q);
-    snap.docs.forEach(d => {
+    const snap1 = await getDocs(q1);
+    snap1.docs.forEach(d => {
       const item = { id: d.id, ...d.data() };
       if (!list.find(existing => existing.id === item.id)) {
         list.push(item);
       }
     });
-  } catch (err) {}
 
-  // 2. Comprehensive localStorage scan for any coach communities
-  if (typeof window !== 'undefined') {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('upklick_communities_')) {
-        try {
-          const raw = JSON.parse(localStorage.getItem(k));
-          if (Array.isArray(raw)) {
-            raw.forEach(item => {
-              if (!list.find(existing => existing.id === item.id)) {
-                list.push(item);
-              }
-            });
+    if (altCoachId && altCoachId !== primaryId) {
+      try {
+        const q2 = query(
+          collection(db, 'portal_communities'),
+          where('coachId', '==', altCoachId)
+        );
+        const snap2 = await getDocs(q2);
+        snap2.docs.forEach(d => {
+          const item = { id: d.id, ...d.data() };
+          if (!list.find(existing => existing.id === item.id)) {
+            list.push(item);
           }
-        } catch (e) {}
-      }
+        });
+      } catch (_) {}
     }
-  }
 
-  if (list.length > 0) {
+    // Overwrite local cache with authoritative data from Firestore (even if empty)
     setLocalCache(cacheKey, list);
+    if (altCoachId && altCoachId !== primaryId) {
+      setLocalCache(`upklick_communities_${altCoachId}`, list);
+    }
+    return list;
+  } catch (err) {
+    // In case of offline error, return only cached items strictly belonging to this coach
+    const cached = getLocalCache(cacheKey, []);
+    return Array.isArray(cached)
+      ? cached.filter(item => item && (item.coachId === primaryId || (altCoachId && item.coachId === altCoachId)))
+      : [];
   }
-  return list;
 }
 
 export function subscribeCoachCommunities(coachId, callback) {
@@ -632,6 +649,19 @@ export async function saveCommunityGroup(coachId, groupData) {
   }
 
   return payload;
+}
+
+export async function deleteCommunityGroup(coachId, groupId) {
+  if (!coachId || !groupId) return;
+  const cacheKey = `upklick_communities_${coachId}`;
+  const existing = getLocalCache(cacheKey, []);
+  const updated = existing.filter(g => g.id !== groupId && g.slug !== groupId);
+  setLocalCache(cacheKey, updated);
+
+  try {
+    const ref = doc(db, 'portal_communities', groupId);
+    await deleteDoc(ref);
+  } catch (err) {}
 }
 
 export function formatTimeAgo(val) {
@@ -1231,28 +1261,52 @@ export async function joinCommunityGroup(coachId, studentEmail, groupId, profile
 // 8. REAL SHARED FILES MANAGEMENT
 // =============================================================================
 
-export async function getCoachSharedFiles(coachId) {
-  if (!coachId) return [];
-  const cacheKey = `upklick_files_${coachId.toLowerCase()}`;
-  const cached = getLocalCache(cacheKey, []);
-  let list = Array.isArray(cached) ? [...cached] : [];
+export async function getCoachSharedFiles(coachId, altCoachId) {
+  if (!coachId && !altCoachId) return [];
+  const primaryId = (coachId || altCoachId).toLowerCase();
+  const cacheKey = `upklick_files_${primaryId}`;
+  let list = [];
 
   try {
-    const q = query(
+    const q1 = query(
       collection(db, 'portal_shared_files'),
-      where('coachId', '==', coachId.toLowerCase())
+      where('coachId', '==', primaryId)
     );
-    const snap = await getDocs(q);
-    snap.docs.forEach(d => {
+    const snap1 = await getDocs(q1);
+    snap1.docs.forEach(d => {
       const item = { id: d.id, ...d.data() };
       if (!list.find(existing => existing.id === item.id)) {
         list.push(item);
       }
     });
-  } catch (e) {}
 
-  setLocalCache(cacheKey, list);
-  return list;
+    if (altCoachId && altCoachId.toLowerCase() !== primaryId) {
+      try {
+        const q2 = query(
+          collection(db, 'portal_shared_files'),
+          where('coachId', '==', altCoachId.toLowerCase())
+        );
+        const snap2 = await getDocs(q2);
+        snap2.docs.forEach(d => {
+          const item = { id: d.id, ...d.data() };
+          if (!list.find(existing => existing.id === item.id)) {
+            list.push(item);
+          }
+        });
+      } catch (_) {}
+    }
+
+    setLocalCache(cacheKey, list);
+    if (altCoachId && altCoachId.toLowerCase() !== primaryId) {
+      setLocalCache(`upklick_files_${altCoachId.toLowerCase()}`, list);
+    }
+    return list;
+  } catch (e) {
+    const cached = getLocalCache(cacheKey, []);
+    return Array.isArray(cached)
+      ? cached.filter(f => f && (f.coachId === primaryId || (altCoachId && f.coachId === altCoachId.toLowerCase())))
+      : [];
+  }
 }
 
 export async function saveSharedFile(coachId, fileData) {

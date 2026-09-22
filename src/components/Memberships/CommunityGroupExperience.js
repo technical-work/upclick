@@ -178,42 +178,25 @@ export default function CommunityGroupExperience({
       });
     }
 
-    // 3. Cached communities in localStorage
-    if (typeof window !== 'undefined') {
+    // 3. Cached communities in localStorage strictly for this coach
+    const coachId = activeGroup?.coachId || group?.coachId;
+    if (coachId && typeof window !== 'undefined') {
       try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith('upklick_communities_')) {
-            const raw = JSON.parse(localStorage.getItem(k));
-            if (Array.isArray(raw)) {
-              raw.forEach(item => {
-                if (item && item.id && !seen.has(item.id) && (!item.slug || !seen.has(item.slug.toLowerCase()))) {
-                  list.push(item);
-                  seen.add(item.id);
-                  if (item.slug) seen.add(item.slug.toLowerCase());
-                }
-              });
+        const raw = JSON.parse(localStorage.getItem(`upklick_communities_${coachId}`));
+        if (Array.isArray(raw)) {
+          raw.forEach(item => {
+            if (item && item.id && !seen.has(item.id) && (!item.slug || !seen.has(item.slug.toLowerCase()))) {
+              list.push(item);
+              seen.add(item.id);
+              if (item.slug) seen.add(item.slug.toLowerCase());
             }
-          }
+          });
         }
       } catch (e) {}
     }
 
-    // 4. Default second group matching screenshot ('ss') if single group
-    if (list.length === 1) {
-      list.push({
-        id: 'growth-cohort',
-        slug: 'growth-cohort',
-        name: 'ss',
-        description: 'UpKlick Growth & Mastermind Cohort',
-        membersCount: 2,
-        postsCount: 3,
-        privacy: 'public'
-      });
-    }
-
     return list;
-  }, [communities, activeGroup]);
+  }, [communities, activeGroup, group]);
 
   // Switch community group handler WITHOUT full page reload
   const handleSwitchGroup = (targetGroup) => {
@@ -374,7 +357,7 @@ export default function CommunityGroupExperience({
 
   // Course Helpers
   const availableCourses = useMemo(() => {
-    const list = Array.isArray(courses) && courses.length > 0 ? courses : DEFAULT_COHORT_COURSES;
+    const list = Array.isArray(courses) ? courses : [];
     const linked = list.filter(c => (linkedCourseIds || []).includes(c.id));
     return linked.length > 0 ? linked : list;
   }, [courses, linkedCourseIds]);

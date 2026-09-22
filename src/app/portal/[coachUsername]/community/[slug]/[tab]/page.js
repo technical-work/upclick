@@ -50,8 +50,8 @@ export default function PortalCommunityGroupTabSubPage() {
         const coachId = settings.coachId || settings.id || coachUsername;
 
         const [commList, cList, sList] = await Promise.all([
-          getCoachCommunities(coachId),
-          getCoachCourses(coachId),
+          getCoachCommunities(coachId, coachUsername),
+          getCoachCourses(coachId, coachUsername),
           getCoachStudents(coachId)
         ]);
 
@@ -78,6 +78,7 @@ export default function PortalCommunityGroupTabSubPage() {
           const fallbackGroup = {
             id: slug,
             slug: slug,
+            coachId,
             name: formattedName || 'Community Group',
             description: `Welcome to the official ${formattedName} community group. Connect, learn, and grow together with fellow members.`,
             privacy: 'public',
@@ -94,7 +95,6 @@ export default function PortalCommunityGroupTabSubPage() {
           };
 
           setCommunityGroup(fallbackGroup);
-          saveCommunityGroup(coachId, fallbackGroup).catch(() => {});
         }
       } catch (err) {
         console.error('[PortalCommunityTabSubPage] Error loading data:', err);

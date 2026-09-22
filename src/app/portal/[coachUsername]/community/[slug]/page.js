@@ -63,8 +63,8 @@ export default function PortalCommunityGroupDirectPage() {
 
         // 2. Fetch communities, courses, and students
         const [commList, cList, sList] = await Promise.all([
-          getCoachCommunities(coachId),
-          getCoachCourses(coachId),
+          getCoachCommunities(coachId, coachUsername),
+          getCoachCourses(coachId, coachUsername),
           getCoachStudents(coachId)
         ]);
 
@@ -84,7 +84,7 @@ export default function PortalCommunityGroupDirectPage() {
         if (matched) {
           setCommunityGroup(matched);
         } else {
-          // If not found in DB yet, create a clean, rich community matching this slug
+          // If not found in DB yet, create a clean, rich community matching this slug for viewing
           const formattedName = slug
             .split('-')
             .map(w => w.charAt(0).toUpperCase() + w.slice(1))
@@ -93,6 +93,7 @@ export default function PortalCommunityGroupDirectPage() {
           const fallbackGroup = {
             id: slug,
             slug: slug,
+            coachId,
             name: formattedName || 'Community Group',
             description: `Welcome to the official ${formattedName} community group. Connect, learn, and grow together with fellow members.`,
             privacy: 'public',
@@ -116,8 +117,6 @@ export default function PortalCommunityGroupDirectPage() {
           };
 
           setCommunityGroup(fallbackGroup);
-          // Persist fallback group to local storage cache so it remains accessible
-          saveCommunityGroup(coachId, fallbackGroup).catch(() => {});
         }
       } catch (err) {
         console.error('[PortalCommunityGroupPage] Error loading data:', err);

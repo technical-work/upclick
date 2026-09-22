@@ -133,9 +133,9 @@ export default function StudentClientPortalPage() {
 
         const coachId = settings.coachId || settings.id || coachUsername;
         const [cList, commList, filesList] = await Promise.all([
-          getCoachCourses(coachId),
-          getCoachCommunities(coachId),
-          getCoachSharedFiles(coachId)
+          getCoachCourses(coachId, coachUsername),
+          getCoachCommunities(coachId, coachUsername),
+          getCoachSharedFiles(coachId, coachUsername)
         ]);
 
         const realCourses = Array.isArray(cList) ? cList : [];
