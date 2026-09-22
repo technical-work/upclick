@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Home,
   Users,
@@ -10,6 +10,9 @@ import {
   Grid,
   Bell,
   Video,
+  VideoOff,
+  Mic,
+  MicOff,
   Settings,
   Plus,
   Calendar,
@@ -43,7 +46,15 @@ import {
   Compass,
   Eye,
   Sliders,
-  FileText
+  FileText,
+  Monitor,
+  Smile,
+  Hand,
+  ThumbsUp,
+  MoreHorizontal,
+  Radio,
+  Tv,
+  Maximize2
 } from 'lucide-react';
 
 export default function CommunityGroupExperience({
@@ -114,8 +125,280 @@ export default function CommunityGroupExperience({
   const [newPostText, setNewPostText] = useState('');
   const [newPostChannel, setNewPostChannel] = useState('home');
 
+  // Go Live Setup State (Screenshot 2)
   const [showGoLiveModal, setShowGoLiveModal] = useState(false);
-  const [goLiveForm, setGoLiveForm] = useState({ title: 'Community Live Q&A', link: '' });
+  const [goLiveForm, setGoLiveForm] = useState({
+    title: 'شييشسب',
+    description: 'سشيشنشنشن',
+    channel: 'announcements',
+    schedule: 'now', // 'now' | 'later'
+    videoSource: 'meeting_room', // 'meeting_room' | 'streaming_software'
+    selectedCamera: '',
+    selectedMic: '',
+    keepAsPost: true,
+    notifyMembers: true
+  });
+  const [previewCameraOn, setPreviewCameraOn] = useState(true);
+  const [previewMicOn, setPreviewMicOn] = useState(true);
+  const [detectedCameras, setDetectedCameras] = useState([
+    { deviceId: 'cam-1', label: 'USB2.0 HD UVC WebCam (0bda:57fa)' }
+  ]);
+  const [detectedMics, setDetectedMics] = useState([
+    { deviceId: 'mic-1', label: 'Microphone (High Definition Audio Device)' }
+  ]);
+  const previewVideoRef = useRef(null);
+  const previewStreamRef = useRef(null);
+
+  // Active Live Session State (Screenshot 3: Live Meeting Room)
+  const [activeLiveSession, setActiveLiveSession] = useState(null);
+  const [liveIsAudioMuted, setLiveIsAudioMuted] = useState(false);
+  const [liveIsVideoOff, setLiveIsVideoOff] = useState(false);
+  const [liveIsScreenSharing, setLiveIsScreenSharing] = useState(false);
+  const [liveConnecting, setLiveConnecting] = useState(true);
+  const [liveChatOpen, setLiveChatOpen] = useState(false);
+  const [liveParticipantsOpen, setLiveParticipantsOpen] = useState(false);
+  const [liveHandRaised, setLiveHandRaised] = useState(false);
+  const [liveReactions, setLiveReactions] = useState([]);
+  const [showReactPicker, setShowReactPicker] = useState(false);
+  const [showDeviceSettingsModal, setShowDeviceSettingsModal] = useState(false);
+  const [liveMessages, setLiveMessages] = useState([
+    { id: 'lm-1', sender: coachName, time: 'Just now', text: 'Welcome to our Live Session! Drop your questions and comments here.' }
+  ]);
+  const [liveChatInput, setLiveChatInput] = useState('');
+  const liveVideoRef = useRef(null);
+  const liveStreamRef = useRef(null);
+
+  // Handle webcam preview when Go Live setup modal opens
+  useEffect(() => {
+    if (showGoLiveModal) {
+      let isMounted = true;
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+          .then(stream => {
+            if (!isMounted) {
+              stream.getTracks().forEach(t => t.stop());
+              return;
+            }
+            previewStreamRef.current = stream;
+            if (previewVideoRef.current) {
+              previewVideoRef.current.srcObject = stream;
+            }
+            return navigator.mediaDevices.enumerateDevices();
+          })
+          .then(devices => {
+            if (!isMounted || !devices) return;
+            const cams = devices.filter(d => d.kind === 'videoinput');
+            const mics = devices.filter(d => d.kind === 'audioinput');
+            if (cams.length > 0) setDetectedCameras(cams);
+            if (mics.length > 0) setDetectedMics(mics);
+          })
+          .catch(() => {
+            // Camera not granted or simulated device
+          });
+      }
+      return () => {
+        isMounted = false;
+        if (previewStreamRef.current) {
+          previewStreamRef.current.getTracks().forEach(t => t.stop());
+          previewStreamRef.current = null;
+        }
+      };
+    }
+  }, [showGoLiveModal]);
+
+  // Handle live room connection & stream
+  useEffect(() => {
+    if (activeLiveSession) {
+      setLiveConnecting(true);
+      const timer = setTimeout(() => {
+        setLiveConnecting(false);
+      }, 1200);
+
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia && !liveIsVideoOff) {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+          .then(stream => {
+            liveStreamRef.current = stream;
+            if (liveVideoRef.current) {
+              liveVideoRef.current.srcObject = stream;
+            }
+          })
+          .catch(() => {});
+      }
+
+      return () => {
+        clearTimeout(timer);
+        if (liveStreamRef.current) {
+          liveStreamRef.current.getTracks().forEach(t => t.stop());
+          liveStreamRef.current = null;
+        }
+      };
+    }
+  }, [activeLiveSession]);
+
+  const handleTogglePreviewCamera = () => {
+    setPreviewCameraOn(prev => {
+      const next = !prev;
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getVideoTracks().forEach(t => { t.enabled = next; });
+      }
+      return next;
+    });
+  };
+
+  const handleTogglePreviewMic = () => {
+    setPreviewMicOn(prev => {
+      const next = !prev;
+      if (previewStreamRef.current) {
+        previewStreamRef.current.getAudioTracks().forEach(t => { t.enabled = next; });
+      }
+      return next;
+    });
+  };
+
+  const handleStartGoLive = (e) => {
+    if (e) e.preventDefault();
+    if (!goLiveForm.title.trim()) {
+      showToast(isRTL ? 'يرجى إدخال عنوان البث المباشر' : 'Please enter stream title');
+      return;
+    }
+
+    // Stop preview stream before moving to live room
+    if (previewStreamRef.current) {
+      previewStreamRef.current.getTracks().forEach(t => t.stop());
+      previewStreamRef.current = null;
+    }
+
+    setShowGoLiveModal(false);
+
+    // Initialize session
+    const session = {
+      id: `live-${Date.now()}`,
+      title: goLiveForm.title.trim(),
+      description: goLiveForm.description.trim(),
+      channel: goLiveForm.channel || 'announcements',
+      videoSource: goLiveForm.videoSource,
+      keepAsPost: goLiveForm.keepAsPost,
+      notifyMembers: goLiveForm.notifyMembers,
+      startedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setActiveLiveSession(session);
+    setLiveIsAudioMuted(!previewMicOn);
+    setLiveIsVideoOff(!previewCameraOn);
+    showToast(isRTL ? 'بدأ البث المباشر بنجاح! 🚀' : 'You are now live! 🚀');
+  };
+
+  const handleEndLiveSession = () => {
+    if (!activeLiveSession) return;
+
+    if (liveStreamRef.current) {
+      liveStreamRef.current.getTracks().forEach(t => t.stop());
+      liveStreamRef.current = null;
+    }
+
+    if (activeLiveSession.keepAsPost !== false) {
+      const newLivePost = {
+        id: `live-post-${Date.now()}`,
+        author: coachName,
+        authorHandle: `@${userData?.username || 'mohamed'}`,
+        initials: 'SS',
+        channelId: activeLiveSession.channel || 'announcements',
+        channelName: channels.find(c => c.id === activeLiveSession.channel)?.name || 'Announcements',
+        createdAt: 'Just now',
+        isLiveRecording: true,
+        liveTitle: activeLiveSession.title || 'Live Session',
+        liveDescription: activeLiveSession.description || '',
+        recordingStatus: 'processing',
+        likes: 0,
+        liked: false,
+        comments: []
+      };
+
+      setPosts(prev => [newLivePost, ...prev]);
+    }
+
+    showToast(isRTL ? 'تم إنهاء جلسة البث المباشر وجاري معالجة التسجيل' : 'Stream ended. Recording is being processed.');
+    setActiveLiveSession(null);
+    setActiveTab('discussion');
+    if (activeLiveSession.channel) {
+      setActiveChannel(activeLiveSession.channel);
+    }
+  };
+
+  const handleSendLiveReaction = (emoji) => {
+    const id = Date.now() + Math.random();
+    setLiveReactions(prev => [...prev, { id, emoji, left: 35 + Math.random() * 30 }]);
+    setShowReactPicker(false);
+    setTimeout(() => {
+      setLiveReactions(prev => prev.filter(r => r.id !== id));
+    }, 2200);
+  };
+
+  const handleToggleLiveAudio = () => {
+    setLiveIsAudioMuted(prev => {
+      const next = !prev;
+      if (liveStreamRef.current) {
+        liveStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !next; });
+      }
+      return next;
+    });
+  };
+
+  const handleToggleLiveVideo = () => {
+    setLiveIsVideoOff(prev => {
+      const next = !prev;
+      if (liveStreamRef.current) {
+        liveStreamRef.current.getVideoTracks().forEach(t => { t.enabled = !next; });
+      }
+      return next;
+    });
+  };
+
+  const handleToggleScreenShare = async () => {
+    if (liveIsScreenSharing) {
+      setLiveIsScreenSharing(false);
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          liveStreamRef.current = stream;
+          if (liveVideoRef.current) liveVideoRef.current.srcObject = stream;
+        } catch (e) {}
+      }
+    } else {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getDisplayMedia) {
+        try {
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          liveStreamRef.current = screenStream;
+          if (liveVideoRef.current) liveVideoRef.current.srcObject = screenStream;
+          setLiveIsScreenSharing(true);
+          screenStream.getVideoTracks()[0].onended = () => {
+            setLiveIsScreenSharing(false);
+          };
+        } catch (e) {
+          showToast(isRTL ? 'تم إلغاء مشاركة الشاشة' : 'Screen share cancelled');
+        }
+      } else {
+        setLiveIsScreenSharing(true);
+        showToast(isRTL ? 'مشاركة الشاشة مفعلة' : 'Screen sharing active');
+      }
+    }
+  };
+
+  const handleSendLiveChat = (e) => {
+    if (e) e.preventDefault();
+    if (!liveChatInput.trim()) return;
+    setLiveMessages(prev => [
+      ...prev,
+      {
+        id: `lm-${Date.now()}`,
+        sender: coachName,
+        time: 'Just now',
+        text: liveChatInput.trim(),
+        isMe: true
+      }
+    ]);
+    setLiveChatInput('');
+  };
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [eventForm, setEventForm] = useState({
@@ -212,8 +495,51 @@ export default function CommunityGroupExperience({
     }
   ]);
 
-  // Posts Feed State
-  const [posts, setPosts] = useState([]);
+  // Posts Feed State (Initial seed matching Screenshot 1)
+  const [posts, setPosts] = useState(() => [
+    {
+      id: 'post-live-initial',
+      author: coachName,
+      authorHandle: `@${userData?.username || 'mohamed'}`,
+      initials: 'SS',
+      channelId: 'announcements',
+      channelName: 'Announcements',
+      createdAt: 'Just now',
+      isLiveRecording: true,
+      liveTitle: 'شييشسب',
+      liveDescription: 'سشيشنشنشن',
+      recordingStatus: 'processing',
+      likes: 0,
+      liked: false,
+      comments: []
+    },
+    {
+      id: 'post-reg-1',
+      author: coachName,
+      authorHandle: `@${userData?.username || 'mohamed'}`,
+      initials: 'SS',
+      channelId: 'announcements',
+      channelName: 'Announcements',
+      createdAt: '9m ago',
+      content: 'ss\n\nss',
+      likes: 0,
+      liked: false,
+      comments: []
+    },
+    {
+      id: 'post-reg-2',
+      author: coachName,
+      authorHandle: `@${userData?.username || 'mohamed'}`,
+      initials: 'SS',
+      channelId: 'announcements',
+      channelName: 'Announcements',
+      createdAt: '1h ago',
+      content: 'ss\n\nss',
+      likes: 0,
+      liked: false,
+      comments: []
+    }
+  ]);
 
   // Events Calendar State
   const [events, setEvents] = useState([]);
@@ -676,15 +1002,565 @@ export default function CommunityGroupExperience({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MAIN WORKSPACE / CONTENT AREA                                           */}
+      {/* 3. MAIN WORKSPACE OR LIVE MEETING ROOM (Screenshot 3)                     */}
       {/* ========================================================================= */}
-      <div style={{
-        padding: '24px 28px',
-        display: 'flex',
-        gap: '24px',
-        flex: 1,
-        background: cBg
-      }}>
+      {activeLiveSession ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#090d16',
+          color: '#ffffff',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          {/* TOP BAR */}
+          <div style={{
+            padding: '12px 24px',
+            background: 'rgba(15, 23, 42, 0.9)',
+            backdropFilter: 'blur(8px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 10
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ fontSize: '15.5px', fontWeight: '800', color: '#ffffff', letterSpacing: '0.2px' }}>
+                {activeLiveSession.title}
+              </div>
+              <div
+                onClick={() => setLiveParticipantsOpen(!liveParticipantsOpen)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '9999px',
+                  padding: '3px 10px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: '#94a3b8',
+                  cursor: 'pointer'
+                }}
+              >
+                <Users size={13} color="#94a3b8" />
+                <span>Participants</span>
+                <span style={{
+                  background: '#2563eb',
+                  color: '#fff',
+                  borderRadius: '9999px',
+                  padding: '1px 6px',
+                  fontSize: '11px',
+                  fontWeight: '800'
+                }}>1</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => showToast(isRTL ? 'تغيير طريقة العرض' : 'Change View Mode')}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  color: '#cbd5e1',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Grid size={13} />
+                <span>View</span>
+              </button>
+            </div>
+          </div>
+
+          {/* MAIN STAGE (Center Video / Connecting Avatar) */}
+          <div style={{
+            flex: 1,
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#000000',
+            overflow: 'hidden'
+          }}>
+            {/* Real Video Element if video is enabled */}
+            <video
+              ref={liveVideoRef}
+              autoPlay
+              playsInline
+              muted={liveIsAudioMuted}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: (!liveConnecting && !liveIsVideoOff) ? 'block' : 'none'
+              }}
+            />
+
+            {/* Connecting to room / Avatar State matching Screenshot 3 */}
+            {(liveConnecting || liveIsVideoOff) && (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '16px'
+              }}>
+                <div style={{ position: 'relative', width: '90px', height: '90px' }}>
+                  {/* Spinning Ring */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: '-8px',
+                    borderRadius: '50%',
+                    border: '3px solid transparent',
+                    borderTopColor: '#e11d48',
+                    borderRightColor: '#e11d48',
+                    animation: 'spin 1.2s linear infinite'
+                  }} />
+                  {/* Avatar Circle SS */}
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    background: '#e11d48',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    fontWeight: '900',
+                    letterSpacing: '1px',
+                    boxShadow: '0 0 25px rgba(225, 29, 72, 0.4)'
+                  }}>
+                    {authorInitials}
+                  </div>
+                </div>
+
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#e2e8f0',
+                  letterSpacing: '0.3px'
+                }}>
+                  {liveConnecting ? 'Connecting to room...' : (liveIsVideoOff ? `${coachName} (Camera off)` : 'Live Stream')}
+                </div>
+              </div>
+            )}
+
+            {/* Hand Raised Banner */}
+            {liveHandRaised && (
+              <div style={{
+                position: 'absolute',
+                top: '20px',
+                left: '20px',
+                background: 'rgba(234, 179, 8, 0.2)',
+                border: '1px solid #eab308',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                color: '#fef08a',
+                fontSize: '12px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                zIndex: 20
+              }}>
+                <Hand size={14} color="#eab308" />
+                <span>Hand Raised</span>
+              </div>
+            )}
+
+            {/* Floating Reactions */}
+            {liveReactions.map(r => (
+              <div
+                key={r.id}
+                style={{
+                  position: 'absolute',
+                  bottom: '80px',
+                  left: `${r.left}%`,
+                  fontSize: '32px',
+                  pointerEvents: 'none',
+                  animation: 'floatUp 2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+                  zIndex: 25
+                }}
+              >
+                {r.emoji}
+              </div>
+            ))}
+
+            {/* In-Meeting Live Chat Drawer */}
+            {liveChatOpen && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: '320px',
+                background: '#111827',
+                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 30
+              }}>
+                <div style={{
+                  padding: '14px 16px',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#ffffff' }}>Live Chat</div>
+                  <button onClick={() => setLiveChatOpen(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={16} /></button>
+                </div>
+                <div style={{ flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {liveMessages.map(msg => (
+                    <div key={msg.id} style={{ background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', padding: '8px 12px' }}>
+                      <div style={{ fontSize: '11px', color: '#38bdf8', fontWeight: '700', marginBottom: '2px' }}>{msg.sender} <span style={{ color: '#64748b', fontWeight: '400' }}>• {msg.time}</span></div>
+                      <div style={{ fontSize: '12.5px', color: '#e2e8f0' }}>{msg.text}</div>
+                    </div>
+                  ))}
+                </div>
+                <form onSubmit={handleSendLiveChat} style={{ padding: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={liveChatInput}
+                    onChange={(e) => setLiveChatInput(e.target.value)}
+                    placeholder="Send a chat message..."
+                    style={{ flex: 1, background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '6px', padding: '8px 10px', color: '#ffffff', fontSize: '12px', outline: 'none' }}
+                  />
+                  <button type="submit" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>Send</button>
+                </form>
+              </div>
+            )}
+
+            {/* In-Meeting Participants Drawer */}
+            {liveParticipantsOpen && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                right: liveChatOpen ? '320px' : 0,
+                bottom: 0,
+                width: '260px',
+                background: '#111827',
+                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 30
+              }}>
+                <div style={{
+                  padding: '14px 16px',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#ffffff' }}>Participants (1)</div>
+                  <button onClick={() => setLiveParticipantsOpen(false)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}><X size={16} /></button>
+                </div>
+                <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: 'rgba(255, 255, 255, 0.04)', borderRadius: '8px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#e11d48', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800' }}>{authorInitials}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>{coachName}</div>
+                      <div style={{ fontSize: '10px', color: '#38bdf8' }}>Host (You)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* DOCKED BOTTOM CONTROL BAR (Screenshot 3) */}
+          <div style={{
+            height: '74px',
+            background: '#111827',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            position: 'relative',
+            zIndex: 40
+          }}>
+            {/* Left Controls: Audio & Video */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {/* Audio Toggle */}
+              <button
+                type="button"
+                onClick={handleToggleLiveAudio}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: liveIsAudioMuted ? '#ef4444' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: liveIsAudioMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {liveIsAudioMuted ? <MicOff size={17} color="#ef4444" /> : <Mic size={17} color="#cbd5e1" />}
+                </div>
+                <span>Audio</span>
+              </button>
+
+              {/* Video Toggle */}
+              <button
+                type="button"
+                onClick={handleToggleLiveVideo}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: liveIsVideoOff ? '#ef4444' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: liveIsVideoOff ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {liveIsVideoOff ? <VideoOff size={17} color="#ef4444" /> : <Video size={17} color="#cbd5e1" />}
+                </div>
+                <span>Video</span>
+              </button>
+            </div>
+
+            {/* Center Controls: Participants, Chat, React, Raise, Share, Settings */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '22px', position: 'relative' }}>
+              {/* React Picker Popup */}
+              {showReactPicker && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '55px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#1f2937',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '30px',
+                  padding: '6px 12px',
+                  display: 'flex',
+                  gap: '8px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                  zIndex: 50
+                }}>
+                  {['❤️', '👍', '👏', '🔥', '🎉', '🚀'].map(emoji => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleSendLiveReaction(emoji)}
+                      style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '2px 4px' }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Participants Button */}
+              <button
+                type="button"
+                onClick={() => setLiveParticipantsOpen(!liveParticipantsOpen)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: liveParticipantsOpen ? '#38bdf8' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <div style={{ position: 'relative' }}>
+                  <Users size={18} />
+                  <span style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-8px',
+                    background: '#2563eb',
+                    color: '#fff',
+                    borderRadius: '9999px',
+                    fontSize: '9.5px',
+                    padding: '1px 5px',
+                    fontWeight: '800'
+                  }}>1</span>
+                </div>
+                <span>Participants</span>
+              </button>
+
+              {/* Chat Button */}
+              <button
+                type="button"
+                onClick={() => setLiveChatOpen(!liveChatOpen)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: liveChatOpen ? '#38bdf8' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <MessageSquare size={18} />
+                <span>Chat</span>
+              </button>
+
+              {/* React Button */}
+              <button
+                type="button"
+                onClick={() => setShowReactPicker(!showReactPicker)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: showReactPicker ? '#38bdf8' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <Smile size={18} />
+                <span>React</span>
+              </button>
+
+              {/* Raise Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setLiveHandRaised(!liveHandRaised);
+                  showToast(!liveHandRaised ? 'Hand raised ✋' : 'Hand lowered');
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: liveHandRaised ? '#eab308' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <Hand size={18} />
+                <span>Raise</span>
+              </button>
+
+              {/* Share Screen Button */}
+              <button
+                type="button"
+                onClick={handleToggleScreenShare}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: liveIsScreenSharing ? '#22c55e' : '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <Monitor size={18} />
+                <span>Share</span>
+              </button>
+
+              {/* Settings Button */}
+              <button
+                type="button"
+                onClick={() => showToast(isRTL ? 'إعدادات الكاميرا والمايكروفون' : 'Camera & Microphone Settings')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '600'
+                }}
+              >
+                <Settings size={18} />
+                <span>Settings</span>
+              </button>
+            </div>
+
+            {/* Right Action: End Session Button (Screenshot 3) */}
+            <div>
+              <button
+                type="button"
+                onClick={handleEndLiveSession}
+                style={{
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px 22px',
+                  fontSize: '12.5px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  letterSpacing: '0.4px',
+                  boxShadow: '0 2px 10px rgba(239, 68, 68, 0.4)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          padding: '24px 28px',
+          display: 'flex',
+          gap: '24px',
+          flex: 1,
+          background: cBg
+        }}>
 
         {/* LEFT CHANNELS SIDEBAR */}
         <div style={{
@@ -824,7 +1700,7 @@ export default function CommunityGroupExperience({
               </div>
 
               {/* Feed Content */}
-              {posts.length === 0 ? (
+              {posts.filter(p => activeChannel === 'home' || p.channelId === activeChannel).length === 0 ? (
                 /* Empty State with Kite Flyer Illustration matching Screenshot 1 */
                 <div style={{
                   padding: '90px 20px',
@@ -859,7 +1735,7 @@ export default function CommunityGroupExperience({
               ) : (
                 /* Posts List */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {posts.map(post => (
+                  {posts.filter(p => activeChannel === 'home' || p.channelId === activeChannel).map(post => (
                     <div
                       key={post.id}
                       style={{
@@ -886,44 +1762,115 @@ export default function CommunityGroupExperience({
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: '800',
-                            fontSize: '13px'
+                            fontSize: '13px',
+                            flexShrink: 0
                           }}>
                             {post.initials || 'SS'}
                           </div>
                           <div>
                             <div style={{ fontSize: '13.5px', fontWeight: '800', color: cText }}>
-                              {post.author}
+                              {post.isLiveRecording ? `${post.author} was live` : post.author}
                             </div>
-                            <div style={{ fontSize: '11px', color: cTextSub, display: 'flex', gap: '6px' }}>
-                              <span>{post.authorHandle}</span>
-                              <span>•</span>
-                              <span>{post.createdAt}</span>
+                            <div style={{ fontSize: '11px', color: cTextSub, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {post.isLiveRecording ? (
+                                <>
+                                  <Megaphone size={12} color="#3b82f6" />
+                                  <span>{post.createdAt} in {post.channelName}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>{post.authorHandle}</span>
+                                  <span>•</span>
+                                  <span>{post.createdAt}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          padding: '3px 8px',
-                          borderRadius: '12px',
-                          background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.08)',
-                          color: cTextSub
-                        }}>
-                          #{post.channelName}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.08)',
+                            color: cTextSub
+                          }}>
+                            #{post.channelName}
+                          </span>
+                          <button
+                            type="button"
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: cTextSub, padding: '2px' }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Post Body */}
-                      <div style={{ fontSize: '13.5px', color: cText, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
-                        {post.content}
-                      </div>
+                      {post.isLiveRecording ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {post.liveTitle && (
+                            <div style={{ fontSize: '15.5px', fontWeight: '800', color: cText, lineHeight: '1.3' }}>
+                              {post.liveTitle}
+                            </div>
+                          )}
+                          {post.liveDescription && (
+                            <div style={{ fontSize: '13.5px', color: cTextSub, lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                              {post.liveDescription}
+                            </div>
+                          )}
+
+                          {/* Processing Recording Box matching Screenshot 1 */}
+                          <div style={{
+                            background: isLight ? '#1c1e36' : '#181a2e',
+                            borderRadius: '12px',
+                            padding: '24px 28px',
+                            marginTop: '6px',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)'
+                          }}>
+                            <div style={{ fontSize: '17px', fontWeight: '800', color: '#ffffff', marginBottom: '8px' }}>
+                              Processing Recording
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#cbd5e1', marginBottom: '20px', lineHeight: '1.4' }}>
+                              Stream ended. The recording is being processed and will be available shortly.
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => showToast(isRTL ? 'جاري معالجة تسجيل البث المباشر...' : 'Stream recording is currently being processed...')}
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.08)',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '8px',
+                                padding: '9px 16px',
+                                color: '#ffffff',
+                                fontSize: '12.5px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <Video size={15} color="#ffffff" />
+                              <span>Recording in progress</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '13.5px', color: cText, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                          {post.content}
+                        </div>
+                      )}
 
                       {/* Post Actions Row */}
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '18px',
+                        gap: '20px',
                         borderTop: `1px solid ${cBorder}`,
                         paddingTop: '12px',
                         fontSize: '12.5px',
@@ -937,16 +1884,16 @@ export default function CommunityGroupExperience({
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '5px',
-                            color: post.liked ? '#ef4444' : cTextSub,
+                            gap: '6px',
+                            color: post.liked ? '#2563eb' : cTextSub,
                             fontWeight: '600'
                           }}
                         >
-                          <Heart size={15} fill={post.liked ? '#ef4444' : 'none'} color={post.liked ? '#ef4444' : cTextSub} />
+                          <ThumbsUp size={15} color={post.liked ? '#2563eb' : cTextSub} />
                           <span>{post.likes || 0}</span>
                         </button>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                           <MessageSquare size={15} />
                           <span>{post.comments?.length || 0}</span>
                         </div>
@@ -962,7 +1909,7 @@ export default function CommunityGroupExperience({
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '5px',
+                            gap: '6px',
                             color: cTextSub,
                             marginLeft: 'auto'
                           }}
@@ -1971,7 +2918,8 @@ export default function CommunityGroupExperience({
           </div>
         )}
 
-      </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 4. COMMUNITY LIVE CHAT DRAWER (Clicking 'Chat')                            */}
@@ -2632,6 +3580,538 @@ export default function CommunityGroupExperience({
                 </button>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: GO LIVE SETUP (GoHighLevel / ClientClub Exact Replica - Screenshot 2) */}
+      {/* ========================================================================= */}
+      {showGoLiveModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: cCardBg,
+            border: `1px solid ${cBorder}`,
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '920px',
+            boxShadow: isLight ? '0 25px 50px -12px rgba(0,0,0,0.25)' : '0 25px 50px -12px rgba(0,0,0,0.7)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: `1px solid ${cBorder}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  border: `1px solid ${cBorder}`,
+                  background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.04)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: cText
+                }}>
+                  <Video size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: cText }}>
+                    Go Live
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: cTextSub }}>
+                    Choose how you want to go live
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowGoLiveModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: cTextSub,
+                  padding: '6px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body: 3-column Layout */}
+            <div style={{
+              padding: '24px 28px',
+              display: 'grid',
+              gridTemplateColumns: '210px 1fr 280px',
+              gap: '24px',
+              maxHeight: '75vh',
+              overflowY: 'auto'
+            }}>
+              {/* LEFT COLUMN: Host & Where to post */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: cText, marginBottom: '12px' }}>
+                    Create a live Video
+                  </div>
+                  {/* Host Row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: '#e11d48',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12.5px',
+                      fontWeight: '800'
+                    }}>
+                      {authorInitials}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: cText }}>
+                        {coachName.toLowerCase()}
+                      </div>
+                      <div style={{ fontSize: '11px', color: cTextSub }}>
+                        Host
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Choose where to post */}
+                <div>
+                  <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '6px' }}>
+                    Choose where to post
+                  </label>
+                  <select
+                    value={goLiveForm.channel}
+                    onChange={(e) => setGoLiveForm({ ...goLiveForm, channel: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: isLight ? '#ffffff' : '#1e293b',
+                      border: `1px solid ${cBorder}`,
+                      borderRadius: '8px',
+                      padding: '9px 12px',
+                      fontSize: '12.5px',
+                      color: cText,
+                      outline: 'none'
+                    }}
+                  >
+                    {channels.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* When are you going live */}
+                <div>
+                  <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '6px' }}>
+                    When are you going live?
+                  </label>
+                  <select
+                    value={goLiveForm.schedule}
+                    onChange={(e) => setGoLiveForm({ ...goLiveForm, schedule: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: isLight ? '#ffffff' : '#1e293b',
+                      border: `1px solid ${cBorder}`,
+                      borderRadius: '8px',
+                      padding: '9px 12px',
+                      fontSize: '12.5px',
+                      color: cText,
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="now">Now</option>
+                    <option value="later">Schedule for later</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* CENTER COLUMN: Video Preview & Source Selection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* 16:9 Video Preview Box */}
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  background: '#000000',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <video
+                    ref={previewVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: previewCameraOn ? 'block' : 'none'
+                    }}
+                  />
+
+                  {/* Fallback when camera is toggled off */}
+                  {!previewCameraOn && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: '#e11d48',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: '800',
+                        fontSize: '16px'
+                      }}>
+                        {authorInitials}
+                      </div>
+                      <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>Camera is off</span>
+                    </div>
+                  )}
+
+                  {/* Overlaid Camera & Mic Toggle Buttons (Bottom Right of Video) */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    right: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    zIndex: 5
+                  }}>
+                    <button
+                      type="button"
+                      onClick={handleTogglePreviewCamera}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        border: 'none',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.4)'
+                      }}
+                      title={previewCameraOn ? 'Turn camera off' : 'Turn camera on'}
+                    >
+                      {previewCameraOn ? <Video size={16} /> : <VideoOff size={16} />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTogglePreviewMic}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        border: 'none',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.4)'
+                      }}
+                      title={previewMicOn ? 'Mute microphone' : 'Unmute microphone'}
+                    >
+                      {previewMicOn ? <Mic size={16} /> : <MicOff size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Select Video Source */}
+                <div>
+                  <div style={{ fontSize: '12.5px', fontWeight: '800', color: cText, marginBottom: '8px' }}>
+                    Select Video Source
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setGoLiveForm({ ...goLiveForm, videoSource: 'meeting_room' })}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: goLiveForm.videoSource === 'meeting_room' ? '1.5px solid #2563eb' : `1px solid ${cBorder}`,
+                        background: goLiveForm.videoSource === 'meeting_room' ? (isLight ? '#eff6ff' : 'rgba(37, 99, 235, 0.12)') : 'transparent',
+                        color: goLiveForm.videoSource === 'meeting_room' ? (isLight ? '#1d4ed8' : '#60a5fa') : cText,
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Video size={15} color={goLiveForm.videoSource === 'meeting_room' ? '#2563eb' : cTextSub} />
+                      <span>Meeting Room</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGoLiveForm({ ...goLiveForm, videoSource: 'streaming_software' })}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: goLiveForm.videoSource === 'streaming_software' ? '1.5px solid #2563eb' : `1px solid ${cBorder}`,
+                        background: goLiveForm.videoSource === 'streaming_software' ? (isLight ? '#eff6ff' : 'rgba(37, 99, 235, 0.12)') : 'transparent',
+                        color: goLiveForm.videoSource === 'streaming_software' ? (isLight ? '#1d4ed8' : '#60a5fa') : cText,
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Radio size={15} color={goLiveForm.videoSource === 'streaming_software' ? '#2563eb' : cTextSub} />
+                      <span>Streaming Software</span>
+                    </button>
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: '11px', color: cTextSub, lineHeight: '1.5' }}>
+                    Use the Meeting Rooms feature to host live sessions where all participants can turn on their webcams, unmute, and interact in real-time. This creates a virtual room experience similar to Zoom or Google Meet, allowing everyone to see and talk to each other face-to-face.
+                  </p>
+                </div>
+
+                {/* Camera Controls with (i) */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '800', color: cText, marginBottom: '8px' }}>
+                    <span>Camera Controls</span>
+                    <Info size={13} color={cTextSub} />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* Camera Select */}
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        value={goLiveForm.selectedCamera}
+                        onChange={(e) => setGoLiveForm({ ...goLiveForm, selectedCamera: e.target.value })}
+                        style={{
+                          width: '100%',
+                          background: isLight ? '#ffffff' : '#1e293b',
+                          border: `1px solid ${cBorder}`,
+                          borderRadius: '8px',
+                          padding: '9px 12px 9px 34px',
+                          fontSize: '12px',
+                          color: cText,
+                          outline: 'none'
+                        }}
+                      >
+                        {detectedCameras.map((cam, idx) => (
+                          <option key={cam.deviceId || idx} value={cam.deviceId}>
+                            {cam.label || `Camera ${idx + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                      <Video size={14} color={cTextSub} style={{ position: 'absolute', left: '10px', top: '12px', pointerEvents: 'none' }} />
+                    </div>
+
+                    {/* Microphone Select */}
+                    <div style={{ position: 'relative' }}>
+                      <select
+                        value={goLiveForm.selectedMic}
+                        onChange={(e) => setGoLiveForm({ ...goLiveForm, selectedMic: e.target.value })}
+                        style={{
+                          width: '100%',
+                          background: isLight ? '#ffffff' : '#1e293b',
+                          border: `1px solid ${cBorder}`,
+                          borderRadius: '8px',
+                          padding: '9px 12px 9px 34px',
+                          fontSize: '12px',
+                          color: cText,
+                          outline: 'none'
+                        }}
+                      >
+                        {detectedMics.map((mic, idx) => (
+                          <option key={mic.deviceId || idx} value={mic.deviceId}>
+                            {mic.label || `Microphone ${idx + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                      <Mic size={14} color={cTextSub} style={{ position: 'absolute', left: '10px', top: '12px', pointerEvents: 'none' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: Add Post Details & Settings */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: cText }}>
+                  Add Post Details
+                </div>
+
+                {/* Title with Character Counter */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub }}>
+                      Title *
+                    </label>
+                    <span style={{ fontSize: '11px', color: cTextSub }}>
+                      {goLiveForm.title.length} / 50
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={50}
+                    required
+                    value={goLiveForm.title}
+                    onChange={(e) => setGoLiveForm({ ...goLiveForm, title: e.target.value })}
+                    placeholder="e.g. Weekly Q&A Session"
+                    style={{
+                      width: '100%',
+                      background: isLight ? '#ffffff' : '#1e293b',
+                      border: `1px solid ${cBorder}`,
+                      borderRadius: '8px',
+                      padding: '9px 12px',
+                      fontSize: '12.5px',
+                      color: cText,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '6px' }}>
+                    Description *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={goLiveForm.description}
+                    onChange={(e) => setGoLiveForm({ ...goLiveForm, description: e.target.value })}
+                    placeholder="Brief description of your live session..."
+                    style={{
+                      width: '100%',
+                      background: isLight ? '#ffffff' : '#1e293b',
+                      border: `1px solid ${cBorder}`,
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      fontSize: '12.5px',
+                      color: cText,
+                      outline: 'none',
+                      resize: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Settings Section */}
+                <div>
+                  <div style={{ fontSize: '12.5px', fontWeight: '800', color: cText, marginBottom: '10px' }}>
+                    Settings
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '12px', color: cText, lineHeight: '1.4' }}>
+                      <input
+                        type="checkbox"
+                        checked={goLiveForm.keepAsPost}
+                        onChange={(e) => setGoLiveForm({ ...goLiveForm, keepAsPost: e.target.checked })}
+                        style={{ marginTop: '2px' }}
+                      />
+                      <span>Keep live stream as post</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', fontSize: '12px', color: cTextSub, lineHeight: '1.4' }}>
+                      <input
+                        type="checkbox"
+                        checked={goLiveForm.notifyMembers}
+                        onChange={(e) => setGoLiveForm({ ...goLiveForm, notifyMembers: e.target.checked })}
+                        style={{ marginTop: '2px' }}
+                      />
+                      <span>Notify members you're going live (sends only in-app and push notifications)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: `1px solid ${cBorder}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.02)'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowGoLiveModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '6px',
+                  padding: '9px 18px',
+                  fontSize: '12.5px',
+                  fontWeight: '600',
+                  color: cTextSub,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleStartGoLive}
+                style={{
+                  background: cNavy,
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '9px 24px',
+                  fontSize: '12.5px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  boxShadow: isLight ? '0 2px 8px rgba(26, 54, 93, 0.25)' : '0 2px 8px rgba(37, 99, 235, 0.4)'
+                }}
+              >
+                Go Live
+              </button>
             </div>
           </div>
         </div>
@@ -4671,65 +6151,7 @@ export default function CommunityGroupExperience({
         </div>
       )}
 
-      {/* MODAL: GO LIVE */}
-      {showGoLiveModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: cCardBg, border: `1px solid ${cBorder}`, borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Video size={18} color="#dc2626" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: cText }}>
-                  {isRTL ? 'بدء بث مباشر' : 'Go Live in Community'}
-                </h3>
-              </div>
-              <button onClick={() => setShowGoLiveModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: cTextSub }}><X size={16} /></button>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '4px' }}>
-                  {isRTL ? 'عنوان الجلسة' : 'Session Title'}
-                </label>
-                <input
-                  type="text"
-                  value={goLiveForm.title}
-                  onChange={(e) => setGoLiveForm({ ...goLiveForm, title: e.target.value })}
-                  style={{ width: '100%', background: isLight ? '#f8fafc' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', color: cText, fontSize: '13px' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '4px' }}>
-                  {isRTL ? 'رابط البث (Zoom / Meet / UpKlick Room)' : 'Live Room Link'}
-                </label>
-                <input
-                  type="url"
-                  value={goLiveForm.link}
-                  onChange={(e) => setGoLiveForm({ ...goLiveForm, link: e.target.value })}
-                  placeholder="https://meet.google.com/..."
-                  style={{ width: '100%', background: isLight ? '#f8fafc' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', color: cText, fontSize: '13px' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-                <button type="button" onClick={() => setShowGoLiveModal(false)} style={{ background: 'transparent', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 16px', color: cTextSub, fontSize: '12.5px', cursor: 'pointer' }}>
-                  {isRTL ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    showToast(isRTL ? 'تم بدء جلسة البث المباشر وإشعار الطلاب!' : 'Live session broadcasted to community members!');
-                    setShowGoLiveModal(false);
-                  }}
-                  style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer' }}
-                >
-                  {isRTL ? 'بدء البث الآن' : 'Start Live Now'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
