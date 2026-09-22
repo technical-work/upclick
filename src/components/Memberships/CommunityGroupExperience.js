@@ -12,6 +12,7 @@ import {
   addCommunityPostComment,
   saveCommunityChannels,
   subscribeCommunityChannels,
+  formatTimeAgo,
   DEFAULT_COHORT_COURSES
 } from '../../lib/membershipsService';
 import {
@@ -859,7 +860,7 @@ export default function CommunityGroupExperience({
   const [expandedCommentsPostId, setExpandedCommentsPostId] = useState(null);
   const [commentInputs, setCommentInputs] = useState({});
 
-  // Helper to deduplicate any array of posts by ID
+  // Helper to deduplicate any array of posts by ID and sanitize timestamps
   const dedupePosts = (list) => {
     if (!Array.isArray(list)) return [];
     const map = new Map();
@@ -867,7 +868,14 @@ export default function CommunityGroupExperience({
       if (!item) continue;
       const key = String(item.id || `post_${Math.random().toString(36).slice(2, 9)}`);
       if (!map.has(key)) {
-        map.set(key, { ...item, id: key });
+        const safeCreatedAt = formatTimeAgo(item.createdAt);
+        const safeComments = Array.isArray(item.comments)
+          ? item.comments.map(c => ({
+              ...c,
+              createdAt: formatTimeAgo(c?.createdAt)
+            }))
+          : [];
+        map.set(key, { ...item, id: key, createdAt: safeCreatedAt, comments: safeComments });
       }
     }
     return Array.from(map.values());
@@ -2903,13 +2911,13 @@ export default function CommunityGroupExperience({
                               {post.isLiveRecording ? (
                                 <>
                                   <Megaphone size={12} color="#3b82f6" />
-                                  <span>{post.createdAt} in {post.channelName}</span>
+                                  <span>{formatTimeAgo(post.createdAt)} in {post.channelName}</span>
                                 </>
                               ) : (
                                 <>
                                   <span>{post.authorHandle}</span>
                                   <span>•</span>
-                                  <span>{post.createdAt}</span>
+                                  <span>{formatTimeAgo(post.createdAt)}</span>
                                 </>
                               )}
                             </div>
@@ -3103,7 +3111,7 @@ export default function CommunityGroupExperience({
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
                                     <span style={{ fontWeight: '700', color: cText }}>{cmt.author}</span>
-                                    <span style={{ fontSize: '10.5px', color: cTextMuted }}>{cmt.createdAt}</span>
+                                    <span style={{ fontSize: '10.5px', color: cTextMuted }}>{formatTimeAgo(cmt.createdAt)}</span>
                                   </div>
                                   <div style={{ color: cTextSub, lineHeight: '1.4', wordBreak: 'break-word' }}>
                                     {cmt.content}
@@ -3770,7 +3778,7 @@ export default function CommunityGroupExperience({
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                 <span style={{ fontWeight: '700', fontSize: '12.5px', color: cText }}>{comm.author}</span>
-                                <span style={{ fontSize: '11px', color: cTextSub }}>{comm.createdAt}</span>
+                                <span style={{ fontSize: '11px', color: cTextSub }}>{formatTimeAgo(comm.createdAt)}</span>
                               </div>
                               <div style={{ fontSize: '13px', color: cTextSub }}>{comm.text}</div>
                             </div>

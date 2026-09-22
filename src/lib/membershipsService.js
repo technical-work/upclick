@@ -634,6 +634,44 @@ export async function saveCommunityGroup(coachId, groupData) {
   return payload;
 }
 
+export function formatTimeAgo(val) {
+  if (!val) return 'Just now';
+  if (typeof val === 'string') {
+    if (val.includes('ago') || val === 'Just now' || val.includes('now')) return val;
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      val = d.getTime();
+    } else {
+      return val;
+    }
+  }
+
+  let ms = 0;
+  if (typeof val === 'number') {
+    ms = val > 1e11 ? val : val * 1000;
+  } else if (typeof val === 'object' && val !== null) {
+    if (typeof val.toDate === 'function') {
+      ms = val.toDate().getTime();
+    } else if (typeof val.seconds === 'number') {
+      ms = val.seconds * 1000;
+    } else if (typeof val._seconds === 'number') {
+      ms = val._seconds * 1000;
+    }
+  }
+
+  if (!ms || isNaN(ms)) return 'Just now';
+
+  const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export function dedupePostList(arr) {
   if (!Array.isArray(arr)) return [];
   const map = new Map();
@@ -641,7 +679,19 @@ export function dedupePostList(arr) {
     if (!item) continue;
     const key = String(item.id || `post_${Math.random().toString(36).slice(2, 9)}`);
     if (!map.has(key)) {
-      map.set(key, { ...item, id: key });
+      const safeCreatedAt = formatTimeAgo(item.createdAt);
+      const safeComments = Array.isArray(item.comments)
+        ? item.comments.map(c => ({
+            ...c,
+            createdAt: formatTimeAgo(c?.createdAt)
+          }))
+        : [];
+      map.set(key, {
+        ...item,
+        id: key,
+        createdAt: safeCreatedAt,
+        comments: safeComments
+      });
     }
   }
   return Array.from(map.values());
