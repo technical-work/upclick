@@ -634,54 +634,250 @@ export async function saveCommunityGroup(coachId, groupData) {
   return payload;
 }
 
+export function dedupePostList(arr) {
+  if (!Array.isArray(arr)) return [];
+  const map = new Map();
+  for (const item of arr) {
+    if (!item) continue;
+    const key = String(item.id || `post_${Math.random().toString(36).slice(2, 9)}`);
+    if (!map.has(key)) {
+      map.set(key, { ...item, id: key });
+    }
+  }
+  return Array.from(map.values());
+}
+
 export async function getCommunityPosts(communityId) {
   if (!communityId) return [];
-  const cacheKey = `upklick_posts_${communityId}`;
-  const cached = getLocalCache(cacheKey, []);
+  const commId = String(communityId).trim();
+  const cacheKey = `upklick_posts_${commId}`;
+  const cached = dedupePostList(getLocalCache(cacheKey, []));
 
   try {
     const q = query(
       collection(db, 'portal_posts'),
-      where('communityId', '==', communityId)
+      where('communityId', '==', commId)
     );
     const snap = await getDocs(q);
-    const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    posts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-    if (posts.length > 0) {
-      setLocalCache(cacheKey, posts);
-      return posts;
+    const posts = snap.docs.map(d => {
+      const data = d.data();
+      return { id: d.id, ...data, id: data.id || d.id };
+    });
+    posts.sort((a, b) => {
+      const timeA = a.createdAtMs || (a.createdAtServer?.seconds ? a.createdAtServer.seconds * 1000 : 0);
+      const timeB = b.createdAtMs || (b.createdAtServer?.seconds ? b.createdAtServer.seconds * 1000 : 0);
+      return timeB - timeA;
+    });
+
+    const combined = dedupePostList([...posts, ...cached]);
+    if (combined.length > 0) {
+      setLocalCache(cacheKey, combined);
+      return combined;
     }
-    return Array.isArray(cached) ? cached : [];
+    return cached;
   } catch (err) {
-    return Array.isArray(cached) ? cached : [];
+    return cached;
+  }
+}
+
+export function subscribeCommunityPosts(communityId, callback) {
+  if (!communityId) {
+    callback([]);
+    return () => {};
+  }
+  const commId = String(communityId).trim();
+  const cacheKey = `upklick_posts_${commId}`;
+  const cached = dedupePostList(getLocalCache(cacheKey, []));
+
+  if (cached.length > 0) {
+    callback(cached);
+  }
+
+  try {
+    const q = query(
+      collection(db, 'portal_posts'),
+      where('communityId', '==', commId)
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const serverPosts = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          id: data.id || d.id
+        };
+      });
+
+      serverPosts.sort((a, b) => {
+        const timeA = a.createdAtMs || (a.createdAtServer?.seconds ? a.createdAtServer.seconds * 1000 : 0);
+        const timeB = b.createdAtMs || (b.createdAtServer?.seconds ? b.createdAtServer.seconds * 1000 : 0);
+        return timeB - timeA;
+      });
+
+      const merged = dedupePostList([...serverPosts, ...cached]);
+      setLocalCache(cacheKey, merged);
+      callback(merged);
+    }, (err) => {
+      console.warn('[membershipsService] Posts subscription fallback to local cache:', err?.message);
+      callback(dedupePostList(getLocalCache(cacheKey, [])));
+    });
+
+    return unsubscribe;
+  } catch (err) {
+    callback(cached);
+    return () => {};
   }
 }
 
 export async function createCommunityPost(postData) {
-  const cacheKey = `upklick_posts_${postData.communityId}`;
-  const cached = getLocalCache(cacheKey, []);
-  
-  const id = `post_${Date.now()}`;
+  if (!postData || !postData.communityId) return null;
+  const commId = String(postData.communityId).trim();
+  const cacheKey = `upklick_posts_${commId}`;
+  const cached = dedupePostList(getLocalCache(cacheKey, []));
+
+  // Guaranteed unique ID with millisecond + random string
+  const id = postData.id || `post_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
   const payload = {
     ...postData,
     id,
-    likesCount: 0,
-    commentsCount: 0,
-    createdAt: { seconds: Math.floor(Date.now() / 1000) }
+    communityId: commId,
+    likes: typeof postData.likes === 'number' ? postData.likes : (postData.likesCount || 0),
+    liked: !!postData.liked,
+    comments: Array.isArray(postData.comments) ? postData.comments : [],
+    createdAt: postData.createdAt || 'Just now',
+    createdAtMs: postData.createdAtMs || Date.now()
   };
 
-  setLocalCache(cacheKey, [payload, ...cached]);
+  // Deduplicate before saving to local cache
+  const deduped = dedupePostList([payload, ...cached]);
+  setLocalCache(cacheKey, deduped);
 
   try {
-    const ref = await addDoc(collection(db, 'portal_posts'), {
+    const postRef = doc(db, 'portal_posts', id);
+    await setDoc(postRef, {
       ...payload,
-      createdAt: serverTimestamp()
-    });
-    return { ...payload, id: ref.id };
+      createdAtServer: serverTimestamp()
+    }, { merge: true });
   } catch (err) {
-    return payload;
+    console.info('[membershipsService] Post stored locally:', err.message);
+  }
+
+  return payload;
+}
+
+export async function likeCommunityPost(communityId, postId, userEmailOrId) {
+  if (!communityId || !postId) return null;
+  const commId = String(communityId).trim();
+  const cacheKey = `upklick_posts_${commId}`;
+  const cached = dedupePostList(getLocalCache(cacheKey, []));
+
+  let updatedPost = null;
+  const updatedList = cached.map(p => {
+    if (p.id === postId) {
+      const currentlyLiked = !!p.liked;
+      const newLiked = !currentlyLiked;
+      const newLikes = newLiked ? (p.likes || 0) + 1 : Math.max(0, (p.likes || 1) - 1);
+      updatedPost = { ...p, liked: newLiked, likes: newLikes };
+      return updatedPost;
+    }
+    return p;
+  });
+
+  setLocalCache(cacheKey, updatedList);
+
+  try {
+    const postRef = doc(db, 'portal_posts', postId);
+    if (updatedPost) {
+      await updateDoc(postRef, {
+        likes: updatedPost.likes,
+        updatedAt: serverTimestamp()
+      });
+    }
+  } catch (e) {}
+
+  return updatedPost;
+}
+
+export async function addCommunityPostComment(communityId, postId, commentData) {
+  if (!communityId || !postId || !commentData) return null;
+  const commId = String(communityId).trim();
+  const cacheKey = `upklick_posts_${commId}`;
+  const cached = dedupePostList(getLocalCache(cacheKey, []));
+
+  const newComment = {
+    id: `comment_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    author: commentData.author || 'Member',
+    authorHandle: commentData.authorHandle || '',
+    initials: commentData.initials || 'SS',
+    content: (commentData.content || commentData.text || '').trim(),
+    createdAt: 'Just now',
+    createdAtMs: Date.now()
+  };
+
+  let updatedComments = [];
+  const updatedList = cached.map(p => {
+    if (p.id === postId) {
+      const existing = Array.isArray(p.comments) ? p.comments : [];
+      updatedComments = [...existing, newComment];
+      return { ...p, comments: updatedComments };
+    }
+    return p;
+  });
+
+  setLocalCache(cacheKey, updatedList);
+
+  try {
+    const postRef = doc(db, 'portal_posts', postId);
+    await updateDoc(postRef, {
+      comments: updatedComments,
+      updatedAt: serverTimestamp()
+    });
+  } catch (e) {}
+
+  return newComment;
+}
+
+export async function saveCommunityChannels(communityId, channels) {
+  if (!communityId || !Array.isArray(channels)) return;
+  const commId = String(communityId).trim();
+  const cacheKey = `upklick_channels_${commId}`;
+  setLocalCache(cacheKey, channels);
+
+  try {
+    const ref = doc(db, 'portal_channels', commId);
+    await setDoc(ref, {
+      channels,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (e) {}
+}
+
+export function subscribeCommunityChannels(communityId, callback) {
+  if (!communityId) return () => {};
+  const commId = String(communityId).trim();
+  const cacheKey = `upklick_channels_${commId}`;
+  const cached = getLocalCache(cacheKey, null);
+  if (cached && Array.isArray(cached) && cached.length > 0) {
+    callback(cached);
+  }
+
+  try {
+    const ref = doc(db, 'portal_channels', commId);
+    return onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.channels) && data.channels.length > 0) {
+          setLocalCache(cacheKey, data.channels);
+          callback(data.channels);
+        }
+      }
+    }, () => {});
+  } catch (e) {
+    return () => {};
   }
 }
+
 
 // =============================================================================
 // 6. REAL PRODUCTION STUDENT AUTHENTICATION & CREDENTIALS VERIFICATION

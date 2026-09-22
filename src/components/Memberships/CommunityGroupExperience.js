@@ -6,6 +6,12 @@ import {
   joinCommunityGroup,
   saveCourse,
   createCommunityPost,
+  getCommunityPosts,
+  subscribeCommunityPosts,
+  likeCommunityPost,
+  addCommunityPostComment,
+  saveCommunityChannels,
+  subscribeCommunityChannels,
   DEFAULT_COHORT_COURSES
 } from '../../lib/membershipsService';
 import {
@@ -68,7 +74,8 @@ import {
   MoreHorizontal,
   Radio,
   Tv,
-  Maximize2
+  Maximize2,
+  Send
 } from 'lucide-react';
 
 export default function CommunityGroupExperience({
@@ -848,6 +855,24 @@ export default function CommunityGroupExperience({
     }
   ]);
 
+  // State for expanded post comments and comment input texts
+  const [expandedCommentsPostId, setExpandedCommentsPostId] = useState(null);
+  const [commentInputs, setCommentInputs] = useState({});
+
+  // Helper to deduplicate any array of posts by ID
+  const dedupePosts = (list) => {
+    if (!Array.isArray(list)) return [];
+    const map = new Map();
+    for (const item of list) {
+      if (!item) continue;
+      const key = String(item.id || `post_${Math.random().toString(36).slice(2, 9)}`);
+      if (!map.has(key)) {
+        map.set(key, { ...item, id: key });
+      }
+    }
+    return Array.from(map.values());
+  };
+
   // Helper to load or initialize community-specific posts
   const getInitialPostsForCommunity = (cId, cName) => {
     if (typeof window !== 'undefined') {
@@ -855,7 +880,13 @@ export default function CommunityGroupExperience({
         const stored = localStorage.getItem(`upklick_posts_${cId}`);
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleaned = dedupePosts(parsed);
+            if (cleaned.length !== parsed.length) {
+              localStorage.setItem(`upklick_posts_${cId}`, JSON.stringify(cleaned));
+            }
+            return cleaned;
+          }
         }
       } catch (e) {}
     }
@@ -919,17 +950,38 @@ export default function CommunityGroupExperience({
   const [posts, setPosts] = useState(() => {
     const cId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
     const cName = activeGroup?.name || 'Community';
-    return getInitialPostsForCommunity(cId, cName);
+    return dedupePosts(getInitialPostsForCommunity(cId, cName));
   });
 
-  // Re-load posts when activeGroup changes
+  // Real-time synchronization for posts and channels across all users / accounts
   useEffect(() => {
     const cId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
     const cName = activeGroup?.name || 'Community';
-    setPosts(getInitialPostsForCommunity(cId, cName));
+    
+    // Set immediate initial posts
+    setPosts(prev => dedupePosts(getInitialPostsForCommunity(cId, cName)));
+
+    // 1. Subscribe to real-time posts from Firestore
+    const unsubPosts = subscribeCommunityPosts(cId, (livePosts) => {
+      if (Array.isArray(livePosts) && livePosts.length > 0) {
+        setPosts(prev => dedupePosts([...livePosts, ...prev]));
+      }
+    });
+
+    // 2. Subscribe to real-time channels from Firestore
+    const unsubChannels = subscribeCommunityChannels(cId, (liveChannels) => {
+      if (Array.isArray(liveChannels) && liveChannels.length > 0) {
+        setChannels(liveChannels);
+      }
+    });
+
+    return () => {
+      if (typeof unsubPosts === 'function') unsubPosts();
+      if (typeof unsubChannels === 'function') unsubChannels();
+    };
   }, [activeGroup?.id, activeGroup?.slug]);
 
-  // Load channels when activeGroup changes
+  // Load channels initial cache when activeGroup changes
   useEffect(() => {
     const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
     if (typeof window !== 'undefined') {
@@ -1019,14 +1071,18 @@ export default function CommunityGroupExperience({
   const authorEmail = userData?.email || 'mohamedhesham011010@gmail.com';
 
   // Handlers
-  const handleCreatePost = (e) => {
+  const handleCreatePost = async (e) => {
     e?.preventDefault();
     if (!newPostText.trim()) return;
     const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
+    
+    // Unique ID combining timestamp + random string to guarantee no key collisions
+    const newId = `post_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    
     const newP = {
-      id: `post_${Date.now()}`,
+      id: newId,
       communityId: commId,
-      author: coachName,
+      author: accountFormData.name || coachName || 'Member',
       authorHandle,
       initials: authorInitials,
       channelId: newPostChannel,
@@ -1035,22 +1091,36 @@ export default function CommunityGroupExperience({
       likes: 0,
       liked: false,
       comments: [],
-      createdAt: 'Just now'
+      createdAt: 'Just now',
+      createdAtMs: Date.now()
     };
-    const updated = [newP, ...posts];
-    setPosts(updated);
+
+    setPosts(prev => dedupePosts([newP, ...prev]));
+
     if (typeof window !== 'undefined') {
-      localStorage.setItem(`upklick_posts_${commId}`, JSON.stringify(updated));
+      try {
+        const stored = localStorage.getItem(`upklick_posts_${commId}`);
+        const parsed = stored ? JSON.parse(stored) : [];
+        const deduped = dedupePosts([newP, ...(Array.isArray(parsed) ? parsed : [])]);
+        localStorage.setItem(`upklick_posts_${commId}`, JSON.stringify(deduped));
+      } catch (err) {}
     }
-    createCommunityPost({ ...newP, communityId: commId }).catch(() => {});
+
     setNewPostText('');
     setShowPostModal(false);
     showToast(isRTL ? 'تم نشر المنشور بنجاح!' : 'Post published successfully!');
+
+    // Persist to Firestore and broadcast to all users
+    try {
+      await createCommunityPost(newP);
+    } catch (err) {
+      console.warn('[CommunityGroupExperience] createCommunityPost error:', err);
+    }
   };
 
-  const handleLikePost = (postId) => {
+  const handleLikePost = async (postId) => {
     const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
-    const updated = posts.map(p => {
+    setPosts(prev => prev.map(p => {
       if (p.id === postId) {
         const liked = !p.liked;
         return {
@@ -1060,14 +1130,46 @@ export default function CommunityGroupExperience({
         };
       }
       return p;
-    });
-    setPosts(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`upklick_posts_${commId}`, JSON.stringify(updated));
-    }
+    }));
+
+    try {
+      await likeCommunityPost(commId, postId, userData?.email || userData?.username || 'user');
+    } catch (e) {}
   };
 
-  const handleAddChannel = (e) => {
+  const handleAddPostComment = async (postId) => {
+    const text = (commentInputs[postId] || '').trim();
+    if (!text) return;
+    const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
+
+    const newComment = {
+      id: `comment_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      author: accountFormData.name || coachName || 'Member',
+      authorHandle,
+      initials: authorInitials,
+      content: text,
+      createdAt: 'Just now',
+      createdAtMs: Date.now()
+    };
+
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          comments: [...(p.comments || []), newComment]
+        };
+      }
+      return p;
+    }));
+
+    setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+
+    try {
+      await addCommunityPostComment(commId, postId, newComment);
+    } catch (e) {}
+  };
+
+  const handleAddChannel = async (e) => {
     e?.preventDefault();
     if (!newChannelName.trim()) return;
     const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
@@ -1081,6 +1183,11 @@ export default function CommunityGroupExperience({
     setNewChannelName('');
     setShowAddChannelModal(false);
     showToast(isRTL ? 'تمت إضافة القناة بنجاح!' : 'Channel created successfully!');
+
+    // Sync channels to Firestore for all users
+    try {
+      await saveCommunityChannels(commId, updated);
+    } catch (e) {}
   };
 
   const handleCreateEvent = (e) => {
@@ -2756,9 +2863,9 @@ export default function CommunityGroupExperience({
               ) : (
                 /* Posts List */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {posts.filter(p => activeChannel === 'home' || p.channelId === activeChannel).map(post => (
+                  {posts.filter(p => activeChannel === 'home' || p.channelId === activeChannel).map((post, pIdx) => (
                     <div
-                      key={post.id}
+                      key={post.id || `post-${pIdx}`}
                       style={{
                         background: cCardBg,
                         border: `1px solid ${cBorder}`,
@@ -2914,10 +3021,24 @@ export default function CommunityGroupExperience({
                           <span>{post.likes || 0}</span>
                         </button>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                          <MessageSquare size={15} />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedCommentsPostId(expandedCommentsPostId === post.id ? null : post.id)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: expandedCommentsPostId === post.id ? '#2563eb' : cTextSub,
+                            fontSize: '12.5px',
+                            fontWeight: '600'
+                          }}
+                        >
+                          <MessageSquare size={15} color={expandedCommentsPostId === post.id ? '#2563eb' : cTextSub} />
                           <span>{post.comments?.length || 0}</span>
-                        </div>
+                        </button>
 
                         <button
                           onClick={() => {
@@ -2939,6 +3060,111 @@ export default function CommunityGroupExperience({
                           <span>{isRTL ? 'مشاركة' : 'Share'}</span>
                         </button>
                       </div>
+
+                      {/* Collapsible Comments Section */}
+                      {expandedCommentsPostId === post.id && (
+                        <div style={{
+                          marginTop: '12px',
+                          paddingTop: '12px',
+                          borderTop: `1px dashed ${cBorder}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}>
+                          {/* List of comments */}
+                          {Array.isArray(post.comments) && post.comments.length > 0 ? (
+                            post.comments.map((cmt, cIdx) => (
+                              <div
+                                key={cmt.id || `cmt-${cIdx}`}
+                                style={{
+                                  display: 'flex',
+                                  gap: '10px',
+                                  background: isLight ? '#f8fafc' : 'rgba(255,255,255,0.03)',
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  fontSize: '12.5px'
+                                }}
+                              >
+                                <div style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '50%',
+                                  background: '#3b82f6',
+                                  color: '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '10px',
+                                  fontWeight: '800',
+                                  flexShrink: 0
+                                }}>
+                                  {cmt.initials || 'U'}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                                    <span style={{ fontWeight: '700', color: cText }}>{cmt.author}</span>
+                                    <span style={{ fontSize: '10.5px', color: cTextMuted }}>{cmt.createdAt}</span>
+                                  </div>
+                                  <div style={{ color: cTextSub, lineHeight: '1.4', wordBreak: 'break-word' }}>
+                                    {cmt.content}
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ fontSize: '12px', color: cTextMuted, textAlign: 'center', padding: '6px 0' }}>
+                              {isRTL ? 'لا توجد تعليقات بعد. كن أول من يشارك برأيه!' : 'No comments yet. Be the first to share your thoughts!'}
+                            </div>
+                          )}
+
+                          {/* Write a comment */}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <input
+                              type="text"
+                              value={commentInputs[post.id] || ''}
+                              onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleAddPostComment(post.id);
+                                }
+                              }}
+                              placeholder={isRTL ? 'أضف تعليقاً على هذا المنشور...' : 'Write a comment on this post...'}
+                              style={{
+                                flex: 1,
+                                background: isLight ? '#f1f5f9' : 'rgba(255,255,255,0.06)',
+                                border: `1px solid ${cBorder}`,
+                                borderRadius: '8px',
+                                padding: '8px 12px',
+                                fontSize: '12.5px',
+                                color: cText,
+                                outline: 'none'
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddPostComment(post.id)}
+                              style={{
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '8px 14px',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Send size={13} />
+                              <span>{isRTL ? 'إرسال' : 'Send'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
