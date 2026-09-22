@@ -59,7 +59,9 @@ export default function CommunityGroupExperience({
   communities = [],
   onUpdateGroup = () => {},
   currentTheme,
-  onToggleTheme
+  onToggleTheme,
+  initialTab = 'discussion',
+  initialChannel = 'home'
 }) {
   // Theme state: defaults to currentTheme or saved theme, or dark if dashboard is dark
   const [theme, setTheme] = useState(() => {
@@ -94,8 +96,11 @@ export default function CommunityGroupExperience({
   };
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState('discussion'); // 'discussion' | 'learning' | 'events' | 'leaderboard' | 'members' | 'about'
-  const [activeChannel, setActiveChannel] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialTab === 'home') return 'discussion';
+    return initialTab || 'discussion';
+  }); // 'discussion' | 'learning' | 'events' | 'leaderboard' | 'members' | 'about'
+  const [activeChannel, setActiveChannel] = useState(initialChannel || 'home');
   const [channels, setChannels] = useState([
     { id: 'home', name: 'Home', icon: 'home' },
     { id: 'announcements', name: 'Announcements', icon: 'megaphone' }

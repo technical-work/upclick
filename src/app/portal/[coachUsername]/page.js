@@ -12,6 +12,7 @@ import {
   updateStudentLessonProgress,
   DEFAULT_PORTAL_SETTINGS
 } from '../../../lib/membershipsService';
+import CommunityGroupExperience from '../../../components/Memberships/CommunityGroupExperience';
 import {
   BookOpen,
   Play,
@@ -87,6 +88,7 @@ export default function StudentClientPortalPage() {
   const [showConfetti, setShowConfetti] = useState(false);
 
   // Community Feed State
+  const [activeCommunityGroup, setActiveCommunityGroup] = useState(null);
   const [activeCommunityId, setActiveCommunityId] = useState(null);
   const [posts, setPosts] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
@@ -2117,6 +2119,117 @@ export default function StudentClientPortalPage() {
                     تفاعل مع زملائك، اطرح استفساراتك حول الدروس، وشارك تطبيقك العملي مباشرة.
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* GoHighLevel Community Groups Showcase */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={16} color={themeColor} />
+                  <span>مجموعات المجتمع (Community Groups)</span>
+                </h4>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  {(communities.length > 0 ? communities : [{ id: 'alpha-vip-cohort', name: 'Alpha VIP Cohort', slug: 'alpha-vip-cohort' }]).length} مجموعة
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
+                {(communities.length > 0 ? communities : [
+                  {
+                    id: 'alpha-vip-cohort',
+                    name: 'Alpha VIP Cohort',
+                    slug: 'alpha-vip-cohort',
+                    description: 'مجتمع تفاعلي حصري للأعضاء لمناقشة الدروس ومشاركة الخبرات.',
+                    membersCount: 2,
+                    postsCount: 1,
+                    status: 'Active'
+                  }
+                ]).map(grp => (
+                  <div
+                    key={grp.id || grp.slug}
+                    className="glass-card"
+                    style={{
+                      borderRadius: '14px',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: '#0d1322'
+                    }}
+                  >
+                    <div style={{
+                      height: '85px',
+                      background: grp.coverImageUrl
+                        ? `url(${grp.coverImageUrl}) center/cover no-repeat`
+                        : 'linear-gradient(135deg, #ec4899 0%, #f97316 50%, #eab308 100%)',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '-18px',
+                        right: '14px',
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        background: '#1e1b4b',
+                        border: '2px solid #0d1322',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontWeight: '800',
+                        fontSize: '13px'
+                      }}>
+                        {grp.logoUrl ? (
+                          <img src={grp.logoUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          (grp.name || 'G')[0]
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '24px 14px 14px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#ffffff' }}>
+                        {grp.name}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px', lineHeight: 1.4, height: '32px', overflow: 'hidden' }}>
+                        {grp.description || 'مجتمع حصري للنقاشات والتواصل بين الأعضاء والمدرب.'}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#64748b', marginTop: '10px', marginBottom: '12px' }}>
+                        <span>👥 {grp.membersCount || grp.memberCount || 1} عضو</span>
+                        <span>💬 {grp.postsCount || grp.postCount || 0} منشور</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = `/portal/${coachUsername}/community/${grp.slug || grp.id}`;
+                        }}
+                        style={{
+                          marginTop: 'auto',
+                          width: '100%',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Users size={14} />
+                        <span>دخول تجربة المجتمع (Login) 🚀</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
