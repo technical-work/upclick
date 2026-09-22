@@ -157,7 +157,11 @@ const PlansSettingsPage = () => {
       if (snap.exists()) {
         const data = snap.data();
         if (data.freeTrial) {
-          setFreeTrial({ ...DEFAULT_FREE_TRIAL, ...data.freeTrial });
+          const trialAllowed = data.freeTrial.allowedTools;
+          const mergedTrial = Array.isArray(trialAllowed)
+            ? (trialAllowed.includes('memberships') ? trialAllowed : [...trialAllowed, 'memberships'])
+            : ALL_SYSTEM_TOOLS.map(t => t.key);
+          setFreeTrial({ ...DEFAULT_FREE_TRIAL, ...data.freeTrial, allowedTools: mergedTrial });
         }
 
         if (data.planStarterConfig) setPlanStarter({ ...DEFAULT_PLAN_STARTER, ...data.planStarterConfig });
@@ -180,13 +184,20 @@ const PlansSettingsPage = () => {
           }));
         }
 
-        if (data.planProConfig) setPlanPro({ ...DEFAULT_PLAN_PRO, ...data.planProConfig });
+        if (data.planProConfig) {
+          const proAllowed = data.planProConfig.allowedTools;
+          const mergedPro = Array.isArray(proAllowed)
+            ? (proAllowed.includes('memberships') ? proAllowed : [...proAllowed, 'memberships'])
+            : ALL_SYSTEM_TOOLS.map(t => t.key);
+          setPlanPro({ ...DEFAULT_PLAN_PRO, ...data.planProConfig, allowedTools: mergedPro });
+        }
         else if (data.planProName) {
           setPlanPro(prev => ({
             ...prev,
             nameEn: data.planProName,
             price: Number(data.planProPrice || 799),
-            credits: Number(data.planProCredits || 10000)
+            credits: Number(data.planProCredits || 10000),
+            allowedTools: ALL_SYSTEM_TOOLS.map(t => t.key)
           }));
         }
 

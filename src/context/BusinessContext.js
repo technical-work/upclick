@@ -25,6 +25,7 @@ export const ALL_SYSTEM_TOOLS = [
   { key: 'domains', labelAr: 'النطاقات (Domains)', labelEn: 'Domains', icon: '🌍' },
   { key: 'landing', labelAr: 'إنشاء صفحة هبوط بـ AI (Landing Page AI)', labelEn: 'Landing Page AI', icon: '🌐' },
   { key: 'courses', labelAr: 'الكورسات والدورات (Courses)', labelEn: 'Courses', icon: '📚' },
+  { key: 'memberships', labelAr: 'العضويات والأكاديمية (Memberships)', labelEn: 'Memberships & Academy', icon: '🎓' },
   { key: 'digital', labelAr: 'المنتجات الرقمية (Digital Products)', labelEn: 'Digital Products', icon: '📦' },
   { key: 'niche', labelAr: 'استوديو النيش والبراند (Niche Studio)', labelEn: 'Niche Studio', icon: '🧭' },
   { key: 'community', labelAr: 'مركز المجتمع (Community Hub)', labelEn: 'Community Hub', icon: '👥' },
@@ -1254,6 +1255,9 @@ export function BusinessProvider({ children }) {
     if (userData?.isTrial) {
       const trialTools = processedTenantConfig?.freeTrial?.allowedTools;
       if (Array.isArray(trialTools)) {
+        if (toolKey === 'memberships') {
+          return trialTools.includes('memberships') || trialTools.includes('courses');
+        }
         return trialTools.includes(toolKey);
       }
     }
@@ -1263,26 +1267,44 @@ export function BusinessProvider({ children }) {
     // Check custom plans
     const matchedCustom = processedTenantConfig.customPlans?.find(p => (p.name || '').toLowerCase() === userPlan);
     if (matchedCustom && Array.isArray(matchedCustom.allowedTools)) {
+      if (toolKey === 'memberships') {
+        return matchedCustom.allowedTools.includes('memberships') || matchedCustom.allowedTools.includes('courses');
+      }
       return matchedCustom.allowedTools.includes(toolKey);
     }
 
     // Check Pro
     if (userPlan.includes('pro')) {
       const cfg = processedTenantConfig.planProConfig;
-      if (cfg && Array.isArray(cfg.allowedTools)) return cfg.allowedTools.includes(toolKey);
+      if (cfg && Array.isArray(cfg.allowedTools)) {
+        if (toolKey === 'memberships') {
+          return cfg.allowedTools.includes('memberships') || cfg.allowedTools.includes('courses') || true;
+        }
+        return cfg.allowedTools.includes(toolKey);
+      }
       return true;
     }
 
     // Check Growth
     if (userPlan.includes('growth')) {
       const cfg = processedTenantConfig.planGrowthConfig;
-      if (cfg && Array.isArray(cfg.allowedTools)) return cfg.allowedTools.includes(toolKey);
-      return ['crm', 'telegram', 'strategy', 'marketing', 'content', 'ai-growth', 'social', 'tiktok-trends', 'bio', 'landing', 'courses', 'digital', 'niche', 'design', 'tasks', 'calendar', 'finance', 'analytics', 'integrations'].includes(toolKey);
+      if (cfg && Array.isArray(cfg.allowedTools)) {
+        if (toolKey === 'memberships') {
+          return cfg.allowedTools.includes('memberships') || cfg.allowedTools.includes('courses');
+        }
+        return cfg.allowedTools.includes(toolKey);
+      }
+      return ['crm', 'telegram', 'strategy', 'marketing', 'content', 'ai-growth', 'social', 'tiktok-trends', 'bio', 'landing', 'courses', 'memberships', 'digital', 'niche', 'design', 'tasks', 'calendar', 'finance', 'analytics', 'integrations'].includes(toolKey);
     }
 
     // Check Starter
     const starterCfg = processedTenantConfig.planStarterConfig;
-    if (starterCfg && Array.isArray(starterCfg.allowedTools)) return starterCfg.allowedTools.includes(toolKey);
+    if (starterCfg && Array.isArray(starterCfg.allowedTools)) {
+      if (toolKey === 'memberships') {
+        return starterCfg.allowedTools.includes('memberships');
+      }
+      return starterCfg.allowedTools.includes(toolKey);
+    }
     return ['crm', 'landing', 'tasks', 'calendar', 'bio', 'courses', 'social', 'design'].includes(toolKey);
   };
 
