@@ -204,13 +204,23 @@ export default function MembershipsView() {
     selectedCourses: []
   });
 
-  // Community Group Modal
+  // Community Groups & Create Group Studio State
   const [showGroupModal, setShowGroupModal] = useState(false);
+  const [showCreateGroupStudio, setShowCreateGroupStudio] = useState(false);
+  const [groupFilter, setGroupFilter] = useState('Active'); // 'Active' | 'All' | 'Draft'
+  const [groupCreatedNotification, setGroupCreatedNotification] = useState(null);
+  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
   const [groupForm, setGroupForm] = useState({
     name: '',
+    slug: '',
     description: '',
-    icon: '💬',
-    isPrivate: false
+    discovery: true,
+    faviconUrl: '',
+    coverImageUrl: '',
+    logoUrl: '',
+    status: 'Active',
+    owner: '',
+    memberCount: 1
   });
 
   // Settings Save State
@@ -765,17 +775,52 @@ export default function MembershipsView() {
 
   // Community Group Handler
   const handleSaveGroup = async (e) => {
-    e.preventDefault();
-    if (!groupForm.name.trim()) return;
+    if (e) e.preventDefault();
+    if (!groupForm.name.trim()) {
+      showToast(isRTL ? 'يرجى إدخال اسم المجتمع' : 'Please enter a group name', 'error');
+      return;
+    }
 
+    setIsSubmittingGroup(true);
     try {
-      await saveCommunityGroup(coachId, groupForm);
+      const generatedSlug = groupForm.slug?.trim() || groupForm.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const payload = {
+        name: groupForm.name.trim(),
+        slug: generatedSlug,
+        description: (groupForm.description || '').trim(),
+        discovery: groupForm.discovery ?? true,
+        faviconUrl: groupForm.faviconUrl || '',
+        coverImageUrl: groupForm.coverImageUrl || '',
+        logoUrl: groupForm.logoUrl || '',
+        status: groupForm.status || 'Active',
+        owner: groupForm.owner || coachName,
+        memberCount: groupForm.memberCount || 1,
+        icon: '💬',
+        isPrivate: false
+      };
+
+      await saveCommunityGroup(coachId, payload);
       setShowGroupModal(false);
-      setGroupForm({ name: '', description: '', icon: '💬', isPrivate: false });
-      showToast(L('Community group created!', 'تم إنشاء مجتمع النقاش بنجاح!'));
+      setShowCreateGroupStudio(false);
+      setGroupCreatedNotification({ name: payload.name, show: true });
+      setGroupForm({
+        name: '',
+        slug: '',
+        description: '',
+        discovery: true,
+        faviconUrl: '',
+        coverImageUrl: '',
+        logoUrl: '',
+        status: 'Active',
+        owner: coachName,
+        memberCount: 1
+      });
+      showToast(isRTL ? 'تم إنشاء مجتمع النقاش بنجاح!' : 'Community group created successfully!');
     } catch (err) {
       console.error(err);
-      showToast(L('Failed to create group', 'فشل إنشاء المجتمع'), 'error');
+      showToast(isRTL ? 'فشل إنشاء المجتمع' : 'Failed to create group', 'error');
+    } finally {
+      setIsSubmittingGroup(false);
     }
   };
 
@@ -4678,107 +4723,762 @@ export default function MembershipsView() {
       {/* 4. SUB-VIEW: COMMUNITIES & DISCUSSION GROUPS                              */}
       {/* ========================================================================= */}
       {activeTab === 'communities' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+        showCreateGroupStudio ? (
+          /* ========================================================================= */
+          /* CREATE GROUP STUDIO (GoHighLevel Exact Replica - Screenshots 1 & 2)      */
+          /* ========================================================================= */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '960px', margin: '0 auto', width: '100%' }}>
+            {/* Back button */}
             <div>
-              <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '900' }}>
-                {isRTL ? 'مجتمعات الطلاب التفاعلية' : 'Community Discussion Groups'}
-              </h2>
-              <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
-                {isRTL ? 'أنشئ مجموعات نقاش وغرف تفاعلية لطلابك لمشاركة الأسئلة والتفاعل.' : 'Create topic-based discussion groups where students connect and share feedback.'}
+              <button
+                type="button"
+                onClick={() => setShowCreateGroupStudio(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#38bdf8',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                {isRTL ? <ArrowRight size={15} /> : <ArrowLeft size={15} />}
+                <span>{isRTL ? 'رجوع' : 'Back'}</span>
+              </button>
+            </div>
+
+            {/* Studio Header */}
+            <div>
+              <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: '900', color: '#ffffff' }}>
+                {isRTL ? 'إنشاء مجتمع جديد' : 'Create Group'}
+              </h1>
+              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--text3, #64748b)' }}>
+                {isRTL ? 'أنشئ مجتمع نقاشك التفاعلي الجديد' : 'Create your new community group'}
+              </p>
+            </div>
+
+            {/* FORM */}
+            <form onSubmit={handleSaveGroup} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* CARD 1: DETAILS */}
+              <div style={{
+                background: '#0d1322',
+                borderRadius: '16px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '24px 28px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '24px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+              }}>
+                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px' }}>
+                  {isRTL ? 'التفاصيل' : 'Details'}
+                </h2>
+
+                {/* Group Name Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'start' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'اسم المجتمع' : 'Group Name'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)', lineHeight: '1.4' }}>
+                      {isRTL ? 'قدم هوية مميزة لمجتمعك التفاعلي' : 'Provide a distinct identity to your group'}
+                    </div>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      required
+                      value={groupForm.name}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const autoSlug = val.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+                        setGroupForm(prev => ({
+                          ...prev,
+                          name: val,
+                          slug: prev.slug === '' || prev.slug === prev.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-') ? autoSlug : prev.slug
+                        }));
+                      }}
+                      placeholder={isRTL ? 'اسم المجتمع' : 'Group Name'}
+                      style={{
+                        width: '100%',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Group URL Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'start' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'رابط المجتمع (URL)' : 'Group URL'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)', lineHeight: '1.4' }}>
+                      {isRTL ? 'يمكنك نشر وتوزيع رابط المجتمع لمشاركته بسهولة' : 'You can distribute the URL of your group to others for easy sharing'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '8px',
+                      padding: '0 12px'
+                    }}>
+                      <input
+                        type="text"
+                        value={groupForm.slug}
+                        onChange={(e) => setGroupForm({ ...groupForm, slug: e.target.value })}
+                        placeholder={isRTL ? 'الرابط التعريفي للمجتمع (Slug)' : 'Group Slug'}
+                        style={{
+                          flex: 1,
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '10px 0',
+                          color: '#ffffff',
+                          fontSize: '13px',
+                          direction: 'ltr',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fullUrl = `${window.location.origin}/portal/${coachPortalSettings?.slug || defaultSlug}/community/${groupForm.slug || 'group'}`;
+                          navigator.clipboard?.writeText(fullUrl);
+                          showToast(isRTL ? 'تم نسخ رابط المجتمع!' : 'Group URL copied!');
+                        }}
+                        title={isRTL ? 'نسخ الرابط' : 'Copy link'}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text2, #94a3b8)', cursor: 'pointer', padding: '6px' }}
+                      >
+                        <Copy size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Group Description Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'start' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'وصف المجتمع' : 'Group Description'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)', lineHeight: '1.4' }}>
+                      {isRTL ? 'اشرح طبيعة المناقشات والمحتوى الذي سيتم تداوله داخل المجتمع' : 'Elaborate on the nature of discussions that will take place within the group'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ position: 'relative' }}>
+                      <textarea
+                        rows={4}
+                        maxLength={150}
+                        value={groupForm.description}
+                        onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
+                        placeholder={isRTL ? 'أدخل وصفاً موجزاً للمجتمع...' : 'Enter a brief description'}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px',
+                          padding: '10px 14px 28px 14px',
+                          color: '#ffffff',
+                          fontSize: '13px',
+                          outline: 'none',
+                          resize: 'none'
+                        }}
+                      />
+                      <span style={{
+                        position: 'absolute',
+                        [isRTL ? 'left' : 'right']: '12px',
+                        bottom: '8px',
+                        fontSize: '11px',
+                        color: 'var(--text3, #64748b)'
+                      }}>
+                        {(groupForm.description?.length || 0)} / 150
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Discovery Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'الاستكشاف (Discovery)' : 'Discovery'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)', lineHeight: '1.4' }}>
+                      {isRTL ? 'اجعل مجتمعك قابلاً للاكتشاف من قبل ملايين المستخدمين. سيظهر المجتمع في صفحة الاستكشاف بمجرد أن يضم أكثر من 10 أعضاء.' : 'Get discovered by millions of active users. The group will be visible on the discover page once you have more than 10 members.'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: isRTL ? 'flex-start' : 'flex-end' }}>
+                    <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={groupForm.discovery}
+                        onChange={(e) => setGroupForm({ ...groupForm, discovery: e.target.checked })}
+                        style={{ display: 'none' }}
+                      />
+                      <div style={{
+                        width: '46px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        background: groupForm.discovery ? '#2563eb' : 'rgba(255,255,255,0.15)',
+                        position: 'relative',
+                        transition: 'background 0.2s ease'
+                      }}>
+                        <div style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          background: '#ffffff',
+                          position: 'absolute',
+                          top: '3px',
+                          left: groupForm.discovery ? '25px' : '3px',
+                          transition: 'left 0.2s ease',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                        }} />
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 2: BRANDING */}
+              <div style={{
+                background: '#0d1322',
+                borderRadius: '16px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '24px 28px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '24px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+              }}>
+                <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#ffffff', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px' }}>
+                  {isRTL ? 'الهوية البصرية' : 'Branding'}
+                </h2>
+
+                {/* Favicon */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'start' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'أيقونة الموقع (Favicon)' : 'Favicon'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                      Recommended Aspect Ratio 1:1
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{
+                      border: '1px dashed rgba(255, 255, 255, 0.15)',
+                      borderRadius: '10px',
+                      padding: '24px 16px',
+                      textAlign: 'center',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer'
+                    }}>
+                      <UploadCloud size={24} style={{ color: 'var(--text3, #64748b)' }} />
+                      <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)', fontWeight: '600' }}>
+                        {isRTL ? 'انقر أو اسحب ملفاً إلى هذه المنطقة للرفع' : 'Click or drag a file to this area to upload'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                        SVG, PNG, JPG, JPEG, WEBP, ICO (Aspect Ratio 1:1)
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={isRTL ? 'أو أدخل رابط الأيقونة مباشرة (URL)...' : 'Or enter direct Favicon URL...'}
+                        value={groupForm.faviconUrl}
+                        onChange={(e) => setGroupForm({ ...groupForm, faviconUrl: e.target.value })}
+                        style={{
+                          width: '75%',
+                          background: 'rgba(0,0,0,0.3)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          color: '#ffffff',
+                          fontSize: '11.5px',
+                          textAlign: 'center',
+                          marginTop: '4px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cover Image */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'start' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'صورة الغلاف (Cover Image)' : 'Cover Image'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                      Recommended Aspect Ratio 16:9
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{
+                      border: '1px dashed rgba(255, 255, 255, 0.15)',
+                      borderRadius: '10px',
+                      padding: '24px 16px',
+                      textAlign: 'center',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer'
+                    }}>
+                      <UploadCloud size={24} style={{ color: 'var(--text3, #64748b)' }} />
+                      <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)', fontWeight: '600' }}>
+                        {isRTL ? 'انقر أو اسحب ملفاً إلى هذه المنطقة للرفع' : 'Click or drag a file to this area to upload'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                        SVG, PNG, JPG, JPEG, WEBP, ICO (Aspect Ratio 16:9)
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={isRTL ? 'أو أدخل رابط صورة الغلاف مباشرة (URL)...' : 'Or enter direct Cover Image URL...'}
+                        value={groupForm.coverImageUrl}
+                        onChange={(e) => setGroupForm({ ...groupForm, coverImageUrl: e.target.value })}
+                        style={{
+                          width: '75%',
+                          background: 'rgba(0,0,0,0.3)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          color: '#ffffff',
+                          fontSize: '11.5px',
+                          textAlign: 'center',
+                          marginTop: '4px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logo */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 320px) 1fr', gap: '24px', alignItems: 'start' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                      {isRTL ? 'الشعار (Logo)' : 'Logo'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                      Recommended Aspect Ratio 1:1
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{
+                      border: '1px dashed rgba(255, 255, 255, 0.15)',
+                      borderRadius: '10px',
+                      padding: '24px 16px',
+                      textAlign: 'center',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer'
+                    }}>
+                      <UploadCloud size={24} style={{ color: 'var(--text3, #64748b)' }} />
+                      <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)', fontWeight: '600' }}>
+                        {isRTL ? 'انقر أو اسحب ملفاً إلى هذه المنطقة للرفع' : 'Click or drag a file to this area to upload'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                        SVG, PNG, JPG, JPEG, WEBP, ICO (Aspect Ratio 1:1)
+                      </div>
+                      <input
+                        type="text"
+                        placeholder={isRTL ? 'أو أدخل رابط الشعار مباشرة (URL)...' : 'Or enter direct Logo URL...'}
+                        value={groupForm.logoUrl}
+                        onChange={(e) => setGroupForm({ ...groupForm, logoUrl: e.target.value })}
+                        style={{
+                          width: '75%',
+                          background: 'rgba(0,0,0,0.3)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          color: '#ffffff',
+                          fontSize: '11.5px',
+                          textAlign: 'center',
+                          marginTop: '4px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingBottom: '30px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroupStudio(false)}
+                  className="btn btn-ghost"
+                  style={{ padding: '9px 20px', fontSize: '13px', borderRadius: '8px' }}
+                >
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingGroup}
+                  className="btn glow-btn"
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '9px 28px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: isSubmittingGroup ? 'wait' : 'pointer',
+                    opacity: isSubmittingGroup ? 0.7 : 1
+                  }}
+                >
+                  {isSubmittingGroup ? (isRTL ? 'جاري الإنشاء...' : 'Creating...') : (isRTL ? 'إنشاء المجتمع' : 'Create Group')}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* ========================================================================= */
+          /* COMMUNITY GROUPS HUB (GoHighLevel Exact Replica - Screenshot 3)           */
+          /* ========================================================================= */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+            
+            {/* Floating Success Alert Banner if created */}
+            {groupCreatedNotification?.show && (
+              <div style={{
+                position: 'fixed',
+                top: '20px',
+                [isRTL ? 'left' : 'right']: '24px',
+                zIndex: 10005,
+                background: 'rgba(15, 23, 42, 0.95)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                borderRadius: '12px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                padding: '14px 18px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                maxWidth: '340px'
+              }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399', marginTop: '6px' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#ffffff', marginBottom: '2px' }}>
+                    {isRTL ? 'تم إنشاء المجتمع' : 'Group Created'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text2, #94a3b8)' }}>
+                    {isRTL ? 'تم إنشاء مجتمعك بنجاح وجاهز لاستقبال الطلاب.' : 'Your group has been created successfully'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setGroupCreatedNotification(null)}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text3, #64748b)', cursor: 'pointer', padding: '2px' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* 1. Promotional White-Label Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(249, 115, 22, 0.15) 50%, rgba(234, 179, 8, 0.12) 100%)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '16px',
+              padding: '24px 32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '20px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ maxWidth: '480px', zIndex: 1 }}>
+                <h2 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: '900', color: '#ffffff' }}>
+                  {isRTL ? 'علامتك التجارية. تطبيقك الخاص.' : 'Your Brand. Your App.'}
+                </h2>
+                <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                  {isRTL ? 'أطلق تطبيقك المخصص بهويتك المستقلة مع الكورسات والمجتمعات التفاعلية.' : 'Launch your white-label app with courses and communities'}
+                </p>
+                <button
+                  onClick={() => showToast(isRTL ? 'تطبيق الموبايل قادم قريباً!' : 'Mobile White-label app features coming soon!')}
+                  className="btn"
+                  style={{
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 18px',
+                    fontSize: '12.5px',
+                    fontWeight: '800'
+                  }}
+                >
+                  {isRTL ? 'معرفة المزيد' : 'Learn More'}
+                </button>
+              </div>
+
+              {/* Graphics Mockup */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
+                <div style={{
+                  width: '90px',
+                  height: '110px',
+                  borderRadius: '12px',
+                  background: 'rgba(15, 23, 42, 0.8)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.4)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: '8px',
+                  gap: '6px'
+                }}>
+                  <div style={{ height: '50px', borderRadius: '6px', background: 'linear-gradient(135deg, #ec4899, #f97316)' }} />
+                  <div style={{ height: '6px', width: '70%', background: 'rgba(255,255,255,0.3)', borderRadius: '3px' }} />
+                  <div style={{ height: '6px', width: '40%', background: 'rgba(255,255,255,0.15)', borderRadius: '3px' }} />
+                </div>
+
+                <div style={{
+                  width: '110px',
+                  height: '130px',
+                  borderRadius: '14px',
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 15px 35px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  padding: '10px',
+                  gap: '8px'
+                }}>
+                  <div style={{ height: '65px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #38bdf8)' }} />
+                  <div style={{ height: '6px', width: '80%', background: 'rgba(255,255,255,0.3)', borderRadius: '3px' }} />
+                  <div style={{ height: '6px', width: '50%', background: 'rgba(56,189,248,0.3)', borderRadius: '3px' }} />
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={() => setShowGroupModal(true)}
-              className="glow-btn btn"
-              style={{
-                background: 'linear-gradient(135deg, #a855f7, #9333ea)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '10px 20px',
-                fontSize: '13.5px',
-                fontWeight: '800',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <Plus size={16} />
-              <span>{isRTL ? 'إنشاء مجتمع جديد' : 'Create Group'}</span>
-            </button>
-          </div>
+            {/* 2. Main Section Header & Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#ffffff' }}>
+                {isRTL ? 'مجموعات المجتمع' : 'Community Groups'}
+              </h2>
 
-          {communities.length === 0 ? (
-            <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <div style={{ fontSize: '44px', marginBottom: '12px' }}>💬</div>
-              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>
-                {isRTL ? 'لا يوجد مجتمع نقاش مفعل بعد' : 'No Community Groups Yet'}
-              </h3>
-              <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--text2, #94a3b8)', maxWidth: '460px', marginInline: 'auto' }}>
-                {isRTL ? 'أنشئ أول مجموعة نقاش لطلابك (مثل: مجتمع دورة التجارة الإلكترونية) لتوفير تجربة تشبه Skool.' : 'Launch interactive discussion spaces for your cohorts to build active student engagement.'}
-              </p>
-              <button
-                onClick={() => setShowGroupModal(true)}
-                className="btn glow-btn"
-                style={{ background: '#a855f7', color: '#fff', border: 'none', borderRadius: '12px', padding: '11px 24px', fontWeight: '800', fontSize: '14px' }}
-              >
-                {isRTL ? '+ إنشاء أول مجتمع' : '+ Create First Group'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* Filter Dropdown */}
+                <select
+                  value={groupFilter}
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    color: '#ffffff',
+                    fontSize: '12.5px',
+                    fontWeight: '600',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="Active" style={{ background: '#1e293b' }}>{isRTL ? 'نشط (Active)' : 'Active'}</option>
+                  <option value="All" style={{ background: '#1e293b' }}>{isRTL ? 'الكل (All)' : 'All'}</option>
+                  <option value="Draft" style={{ background: '#1e293b' }}>{isRTL ? 'مسودة (Draft)' : 'Draft'}</option>
+                </select>
+
+                {/* Create Group Button */}
+                <button
+                  onClick={() => setShowCreateGroupStudio(true)}
+                  className="btn glow-btn"
+                  style={{
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 18px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Plus size={15} />
+                  <span>{isRTL ? 'إنشاء مجتمع جديد' : 'Create Group'}</span>
+                </button>
+              </div>
             </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' }}>
-              {communities.map((group) => (
-                <div key={group.id} className="glass-panel interactive-card" style={{ padding: '22px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                    <div style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '12px',
-                      background: 'rgba(168, 85, 247, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '22px'
-                    }}>
-                      {group.icon || '💬'}
-                    </div>
-                    <div>
-                      <h4 style={{ margin: '0 0 2px 0', fontSize: '16px', fontWeight: '800' }}>
-                        {group.name}
-                      </h4>
-                      <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
-                        👥 {group.memberCount || 1} {isRTL ? 'أعضاء' : 'members'}
+
+            {/* 3. Community Groups Cards Grid */}
+            {communities.length === 0 ? (
+              <div style={{
+                padding: '60px 20px',
+                textAlign: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '16px',
+                border: '1px dashed rgba(255, 255, 255, 0.12)'
+              }}>
+                <div style={{ fontSize: '42px', marginBottom: '10px' }}>💬</div>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: '800', color: '#ffffff' }}>
+                  {isRTL ? 'لا توجد مجموعات مجتمع بعد' : 'No Community Groups Yet'}
+                </h3>
+                <p style={{ margin: '0 0 18px 0', fontSize: '13px', color: 'var(--text3, #64748b)' }}>
+                  {isRTL ? 'أنشئ أول مجتمع نقاش لطلابك لتوفير تجربة تشبه Skool.' : 'Launch interactive discussion spaces for your cohorts to build active student engagement.'}
+                </p>
+                <button
+                  onClick={() => setShowCreateGroupStudio(true)}
+                  className="btn glow-btn"
+                  style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 22px', fontWeight: '700', fontSize: '13px' }}
+                >
+                  {isRTL ? '+ إنشاء أول مجتمع' : '+ Create First Group'}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 340px))', gap: '22px' }}>
+                {communities
+                  .filter(g => {
+                    if (groupFilter === 'Active' && g.status && g.status !== 'Active') return false;
+                    if (groupFilter === 'Draft' && g.status !== 'Draft') return false;
+                    return true;
+                  })
+                  .map(group => (
+                    <div
+                      key={group.id}
+                      style={{
+                        background: '#0d1322',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        overflow: 'hidden',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                    >
+                      {/* Top Cover Banner */}
+                      <div style={{
+                        height: '130px',
+                        background: group.coverImageUrl
+                          ? `url(${group.coverImageUrl}) center/cover no-repeat`
+                          : 'linear-gradient(135deg, #ec4899 0%, #f97316 50%, #eab308 100%)',
+                        position: 'relative'
+                      }}>
+                        {/* Floating Circular Badge Overlapping Banner */}
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '-32px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '64px',
+                          height: '64px',
+                          borderRadius: '50%',
+                          background: '#1e1b4b',
+                          border: '3px solid #0d1322',
+                          boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff'
+                        }}>
+                          {group.logoUrl ? (
+                            <img src={group.logoUrl} alt="Logo" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                            /* Braided Geometric Rings SVG from Screenshot */
+                            <svg width="34" height="34" viewBox="0 0 40 40" fill="none">
+                              <circle cx="20" cy="20" r="18" stroke="#ffffff" strokeWidth="2" strokeDasharray="3 3" opacity="0.3" />
+                              <ellipse cx="20" cy="20" rx="14" ry="7" transform="rotate(30 20 20)" stroke="#ffffff" strokeWidth="2.2" />
+                              <ellipse cx="20" cy="20" rx="14" ry="7" transform="rotate(-30 20 20)" stroke="#ffffff" strokeWidth="2.2" />
+                              <ellipse cx="20" cy="20" rx="14" ry="7" transform="rotate(90 20 20)" stroke="#ffffff" strokeWidth="2.2" />
+                              <circle cx="20" cy="20" r="3.5" fill="#ffffff" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div style={{ padding: '44px 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+                        {/* Group Title */}
+                        <div style={{ textAlign: 'center' }}>
+                          <h3 style={{ margin: '0 0 4px 0', fontSize: '16.5px', fontWeight: '800', color: '#ffffff' }}>
+                            {group.name}
+                          </h3>
+                        </div>
+
+                        {/* Metadata List */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: 'var(--text2, #94a3b8)', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '14px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{isRTL ? 'الأعضاء' : 'Members'}</span>
+                            <span style={{ fontWeight: '700', color: '#ffffff' }}>{group.memberCount || 1}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{isRTL ? 'المالك' : 'Owner'}</span>
+                            <span style={{ color: '#38bdf8', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <span>{group.owner || coachName}</span>
+                              <Edit size={11} style={{ cursor: 'pointer' }} />
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{isRTL ? 'الحالة' : 'Status'}</span>
+                            <span style={{ color: '#38bdf8', fontWeight: '600' }}>
+                              {group.status || 'Active'} ▾
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Login Button */}
+                        <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                          <button
+                            onClick={() => {
+                              const slug = coachPortalSettings?.slug || defaultSlug;
+                              window.open(`/portal/${slug}?tab=community`, '_blank');
+                            }}
+                            className="btn glow-btn"
+                            style={{
+                              width: '100%',
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '10px 0',
+                              fontSize: '13px',
+                              fontWeight: '700',
+                              textAlign: 'center',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {isRTL ? 'دخول المجتمع (Login)' : 'Login'}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))
+                }
+              </div>
+            )}
 
-                  <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
-                    {group.description || (isRTL ? 'مجتمع نقاش تفاعلي للطلاب.' : 'Active student discussion group.')}
-                  </p>
-
-                  <div style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    background: 'rgba(0,0,0,0.2)',
-                    fontSize: '11.5px',
-                    color: '#c084fc',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
-                    <span>{isRTL ? 'المنشورات في بوابة الطلاب' : 'Live on Student Portal'}</span>
-                    <CheckCircle2 size={14} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-        </div>
+          </div>
+        )
       )}
+
 
       {/* ========================================================================= */}
       {/* 5. SUB-VIEW: STUDENTS & ENROLLMENTS CRM                                   */}
