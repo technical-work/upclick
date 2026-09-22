@@ -60,7 +60,7 @@ import SupportView from '@/components/Views/SupportView';
 import SitesView from '@/components/Views/SitesView';
 import DomainsView from '@/components/Views/DomainsView';
 function DashboardShell() {
-  const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal } = useBusiness();
+  const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal, isToolAllowedForUser } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -364,7 +364,11 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses', 'sites', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(currentPage);
+    const isAllowed = isToolAllowedForUser
+      ? isToolAllowedForUser(currentPage)
+      : (!allowedTools ||
+         allowedTools.includes(currentPage) ||
+         ['home', 'profile', 'billing', 'support', 'courses', 'memberships', 'sites', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(currentPage));
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
