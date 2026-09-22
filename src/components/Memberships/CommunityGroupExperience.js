@@ -5,6 +5,7 @@ import {
   updateStudentLessonProgress,
   joinCommunityGroup,
   saveCourse,
+  createCommunityPost,
   DEFAULT_COHORT_COURSES
 } from '../../lib/membershipsService';
 import {
@@ -71,7 +72,7 @@ import {
 } from 'lucide-react';
 
 export default function CommunityGroupExperience({
-  group,
+  group: initialGroup,
   onClose,
   coachName = 'Mohamed Hesham',
   userData = {},
@@ -87,6 +88,18 @@ export default function CommunityGroupExperience({
   initialTab = 'discussion',
   initialChannel = 'home'
 }) {
+  // Active group state for instantaneous client-side switching without page reload
+  const [activeGroup, setActiveGroup] = useState(initialGroup || {});
+  const group = activeGroup || {};
+  const [isSwitchingGroup, setIsSwitchingGroup] = useState(false);
+
+  // Sync if initialGroup from props changes externally
+  useEffect(() => {
+    if (initialGroup && (initialGroup.id !== activeGroup.id || initialGroup.slug !== activeGroup.slug)) {
+      setActiveGroup(initialGroup);
+    }
+  }, [initialGroup]);
+
   // Theme state: defaults to currentTheme or saved theme, or dark if dashboard is dark
   const [theme, setTheme] = useState(() => {
     if (currentTheme) return currentTheme;
@@ -192,14 +205,14 @@ export default function CommunityGroupExperience({
     }
 
     return list;
-  }, [communities, group]);
+  }, [communities, activeGroup]);
 
-  // Switch community group handler
+  // Switch community group handler WITHOUT full page reload
   const handleSwitchGroup = (targetGroup) => {
     if (!targetGroup) return;
     setShowGroupSwitchDropdown(false);
-    const isCurrent = (targetGroup.id && group.id && targetGroup.id === group.id) ||
-      (targetGroup.slug && group.slug && targetGroup.slug.toLowerCase() === group.slug.toLowerCase());
+    const isCurrent = (targetGroup.id && activeGroup.id && targetGroup.id === activeGroup.id) ||
+      (targetGroup.slug && activeGroup.slug && targetGroup.slug.toLowerCase() === activeGroup.slug.toLowerCase());
 
     if (isCurrent) {
       setActiveChannel('home');
@@ -207,12 +220,51 @@ export default function CommunityGroupExperience({
       return;
     }
 
-    showToast(isRTL ? `جاري الانتقال إلى ${targetGroup.name}...` : `Switching to ${targetGroup.name}...`);
+    // Trigger Discord group switch animation
+    setIsSwitchingGroup(true);
+    setActiveGroup(targetGroup);
+    setActiveChannel('home');
+    setActiveTab('discussion');
+
+    // Smoothly update browser URL without reloading
     const targetSlug = targetGroup.slug || targetGroup.id;
     if (typeof window !== 'undefined') {
-      window.location.href = `/portal/${coachId || 'moha'}/community/${targetSlug}`;
+      const cleanCoachKey = coachId || 'moha';
+      const newPath = `/portal/${cleanCoachKey}/community/${targetSlug}`;
+      window.history.pushState({ communityId: targetGroup.id, slug: targetSlug }, '', newPath);
     }
+
+    setTimeout(() => {
+      setIsSwitchingGroup(false);
+    }, 280);
+
+    showToast(isRTL ? `تم الانتقال إلى ${targetGroup.name}` : `Switched to ${targetGroup.name}`);
   };
+
+  // Listen for browser forward/back buttons to switch community smoothly
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const pathSegments = window.location.pathname.split('/');
+        const commIndex = pathSegments.indexOf('community');
+        if (commIndex !== -1 && pathSegments[commIndex + 1]) {
+          const slugFromUrl = pathSegments[commIndex + 1];
+          const found = allCommunitiesList.find(c =>
+            (c.slug && c.slug.toLowerCase() === slugFromUrl.toLowerCase()) ||
+            (c.id && c.id.toLowerCase() === slugFromUrl.toLowerCase())
+          );
+          if (found && found.id !== activeGroup.id) {
+            setIsSwitchingGroup(true);
+            setActiveGroup(found);
+            setActiveChannel('home');
+            setTimeout(() => setIsSwitchingGroup(false), 280);
+          }
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [allCommunitiesList, activeGroup]);
 
   // Modals state
   const [showAddChannelModal, setShowAddChannelModal] = useState(false);
@@ -593,8 +645,10 @@ export default function CommunityGroupExperience({
     }
 
     if (activeLiveSession.keepAsPost !== false) {
+      const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
       const newLivePost = {
         id: `live-post-${Date.now()}`,
+        communityId: commId,
         author: coachName,
         authorHandle: `@${userData?.username || 'mohamed'}`,
         initials: 'SS',
@@ -610,7 +664,11 @@ export default function CommunityGroupExperience({
         comments: []
       };
 
-      setPosts(prev => [newLivePost, ...prev]);
+      const updated = [newLivePost, ...posts];
+      setPosts(updated);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`upklick_posts_${commId}`, JSON.stringify(updated));
+      }
     }
 
     showToast(isRTL ? 'تم إنهاء جلسة البث المباشر وجاري معالجة التسجيل' : 'Stream ended. Recording is being processed.');
@@ -790,51 +848,144 @@ export default function CommunityGroupExperience({
     }
   ]);
 
-  // Posts Feed State (Initial seed matching Screenshot 1)
-  const [posts, setPosts] = useState(() => [
-    {
-      id: 'post-live-initial',
-      author: coachName,
-      authorHandle: `@${userData?.username || 'mohamed'}`,
-      initials: 'SS',
-      channelId: 'announcements',
-      channelName: 'Announcements',
-      createdAt: 'Just now',
-      isLiveRecording: true,
-      liveTitle: 'شييشسب',
-      liveDescription: 'سشيشنشنشن',
-      recordingStatus: 'processing',
-      likes: 0,
-      liked: false,
-      comments: []
-    },
-    {
-      id: 'post-reg-1',
-      author: coachName,
-      authorHandle: `@${userData?.username || 'mohamed'}`,
-      initials: 'SS',
-      channelId: 'announcements',
-      channelName: 'Announcements',
-      createdAt: '9m ago',
-      content: 'ss\n\nss',
-      likes: 0,
-      liked: false,
-      comments: []
-    },
-    {
-      id: 'post-reg-2',
-      author: coachName,
-      authorHandle: `@${userData?.username || 'mohamed'}`,
-      initials: 'SS',
-      channelId: 'announcements',
-      channelName: 'Announcements',
-      createdAt: '1h ago',
-      content: 'ss\n\nss',
-      likes: 0,
-      liked: false,
-      comments: []
+  // Helper to load or initialize community-specific posts
+  const getInitialPostsForCommunity = (cId, cName) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`upklick_posts_${cId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
     }
-  ]);
+
+    if (cId && cId.toLowerCase().includes('alpha-vip')) {
+      return [
+        {
+          id: 'post-live-initial',
+          communityId: cId,
+          author: coachName,
+          authorHandle: `@${userData?.username || 'mohamed'}`,
+          initials: 'SS',
+          channelId: 'announcements',
+          channelName: 'Announcements',
+          createdAt: 'Just now',
+          isLiveRecording: true,
+          liveTitle: 'شييشسب',
+          liveDescription: 'سشيشنشنشن',
+          recordingStatus: 'processing',
+          likes: 0,
+          liked: false,
+          comments: []
+        },
+        {
+          id: 'post-reg-1',
+          communityId: cId,
+          author: coachName,
+          authorHandle: `@${userData?.username || 'mohamed'}`,
+          initials: 'SS',
+          channelId: 'announcements',
+          channelName: 'Announcements',
+          createdAt: '9m ago',
+          content: 'ss\n\nss',
+          likes: 0,
+          liked: false,
+          comments: []
+        }
+      ];
+    }
+
+    // Default welcoming post for any other community (e.g. ssfa)
+    return [
+      {
+        id: `post-welcome-${cId}`,
+        communityId: cId,
+        author: coachName,
+        authorHandle: `@${userData?.username || 'mohamed'}`,
+        initials: 'SS',
+        channelId: 'home',
+        channelName: 'Home',
+        createdAt: 'Just now',
+        content: `Welcome to the official ${cName || 'community'} group! Connect, collaborate, and share your wins here.`,
+        likes: 0,
+        liked: false,
+        comments: []
+      }
+    ];
+  };
+
+  // Posts Feed State (Dynamically isolated per community)
+  const [posts, setPosts] = useState(() => {
+    const cId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
+    const cName = activeGroup?.name || 'Community';
+    return getInitialPostsForCommunity(cId, cName);
+  });
+
+  // Re-load posts when activeGroup changes
+  useEffect(() => {
+    const cId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
+    const cName = activeGroup?.name || 'Community';
+    setPosts(getInitialPostsForCommunity(cId, cName));
+  }, [activeGroup?.id, activeGroup?.slug]);
+
+  // Load channels when activeGroup changes
+  useEffect(() => {
+    const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`upklick_channels_${commId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setChannels(parsed);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (Array.isArray(activeGroup.channels) && activeGroup.channels.length > 0) {
+      setChannels(activeGroup.channels);
+    } else {
+      setChannels([
+        { id: 'home', name: 'Home', icon: 'home' },
+        { id: 'announcements', name: 'Announcements', icon: 'megaphone' }
+      ]);
+    }
+  }, [activeGroup?.id, activeGroup?.slug]);
+
+  // Sync settingsForm when activeGroup changes
+  useEffect(() => {
+    if (!activeGroup) return;
+    setSettingsForm(prev => ({
+      ...prev,
+      name: activeGroup.name || '',
+      slug: activeGroup.slug || '',
+      description: activeGroup.description || '',
+      privacy: activeGroup.privacy || 'public',
+      coverImageUrl: activeGroup.coverImageUrl || '',
+      logoUrl: activeGroup.logoUrl || ''
+    }));
+  }, [activeGroup?.id, activeGroup?.slug]);
+
+  // Sync isJoined & membersCount when activeGroup changes
+  useEffect(() => {
+    const gid = activeGroup?.id || activeGroup?.slug;
+    let joined = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`upklick_student_${coachId}`) ||
+                       localStorage.getItem('upklick_current_student');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          joined = parsed.joinedCommunities?.includes(gid) || parsed.joinedCommunities?.includes(activeGroup.slug);
+        }
+      } catch (e) {}
+    }
+    setIsJoined(joined);
+    setMembersCount(activeGroup.memberCount || activeGroup.membersCount || (joined ? 2 : 1));
+  }, [activeGroup?.id, activeGroup?.slug]);
 
   // Events Calendar State
   const [events, setEvents] = useState([]);
@@ -871,8 +1022,10 @@ export default function CommunityGroupExperience({
   const handleCreatePost = (e) => {
     e?.preventDefault();
     if (!newPostText.trim()) return;
+    const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
     const newP = {
       id: `post_${Date.now()}`,
+      communityId: commId,
       author: coachName,
       authorHandle,
       initials: authorInitials,
@@ -884,14 +1037,20 @@ export default function CommunityGroupExperience({
       comments: [],
       createdAt: 'Just now'
     };
-    setPosts([newP, ...posts]);
+    const updated = [newP, ...posts];
+    setPosts(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`upklick_posts_${commId}`, JSON.stringify(updated));
+    }
+    createCommunityPost({ ...newP, communityId: commId }).catch(() => {});
     setNewPostText('');
     setShowPostModal(false);
     showToast(isRTL ? 'تم نشر المنشور بنجاح!' : 'Post published successfully!');
   };
 
   const handleLikePost = (postId) => {
-    setPosts(posts.map(p => {
+    const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
+    const updated = posts.map(p => {
       if (p.id === postId) {
         const liked = !p.liked;
         return {
@@ -901,14 +1060,23 @@ export default function CommunityGroupExperience({
         };
       }
       return p;
-    }));
+    });
+    setPosts(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`upklick_posts_${commId}`, JSON.stringify(updated));
+    }
   };
 
   const handleAddChannel = (e) => {
     e?.preventDefault();
     if (!newChannelName.trim()) return;
+    const commId = activeGroup?.id || activeGroup?.slug || 'alpha-vip-cohort';
     const id = newChannelName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    setChannels([...channels, { id, name: newChannelName.trim(), icon: 'message' }]);
+    const updated = [...channels, { id, name: newChannelName.trim(), icon: 'message' }];
+    setChannels(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`upklick_channels_${commId}`, JSON.stringify(updated));
+    }
     setActiveChannel(id);
     setNewChannelName('');
     setShowAddChannelModal(false);
@@ -1036,6 +1204,33 @@ export default function CommunityGroupExperience({
       transition: 'background 0.2s, color 0.2s',
       fontFamily: 'inherit'
     }}>
+
+      {/* Discord Transition Animations Styles */}
+      <style>{`
+        @keyframes discordWorkspaceAnim {
+          0% { opacity: 0.15; transform: translateY(12px) scale(0.995); filter: blur(1.5px); }
+          60% { filter: blur(0px); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+        }
+        @keyframes discordSidebarAnim {
+          0% { opacity: 0.25; transform: translateX(-10px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes discordPillSpring {
+          0% { height: 10px; transform: scaleY(0.4); }
+          60% { height: 42px; transform: scaleY(1.15); }
+          100% { height: 36px; transform: scaleY(1); }
+        }
+        @keyframes discordServerBounce {
+          0% { transform: scale(0.9); }
+          50% { transform: scale(1.08); }
+          100% { transform: scale(1); }
+        }
+        @keyframes discordDropdownPop {
+          0% { opacity: 0; transform: translateY(-8px) scale(0.96); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
 
       {/* ========================================================================= */}
       {/* 1. DISCORD SERVER SWITCHER RAIL (Far-Left Column, 68px wide)               */}
@@ -1244,16 +1439,20 @@ export default function CommunityGroupExperience({
       {/* ========================================================================= */}
       {/* 2. CHANNELS SIDEBAR (Next Column, 230px wide - Screenshot 2)               */}
       {/* ========================================================================= */}
-      <div style={{
-        width: '230px',
-        flexShrink: 0,
-        background: isLight ? '#ffffff' : '#0f172a',
-        borderRight: `1px solid ${cBorder}`,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        zIndex: 40
-      }}>
+      <div
+        key={`sidebar-${activeGroup?.id || activeGroup?.slug || 'comm'}`}
+        style={{
+          width: '230px',
+          flexShrink: 0,
+          background: isLight ? '#ffffff' : '#0f172a',
+          borderRight: `1px solid ${cBorder}`,
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          zIndex: 40,
+          animation: isSwitchingGroup ? 'discordSidebarAnim 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none'
+        }}
+      >
         {/* Header: Group Identity & Switcher (ss ↕) */}
         <div
           onClick={() => setShowGroupSwitchDropdown(!showGroupSwitchDropdown)}
@@ -1500,13 +1699,17 @@ export default function CommunityGroupExperience({
       {/* ========================================================================= */}
       {/* 3. MAIN WORKSPACE CONTAINER (Flex: 1)                                     */}
       {/* ========================================================================= */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minWidth: 0,
-        overflow: 'hidden'
-      }}>
+      <div
+        key={`workspace-${activeGroup?.id || activeGroup?.slug || 'comm'}`}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          overflow: 'hidden',
+          animation: isSwitchingGroup ? 'discordWorkspaceAnim 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none'
+        }}
+      >
         {/* TOP APP BAR */}
         <div style={{
           height: '60px',
