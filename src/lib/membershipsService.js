@@ -17,14 +17,14 @@ import {
 
 // Default initial portal settings for a coach
 export const DEFAULT_PORTAL_SETTINGS = {
-  portalTitle: 'UpKlick Academy',
-  portalTagline: 'Learn, grow and master skills with exclusive mentorship',
+  portalTitle: 'UpKlick MasterClass Academy',
+  portalTagline: 'بوابة النخبة للتعلم واحتراف المهارات وتطوير الأعمال مع التدريب المباشر',
   portalSlug: 'academy',
   logoUrl: '',
   bannerUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1600&auto=format&fit=crop',
   themeColor: '#FF6B35',
-  welcomeMessage: 'مرحباً بك في الأكاديمية! يسعدنا انضمامك لرحلتنا التعليمية.',
-  whatsappNumber: '',
+  welcomeMessage: 'مرحباً بك في الأكاديمية! يسعدنا انضمامك لرحلتنا التعليمية للوصول لأعلى مستويات الاحتراف.',
+  whatsappNumber: '+201000000000',
   telegramUsername: '',
   isOpenRegistration: true, // Anyone with link can register
   showCommunities: true,
@@ -32,6 +32,193 @@ export const DEFAULT_PORTAL_SETTINGS = {
   requirePasscode: false,
   portalPasscode: ''
 };
+
+// Rich cinema-grade masterclasses for live demonstration and immediate student value
+export const SAMPLE_MASTERCLASS_COURSES = [
+  {
+    id: 'course_masterclass_marketing',
+    title: 'ماستر كلاس التسويق الرقمي وبناء الحملات الإعلانية عالية التحويل',
+    category: 'التسويق والإعلانات',
+    level: 'احترافي (Mastery)',
+    duration: '4.5 ساعات',
+    rating: 4.95,
+    studentCount: 1420,
+    instructorName: 'Mohamed Hesham',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop',
+    description: 'المنهج المتكامل لإطلاق وإدارة حملات إعلانية رابحة على منصات Meta و Google و TikTok، وضبط التتبع السحابي ومضاعفة العائد على الإنفاق ROAS.',
+    badge: '🔥 الأكثر طلباً',
+    modules: [
+      {
+        id: 'mod_mkt_1',
+        title: 'الوحدة الأولى: استراتيجية الحملات وهندسة العروض التي لا تقاوم (Irresistible Offers)',
+        lessons: [
+          {
+            id: 'les_mkt_1',
+            title: '1. المدخل الشامل: كيف يفكر المسوق المليوني وهندسة العرض الرابح',
+            duration: '14:20',
+            videoUrl: 'https://www.youtube.com/watch?v=kXYiU_JCYtU',
+            notes: '📌 أهم نقاط المحاضرة:\n1. تحديد الـ Core Offer بدقة متناهية وحساب الـ Customer Lifetime Value (LTV).\n2. فهم دوافع الشراء النفسية لجمهورك المستهدف والتغلب على التردد.\n3. صياغة العنوان الجذاب (Hook) الذي يوقف تمرير الشاشة في أول ثانيتين.',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'دليل_هندسة_العروض_المقنعة_2026.pdf',
+            resources: ['نموذج AIDA الإعلاني', 'قائمة تدقيق العرض التجاري', 'ملف حساب الـ ROAS']
+          },
+          {
+            id: 'les_mkt_2',
+            title: '2. كتابة النصوص الإعلانية المقنعة (Copywriting Frameworks: AIDA & PAS)',
+            duration: '18:45',
+            videoUrl: 'https://www.youtube.com/watch?v=2b9x7o7y0w4',
+            notes: '📌 استراتيجيات كتابة الإعلانات المقنعة:\n• خطاف الانتباه (Attention Hook)\n• تحديد المشكلة وتضخيمها بالأرقام الواقعية (Agitation)\n• تقديم الحل كخيار وحيد مثالي (Solution & Offer)\n• نداء العمل القاطع والصريح (Direct CTA).',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'نماذج_كتابة_الإعلانات_الجاهزة.pdf',
+            resources: ['50 فكرة إعلانية جاهزة', 'سكريبتات الفيديوهات القصيرة']
+          }
+        ]
+      },
+      {
+        id: 'mod_mkt_2',
+        title: 'الوحدة الثانية: التتبع الذكي والـ CAPI وإعادة الاستهداف متعدد المراحل',
+        lessons: [
+          {
+            id: 'les_mkt_3',
+            title: '3. ضبط الـ Pixel و Conversions API بدقة 100% لتجاوز حظر الكوكيز',
+            duration: '22:15',
+            videoUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+            notes: 'دليل الربط التقني الكامل لتتبع المبيعات والبيكسل على مستوى الخادم (Server-Side Tracking) لضمان دقة التقارير وتحسين خوارزميات التوصيل الإعلاني.',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'تشيك_ليست_ضبط_البيكسل_والتتبع.pdf',
+            resources: ['دليل إعداد CAPI', 'أداة اختبار الأحداث']
+          },
+          {
+            id: 'les_mkt_4',
+            title: '4. سلاسل إعادة الاستهداف الذكية (Smart Omnichannel Retargeting)',
+            duration: '19:30',
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            notes: 'كيف تبني مسار إعلاني متعدد الحلقات للعميل الذي زار موقعك، وتقديم حوافز تدريجية عبر إعلانات مخصصة ترفع نسبة التحويل بنسبة +320%.',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'خريطة_مسار_إعادة_الاستهداف.pdf',
+            resources: ['مخطط مسار المبيعات']
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'course_masterclass_sales',
+    title: 'فن إغلاق الصفقات الكبرى والمبيعات الاستشارية (High-Ticket Sales Mastery)',
+    category: 'المبيعات وتطوير الأعمال',
+    level: 'متقدم (Advanced)',
+    duration: '3.8 ساعات',
+    rating: 5.0,
+    studentCount: 980,
+    instructorName: 'Mohamed Hesham',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=1200&auto=format&fit=crop',
+    description: 'البروتوكول النفسي والعملي لإدارة مكالمات البيع الاستشاري، تفكيك اعتراضات الأسعار، وإبرام عقود خدمات ومنتجات عالية القيمة بثقة مطلقة.',
+    badge: '💎 برنامج نخبوي',
+    modules: [
+      {
+        id: 'mod_sales_1',
+        title: 'الوحدة الأولى: هندسة مكالمة البيع الاستشارية (The Diagnostic Protocol)',
+        lessons: [
+          {
+            id: 'les_sales_1',
+            title: '1. بناء السلطة والمصداقية المطلقة في الدقائق الخمس الأولى من الجلسة',
+            duration: '16:15',
+            videoUrl: 'https://www.youtube.com/watch?v=kXYiU_JCYtU',
+            notes: 'القواعد السيكولوجية لوضع نفسك في موقع "الطبيب المشخص" بدلاً من "البائع المتوسل"، وتحديد جدول أعمال المكالمة باحترافية كاملة.',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'سكريبت_افتتاح_مكالمة_البيع_الاستشارية.pdf',
+            resources: ['جدول أسئلة التشخيص', 'نموذج تقييم العميل المحتمل']
+          },
+          {
+            id: 'les_sales_2',
+            title: '2. تفكيك وتجاوز اعتراض "السعر مرتفع" و"سأفكر في الأمر لاحقاً"',
+            duration: '21:00',
+            videoUrl: 'https://www.youtube.com/watch?v=2b9x7o7y0w4',
+            notes: 'كيف تحول مناقشة السعر إلى نقاش حول تكلفة عدم اتخاذ القرار ومعدل العائد الاستثماري الحقيقي (Cost of Inaction).',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'مصفوفة_الرد_على_كافة_الاعتراضات.pdf',
+            resources: ['بطاقات الردود السريعة على الاعتراضات']
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'course_masterclass_ai',
+    title: 'أتمتة الأعمال والذكاء الاصطناعي للمؤسسين والمدربين (AI Operations)',
+    category: 'الذكاء الاصطناعي والأتمتة',
+    level: 'شامل لكافة المستويات',
+    duration: '5.2 ساعات',
+    rating: 4.92,
+    studentCount: 1650,
+    instructorName: 'Mohamed Hesham',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop',
+    description: 'بناء أنظمة آلية ذكية لخدمة العملاء، ومتابعة الحجوزات، وأتمتة مسارات التسويق والتدريب لتعمل شركتك ذاتياً على مدار 24 ساعة.',
+    badge: '⚡ أحدث تقنيات 2026',
+    modules: [
+      {
+        id: 'mod_ai_1',
+        title: 'الوحدة الأولى: بناء مساعدي الذكاء الاصطناعي التفاعليين (Custom AI Agents)',
+        lessons: [
+          {
+            id: 'les_ai_1',
+            title: '1. بناء وتدريب الـ AI Agent الخاص بأكاديميتك والرد التلقائي على العملاء',
+            duration: '24:40',
+            videoUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
+            notes: 'ربط قاعدة بيانات الأكاديمية بنظام ذكاء اصطناعي فائق السرعة يجيب على أسئلة الطلاب ويوجههم للدروس المناسبة آلياً.',
+            attachmentUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            attachmentName: 'مخطط_سير_العمل_الآلي_AI_Agents.pdf',
+            resources: ['Prompts احترافية لتوجيه الذكاء الاصطناعي']
+          }
+        ]
+      }
+    ]
+  }
+];
+
+export const SAMPLE_COMMUNITY_POSTS = [
+  {
+    id: 'post_pinned_coach',
+    authorName: 'Mohamed Hesham (المدرب)',
+    isCoach: true,
+    isPinned: true,
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 3600 },
+    content: '🎉 مرحباً بكم جميعاً في صالون مجتمع الأكاديمية VIP!\n\nهذا المجتمع مخصص لتبادل الخبرات، وطرح الاستفسارات حول الدروس وتطبيقاتها العملية، ومشاركة قصص النجاح وإغلاق الصفقات.\n\n👇 شاركونا في التعليقات: ما هو التحدي الأكبر أو الهدف الرئيسي الذي تعمل عليه هذا الأسبوع؟',
+    likesCount: 38,
+    comments: [
+      {
+        id: 'c1',
+        authorName: 'أحمد محمود',
+        content: 'شكراً جزيلاً كوتش محمد على هذا الماستر كلاس المتكامل! طبقت استراتيجية الإعلانات في الدرس الثاني وحققنا اليوم أعلى نسبة مبيعات منذ بداية الشهر 🚀',
+        createdAt: 'منذ ساعة'
+      },
+      {
+        id: 'c2',
+        authorName: 'سارة خالد',
+        content: 'ملفات ونماذج العمل المرفقة مع الدروس لا تُقدّر بثمن، سهلت عليّ إعداد جلسات الاستشارة جداً!',
+        createdAt: 'منذ ساعتين'
+      }
+    ]
+  },
+  {
+    id: 'post_student_discussion',
+    authorName: 'طارق عبد الله',
+    isCoach: false,
+    isPinned: false,
+    createdAt: { seconds: Math.floor(Date.now() / 1000) - 7200 },
+    content: '💡 سؤال للنقاش مع الزملاء: بخصوص ضبط التتبع السحابي CAPI في كورس التسويق، هل واجه أحدكم أي تأخير في ظهور الأحداث في Ads Manager خلال أول 24 ساعة؟',
+    likesCount: 14,
+    comments: [
+      {
+        id: 'c3',
+        authorName: 'Mohamed Hesham (المدرب)',
+        isCoach: true,
+        content: 'طبيعي جداً يا طارق في أول 24-48 ساعة أن يحدث تأخير طفيف في معالجة خوارزمية Attribution، لكن التتبع السحابي يسجل الحدث فوراً في الـ Event History.',
+        createdAt: 'منذ 40 دقيقة'
+      }
+    ]
+  }
+];
 
 // Local storage cache helpers for resilient offline / permission-safe state
 function getLocalCache(key, fallback = null) {
@@ -56,6 +243,21 @@ export async function getCoachPortalSettings(coachIdOrSlug) {
   if (!coachIdOrSlug) return DEFAULT_PORTAL_SETTINGS;
   const cacheKey = `upklick_portal_${coachIdOrSlug.toLowerCase()}`;
   const cached = getLocalCache(cacheKey);
+
+  // Check if any portal in localStorage matches this slug
+  if (typeof window !== 'undefined') {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('upklick_portal_')) {
+        try {
+          const item = JSON.parse(localStorage.getItem(k));
+          if (item?.portalSlug?.toLowerCase() === coachIdOrSlug.toLowerCase()) {
+            return item;
+          }
+        } catch (e) {}
+      }
+    }
+  }
 
   try {
     // Check by doc ID first (coachId)
@@ -96,14 +298,18 @@ export async function getCoachPortalSettings(coachIdOrSlug) {
       }
     } catch (_) {}
 
-    return cached || DEFAULT_PORTAL_SETTINGS;
-  } catch (err) {
-    // If permission or network issue, fallback gracefully to cached settings
     return cached || {
       ...DEFAULT_PORTAL_SETTINGS,
       coachId: coachIdOrSlug,
-      portalTitle: `${coachIdOrSlug} Academy`,
-      portalSlug: coachIdOrSlug.toLowerCase().replace(/\s+/g, '-')
+      portalTitle: `${coachIdOrSlug.toUpperCase()} MasterClass Academy`,
+      portalSlug: coachIdOrSlug.toLowerCase()
+    };
+  } catch (err) {
+    return cached || {
+      ...DEFAULT_PORTAL_SETTINGS,
+      coachId: coachIdOrSlug,
+      portalTitle: `${coachIdOrSlug.toUpperCase()} MasterClass Academy`,
+      portalSlug: coachIdOrSlug.toLowerCase()
     };
   }
 }
@@ -135,7 +341,7 @@ export async function saveCoachPortalSettings(coachId, settings) {
 
 // 2. Courses CRUD
 export async function getCoachCourses(coachId) {
-  if (!coachId) return [];
+  if (!coachId) return SAMPLE_MASTERCLASS_COURSES;
   const cacheKey = `upklick_courses_${coachId}`;
   const cached = getLocalCache(cacheKey, []);
 
@@ -150,9 +356,41 @@ export async function getCoachCourses(coachId) {
       setLocalCache(cacheKey, courses);
       return courses;
     }
-    return cached;
+    if (cached && cached.length > 0) return cached;
+
+    // Check if there are any cached courses under any key in localStorage
+    if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('upklick_courses_')) {
+          try {
+            const list = JSON.parse(localStorage.getItem(k));
+            if (Array.isArray(list) && list.length > 0) {
+              return list;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    return SAMPLE_MASTERCLASS_COURSES;
   } catch (err) {
-    return cached;
+    if (cached && cached.length > 0) return cached;
+    // Check fallback in any localStorage course list
+    if (typeof window !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('upklick_courses_')) {
+          try {
+            const list = JSON.parse(localStorage.getItem(k));
+            if (Array.isArray(list) && list.length > 0) {
+              return list;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+    return SAMPLE_MASTERCLASS_COURSES;
   }
 }
 
@@ -391,7 +629,16 @@ export async function updateStudentLessonProgress(coachId, studentEmail, courseI
 
 // 5. Communities & Discussions
 export async function getCoachCommunities(coachId) {
-  if (!coachId) return [];
+  const defaultCommunity = [{
+    id: 'vip_lounge',
+    coachId: coachId || 'vip',
+    name: 'صالون النقاشات الحصري VIP',
+    icon: '💎',
+    description: 'مجتمع الطلاب والنقاشات التفاعلية المباشرة مع المدرب',
+    memberCount: 248
+  }];
+
+  if (!coachId) return defaultCommunity;
   const cacheKey = `upklick_communities_${coachId}`;
   const cached = getLocalCache(cacheKey, []);
 
@@ -406,18 +653,30 @@ export async function getCoachCommunities(coachId) {
       setLocalCache(cacheKey, communities);
       return communities;
     }
-    return cached;
+    return (cached && cached.length > 0) ? cached : defaultCommunity;
   } catch (err) {
-    return cached;
+    return (cached && cached.length > 0) ? cached : defaultCommunity;
   }
 }
 
 export function subscribeCoachCommunities(coachId, callback) {
-  if (!coachId) return () => {};
+  const defaultCommunity = [{
+    id: 'vip_lounge',
+    coachId: coachId || 'vip',
+    name: 'صالون النقاشات الحصري VIP',
+    icon: '💎',
+    description: 'مجتمع الطلاب والنقاشات التفاعلية المباشرة مع المدرب',
+    memberCount: 248
+  }];
+
+  if (!coachId) {
+    callback(defaultCommunity);
+    return () => {};
+  }
   const cacheKey = `upklick_communities_${coachId}`;
   
   const cached = getLocalCache(cacheKey, []);
-  callback(cached);
+  callback(cached.length > 0 ? cached : defaultCommunity);
 
   try {
     const q = query(
@@ -426,13 +685,14 @@ export function subscribeCoachCommunities(coachId, callback) {
     );
     return onSnapshot(q, (snap) => {
       const communities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLocalCache(cacheKey, communities);
-      callback(communities);
+      const list = communities.length > 0 ? communities : defaultCommunity;
+      setLocalCache(cacheKey, list);
+      callback(list);
     }, (err) => {
-      callback(getLocalCache(cacheKey, []));
+      callback(getLocalCache(cacheKey, defaultCommunity));
     });
   } catch (err) {
-    callback(cached);
+    callback(cached.length > 0 ? cached : defaultCommunity);
     return () => {};
   }
 }
@@ -475,7 +735,7 @@ export async function saveCommunityGroup(coachId, groupData) {
 }
 
 export async function getCommunityPosts(communityId) {
-  if (!communityId) return [];
+  if (!communityId) return SAMPLE_COMMUNITY_POSTS;
   const cacheKey = `upklick_posts_${communityId}`;
   const cached = getLocalCache(cacheKey, []);
 
@@ -491,9 +751,9 @@ export async function getCommunityPosts(communityId) {
       setLocalCache(cacheKey, posts);
       return posts;
     }
-    return cached;
+    return (cached && cached.length > 0) ? cached : SAMPLE_COMMUNITY_POSTS;
   } catch (err) {
-    return cached;
+    return (cached && cached.length > 0) ? cached : SAMPLE_COMMUNITY_POSTS;
   }
 }
 
