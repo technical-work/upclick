@@ -28,11 +28,24 @@ export default function PortalCommunityGroupDirectPage() {
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState('');
+  const [currentStudent, setCurrentStudent] = useState(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(`upklick_student_${coachUsername}`) ||
+                     localStorage.getItem('upklick_current_student');
+      if (stored) {
+        try {
+          setCurrentStudent(JSON.parse(stored));
+        } catch (e) {}
+      }
+    }
+  }, [coachUsername]);
 
   useEffect(() => {
     let isMounted = true;
@@ -195,8 +208,9 @@ export default function PortalCommunityGroupDirectPage() {
           coachName={coachName}
           coachId={portalSettings.coachId || portalSettings.id || coachUsername}
           userData={{
-            username: coachUsername,
-            name: coachName
+            username: currentStudent?.email ? currentStudent.email.split('@')[0] : coachUsername,
+            name: currentStudent?.name || coachName,
+            avatar: currentStudent?.avatar || '/file.jpg'
           }}
           isRTL={false}
           showToast={showToast}

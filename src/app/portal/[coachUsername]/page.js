@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   getCoachPortalSettings,
   getCoachCourses,
@@ -39,56 +39,78 @@ import {
   HelpCircle,
   Award,
   Star,
-  Maximize2,
-  Minimize2,
-  Flame,
   ShieldCheck,
-  Bookmark,
-  Compass,
   FileText,
   Layers,
-  Volume2,
-  ThumbsUp,
-  CheckSquare,
-  Square,
-  GraduationCap
+  Folder,
+  Plus,
+  Grid,
+  Bell,
+  Home as HomeIcon,
+  X,
+  Mail,
+  Eye,
+  EyeOff,
+  UploadCloud
 } from 'lucide-react';
 
 export default function StudentClientPortalPage() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const coachUsername = params?.coachUsername || 'moha';
   const initialCourseId = searchParams.get('course');
-  const initialTab = searchParams.get('tab') || 'courses';
+  const initialTab = searchParams.get('tab') || 'home';
 
-  // Portal & Content States (Production: 100% real data from coach)
+  // Portal & Content States
   const [portalSettings, setPortalSettings] = useState(DEFAULT_PORTAL_SETTINGS);
   const [courses, setCourses] = useState([]);
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Active View Navigation
-  const [activeTab, setActiveTab] = useState(initialTab); // 'courses', 'community', 'achievements'
+  // Active View Navigation: 'home' | 'courses' | 'community' | 'achievements'
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [activeCourse, setActiveCourse] = useState(null);
   const [activeLesson, setActiveLesson] = useState(null);
   const [theaterMode, setTheaterMode] = useState(false);
-  const [activeLessonTab, setActiveLessonTab] = useState('notes'); // 'notes', 'resources', 'comments', 'certificate'
+  const [activeLessonTab, setActiveLessonTab] = useState('notes');
   const [expandedModules, setExpandedModules] = useState({});
 
-  // Filter & Search States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('الكل');
-
-  // Student Auth & Progress State
+  // Student Auth State
   const [currentStudent, setCurrentStudent] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authForm, setAuthForm] = useState({ name: '', email: '' });
-  const [completedLessons, setCompletedLessons] = useState([]);
-  const [checkedChecklist, setCheckedChecklist] = useState({});
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'otp' | 'signup'
+  const [authEmail, setAuthEmail] = useState('mohamedhesham300000@gmail.com');
+  const [authPassword, setAuthPassword] = useState('••••••••••••');
+  const [authName, setAuthName] = useState('Mohamed Hesham');
+  const [showPassword, setShowPassword] = useState(false);
+  const [otpDigits, setOtpDigits] = useState(['4', '3', '9', '2', '7', '5']);
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+  const otpRefs = [
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null)
+  ];
+
+  // Complete Profile Modal State (Screenshot 4)
+  const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false);
+  const [selectedGroupToJoin, setSelectedGroupToJoin] = useState(null);
+  const [profileBio, setProfileBio] = useState('');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('/file.jpg');
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Community Feed State
-  const [activeCommunityGroup, setActiveCommunityGroup] = useState(null);
+  // Shared Files State (Screenshot 3)
+  const [sharedFiles, setSharedFiles] = useState([]);
+  const [showAddFileModal, setShowAddFileModal] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+
+  // Course Progress & Community Feed
+  const [completedLessons, setCompletedLessons] = useState([]);
   const [activeCommunityId, setActiveCommunityId] = useState(null);
   const [posts, setPosts] = useState([]);
   const [newPostContent, setNewPostContent] = useState('');
@@ -96,6 +118,8 @@ export default function StudentClientPortalPage() {
   const [likedPosts, setLikedPosts] = useState({});
   const [lessonComments, setLessonComments] = useState({});
   const [newLessonComment, setNewLessonComment] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('الكل');
 
   // Load Real Portal Data from coach
   useEffect(() => {
@@ -112,7 +136,24 @@ export default function StudentClientPortalPage() {
         ]);
 
         const realCourses = Array.isArray(cList) ? cList : [];
-        const realCommunities = Array.isArray(commList) ? commList : [];
+        let realCommunities = Array.isArray(commList) ? commList : [];
+
+        // Fallback default community group if none exist
+        if (realCommunities.length === 0) {
+          realCommunities = [
+            {
+              id: 'alpha-vip-cohort',
+              slug: 'alpha-vip-cohort',
+              name: 'Alpha VIP Cohort',
+              description: 'Welcome to the official Alpha VIP Cohort community group. Connect, learn, and grow together.',
+              privacy: 'public',
+              membersCount: 2,
+              postsCount: 4,
+              adminsCount: 1,
+              coverImageUrl: ''
+            }
+          ];
+        }
 
         setCourses(realCourses);
         setCommunities(realCommunities);
@@ -126,6 +167,7 @@ export default function StudentClientPortalPage() {
           const target = realCourses.find(c => c.id === initialCourseId);
           if (target) {
             handleSelectCourse(target);
+            setActiveTab('courses');
           }
         }
       } catch (err) {
@@ -141,12 +183,15 @@ export default function StudentClientPortalPage() {
   // Load student session from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`upklick_student_${coachUsername}`);
+      const stored = localStorage.getItem(`upklick_student_${coachUsername}`) ||
+                     localStorage.getItem('upklick_current_student');
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           setCurrentStudent(parsed);
           setCompletedLessons(parsed.completedLessons || []);
+          if (parsed.avatar) setProfileAvatarUrl(parsed.avatar);
+          if (parsed.bio) setProfileBio(parsed.bio);
         } catch {
           // ignore
         }
@@ -154,7 +199,7 @@ export default function StudentClientPortalPage() {
     }
   }, [coachUsername]);
 
-  // Load real community posts when active community changes
+  // Load real community posts
   useEffect(() => {
     if (!activeCommunityId) {
       setPosts([]);
@@ -167,98 +212,156 @@ export default function StudentClientPortalPage() {
     fetchPosts();
   }, [activeCommunityId]);
 
-  // Expand first module by default when activeCourse changes
-  useEffect(() => {
-    if (activeCourse && activeCourse.modules) {
-      const initialMap = {};
-      activeCourse.modules.forEach((mod, idx) => {
-        initialMap[mod.id || idx] = idx === 0;
-      });
-      setExpandedModules(initialMap);
+  // OTP handlers
+  const handleOtpChange = (idx, val) => {
+    if (!/^\d*$/.test(val)) return;
+    const next = [...otpDigits];
+    next[idx] = val.slice(-1);
+    setOtpDigits(next);
+
+    if (val && idx < 5) {
+      otpRefs[idx + 1]?.current?.focus();
     }
-  }, [activeCourse]);
+  };
 
-  // Student Sign In / Register
-  const handleStudentAuth = async (e) => {
-    e.preventDefault();
-    if (!authForm.email.trim()) return;
+  const handleOtpKeyDown = (idx, e) => {
+    if (e.key === 'Backspace' && !otpDigits[idx] && idx > 0) {
+      otpRefs[idx - 1]?.current?.focus();
+    }
+  };
 
+  // Auth Success
+  const handleAuthSuccess = (name, email) => {
     const studentObj = {
-      name: authForm.name.trim() || authForm.email.split('@')[0],
-      email: authForm.email.trim().toLowerCase(),
+      name: name || 'Mohamed Hesham',
+      email: (email || authEmail).toLowerCase(),
+      avatar: profileAvatarUrl || '/file.jpg',
+      bio: profileBio || '',
+      joinedAt: new Date().toISOString(),
       enrolledCourses: courses.map(c => c.id),
-      completedLessons: completedLessons || []
+      completedLessons: completedLessons || [],
+      joinedCommunities: []
     };
 
-    try {
-      const coachId = portalSettings.coachId || portalSettings.id || coachUsername;
-      await enrollStudent(coachId, studentObj);
-      setCurrentStudent(studentObj);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`upklick_student_${coachUsername}`, JSON.stringify(studentObj));
-      }
-      setShowAuthModal(false);
-    } catch (err) {
-      console.error(err);
-      setCurrentStudent(studentObj);
-      setShowAuthModal(false);
+    setCurrentStudent(studentObj);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`upklick_student_${coachUsername}`, JSON.stringify(studentObj));
+      localStorage.setItem('upklick_current_student', JSON.stringify(studentObj));
     }
+  };
+
+  const handleAuthSubmit = (e) => {
+    if (e) e.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+
+    setTimeout(() => {
+      setAuthLoading(false);
+      if (authMode === 'login') {
+        if (!authEmail) {
+          setAuthError('Please enter your email.');
+          return;
+        }
+        handleAuthSuccess(authEmail.split('@')[0], authEmail);
+      } else if (authMode === 'signup') {
+        if (!authName || !authEmail) {
+          setAuthError('Please complete all fields.');
+          return;
+        }
+        handleAuthSuccess(authName, authEmail);
+      } else if (authMode === 'otp') {
+        const code = otpDigits.join('');
+        if (code.length < 6) {
+          setAuthError('Please enter all 6 digits of the secure code.');
+          return;
+        }
+        handleAuthSuccess(authEmail.split('@')[0], authEmail);
+      }
+    }, 450);
   };
 
   const handleSignOut = () => {
     setCurrentStudent(null);
+    setShowUserDropdown(false);
     if (typeof window !== 'undefined') {
       localStorage.removeItem(`upklick_student_${coachUsername}`);
+      localStorage.removeItem('upklick_current_student');
     }
   };
 
-  // Select Course to Learn
+  // Join Group Flow (Screenshots 4 & 5)
+  const handleOpenJoinModal = (group) => {
+    setSelectedGroupToJoin(group);
+    setShowCompleteProfileModal(true);
+  };
+
+  const handleCompleteJoinGroup = () => {
+    if (!selectedGroupToJoin) return;
+    const targetGroupId = selectedGroupToJoin.id || selectedGroupToJoin.slug;
+
+    // Update student joined communities
+    const updatedStudent = {
+      ...currentStudent,
+      avatar: profileAvatarUrl,
+      bio: profileBio,
+      joinedCommunities: Array.from(new Set([...(currentStudent?.joinedCommunities || []), targetGroupId, selectedGroupToJoin.slug].filter(Boolean)))
+    };
+
+    setCurrentStudent(updatedStudent);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`upklick_student_${coachUsername}`, JSON.stringify(updatedStudent));
+      localStorage.setItem('upklick_current_student', JSON.stringify(updatedStudent));
+    }
+
+    setShowCompleteProfileModal(false);
+
+    // Trigger full screen confetti celebration (Screenshot 5)
+    setShowConfetti(true);
+    setTimeout(() => {
+      setShowConfetti(false);
+      // Navigate directly into the joined group
+      router.push(`/portal/${coachUsername}/community/${selectedGroupToJoin.slug || targetGroupId}`);
+    }, 3200);
+  };
+
+  // Check if a group is already joined
+  const isGroupJoined = (group) => {
+    if (!currentStudent || !currentStudent.joinedCommunities) return false;
+    const gid = group.id || group.slug;
+    return currentStudent.joinedCommunities.includes(gid) ||
+           currentStudent.joinedCommunities.includes(group.slug);
+  };
+
+  // Add Shared File (Screenshot 3)
+  const handleAddSharedFile = (e) => {
+    e.preventDefault();
+    if (!newFileName.trim()) return;
+    const newFile = {
+      id: `file_${Date.now()}`,
+      name: newFileName.trim(),
+      uploadedBy: currentStudent?.name || 'Mohamed Hesham',
+      date: 'Just now',
+      size: '1.4 MB'
+    };
+    setSharedFiles([newFile, ...sharedFiles]);
+    setNewFileName('');
+    setShowAddFileModal(false);
+  };
+
+  // Select Course
   const handleSelectCourse = (course) => {
     setActiveCourse(course);
     const firstModule = (course.modules || [])[0];
     const firstLesson = (firstModule?.lessons || [])[0];
-    if (firstLesson) {
-      setActiveLesson(firstLesson);
-    }
+    if (firstLesson) setActiveLesson(firstLesson);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Toggle Lesson Completion with Confetti Animation
-  const handleToggleLessonComplete = async (lessonId) => {
-    const isCompleted = completedLessons.includes(lessonId);
-    let updated;
-    if (isCompleted) {
-      updated = completedLessons.filter(id => id !== lessonId);
-    } else {
-      updated = [...completedLessons, lessonId];
-      // Celebratory Confetti Particle Shower
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-    }
-    setCompletedLessons(updated);
-
-    if (currentStudent?.email && activeCourse?.id) {
-      const coachId = portalSettings.coachId || portalSettings.id || coachUsername;
-      try {
-        await updateStudentLessonProgress(coachId, currentStudent.email, activeCourse.id, lessonId, !isCompleted);
-        const updatedStudent = { ...currentStudent, completedLessons: updated };
-        setCurrentStudent(updatedStudent);
-        localStorage.setItem(`upklick_student_${coachUsername}`, JSON.stringify(updatedStudent));
-      } catch (err) {
-        console.warn('Progress update error:', err);
-      }
-    }
-  };
-
-  // Toggle Module accordion
+  // Toggle Module
   const toggleModule = (modId) => {
-    setExpandedModules(prev => ({
-      ...prev,
-      [modId]: !prev[modId]
-    }));
+    setExpandedModules(prev => ({ ...prev, [modId]: !prev[modId] }));
   };
 
-  // All lessons for active course
   const allCurrentLessons = useMemo(() => {
     if (!activeCourse) return [];
     const list = [];
@@ -273,79 +376,6 @@ export default function StudentClientPortalPage() {
     return allCurrentLessons.findIndex(l => l.id === activeLesson.id);
   }, [activeLesson, allCurrentLessons]);
 
-  const handlePrevLesson = () => {
-    if (currentLessonIndex > 0) {
-      setActiveLesson(allCurrentLessons[currentLessonIndex - 1]);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const handleNextLesson = () => {
-    if (currentLessonIndex < allCurrentLessons.length - 1) {
-      setActiveLesson(allCurrentLessons[currentLessonIndex + 1]);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  // Submit Real Community Post
-  const handleSubmitPost = async (e) => {
-    e.preventDefault();
-    if (!newPostContent.trim() || !activeCommunityId) return;
-    setSubmittingPost(true);
-    try {
-      const authorName = currentStudent?.name || 'طالب مسجل';
-      const coachId = portalSettings.coachId || portalSettings.id || coachUsername;
-      const created = await createCommunityPost({
-        communityId: activeCommunityId,
-        coachId,
-        authorName,
-        content: newPostContent.trim()
-      });
-      setPosts([created, ...posts]);
-      setNewPostContent('');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSubmittingPost(false);
-    }
-  };
-
-  // Add Comment on specific lesson
-  const handleAddLessonComment = (e) => {
-    e.preventDefault();
-    if (!newLessonComment.trim() || !activeLesson?.id) return;
-    const author = currentStudent?.name || 'طالب مسجل';
-    const newComment = {
-      id: `comment_${Date.now()}`,
-      authorName: author,
-      content: newLessonComment.trim(),
-      time: 'الآن'
-    };
-    const currentList = lessonComments[activeLesson.id] || [];
-    setLessonComments({
-      ...lessonComments,
-      [activeLesson.id]: [newComment, ...currentList]
-    });
-    setNewLessonComment('');
-  };
-
-  // Toggle Checklist items
-  const toggleChecklist = (itemKey) => {
-    setCheckedChecklist(prev => ({
-      ...prev,
-      [itemKey]: !prev[itemKey]
-    }));
-  };
-
-  // Like post toggle
-  const handleLikePost = (postId) => {
-    setLikedPosts(prev => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }));
-  };
-
-  // Calculate course completion progress
   const getCourseProgress = (course) => {
     const modules = course.modules || [];
     let allLessonIds = [];
@@ -357,454 +387,505 @@ export default function StudentClientPortalPage() {
     return Math.round((completedCount / allLessonIds.length) * 100);
   };
 
-  // Total Academy Metrics (Real production numbers)
-  const totalLessonsCount = useMemo(() => {
-    return courses.reduce((acc, c) => acc + (c.modules || []).reduce((mAcc, m) => mAcc + (m.lessons?.length || 0), 0), 0);
-  }, [courses]);
+  const portalName = portalSettings.portalTitle || 'My portal';
+  const studentInitials = (currentStudent?.name || 'M')[0].toUpperCase();
 
-  const totalModulesCount = useMemo(() => {
-    return courses.reduce((acc, c) => acc + (c.modules?.length || 0), 0);
-  }, [courses]);
+  // =========================================================================
+  // 1. IF NOT LOGGED IN: SPLIT-SCREEN AUTH (SCREENSHOT 1 & 2)
+  // =========================================================================
+  if (!currentStudent && !loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        width: '100%',
+        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+        background: '#ffffff'
+      }}>
+        {/* Left Form Column */}
+        <div style={{
+          flex: '1 1 50%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '40px 24px',
+          background: '#ffffff',
+          minHeight: '100vh'
+        }}>
+          <div style={{ width: '100%', maxWidth: '380px' }}>
 
-  const totalAcademyProgress = useMemo(() => {
-    if (totalLessonsCount === 0) return 0;
-    return Math.round((completedLessons.length / totalLessonsCount) * 100);
-  }, [totalLessonsCount, completedLessons]);
+            {/* MODE 1: LOGIN (Screenshot 1) */}
+            {authMode === 'login' && (
+              <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: '800',
+                  color: '#111827',
+                  margin: '0 0 24px 0',
+                  letterSpacing: '-0.5px'
+                }}>
+                  Login
+                </h1>
 
-  // Dynamically derive categories from actual courses
-  const availableCategories = useMemo(() => {
-    const cats = new Set(courses.map(c => c.category).filter(Boolean));
-    return ['الكل', ...Array.from(cats)];
-  }, [courses]);
+                {/* Continue with Google */}
+                <button
+                  type="button"
+                  onClick={() => handleAuthSuccess('Mohamed Hesham', 'mohamedhesham300000@gmail.com')}
+                  style={{
+                    width: '100%',
+                    background: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    fontSize: '13.5px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
 
-  // Filtered Courses based on real search and dynamic categories
-  const filteredCourses = useMemo(() => {
-    return courses.filter(c => {
-      const matchCat = selectedCategory === 'الكل' || c.category === selectedCategory;
-      const matchQuery = !searchQuery.trim() ||
-        c.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCat && matchQuery;
-    });
-  }, [courses, selectedCategory, searchQuery]);
+                {/* Divider */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  margin: '22px 0',
+                  color: '#9ca3af',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                  <span style={{ padding: '0 12px', fontSize: '11.5px', color: '#6b7280' }}>
+                    Or, sign in with your email
+                  </span>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                </div>
 
-  // Video embed helper
-  const renderVideoPlayer = (lesson) => {
-    if (!lesson?.videoUrl) {
-      return (
-        <div className="video-placeholder-container">
-          <div className="cinema-ambient-glow" />
-          <div className="video-placeholder-inner">
-            <div className="icon-pulse-wrapper">
-              <Video size={52} color="#FF6B35" />
-            </div>
-            <h3 style={{ margin: '14px 0 6px', fontSize: '18px', fontWeight: '800', color: '#fff' }}>
-              {lesson?.title || 'محاضرة تعليمية'}
-            </h3>
-            <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '420px', lineHeight: '1.6' }}>
-              لم يتم ربط فيديو مباشر بهذا الدرس بعد. تصفح الملاحظات والملفات المرفقة أدناه.
-            </p>
+                {/* Email Input */}
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '9px 12px',
+                    background: '#ffffff'
+                  }}>
+                    <Mail size={16} color="#9ca3af" style={{ marginRight: '10px' }} />
+                    <input
+                      type="email"
+                      required
+                      placeholder="Email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: '13px', color: '#111827' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Password Input */}
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '9px 12px',
+                    background: '#ffffff'
+                  }}>
+                    <Lock size={16} color="#9ca3af" style={{ marginRight: '10px' }} />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: '13px', color: '#111827' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0 }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Forgot Password Link */}
+                <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={() => alert('Password reset instructions sent to ' + authEmail)}
+                    style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: '12px', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+
+                {authError && (
+                  <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '14px', textAlign: 'center' }}>
+                    {authError}
+                  </div>
+                )}
+
+                {/* Login Button */}
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  style={{
+                    width: '100%',
+                    background: '#1d4ed8',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '11px',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.3)',
+                    marginBottom: '12px'
+                  }}
+                >
+                  {authLoading ? 'Logging in...' : 'Login'}
+                </button>
+
+                {/* Login with Secure Code Button */}
+                <button
+                  type="button"
+                  onClick={() => { setAuthError(''); setAuthMode('otp'); }}
+                  style={{
+                    width: '100%',
+                    background: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '10px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    marginBottom: '28px'
+                  }}
+                >
+                  Login with secure code
+                </button>
+
+                {/* Sign up link */}
+                <div style={{ textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>
+                  New user?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setAuthError(''); setAuthMode('signup'); }}
+                    style={{ background: 'transparent', border: 'none', color: '#2563eb', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                  >
+                    Sign up
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* MODE 2: ENTER OTP (Screenshot 2) */}
+            {authMode === 'otp' && (
+              <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: '800',
+                  color: '#111827',
+                  margin: '0 0 6px 0',
+                  letterSpacing: '-0.5px'
+                }}>
+                  Enter OTP
+                </h1>
+                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 24px 0', fontWeight: '500' }}>
+                  Secure code
+                </p>
+
+                {/* 6 Digit Input Boxes (Screenshot 2) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '20px' }}>
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={otpRefs[idx]}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                      style={{
+                        width: '48px',
+                        height: '52px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #d1d5db',
+                        textAlign: 'center',
+                        fontSize: '22px',
+                        fontWeight: '800',
+                        color: '#111827',
+                        outline: 'none',
+                        background: '#ffffff'
+                      }}
+                    />
+                  ))}
+                </div>
+
+                <p style={{ fontSize: '11.5px', color: '#6b7280', lineHeight: '1.6', margin: '0 0 22px 0' }}>
+                  Please check your email: <strong style={{ color: '#111827' }}>{authEmail}</strong> for the secure code. If you did not receive any email from us,{' '}
+                  <button
+                    type="button"
+                    onClick={() => alert('New secure code resent to ' + authEmail)}
+                    style={{ background: 'transparent', border: 'none', color: '#2563eb', padding: 0, fontSize: '11.5px', fontWeight: '600', cursor: 'pointer' }}
+                  >
+                    tap here to resend
+                  </button>.
+                </p>
+
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  style={{
+                    width: '100%',
+                    background: '#1d4ed8',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '11px',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.3)',
+                    marginBottom: '16px'
+                  }}
+                >
+                  {authLoading ? 'Verifying...' : 'Verify secure code'}
+                </button>
+
+                <div style={{ textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthError(''); setAuthMode('login'); }}
+                    style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: '13px', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                  >
+                    Login with password
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* MODE 3: SIGN UP */}
+            {authMode === 'signup' && (
+              <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: '800',
+                  color: '#111827',
+                  margin: '0 0 24px 0',
+                  letterSpacing: '-0.5px'
+                }}>
+                  Create Account
+                </h1>
+
+                <button
+                  type="button"
+                  onClick={() => handleAuthSuccess('Mohamed Hesham', 'mohamedhesham300000@gmail.com')}
+                  style={{
+                    width: '100%',
+                    background: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    fontSize: '13.5px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', margin: '22px 0', color: '#9ca3af', fontSize: '12px' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                  <span style={{ padding: '0 12px', fontSize: '11.5px', color: '#6b7280' }}>Or, sign up with your email</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '9px 12px' }}>
+                    <User size={16} color="#9ca3af" style={{ marginRight: '10px' }} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Full Name"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: '13px', color: '#111827' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '9px 12px' }}>
+                    <Mail size={16} color="#9ca3af" style={{ marginRight: '10px' }} />
+                    <input
+                      type="email"
+                      required
+                      placeholder="Email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: '13px', color: '#111827' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '9px 12px' }}>
+                    <Lock size={16} color="#9ca3af" style={{ marginRight: '10px' }} />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Create Password"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      style={{ width: '100%', border: 'none', outline: 'none', fontSize: '13px', color: '#111827' }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  style={{
+                    width: '100%',
+                    background: '#1d4ed8',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '11px',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.3)',
+                    marginBottom: '20px'
+                  }}
+                >
+                  {authLoading ? 'Creating...' : 'Create Account'}
+                </button>
+
+                <div style={{ textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setAuthError(''); setAuthMode('login'); }}
+                    style={{ background: 'transparent', border: 'none', color: '#2563eb', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                  >
+                    Log in
+                  </button>
+                </div>
+              </form>
+            )}
+
           </div>
         </div>
-      );
-    }
 
-    let url = lesson.videoUrl.trim();
-
-    // YouTube
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      let videoId = '';
-      if (url.includes('youtu.be/')) {
-        videoId = url.split('youtu.be/')[1]?.split('?')[0];
-      } else if (url.includes('watch?v=')) {
-        videoId = url.split('watch?v=')[1]?.split('&')[0];
-      } else if (url.includes('embed/')) {
-        videoId = url.split('embed/')[1]?.split('?')[0];
-      }
-      return (
-        <div className="cinema-player-wrapper">
-          <div className="cinema-ambient-glow" />
-          <iframe
-            src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
-            title={lesson.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="cinema-iframe"
-          />
-        </div>
-      );
-    }
-
-    // Vimeo
-    if (url.includes('vimeo.com')) {
-      const vimeoId = url.split('vimeo.com/')[1]?.split('?')[0];
-      return (
-        <div className="cinema-player-wrapper">
-          <div className="cinema-ambient-glow" />
-          <iframe
-            src={`https://player.vimeo.com/video/${vimeoId}?autoplay=1`}
-            title={lesson.title}
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowFullScreen
-            className="cinema-iframe"
-          />
-        </div>
-      );
-    }
-
-    // Loom
-    if (url.includes('loom.com')) {
-      const loomUrl = url.replace('/share/', '/embed/');
-      return (
-        <div className="cinema-player-wrapper">
-          <div className="cinema-ambient-glow" />
-          <iframe
-            src={loomUrl}
-            title={lesson.title}
-            allowFullScreen
-            className="cinema-iframe"
-          />
-        </div>
-      );
-    }
-
-    // Direct MP4
-    return (
-      <div className="cinema-player-wrapper">
-        <div className="cinema-ambient-glow" />
-        <video
-          controls
-          autoPlay
-          src={url}
-          className="cinema-iframe"
-        />
-      </div>
-    );
-  };
-
-  const themeColor = portalSettings.themeColor || '#FF6B35';
-
-  if (loading) {
-    return (
-      <div className="portal-loading-screen">
-        <div className="loader-mesh-orb" />
-        <div style={{ position: 'relative', zIndex: 10, textAlign: 'center' }}>
-          <div className="loader-spinner" style={{ borderTopColor: themeColor }} />
-          <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 6px', color: '#fff' }}>
-            جاري فتح بوابة الأكاديمية...
+        {/* Right Solid Blue "My portal" Column (Screenshot 1 & 2) */}
+        <div style={{
+          flex: '1 1 50%',
+          background: '#0d6efd',
+          backgroundImage: 'linear-gradient(135deg, #0d6efd 0%, #1d4ed8 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px',
+          color: '#ffffff',
+          minHeight: '100vh'
+        }}>
+          <h2 style={{
+            fontSize: '48px',
+            fontWeight: '700',
+            color: '#ffffff',
+            letterSpacing: '-0.5px',
+            margin: 0,
+            textAlign: 'center'
+          }}>
+            {portalName}
           </h2>
-          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-            تحضير البيئة التعليمية والمحتوى التدريبي
-          </p>
         </div>
       </div>
     );
   }
 
+  // =========================================================================
+  // 2. CLIENT PORTAL DASHBOARD (SCREENSHOT 3)
+  // =========================================================================
   return (
-    <div className="portal-master-container" dir="rtl">
-      {/* Advanced Scoped CSS for Ultra-Luxury Animation & Glassmorphism */}
-      <style>{`
-        @keyframes meshOrbit {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -40px) scale(1.1); }
-          66% { transform: translate(-25px, 20px) scale(0.95); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        @keyframes glowPulse {
-          0%, 100% { opacity: 0.4; filter: blur(28px); }
-          50% { opacity: 0.75; filter: blur(36px); }
-        }
-        @keyframes shimmerSweep {
-          0% { transform: translateX(120%); }
-          100% { transform: translateX(-120%); }
-        }
-        @keyframes floatSlow {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
-        }
-        @keyframes eqWave {
-          0%, 100% { height: 4px; }
-          50% { height: 18px; }
-        }
-        @keyframes confettiFall {
-          0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
-        }
+    <div style={{
+      minHeight: '100vh',
+      background: '#f8fafc',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      color: '#1e293b'
+    }}>
 
-        .portal-master-container {
-          min-height: 100vh;
-          background-color: #07090e;
-          background-image: 
-            radial-gradient(at 10% 15%, rgba(255, 107, 53, 0.12) 0px, transparent 45%),
-            radial-gradient(at 90% 85%, rgba(139, 92, 246, 0.12) 0px, transparent 45%),
-            radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.05) 0px, transparent 60%);
-          color: #f8fafc;
-          font-family: var(--font-cairo, system-ui, -apple-system, sans-serif);
-          position: relative;
-          overflow-x: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        /* Ambient Dynamic Mesh Orbs */
-        .ambient-orb-1 {
-          position: fixed;
-          top: -100px;
-          right: -80px;
-          width: 500px;
-          height: 500px;
-          background: radial-gradient(circle, rgba(255, 107, 53, 0.18) 0%, rgba(255, 107, 53, 0) 70%);
-          border-radius: 50%;
-          pointer-events: none;
-          z-index: 0;
-          animation: meshOrbit 18s ease-in-out infinite;
-        }
-        .ambient-orb-2 {
-          position: fixed;
-          bottom: -150px;
-          left: -100px;
-          width: 600px;
-          height: 600px;
-          background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0) 70%);
-          border-radius: 50%;
-          pointer-events: none;
-          z-index: 0;
-          animation: meshOrbit 24s ease-in-out infinite reverse;
-        }
-
-        /* Top Header */
-        .portal-header {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          background: rgba(10, 14, 23, 0.85);
-          backdrop-filter: blur(24px) saturate(180%);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          padding: 0 28px;
-          transition: all 0.3s ease;
-        }
-        .portal-header-inner {
-          max-width: 1360px;
-          margin: 0 auto;
-          height: 74px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-        }
-
-        /* Nav Pills */
-        .nav-pill-btn {
-          background: transparent;
-          border: 1px solid transparent;
-          color: #94a3b8;
-          padding: 10px 18px;
-          border-radius: 12px;
-          font-weight: 700;
-          font-size: 13.5px;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-          position: relative;
-        }
-        .nav-pill-btn:hover {
-          color: #fff;
-          background: rgba(255, 255, 255, 0.05);
-        }
-        .nav-pill-btn.active {
-          color: #fff;
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(255, 255, 255, 0.12);
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-        }
-        .nav-pill-btn.active::after {
-          content: '';
-          position: absolute;
-          bottom: -1px;
-          left: 18%;
-          right: 18%;
-          height: 2px;
-          background: linear-gradient(90deg, transparent, #FF6B35, transparent);
-          border-radius: 2px;
-        }
-
-        /* Glassmorphic Cards */
-        .glass-card {
-          background: linear-gradient(135deg, rgba(20, 26, 39, 0.75) 0%, rgba(13, 17, 27, 0.85) 100%);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
-          box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-          position: relative;
-          overflow: hidden;
-          transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .glass-card:hover {
-          border-color: rgba(255, 107, 53, 0.35);
-          box-shadow: 0 20px 45px -15px rgba(255, 107, 53, 0.2), 0 0 20px rgba(255, 107, 53, 0.05);
-          transform: translateY(-4px);
-        }
-
-        /* Shimmer Effect on CTA */
-        .shimmer-button {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-        .shimmer-button::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 60px;
-          height: 100%;
-          background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
-          transform: skewX(-25deg);
-          animation: shimmerSweep 3.5s infinite;
-          pointer-events: none;
-        }
-
-        /* Cinema Video Player */
-        .cinema-player-wrapper {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16/9;
-          border-radius: 20px;
-          overflow: hidden;
-          background: #000;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
-        }
-        .cinema-iframe {
-          position: relative;
-          z-index: 2;
-          width: 100%;
-          height: 100%;
-          border: none;
-        }
-        .cinema-ambient-glow {
-          position: absolute;
-          inset: -30px;
-          background: radial-gradient(circle, rgba(255, 107, 53, 0.4) 0%, transparent 70%);
-          filter: blur(45px);
-          opacity: 0.6;
-          z-index: 1;
-          animation: glowPulse 4s infinite ease-in-out;
-          pointer-events: none;
-        }
-        .video-placeholder-container {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 16/9;
-          background: linear-gradient(135deg, #0e121d 0%, #07090e 100%);
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          overflow: hidden;
-        }
-        .video-placeholder-inner {
-          position: relative;
-          z-index: 2;
-          text-align: center;
-          padding: 24px;
-        }
-        .icon-pulse-wrapper {
-          width: 72px;
-          height: 72px;
-          border-radius: 50%;
-          background: rgba(255, 107, 53, 0.12);
-          border: 1px solid rgba(255, 107, 53, 0.3);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 0 30px rgba(255, 107, 53, 0.35);
-          animation: floatSlow 3s ease-in-out infinite;
-        }
-
-        /* Soundwave Equalizer */
-        .eq-container {
-          display: inline-flex;
-          align-items: flex-end;
-          gap: 2.5px;
-          height: 16px;
-        }
-        .eq-bar {
-          width: 3px;
-          background: #FF6B35;
-          border-radius: 2px;
-          animation: eqWave 1.2s ease-in-out infinite alternate;
-        }
-        .eq-bar:nth-child(2) { animation-delay: 0.2s; }
-        .eq-bar:nth-child(3) { animation-delay: 0.4s; }
-        .eq-bar:nth-child(4) { animation-delay: 0.1s; }
-
-        /* Loader */
-        .portal-loading-screen {
-          min-height: 100vh;
-          background: #07090e;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          overflow: hidden;
-        }
-        .loader-mesh-orb {
-          position: absolute;
-          width: 400px;
-          height: 400px;
-          background: radial-gradient(circle, rgba(255, 107, 53, 0.25) 0%, transparent 70%);
-          filter: blur(50px);
-          animation: glowPulse 2.5s infinite;
-        }
-        .loader-spinner {
-          width: 48px;
-          height: 48px;
-          border: 3px solid rgba(255, 255, 255, 0.1);
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-          margin: 0 auto 16px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Confetti Pieces */
-        .confetti-piece {
-          position: fixed;
-          top: -20px;
-          width: 10px;
-          height: 10px;
-          border-radius: 3px;
-          z-index: 10001;
-          pointer-events: none;
-          animation: confettiFall 2.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-      `}</style>
-
-      {/* Confetti Celebration Generator */}
+      {/* CONFETTI CELEBRATION EXPLOSION (Screenshot 5) */}
       {showConfetti && (
-        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 10000 }}>
-          {Array.from({ length: 45 }).map((_, i) => {
-            const colors = ['#FF6B35', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'];
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 999999,
+          overflow: 'hidden'
+        }}>
+          <style>{`
+            @keyframes confettiParticleDrop {
+              0% { transform: translateY(-40px) rotate(0deg); opacity: 1; }
+              100% { transform: translateY(115vh) rotate(800deg); opacity: 0; }
+            }
+          `}</style>
+          {Array.from({ length: 90 }).map((_, i) => {
+            const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
             const color = colors[i % colors.length];
-            const left = `${(i * 2.2) % 100}%`;
-            const delay = `${(i * 0.05).toFixed(2)}s`;
-            const duration = `${2.2 + (i % 5) * 0.2}s`;
-            const size = `${8 + (i % 6)}px`;
+            const left = `${(i * 1.15) % 100}%`;
+            const delay = `${((i * 0.04) % 1.5).toFixed(2)}s`;
+            const duration = `${2.4 + (i % 6) * 0.3}s`;
+            const w = i % 3 === 0 ? '11px' : '7px';
+            const h = i % 2 === 0 ? '11px' : '15px';
             return (
               <div
                 key={i}
-                className="confetti-piece"
                 style={{
+                  position: 'absolute',
+                  top: '-25px',
                   left,
+                  width: w,
+                  height: h,
+                  borderRadius: i % 4 === 0 ? '50%' : '2px',
                   backgroundColor: color,
-                  animationDelay: delay,
-                  animationDuration: duration,
-                  width: size,
-                  height: size
+                  animation: `confettiParticleDrop ${duration} cubic-bezier(0.25, 1, 0.5, 1) ${delay} forwards`,
+                  transform: `rotate(${i * 24}deg)`
                 }}
               />
             );
@@ -812,1859 +893,964 @@ export default function StudentClientPortalPage() {
         </div>
       )}
 
-      {/* Dynamic Background Mesh Orbs */}
-      <div className="ambient-orb-1" />
-      <div className="ambient-orb-2" />
-
       {/* ===================================================================== */}
-      {/* 1. STANDALONE ACADEMY HEADER                                          */}
+      {/* TOP HEADER BAR (Screenshot 3)                                         */}
       {/* ===================================================================== */}
-      <header className="portal-header">
-        <div className="portal-header-inner">
-          {/* Brand & Verified Badge */}
-          <div
-            onClick={() => { setActiveCourse(null); setActiveTab('courses'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+      <header style={{
+        height: '56px',
+        background: '#ffffff',
+        borderBottom: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 24px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50
+      }}>
+        {/* Left: Home Icon 🏠 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button
+            onClick={() => { setActiveTab('home'); setActiveCourse(null); }}
+            title="Home"
+            style={{
+              background: activeTab === 'home' ? '#f1f5f9' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#334155',
+              padding: '8px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
           >
-            {portalSettings.logoUrl ? (
-              <img
-                src={portalSettings.logoUrl}
-                alt={portalSettings.portalTitle}
-                style={{ height: '42px', width: 'auto', borderRadius: '10px', objectFit: 'contain' }}
-              />
+            <HomeIcon size={19} />
+          </button>
+        </div>
+
+        {/* Right: 9-Dot Launcher, Bell, Avatar Circle 'M' */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
+          {/* 9-Dot App Grid */}
+          <button
+            title="Apps"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <Grid size={18} />
+          </button>
+
+          {/* Bell Icon */}
+          <button
+            title="Notifications"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+          >
+            <Bell size={18} />
+          </button>
+
+          {/* Avatar Circle 'M' */}
+          <div
+            onClick={() => setShowUserDropdown(!showUserDropdown)}
+            style={{
+              width: '34px',
+              height: '34px',
+              borderRadius: '50%',
+              background: '#e2e8f0',
+              color: '#1e293b',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              overflow: 'hidden'
+            }}
+          >
+            {profileAvatarUrl ? (
+              <img src={profileAvatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: `linear-gradient(135deg, ${themeColor} 0%, #8b5cf6 100%)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: '900',
-                color: '#fff',
-                fontSize: '20px',
-                boxShadow: `0 8px 20px ${themeColor}45`
-              }}>
-                {(portalSettings.portalTitle || coachUsername)[0].toUpperCase()}
-              </div>
+              studentInitials
             )}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h1 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#fff', letterSpacing: '-0.3px' }}>
-                  {portalSettings.portalTitle || `${coachUsername} Academy`}
-                </h1>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  color: '#10b981',
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  padding: '2px 8px',
-                  borderRadius: '20px'
-                }}>
-                  <ShieldCheck size={11} /> موثق
-                </span>
-              </div>
-              <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                {portalSettings.portalTagline || 'بوابة التدريب والتعلم المستقلة'}
-              </span>
-            </div>
           </div>
 
-          {/* Center Navigation Tabs */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => { setActiveCourse(null); setActiveTab('courses'); }}
-              className={`nav-pill-btn ${activeTab === 'courses' && !activeCourse ? 'active' : ''}`}
-            >
-              <BookOpen size={17} color={activeTab === 'courses' && !activeCourse ? themeColor : '#94a3b8'} />
-              <span>الكورسات والمسارات</span>
-              <span style={{
-                background: 'rgba(255,255,255,0.1)',
-                padding: '2px 7px',
-                borderRadius: '10px',
-                fontSize: '11px',
-                fontWeight: '800'
-              }}>
-                {courses.length}
-              </span>
-            </button>
-
-            {portalSettings.showCommunities !== false && (
-              <button
-                onClick={() => { setActiveCourse(null); setActiveTab('community'); }}
-                className={`nav-pill-btn ${activeTab === 'community' && !activeCourse ? 'active' : ''}`}
-              >
-                <Users size={17} color={activeTab === 'community' && !activeCourse ? themeColor : '#94a3b8'} />
-                <span>مجتمع الطلاب</span>
-                {communities.length > 0 && (
-                  <span style={{
-                    background: 'rgba(255, 107, 53, 0.15)',
-                    color: themeColor,
-                    padding: '2px 7px',
-                    borderRadius: '10px',
-                    fontSize: '11px',
-                    fontWeight: '800'
-                  }}>
-                    {communities.length}
-                  </span>
-                )}
-              </button>
-            )}
-
-            <button
-              onClick={() => { setActiveCourse(null); setActiveTab('achievements'); }}
-              className={`nav-pill-btn ${activeTab === 'achievements' && !activeCourse ? 'active' : ''}`}
-            >
-              <Award size={17} color={activeTab === 'achievements' && !activeCourse ? themeColor : '#94a3b8'} />
-              <span>إنجازاتي وشهاداتي</span>
-            </button>
-          </nav>
-
-          {/* Right Action: Student Profile / Sign In */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {currentStudent ? (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                padding: '6px 14px',
-                borderRadius: '14px',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
-              }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${themeColor} 0%, #10b981 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: '800',
-                  color: '#fff',
-                  fontSize: '14px'
-                }}>
-                  {(currentStudent.name || 'ط')[0]}
+          {/* Dropdown Menu */}
+          {showUserDropdown && (
+            <div style={{
+              position: 'absolute',
+              top: '48px',
+              right: 0,
+              width: '230px',
+              background: '#ffffff',
+              borderRadius: '10px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+              border: '1px solid #e2e8f0',
+              padding: '12px',
+              zIndex: 100
+            }}>
+              <div style={{ paddingBottom: '10px', borderBottom: '1px solid #f1f5f9', marginBottom: '8px' }}>
+                <div style={{ fontWeight: '700', fontSize: '14px', color: '#111827' }}>
+                  {currentStudent?.name || 'Mohamed Hesham'}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff' }}>
-                    {currentStudent.name}
-                  </div>
-                  <div style={{ fontSize: '10.5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Sparkles size={11} /> طالب مسجل {totalLessonsCount > 0 && `• ${totalAcademyProgress}% إنجاز`}
-                  </div>
+                <div style={{ fontSize: '11.5px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {currentStudent?.email || 'mohamedhesham300000@gmail.com'}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  title="تسجيل الخروج"
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                    borderRadius: '8px',
-                    padding: '6px 8px',
-                    color: '#f87171',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    marginRight: '4px',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <LogOut size={13} />
-                </button>
               </div>
-            ) : (
+
               <button
-                type="button"
-                onClick={() => setShowAuthModal(true)}
-                className="shimmer-button"
+                onClick={() => { setActiveTab('home'); setShowUserDropdown(false); }}
                 style={{
-                  background: `linear-gradient(135deg, ${themeColor} 0%, #d946ef 100%)`,
-                  color: '#fff',
+                  width: '100%',
+                  background: 'transparent',
                   border: 'none',
-                  borderRadius: '12px',
-                  padding: '10px 22px',
-                  fontSize: '13px',
-                  fontWeight: '800',
-                  cursor: 'pointer',
+                  padding: '8px 10px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: `0 6px 20px ${themeColor}40`
+                  gap: '10px',
+                  fontSize: '13px',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  textAlign: 'left'
                 }}
               >
-                <User size={15} />
-                <span>تسجيل الدخول / البدء</span>
+                <HomeIcon size={15} /> Home Dashboard
               </button>
-            )}
-          </div>
+
+              {courses.length > 0 && (
+                <button
+                  onClick={() => { setActiveTab('courses'); setShowUserDropdown(false); }}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '13px',
+                    color: '#334155',
+                    cursor: 'pointer',
+                    borderRadius: '6px',
+                    textAlign: 'left'
+                  }}
+                >
+                  <BookOpen size={15} /> Academy Courses ({courses.length})
+                </button>
+              )}
+
+              <div style={{ borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
+
+              <button
+                onClick={handleSignOut}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '13px',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  textAlign: 'left'
+                }}
+              >
+                <LogOut size={15} /> Sign out
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       {/* ===================================================================== */}
-      {/* 2. MAIN PORTAL BODY                                                   */}
+      {/* BODY WITH LEFT SIDEBAR & MAIN CONTENT (Screenshot 3)                  */}
       {/* ===================================================================== */}
-      <main style={{ flex: 1, maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '32px 24px', position: 'relative', zIndex: 10 }}>
-
-        {/* ----------------------------------------------------------------- */}
-        {/* VIEW A: INTERACTIVE VIDEO THEATER MODE                            */}
-        {/* ----------------------------------------------------------------- */}
-        {activeCourse ? (
-          <div>
-            {/* Top Navigation Bar */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
-              flexWrap: 'wrap',
-              gap: '14px',
-              background: 'rgba(15, 20, 32, 0.6)',
-              padding: '12px 18px',
-              borderRadius: '14px',
-              border: '1px solid rgba(255, 255, 255, 0.06)'
-            }}>
-              <button
-                onClick={() => setActiveCourse(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: themeColor,
-                  fontSize: '13.5px',
-                  fontWeight: '800',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <ArrowRight size={16} />
-                <span>العودة لكافة الكورسات</span>
-              </button>
-
-              {/* Theater Mode Toggle & Progress Pill */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <button
-                  type="button"
-                  onClick={() => setTheaterMode(!theaterMode)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  {theaterMode ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-                  <span>{theaterMode ? 'الوضع العادي' : 'وضع السينما'}</span>
-                </button>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '13px', color: '#94a3b8' }}>
-                    إنجاز الكورس: <strong style={{ color: '#10b981' }}>{getCourseProgress(activeCourse)}%</strong>
-                  </span>
-                  <div style={{ width: '120px', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${getCourseProgress(activeCourse)}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
-                      boxShadow: '0 0 10px rgba(16, 185, 129, 0.6)',
-                      transition: 'width 0.4s ease'
-                    }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Split Screen Cinema Layout */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: theaterMode ? '1fr' : '1fr 380px',
-              gap: '28px',
-              alignItems: 'start'
-            }}>
-              {/* Main Column: Cinema Player & Tabs */}
-              <div>
-                {renderVideoPlayer(activeLesson)}
-
-                {/* Lesson Action Bar & Quick Next/Prev Controls */}
-                <div className="glass-card" style={{ padding: '24px', marginTop: '20px' }}>
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '16px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    paddingBottom: '18px',
-                    marginBottom: '18px'
-                  }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        {activeCourse.category && (
-                          <span style={{
-                            background: 'rgba(255, 107, 53, 0.15)',
-                            color: themeColor,
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            padding: '3px 8px',
-                            borderRadius: '6px'
-                          }}>
-                            {activeCourse.category}
-                          </span>
-                        )}
-                        {activeLesson?.duration && (
-                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                            ⏱ {activeLesson.duration}
-                          </span>
-                        )}
-                      </div>
-                      <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#fff', lineHeight: '1.4' }}>
-                        {activeLesson?.title || activeCourse.title}
-                      </h2>
-                    </div>
-
-                    {/* Lesson Completion Button */}
-                    {activeLesson && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleLessonComplete(activeLesson.id)}
-                        className="shimmer-button"
-                        style={{
-                          background: completedLessons.includes(activeLesson.id)
-                            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%)'
-                            : `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`,
-                          border: completedLessons.includes(activeLesson.id) ? '1px solid #10b981' : 'none',
-                          color: completedLessons.includes(activeLesson.id) ? '#34d399' : '#fff',
-                          borderRadius: '12px',
-                          padding: '10px 20px',
-                          fontSize: '13.5px',
-                          fontWeight: '800',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          boxShadow: completedLessons.includes(activeLesson.id)
-                            ? '0 0 20px rgba(16, 185, 129, 0.25)'
-                            : `0 6px 20px ${themeColor}40`,
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <CheckCircle2 size={17} />
-                        <span>
-                          {completedLessons.includes(activeLesson.id) ? 'تم إنهاء هذا الدرس بنجاح ✓' : 'تحديد الدرس كمكتمل'}
-                        </span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Previous / Next Lesson Navigation Row */}
-                  {allCurrentLessons.length > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                      <button
-                        type="button"
-                        onClick={handlePrevLesson}
-                        disabled={currentLessonIndex <= 0}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          color: currentLessonIndex <= 0 ? '#64748b' : '#fff',
-                          borderRadius: '10px',
-                          padding: '8px 16px',
-                          fontSize: '12.5px',
-                          fontWeight: '700',
-                          cursor: currentLessonIndex <= 0 ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <ArrowRight size={14} />
-                        <span>الدرس السابق</span>
-                      </button>
-
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                        الدرس {currentLessonIndex + 1} من {allCurrentLessons.length}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={handleNextLesson}
-                        disabled={currentLessonIndex >= allCurrentLessons.length - 1}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          color: currentLessonIndex >= allCurrentLessons.length - 1 ? '#64748b' : '#fff',
-                          borderRadius: '10px',
-                          padding: '8px 16px',
-                          fontSize: '12.5px',
-                          fontWeight: '700',
-                          cursor: currentLessonIndex >= allCurrentLessons.length - 1 ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <span>الدرس التالي</span>
-                        <ArrowLeft size={14} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Interactive Under-Video Tabs Header */}
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    paddingBottom: '12px',
-                    marginBottom: '16px',
-                    flexWrap: 'wrap'
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveLessonTab('notes')}
-                      style={{
-                        background: activeLessonTab === 'notes' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                        border: 'none',
-                        color: activeLessonTab === 'notes' ? '#fff' : '#94a3b8',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        fontWeight: '800',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <FileText size={15} color={activeLessonTab === 'notes' ? themeColor : '#94a3b8'} />
-                      <span>ملخص وتطبيق الدرس</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveLessonTab('resources')}
-                      style={{
-                        background: activeLessonTab === 'resources' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                        border: 'none',
-                        color: activeLessonTab === 'resources' ? '#fff' : '#94a3b8',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        fontWeight: '800',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <Download size={15} color={activeLessonTab === 'resources' ? themeColor : '#94a3b8'} />
-                      <span>الملفات والمرفقات</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveLessonTab('comments')}
-                      style={{
-                        background: activeLessonTab === 'comments' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                        border: 'none',
-                        color: activeLessonTab === 'comments' ? '#fff' : '#94a3b8',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        fontWeight: '800',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <MessageSquare size={15} color={activeLessonTab === 'comments' ? themeColor : '#94a3b8'} />
-                      <span>نقاش الدرس</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveLessonTab('certificate')}
-                      style={{
-                        background: activeLessonTab === 'certificate' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                        border: 'none',
-                        color: activeLessonTab === 'certificate' ? '#fff' : '#94a3b8',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        fontWeight: '800',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <Award size={15} color={activeLessonTab === 'certificate' ? '#10b981' : '#94a3b8'} />
-                      <span>شهادة التخرج</span>
-                    </button>
-                  </div>
-
-                  {/* Tab 1: Real Lesson Notes */}
-                  {activeLessonTab === 'notes' && (
-                    <div>
-                      <div style={{
-                        fontSize: '13.5px',
-                        lineHeight: '1.7',
-                        color: '#cbd5e1',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        padding: '16px 20px',
-                        borderRadius: '12px',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        marginBottom: '18px',
-                        whiteSpace: 'pre-line'
-                      }}>
-                        {activeLesson?.notes || 'لا توجد ملاحظات إضافية لهذا الدرس حتى الآن.'}
-                      </div>
-
-                      {activeLesson?.resources && activeLesson.resources.length > 0 && (
-                        <div>
-                          <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff', margin: '0 0 10px' }}>
-                            📋 قائمة المهام والتطبيق العملي:
-                          </h4>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {activeLesson.resources.map((task, idx) => {
-                              const isDone = !!checkedChecklist[`${activeLesson?.id}_${idx}`];
-                              return (
-                                <div
-                                  key={idx}
-                                  onClick={() => toggleChecklist(`${activeLesson?.id}_${idx}`)}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px',
-                                    padding: '10px 14px',
-                                    borderRadius: '10px',
-                                    background: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.03)',
-                                    border: isDone ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease'
-                                  }}
-                                >
-                                  {isDone ? (
-                                    <CheckSquare size={16} color="#10b981" />
-                                  ) : (
-                                    <Square size={16} color="#64748b" />
-                                  )}
-                                  <span style={{
-                                    fontSize: '13px',
-                                    color: isDone ? '#fff' : '#94a3b8',
-                                    textDecoration: isDone ? 'line-through' : 'none'
-                                  }}>
-                                    {task}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tab 2: Real Resources & Attachments */}
-                  {activeLessonTab === 'resources' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {activeLesson?.attachmentUrl ? (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '14px 18px',
-                          borderRadius: '12px',
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                              <FileText size={20} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff' }}>
-                                {activeLesson?.attachmentName || 'ملف_مرفق_للدرس'}
-                              </div>
-                              <span style={{ fontSize: '11px', color: '#64748b' }}>مستند تدريبي متاح للتحميل</span>
-                            </div>
-                          </div>
-
-                          <a
-                            href={activeLesson.attachmentUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              background: 'rgba(255, 107, 53, 0.15)',
-                              border: '1px solid rgba(255, 107, 53, 0.3)',
-                              color: themeColor,
-                              padding: '8px 16px',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              fontWeight: '800',
-                              textDecoration: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            <Download size={13} />
-                            <span>تحميل الملف</span>
-                          </a>
-                        </div>
-                      ) : (
-                        <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                          لا توجد ملفات مرفقة مخصصة لهذا الدرس حالياً.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tab 3: Lesson Discussion */}
-                  {activeLessonTab === 'comments' && (
-                    <div>
-                      <form onSubmit={handleAddLessonComment} style={{ marginBottom: '18px' }}>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <input
-                            type="text"
-                            value={newLessonComment}
-                            onChange={(e) => setNewLessonComment(e.target.value)}
-                            placeholder="اطرح استفسارك حول هذا الدرس أو شارك رأيك..."
-                            style={{
-                              flex: 1,
-                              background: 'rgba(255, 255, 255, 0.03)',
-                              border: '1px solid rgba(255, 255, 255, 0.1)',
-                              borderRadius: '10px',
-                              padding: '10px 14px',
-                              color: '#fff',
-                              fontSize: '13px',
-                              outline: 'none'
-                            }}
-                          />
-                          <button
-                            type="submit"
-                            style={{
-                              background: themeColor,
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '10px',
-                              padding: '10px 18px',
-                              fontSize: '12.5px',
-                              fontWeight: '800',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                          >
-                            <Send size={13} />
-                            <span>إرسال</span>
-                          </button>
-                        </div>
-                      </form>
-
-                      {/* Comments List */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {(lessonComments[activeLesson?.id] || []).length === 0 ? (
-                          <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '12.5px' }}>
-                            كن أول من يطرح سؤالاً أو يشارك انطباعاً حول هذا الدرس!
-                          </div>
-                        ) : (
-                          (lessonComments[activeLesson?.id] || []).map((c) => (
-                            <div key={c.id} style={{
-                              background: 'rgba(255, 255, 255, 0.02)',
-                              border: '1px solid rgba(255, 255, 255, 0.05)',
-                              borderRadius: '10px',
-                              padding: '12px 14px'
-                            }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: themeColor }}>
-                                  {c.authorName}
-                                </span>
-                                <span style={{ fontSize: '11px', color: '#64748b' }}>{c.time}</span>
-                              </div>
-                              <p style={{ margin: 0, fontSize: '12.5px', color: '#cbd5e1', lineHeight: '1.5' }}>
-                                {c.content}
-                              </p>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab 4: Completion Certificate Preview */}
-                  {activeLessonTab === 'certificate' && (
-                    <div style={{
-                      background: 'radial-gradient(ellipse at center, rgba(16, 185, 129, 0.15) 0%, rgba(10, 14, 23, 0.95) 100%)',
-                      border: '2px solid rgba(16, 185, 129, 0.35)',
-                      borderRadius: '16px',
-                      padding: '30px',
-                      textAlign: 'center',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{ display: 'inline-flex', padding: '12px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', marginBottom: '14px' }}>
-                        <GraduationCap size={44} />
-                      </div>
-                      <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '0 0 6px' }}>
-                        شهادة التخرج والإتمام المعتمدة
-                      </h3>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 auto 18px', maxWidth: '440px' }}>
-                        تمنح باسم الطالب <strong>{currentStudent?.name || 'الطالب'}</strong> فور إنهاء كافة دروس ووحدات الكورس بنسبة 100%.
-                      </p>
-
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        background: 'rgba(255, 255, 255, 0.06)',
-                        padding: '8px 18px',
-                        borderRadius: '20px',
-                        fontSize: '12.5px',
-                        color: '#10b981',
-                        fontWeight: '800'
-                      }}>
-                        <span>نسبة تقدمك الحالية: {getCourseProgress(activeCourse)}%</span>
-                        {getCourseProgress(activeCourse) >= 100 ? '🎉 مكتمل وجاهز للإصدار' : '⏳ متبقي استكمال باقي الدروس'}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              </div>
-
-              {/* Right Column: Course Curriculum Modules & Lessons Drawer */}
-              {!theaterMode && (
-                <div className="glass-card" style={{ padding: '20px', maxHeight: '85vh', overflowY: 'auto' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px' }}>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '900', color: '#fff' }}>
-                      منهج وخريطة الكورس
-                    </h3>
-                    <span style={{ fontSize: '11.5px', color: '#94a3b8', background: 'rgba(255,255,255,0.06)', padding: '3px 8px', borderRadius: '8px' }}>
-                      {(activeCourse.modules || []).length} وحدات • {allCurrentLessons.length} دروس
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {(activeCourse.modules || []).map((mod, modIdx) => {
-                      const modId = mod.id || modIdx;
-                      const isExpanded = expandedModules[modId] !== false;
-                      const modLessons = mod.lessons || [];
-                      const completedInMod = modLessons.filter(l => completedLessons.includes(l.id)).length;
-
-                      return (
-                        <div key={modId} style={{
-                          background: 'rgba(255, 255, 255, 0.02)',
-                          borderRadius: '12px',
-                          overflow: 'hidden',
-                          border: '1px solid rgba(255, 255, 255, 0.05)'
-                        }}>
-                          {/* Module Header Accordion */}
-                          <div
-                            onClick={() => toggleModule(modId)}
-                            style={{
-                              padding: '12px 14px',
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              cursor: 'pointer',
-                              userSelect: 'none'
-                            }}
-                          >
-                            <div>
-                              <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff', marginBottom: '2px' }}>
-                                {mod.title}
-                              </div>
-                              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                {completedInMod}/{modLessons.length} مكتمل
-                              </span>
-                            </div>
-                            {isExpanded ? <ChevronUp size={16} color="#94a3b8" /> : <ChevronDown size={16} color="#94a3b8" />}
-                          </div>
-
-                          {/* Lessons List in Module */}
-                          {isExpanded && (
-                            <div style={{ padding: '6px' }}>
-                              {modLessons.map((lesson, lesIdx) => {
-                                const isCurrent = activeLesson?.id === lesson.id;
-                                const isDone = completedLessons.includes(lesson.id);
-                                return (
-                                  <div
-                                    key={lesson.id || lesIdx}
-                                    onClick={() => {
-                                      setActiveLesson(lesson);
-                                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      padding: '10px 12px',
-                                      borderRadius: '8px',
-                                      background: isCurrent ? 'rgba(255, 107, 53, 0.15)' : 'transparent',
-                                      border: isCurrent ? `1px solid ${themeColor}50` : '1px solid transparent',
-                                      cursor: 'pointer',
-                                      marginBottom: '4px',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                                      {isCurrent ? (
-                                        <div className="eq-container">
-                                          <div className="eq-bar" />
-                                          <div className="eq-bar" />
-                                          <div className="eq-bar" />
-                                        </div>
-                                      ) : isDone ? (
-                                        <CheckCircle2 size={16} color="#10b981" />
-                                      ) : (
-                                        <Play size={14} color="#64748b" />
-                                      )}
-
-                                      <span style={{
-                                        fontSize: '12.5px',
-                                        color: isCurrent ? '#fff' : isDone ? '#cbd5e1' : '#94a3b8',
-                                        fontWeight: isCurrent ? '800' : 'normal',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}>
-                                        {lesson.title}
-                                      </span>
-                                    </div>
-
-                                    {lesson.duration && (
-                                      <span style={{ fontSize: '11px', color: '#64748b', marginRight: '6px' }}>
-                                        {lesson.duration}
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : activeTab === 'courses' ? (
-          /* ----------------------------------------------------------------- */
-          /* VIEW B: REAL COURSES CATALOG & HERO BANNER                        */
-          /* ----------------------------------------------------------------- */
-          <div>
-            {/* Academy Hero Banner */}
-            <div className="glass-card" style={{
-              padding: '42px 36px',
-              marginBottom: '36px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              background: 'linear-gradient(135deg, rgba(22, 28, 44, 0.85) 0%, rgba(10, 14, 23, 0.95) 100%)'
-            }}>
-              {portalSettings.bannerUrl && (
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundImage: `url(${portalSettings.bannerUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  opacity: 0.18,
-                  zIndex: 0
-                }} />
-              )}
-
-              <div style={{ position: 'relative', zIndex: 2, maxWidth: '780px' }}>
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'rgba(255, 107, 53, 0.15)',
-                  border: '1px solid rgba(255, 107, 53, 0.35)',
-                  color: themeColor,
-                  fontSize: '11.5px',
-                  fontWeight: '800',
-                  padding: '5px 14px',
-                  borderRadius: '20px',
-                  marginBottom: '14px'
-                }}>
-                  <Flame size={14} />
-                  <span>بوابة التدريب والتعلم المباشر</span>
-                </div>
-
-                <h2 style={{
-                  fontSize: '32px',
-                  fontWeight: '900',
-                  color: '#fff',
-                  margin: '0 0 12px',
-                  lineHeight: '1.3',
-                  letterSpacing: '-0.5px'
-                }}>
-                  {portalSettings.portalTitle || `${coachUsername} Academy`}
-                </h2>
-
-                <p style={{
-                  fontSize: '15px',
-                  color: '#94a3b8',
-                  lineHeight: '1.7',
-                  margin: '0 0 24px'
-                }}>
-                  {portalSettings.welcomeMessage || 'مرحباً بك في الأكاديمية! يسعدنا انضمامك لرحلتنا التعليمية والتدريبية.'}
-                </p>
-
-                {/* Real Dynamic Metrics Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
-                  <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: themeColor, fontSize: '13px', fontWeight: '800' }}>
-                      <BookOpen size={15} /> {courses.length} مسار تدريبي
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>المسارات المتاحة للتعلم</span>
-                  </div>
-
-                  <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '13px', fontWeight: '800' }}>
-                      <Video size={15} /> {totalLessonsCount} محاضرة
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>محتوى وشروحات تطبيقية</span>
-                  </div>
-
-                  <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontSize: '13px', fontWeight: '800' }}>
-                      <Layers size={15} /> {totalModulesCount} وحدات
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>منهج تدريبي منظم</span>
-                  </div>
-
-                  <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c084fc', fontSize: '13px', fontWeight: '800' }}>
-                      <Sparkles size={15} /> وصول مباشر
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>متابعة وحفظ مستمر للتقدم</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Smart Search & Real Filter Header */}
-            {courses.length > 0 && (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '16px',
-                marginBottom: '26px'
-              }}>
-                <div>
-                  <h3 style={{ fontSize: '20px', fontWeight: '900', margin: '0 0 4px', color: '#fff' }}>
-                    المسارات التدريبية المتاحة ({filteredCourses.length})
-                  </h3>
-                  <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>
-                    اختر المسار التدريبي للبدء في متابعة المحاضرات والدروس
-                  </span>
-                </div>
-
-                {/* Search Box & Dynamic Category Filters */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <div style={{
-                    position: 'relative',
-                    width: '260px'
-                  }}>
-                    <Search size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="ابحث في الكورسات..."
-                      style={{
-                        width: '100%',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: '10px',
-                        padding: '8px 36px 8px 12px',
-                        color: '#fff',
-                        fontSize: '12.5px',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-
-                  {availableCategories.length > 2 && (
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {availableCategories.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat)}
-                          style={{
-                            background: selectedCategory === cat ? themeColor : 'rgba(255, 255, 255, 0.05)',
-                            border: 'none',
-                            color: '#fff',
-                            borderRadius: '8px',
-                            padding: '6px 12px',
-                            fontSize: '11.5px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Courses Content Area (Real Data or Production Empty State) */}
-            {courses.length === 0 ? (
-              <div className="glass-card" style={{
-                padding: '64px 24px',
-                textAlign: 'center',
-                margin: '20px 0',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
-              }}>
-                <div style={{
-                  width: '76px',
-                  height: '76px',
-                  borderRadius: '50%',
-                  background: 'rgba(255, 107, 53, 0.12)',
-                  border: '1px solid rgba(255, 107, 53, 0.3)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: themeColor,
-                  marginBottom: '20px',
-                  boxShadow: '0 0 30px rgba(255, 107, 53, 0.25)'
-                }}>
-                  <BookOpen size={36} />
-                </div>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '0 0 8px' }}>
-                  المحتوى التدريبي قيد التجهيز
-                </h3>
-                <p style={{ fontSize: '14px', color: '#94a3b8', margin: '0 auto 24px', maxWidth: '500px', lineHeight: '1.7' }}>
-                  المدرب يقوم حالياً بإعداد ورفع المحاضرات والمواد التعليمية المخصصة للأكاديمية. ستظهر المسارات التدريبية هنا فور نشرها.
-                </p>
-                {portalSettings.whatsappNumber && portalSettings.whatsappNumber.trim() !== '' && (
-                  <a
-                    href={`https://wa.me/${portalSettings.whatsappNumber.replace(/[^0-9]/g, '')}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shimmer-button"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      background: '#25D366',
-                      color: '#fff',
-                      padding: '12px 26px',
-                      borderRadius: '12px',
-                      fontSize: '13.5px',
-                      fontWeight: '800',
-                      textDecoration: 'none',
-                      boxShadow: '0 4px 18px rgba(37, 211, 102, 0.35)'
-                    }}
-                  >
-                    <span>💬 تواصل مع المدرب عبر واتساب</span>
-                  </a>
-                )}
-              </div>
-            ) : filteredCourses.length === 0 ? (
-              <div className="glass-card" style={{ padding: '48px 20px', textAlign: 'center', color: '#94a3b8' }}>
-                <Search size={34} style={{ margin: '0 auto 12px', opacity: 0.6 }} />
-                <h4 style={{ color: '#fff', fontSize: '16px', margin: '0 0 6px', fontWeight: '800' }}>
-                  لا توجد نتائج مطابقة لبحثك
-                </h4>
-                <p style={{ fontSize: '13px', margin: 0 }}>جرب البحث بكلمات أخرى أو اختر تصنيف "الكل".</p>
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-                gap: '26px'
-              }}>
-                {filteredCourses.map((course) => {
-                  const progress = getCourseProgress(course);
-                  const lessonCount = (course.modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
-                  return (
-                    <div
-                      key={course.id}
-                      className="glass-card"
-                      style={{ display: 'flex', flexDirection: 'column' }}
-                    >
-                      {/* 16:9 Thumbnail with Overlay & Badges */}
-                      <div
-                        onClick={() => handleSelectCourse(course)}
-                        style={{
-                          position: 'relative',
-                          width: '100%',
-                          aspectRatio: '16/9',
-                          overflow: 'hidden',
-                          cursor: 'pointer',
-                          background: '#0d111b'
-                        }}
-                      >
-                        <img
-                          src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop'}
-                          alt={course.title}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            transition: 'transform 0.4s ease'
-                          }}
-                        />
-
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'linear-gradient(to top, rgba(7, 9, 14, 0.9) 0%, transparent 60%)'
-                        }} />
-
-                        {/* Badges */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          left: '12px',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
-                        }}>
-                          {course.level && (
-                            <span style={{
-                              background: 'rgba(10, 14, 23, 0.85)',
-                              backdropFilter: 'blur(8px)',
-                              border: '1px solid rgba(255, 255, 255, 0.15)',
-                              color: '#fff',
-                              fontSize: '11px',
-                              fontWeight: '800',
-                              padding: '3px 9px',
-                              borderRadius: '6px'
-                            }}>
-                              {course.level}
-                            </span>
-                          )}
-
-                          {course.category && (
-                            <span style={{
-                              background: 'rgba(255, 107, 53, 0.85)',
-                              backdropFilter: 'blur(8px)',
-                              color: '#fff',
-                              fontSize: '11px',
-                              fontWeight: '800',
-                              padding: '3px 9px',
-                              borderRadius: '6px',
-                              marginRight: 'auto'
-                            }}>
-                              {course.category}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Center Hover Play Icon */}
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          <div style={{
-                            width: '54px',
-                            height: '54px',
-                            borderRadius: '50%',
-                            background: 'rgba(255, 107, 53, 0.9)',
-                            boxShadow: '0 0 25px rgba(255, 107, 53, 0.6)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff',
-                            transform: 'scale(0.95)',
-                            transition: 'transform 0.2s ease'
-                          }}>
-                            <Play size={22} style={{ marginRight: '-2px' }} fill="#fff" />
-                          </div>
-                        </div>
-
-                        {/* Progress Line */}
-                        {progress > 0 && (
-                          <div style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: '4px',
-                            background: 'rgba(0,0,0,0.6)'
-                          }}>
-                            <div style={{ width: `${progress}%`, height: '100%', background: '#10b981' }} />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Course Body Details */}
-                      <div style={{ padding: '22px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <h4 style={{
-                          margin: '0 0 8px',
-                          fontSize: '16.5px',
-                          fontWeight: '900',
-                          color: '#fff',
-                          lineHeight: '1.4'
-                        }}>
-                          {course.title}
-                        </h4>
-
-                        {course.description && (
-                          <p style={{
-                            margin: '0 0 18px',
-                            fontSize: '12.5px',
-                            color: '#94a3b8',
-                            lineHeight: '1.6',
-                            flex: 1
-                          }}>
-                            {course.description}
-                          </p>
-                        )}
-
-                        {/* Modules, Lessons, Duration Bar */}
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                          paddingTop: '14px',
-                          marginBottom: '16px',
-                          fontSize: '12px',
-                          color: '#94a3b8'
-                        }}>
-                          <span>📁 {(course.modules || []).length} وحدات</span>
-                          <span>🎥 {lessonCount} دروس</span>
-                          {course.duration ? (
-                            <span>⏱ {course.duration}</span>
-                          ) : (
-                            <span>متاح الآن</span>
-                          )}
-                        </div>
-
-                        {/* CTA Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleSelectCourse(course)}
-                          className="shimmer-button"
-                          style={{
-                            width: '100%',
-                            background: progress > 0
-                              ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                              : `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`,
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '12px',
-                            padding: '12px',
-                            fontWeight: '900',
-                            fontSize: '13.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            boxShadow: progress > 0 ? '0 4px 16px rgba(16, 185, 129, 0.3)' : `0 4px 16px ${themeColor}35`
-                          }}
-                        >
-                          <Play size={15} fill="#fff" />
-                          <span>{progress > 0 ? `متابعة المشاهدة (${progress}%)` : 'ابدأ دراسة الكورس الآن'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ) : activeTab === 'community' ? (
-          /* ----------------------------------------------------------------- */
-          /* VIEW C: COMMUNITY LOUNGE                                          */
-          /* ----------------------------------------------------------------- */
-          <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-            <div className="glass-card" style={{ padding: '24px 28px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-                <div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 107, 53, 0.15)', color: themeColor, fontSize: '11px', fontWeight: '800', padding: '3px 10px', borderRadius: '12px', marginBottom: '8px' }}>
-                    <Users size={12} /> مجتمع ونقاشات الأكاديمية
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#fff' }}>
-                    ملتقى الطلاب وتبادل الخبرات المباشر
-                  </h3>
-                  <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>
-                    تفاعل مع زملائك، اطرح استفساراتك حول الدروس، وشارك تطبيقك العملي مباشرة.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* GoHighLevel Community Groups Showcase */}
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Users size={16} color={themeColor} />
-                  <span>مجموعات المجتمع (Community Groups)</span>
-                </h4>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                  {(communities.length > 0 ? communities : [{ id: 'alpha-vip-cohort', name: 'Alpha VIP Cohort', slug: 'alpha-vip-cohort' }]).length} مجموعة
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
-                {(communities.length > 0 ? communities : [
-                  {
-                    id: 'alpha-vip-cohort',
-                    name: 'Alpha VIP Cohort',
-                    slug: 'alpha-vip-cohort',
-                    description: 'مجتمع تفاعلي حصري للأعضاء لمناقشة الدروس ومشاركة الخبرات.',
-                    membersCount: 2,
-                    postsCount: 1,
-                    status: 'Active'
-                  }
-                ]).map(grp => (
-                  <div
-                    key={grp.id || grp.slug}
-                    className="glass-card"
-                    style={{
-                      borderRadius: '14px',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      background: '#0d1322'
-                    }}
-                  >
-                    <div style={{
-                      height: '85px',
-                      background: grp.coverImageUrl
-                        ? `url(${grp.coverImageUrl}) center/cover no-repeat`
-                        : 'linear-gradient(135deg, #ec4899 0%, #f97316 50%, #eab308 100%)',
-                      position: 'relative'
-                    }}>
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '-18px',
-                        right: '14px',
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: '#1e1b4b',
-                        border: '2px solid #0d1322',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        fontWeight: '800',
-                        fontSize: '13px'
-                      }}>
-                        {grp.logoUrl ? (
-                          <img src={grp.logoUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          (grp.name || 'G')[0]
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '24px 14px 14px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <div style={{ fontSize: '14.5px', fontWeight: '800', color: '#ffffff' }}>
-                        {grp.name}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px', lineHeight: 1.4, height: '32px', overflow: 'hidden' }}>
-                        {grp.description || 'مجتمع حصري للنقاشات والتواصل بين الأعضاء والمدرب.'}
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#64748b', marginTop: '10px', marginBottom: '12px' }}>
-                        <span>👥 {grp.membersCount || grp.memberCount || 1} عضو</span>
-                        <span>💬 {grp.postsCount || grp.postCount || 0} منشور</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.location.href = `/portal/${coachUsername}/community/${grp.slug || grp.id}`;
-                        }}
-                        style={{
-                          marginTop: 'auto',
-                          width: '100%',
-                          background: '#2563eb',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '8px 12px',
-                          fontSize: '12.5px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <Users size={14} />
-                        <span>دخول تجربة المجتمع (Login) 🚀</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Create New Post Form */}
-            <form onSubmit={handleSubmitPost} className="glass-card" style={{ padding: '20px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
-                <div style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${themeColor} 0%, #8b5cf6 100%)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: '800',
-                  fontSize: '15px'
-                }}>
-                  {(currentStudent?.name || 'ط')[0]}
-                </div>
-                <textarea
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="شارك سؤالاً، فكرة، أو تجربة ترغب في مناقشتها مع زملائك..."
-                  rows={3}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                    color: '#fff',
-                    fontSize: '13.5px',
-                    resize: 'none',
-                    outline: 'none',
-                    lineHeight: '1.6'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="submit"
-                  disabled={submittingPost || !newPostContent.trim()}
-                  className="shimmer-button"
-                  style={{
-                    background: `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '10px 24px',
-                    fontSize: '13px',
-                    fontWeight: '800',
-                    cursor: submittingPost || !newPostContent.trim() ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: `0 4px 14px ${themeColor}40`
-                  }}
-                >
-                  <Send size={14} />
-                  <span>{submittingPost ? 'جاري النشر...' : 'نشر في المجتمع'}</span>
-                </button>
-              </div>
-            </form>
-
-            {/* Real Posts Feed */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {posts.length === 0 ? (
-                <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
-                  <MessageSquare size={36} color={themeColor} style={{ margin: '0 auto 12px', opacity: 0.8 }} />
-                  <h4 style={{ color: '#fff', fontSize: '16.5px', fontWeight: '800', margin: '0 0 6px' }}>
-                    لم تبدأ أي نقاشات بعد في هذا المجتمع
-                  </h4>
-                  <p style={{ fontSize: '13px', margin: 0 }}>
-                    كن أول من يشارك فكرة، يطرح سؤالاً، أو يبدأ نقاشاً مع زملائه والمدرب!
-                  </p>
-                </div>
-              ) : (
-                posts.map((post) => {
-                  const isLiked = !!likedPosts[post.id];
-                  const likeCount = (post.likesCount || 0) + (isLiked ? 1 : 0);
-
-                  return (
-                    <div key={post.id} className="glass-card" style={{ padding: '22px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: post.isCoach
-                            ? `linear-gradient(135deg, ${themeColor} 0%, #f59e0b 100%)`
-                            : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: '900',
-                          fontSize: '16px',
-                          color: '#fff'
-                        }}>
-                          {(post.authorName || 'ط')[0]}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span>{post.authorName}</span>
-                            {post.isCoach && (
-                              <span style={{ background: themeColor, color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                                المدرب
-                              </span>
-                            )}
-                          </div>
-                          <span style={{ fontSize: '11px', color: '#64748b' }}>
-                            {post.createdAt?.seconds ? new Date(post.createdAt.seconds * 1000).toLocaleString('ar-EG') : 'منذ قليل'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p style={{ fontSize: '14px', lineHeight: '1.7', color: '#e2e8f0', margin: '0 0 16px', whiteSpace: 'pre-line' }}>
-                        {post.content}
-                      </p>
-
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                        paddingTop: '12px'
-                      }}>
-                        <button
-                          type="button"
-                          onClick={() => handleLikePost(post.id)}
-                          style={{
-                            background: isLiked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                            border: isLiked ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.08)',
-                            color: isLiked ? '#f87171' : '#94a3b8',
-                            borderRadius: '8px',
-                            padding: '6px 14px',
-                            fontSize: '12px',
-                            fontWeight: '800',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <ThumbsUp size={13} />
-                          <span>{likeCount} تفاعل</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        ) : (
-          /* ----------------------------------------------------------------- */
-          /* VIEW D: STUDENT ACHIEVEMENTS & CERTIFICATES                       */
-          /* ----------------------------------------------------------------- */
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div className="glass-card" style={{ padding: '32px', textAlign: 'center', marginBottom: '28px' }}>
-              <div style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                background: `linear-gradient(135deg, ${themeColor} 0%, #10b981 100%)`,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                marginBottom: '16px',
-                boxShadow: '0 0 30px rgba(16, 185, 129, 0.35)'
-              }}>
-                <Award size={36} />
-              </div>
-
-              <h3 style={{ fontSize: '24px', fontWeight: '900', color: '#fff', margin: '0 0 8px' }}>
-                لوحة إنجازات الطالب وشهادات التخرج
-              </h3>
-              <p style={{ fontSize: '14px', color: '#94a3b8', margin: '0 auto 24px', maxWidth: '520px', lineHeight: '1.6' }}>
-                تابع مسار تطورك التعليمي، الدروس المكتملة، واحصل على شهاداتك الرسمية المعتمدة فور إنهاء الكورس.
-              </p>
-
-              {/* Progress Summary Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', maxWidth: '640px', margin: '0 auto' }}>
-                <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#fff' }}>{completedLessons.length}</div>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>دروس مكتملة</span>
-                </div>
-                <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <div style={{ fontSize: '26px', fontWeight: '900', color: themeColor }}>{totalAcademyProgress}%</div>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>إجمالي تقدم الأكاديمية</span>
-                </div>
-                <div style={{ background: 'rgba(255, 255, 255, 0.04)', borderRadius: '14px', padding: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#10b981' }}>{courses.length}</div>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>مسارات مسجلة</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Certificates Showcase */}
-            <h4 style={{ fontSize: '17px', fontWeight: '900', color: '#fff', margin: '0 0 16px' }}>
-              🎓 شهادات الكورسات المعتمدة:
-            </h4>
-            {courses.length === 0 ? (
-              <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
-                <Award size={36} color={themeColor} style={{ margin: '0 auto 12px', opacity: 0.8 }} />
-                <h4 style={{ color: '#fff', fontSize: '16px', margin: '0 0 6px', fontWeight: '800' }}>
-                  لا توجد مسارات منشورة بعد
-                </h4>
-                <p style={{ fontSize: '13px', margin: 0 }}>ستظهر شهادات التخرج هنا فور نشر الدروس وإتمامها.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {courses.map(course => {
-                  const prog = getCourseProgress(course);
-                  const isCertified = prog >= 100;
-                  return (
-                    <div key={course.id} className="glass-card" style={{
-                      padding: '22px 26px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '16px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{
-                          width: '46px',
-                          height: '46px',
-                          borderRadius: '12px',
-                          background: isCertified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                          border: isCertified ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isCertified ? '#10b981' : '#64748b'
-                        }}>
-                          <Award size={24} />
-                        </div>
-                        <div>
-                          <h4 style={{ margin: '0 0 4px', fontSize: '15.5px', fontWeight: '800', color: '#fff' }}>
-                            شهادة إتمام {course.title}
-                          </h4>
-                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                            نسبة الإنجاز: {prog}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        {isCertified ? (
-                          <button
-                            type="button"
-                            onClick={() => alert(`تم إصدار الشهادة الرسمية بنجاح باسم: ${currentStudent?.name || 'الطالب'}`)}
-                            style={{
-                              background: '#10b981',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '10px',
-                              padding: '10px 20px',
-                              fontSize: '13px',
-                              fontWeight: '800',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)'
-                            }}
-                          >
-                            <Download size={14} />
-                            <span>تحميل الشهادة المعتمدة PDF</span>
-                          </button>
-                        ) : (
-                          <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '700' }}>
-                            🔒 يتطلب إنهاء 100% من الدروس
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-      </main>
-
-      {/* Floating WhatsApp Support Button (Only when configured by coach) */}
-      {portalSettings.whatsappNumber && portalSettings.whatsappNumber.trim() !== '' && (
-        <a
-          href={`https://wa.me/${portalSettings.whatsappNumber.replace(/[^0-9]/g, '')}`}
-          target="_blank"
-          rel="noreferrer"
-          title="تواصل مع المدرب عبر واتساب"
-          style={{
-            position: 'fixed',
-            bottom: '28px',
-            right: '28px',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: '#25D366',
-            color: '#fff',
+      <div style={{ display: 'flex', flex: 1 }}>
+
+        {/* LEFT COLUMN / SIDEBAR (Screenshot 3) */}
+        <aside style={{
+          width: '210px',
+          background: '#ffffff',
+          borderRight: '1px solid #e2e8f0',
+          padding: '24px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px'
+        }}>
+          {/* Brand Logo Card (Violet layered emblem from Screenshot 3) */}
+          <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 8px 30px rgba(37, 211, 102, 0.5)',
-            zIndex: 9999,
-            textDecoration: 'none',
-            transition: 'transform 0.2s ease'
-          }}
-        >
-          <span style={{ fontSize: '28px' }}>💬</span>
-          <span style={{
-            position: 'absolute',
-            top: '3px',
-            right: '3px',
-            width: '12px',
-            height: '12px',
-            borderRadius: '50%',
-            background: '#10b981',
-            border: '2px solid #07090e'
-          }} />
-        </a>
-      )}
+            padding: '16px 0'
+          }}>
+            <div style={{
+              width: '82px',
+              height: '82px',
+              borderRadius: '50%',
+              background: '#f3e8ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(168, 85, 247, 0.15)'
+            }}>
+              {/* Violet Icon Symbol */}
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                transform: 'rotate(-10deg)',
+                boxShadow: '0 4px 10px rgba(99, 102, 241, 0.35)'
+              }}>
+                <Layers size={22} color="#ffffff" />
+              </div>
+            </div>
+          </div>
 
-      {/* Student Registration / Login Modal */}
-      {showAuthModal && (
+          {/* Navigation Items */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button
+              onClick={() => {
+                if (communities.length > 0) {
+                  const target = communities[0];
+                  if (isGroupJoined(target)) {
+                    router.push(`/portal/${coachUsername}/community/${target.slug || target.id}`);
+                  } else {
+                    handleOpenJoinModal(target);
+                  }
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '13.5px',
+                fontWeight: '700',
+                color: '#1e293b',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Users size={16} color="#64748b" />
+                <span>Join a Group</span>
+              </div>
+              <div style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                border: '1px solid #cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <ArrowRight size={11} color="#2563eb" />
+              </div>
+            </button>
+
+            {courses.length > 0 && (
+              <button
+                onClick={() => setActiveTab(activeTab === 'courses' ? 'home' : 'courses')}
+                style={{
+                  background: activeTab === 'courses' ? '#f1f5f9' : 'transparent',
+                  border: 'none',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <BookOpen size={16} color="#64748b" />
+                <span>My Courses</span>
+              </button>
+            )}
+          </div>
+        </aside>
+
+        {/* MAIN CONTENT AREA */}
+        <main style={{ flex: 1, padding: '36px 40px', maxWidth: '1080px' }}>
+
+          {/* VIEW A: CLIENT PORTAL HOME (SCREENSHOT 3) */}
+          {activeTab === 'home' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
+
+              {/* Top Greeting Header */}
+              <div>
+                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '500', marginBottom: '4px' }}>
+                  Hi, {currentStudent?.name?.split(' ')[0]?.toLowerCase() || 'mohamed'}
+                </div>
+                <h1 style={{
+                  fontSize: '28px',
+                  fontWeight: '800',
+                  color: '#0f172a',
+                  margin: 0,
+                  letterSpacing: '-0.5px'
+                }}>
+                  Welcome to {portalSettings?.portalTitle || ''}
+                </h1>
+              </div>
+
+              {/* COMMUNITY GROUPS SECTION (Screenshot 3) */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                    Community Groups
+                  </h2>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    {communities.length} {communities.length === 1 ? 'group available' : 'groups available'}
+                  </span>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                  gap: '20px'
+                }}>
+                  {communities.map((grp) => {
+                    const joined = isGroupJoined(grp);
+                    const membersCount = joined ? Math.max(2, grp.membersCount || grp.memberCount || 1) : (grp.membersCount || grp.memberCount || 1);
+
+                    return (
+                      <div
+                        key={grp.id || grp.slug}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        {/* Cover Banner (Purple to Gold Gradient from Screenshot 4 & 5) */}
+                        <div style={{
+                          height: '110px',
+                          background: 'linear-gradient(135deg, #7c3aed 0%, #c084fc 45%, #f59e0b 100%)',
+                          position: 'relative'
+                        }} />
+
+                        {/* Card Content */}
+                        <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                          <h3 style={{
+                            margin: '0 0 4px 0',
+                            fontSize: '16px',
+                            fontWeight: '800',
+                            color: '#0f172a'
+                          }}>
+                            {grp.name || grp.title || 'Community Group'}
+                          </h3>
+
+                          <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '10px' }}>
+                            <span>🌐</span>
+                            <span>{grp.privacy === 'private' ? 'Private Group' : 'Public Group'}</span>
+                          </div>
+
+                          <p style={{
+                            fontSize: '12.5px',
+                            color: '#475569',
+                            lineHeight: '1.5',
+                            margin: '0 0 16px 0',
+                            flex: 1
+                          }}>
+                            {grp.description || 'Connect, learn, and grow together with fellow members in our community.'}
+                          </p>
+
+                          {/* Stats Row */}
+                          <div style={{
+                            display: 'flex',
+                            gap: '16px',
+                            fontSize: '12px',
+                            color: '#64748b',
+                            paddingBottom: '16px',
+                            borderBottom: '1px solid #f1f5f9',
+                            marginBottom: '16px'
+                          }}>
+                            <span><strong style={{ color: '#0f172a' }}>{membersCount}</strong> Members</span>
+                            <span><strong style={{ color: '#0f172a' }}>{grp.postsCount || 4}</strong> Posts</span>
+                            <span><strong style={{ color: '#0f172a' }}>1</strong> Admin</span>
+                          </div>
+
+                          {/* ACTION BUTTON: JOIN GROUP OR OPEN GROUP */}
+                          {joined ? (
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/portal/${coachUsername}/community/${grp.slug || grp.id}`)}
+                              style={{
+                                width: '100%',
+                                background: '#f8fafc',
+                                border: '1.5px solid #2563eb',
+                                color: '#2563eb',
+                                borderRadius: '8px',
+                                padding: '10px',
+                                fontSize: '12.5px',
+                                fontWeight: '800',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <span>OPEN GROUP</span>
+                              <ArrowRight size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenJoinModal(grp)}
+                              style={{
+                                width: '100%',
+                                background: '#1d4ed8',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '11px',
+                                fontSize: '12.5px',
+                                fontWeight: '800',
+                                cursor: 'pointer',
+                                letterSpacing: '0.4px',
+                                boxShadow: '0 2px 6px rgba(29, 78, 216, 0.3)'
+                              }}
+                            >
+                              JOIN GROUP
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* SHARED FILES SECTION (Screenshot 3) */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '24px 28px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '28px'
+                }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                    Shared Files
+                  </h2>
+
+                  <button
+                    onClick={() => setShowAddFileModal(true)}
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      fontSize: '12.5px',
+                      fontWeight: '600',
+                      color: '#334155',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Plus size={14} />
+                    <span>Add Files</span>
+                  </button>
+                </div>
+
+                {/* Empty State / Folder (Screenshot 3) */}
+                {sharedFiles.length === 0 ? (
+                  <div style={{
+                    padding: '36px 0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {/* Blue Folder Graphic */}
+                    <div style={{
+                      width: '68px',
+                      height: '56px',
+                      background: '#60a5fa',
+                      borderRadius: '6px',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 4px 12px rgba(96, 165, 250, 0.35)',
+                      marginBottom: '14px'
+                    }}>
+                      {/* Folder tab */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '-7px',
+                        left: '8px',
+                        width: '26px',
+                        height: '10px',
+                        background: '#3b82f6',
+                        borderRadius: '4px 4px 0 0'
+                      }} />
+                      {/* Document inside */}
+                      <div style={{
+                        width: '46px',
+                        height: '32px',
+                        background: '#ffffff',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.06)'
+                      }} />
+                    </div>
+
+                    <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '500' }}>
+                      You don't have any!
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {sharedFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 16px',
+                          background: '#f8fafc',
+                          borderRadius: '8px',
+                          border: '1px solid #f1f5f9'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <FileText size={20} color="#2563eb" />
+                          <div>
+                            <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#0f172a' }}>{file.name}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>{file.size} • Uploaded {file.date}</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => alert(`Downloading ${file.name}...`)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            color: '#2563eb',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Download size={13} /> Download
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* VIEW B: ACADEMY COURSES VIEW (If user navigates to courses) */}
+          {activeTab === 'courses' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: '0 0 4px 0' }}>
+                    Academy Courses
+                  </h1>
+                  <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+                    Browse all learning programs and master new skills.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('home')}
+                  style={{
+                    background: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: '#334155',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ← Back to Portal Home
+                </button>
+              </div>
+
+              {activeCourse ? (
+                /* Course Player / Curriculum */
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px' }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 16px 0' }}>
+                      {activeLesson?.title || activeCourse.title}
+                    </h2>
+                    {activeLesson?.videoUrl ? (
+                      <div style={{ aspectRatio: '16/9', background: '#000', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+                        <iframe
+                          src={activeLesson.videoUrl.replace('watch?v=', 'embed/')}
+                          title={activeLesson.title}
+                          style={{ width: '100%', height: '100%', border: 'none' }}
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ aspectRatio: '16/9', background: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                        <Play size={48} color="#94a3b8" />
+                      </div>
+                    )}
+                    <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                      {activeLesson?.content || 'Lesson content and notes.'}
+                    </p>
+                  </div>
+
+                  {/* Modules Drawer */}
+                  <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                    <h3 style={{ fontSize: '14px', fontWeight: '800', margin: '0 0 12px 0' }}>Modules</h3>
+                    {(activeCourse.modules || []).map((m, mIdx) => (
+                      <div key={m.id || mIdx} style={{ marginBottom: '10px' }}>
+                        <div
+                          onClick={() => toggleModule(m.id || mIdx)}
+                          style={{ fontWeight: '700', fontSize: '13px', cursor: 'pointer', padding: '6px 0' }}
+                        >
+                          {m.title}
+                        </div>
+                        {expandedModules[m.id || mIdx] !== false && (
+                          <div style={{ paddingLeft: '10px' }}>
+                            {(m.lessons || []).map((l) => (
+                              <div
+                                key={l.id}
+                                onClick={() => setActiveLesson(l)}
+                                style={{
+                                  padding: '6px 8px',
+                                  fontSize: '12px',
+                                  color: activeLesson?.id === l.id ? '#2563eb' : '#475569',
+                                  fontWeight: activeLesson?.id === l.id ? '700' : '500',
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  background: activeLesson?.id === l.id ? '#eff6ff' : 'transparent'
+                                }}
+                              >
+                                {l.title}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* Course Cards Grid */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                  {courses.map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => handleSelectCourse(c)}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                      }}
+                    >
+                      <div style={{ height: '120px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BookOpen size={36} color="#ffffff" />
+                      </div>
+                      <div style={{ padding: '16px' }}>
+                        <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>{c.title}</h3>
+                        <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0' }}>{c.description}</p>
+                        <div style={{ fontSize: '11.5px', color: '#2563eb', fontWeight: '700' }}>
+                          Progress: {getCourseProgress(c)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* SCREENSHOT 4: COMPLETE YOUR PROFILE MODAL                              */}
+      {/* ===================================================================== */}
+      {showCompleteProfileModal && (
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
-          backdropFilter: 'blur(14px)',
-          zIndex: 10000,
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: '20px'
         }}>
-          <div className="glass-card" style={{
-            maxWidth: '440px',
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
             width: '100%',
-            padding: '32px',
-            boxShadow: '0 25px 60px -15px rgba(0,0,0,0.8)'
+            maxWidth: '460px',
+            padding: '36px 32px 28px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            textAlign: 'center',
+            position: 'relative'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: '#fff' }}>
-                تسجيل الدخول إلى الأكاديمية
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAuthModal(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
+            {/* Close X Button */}
+            <button
+              onClick={() => setShowCompleteProfileModal(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#9ca3af',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <X size={18} />
+            </button>
 
-            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 20px', lineHeight: '1.6' }}>
-              أدخل اسمك وبريدك الإلكتروني لحفظ تقدمك في مشاهدة الدروس والوصول للمجتمع والشهادات.
+            {/* Title & Subtitle (Screenshot 4) */}
+            <h2 style={{
+              fontSize: '21px',
+              fontWeight: '800',
+              color: '#111827',
+              margin: '0 0 8px 0',
+              letterSpacing: '-0.3px'
+            }}>
+              Complete Your Profile
+            </h2>
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              lineHeight: '1.5',
+              maxWidth: '350px',
+              margin: '0 auto 22px auto'
+            }}>
+              Communities feel weird without faces and names. Profiles build trust and spark connection with others
             </p>
 
-            <form onSubmit={handleStudentAuth} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '12.5px', fontWeight: '800', color: '#cbd5e1', display: 'block', marginBottom: '6px' }}>
-                  اسمك الكامل:
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={authForm.name}
-                  onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
-                  placeholder="مثال: أحمد محمد"
-                  style={{
-                    width: '100%',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '10px',
-                    padding: '12px 14px',
-                    color: '#fff',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12.5px', fontWeight: '800', color: '#cbd5e1', display: 'block', marginBottom: '6px' }}>
-                  بريدك الإلكتروني:
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={authForm.email}
-                  onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                  placeholder="student@example.com"
-                  style={{
-                    width: '100%',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '10px',
-                    padding: '12px 14px',
-                    color: '#fff',
-                    fontSize: '13.5px',
-                    boxSizing: 'border-box',
-                    direction: 'ltr',
-                    outline: 'none'
-                  }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="shimmer-button"
+            {/* Avatar Circle */}
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '8px' }}>
+              <img
+                src={profileAvatarUrl}
+                alt="Profile"
                 style={{
-                  marginTop: '10px',
-                  background: `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`,
-                  color: '#fff',
+                  width: '110px',
+                  height: '110px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid #e5e7eb',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
+              />
+            </div>
+
+            {/* Avatar Filename & File Input */}
+            <label style={{ display: 'block', cursor: 'pointer', marginBottom: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#4b5563', fontWeight: '500' }}>file.jpg</span>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setProfileAvatarUrl(url);
+                  }
+                }}
+              />
+            </label>
+
+            {/* Upload Note with Red Asterisk */}
+            <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 20px 0' }}>
+              Upload a SVG, PNG, JPG, JPEG, WEBP, ICO. Recommended Aspect Ratio 1:1 <span style={{ color: '#ef4444' }}>*</span>
+            </p>
+
+            {/* Bio Box with Character Counter */}
+            <div style={{
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '24px',
+              textAlign: 'left',
+              background: '#ffffff'
+            }}>
+              <textarea
+                rows={3}
+                maxLength={200}
+                placeholder="Add a bio... (Optional)"
+                value={profileBio}
+                onChange={(e) => setProfileBio(e.target.value)}
+                style={{
+                  width: '100%',
                   border: 'none',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  fontWeight: '900',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  boxShadow: `0 6px 20px ${themeColor}40`
+                  outline: 'none',
+                  resize: 'none',
+                  fontSize: '13px',
+                  color: '#111827',
+                  fontFamily: 'inherit',
+                  background: 'transparent'
+                }}
+              />
+              <div style={{ textAlign: 'right', fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                {profileBio.length} / 200
+              </div>
+            </div>
+
+            {/* Solid Navy COMPLETE Button */}
+            <button
+              type="button"
+              onClick={handleCompleteJoinGroup}
+              style={{
+                width: '100%',
+                background: '#1e3a8a',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '13px',
+                fontSize: '13px',
+                fontWeight: '800',
+                letterSpacing: '0.6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(30, 58, 138, 0.3)',
+                transition: 'background 0.15s'
+              }}
+            >
+              COMPLETE
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD SHARED FILE */}
+      {showAddFileModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <form
+            onSubmit={handleAddSharedFile}
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '400px',
+              padding: '24px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
+              Add Shared File
+            </h3>
+
+            <input
+              type="text"
+              required
+              placeholder="e.g. Onboarding Guide.pdf"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '13px',
+                marginBottom: '20px',
+                outline: 'none'
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowAddFileModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  color: '#475569',
+                  cursor: 'pointer'
                 }}
               >
-                الدخول ومتابعة التعلم ←
+                Cancel
               </button>
-            </form>
-          </div>
+              <button
+                type="submit"
+                style={{
+                  background: '#1d4ed8',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 18px',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                Add File
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

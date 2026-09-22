@@ -168,6 +168,52 @@ export default function CommunityGroupExperience({
   const liveVideoRef = useRef(null);
   const liveStreamRef = useRef(null);
 
+  // Student Join & Profile Completion State (Screenshots 4 & 5)
+  const [isJoined, setIsJoined] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`upklick_student_${coachId}`) ||
+                       localStorage.getItem('upklick_current_student');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const gid = group.id || group.slug;
+          return parsed.joinedCommunities?.includes(gid) || parsed.joinedCommunities?.includes(group.slug);
+        }
+      } catch (e) {}
+    }
+    return false;
+  });
+  const [membersCount, setMembersCount] = useState(() => {
+    return isJoined ? Math.max(2, group.memberCount || group.membersCount || 1) : (group.memberCount || group.membersCount || 1);
+  });
+  const [showCompleteProfileModal, setShowCompleteProfileModal] = useState(false);
+  const [profileBio, setProfileBio] = useState('');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('/file.jpg');
+  const [showJoinConfetti, setShowJoinConfetti] = useState(false);
+
+  const handleCompleteJoin = () => {
+    setIsJoined(true);
+    setMembersCount(prev => prev + 1);
+    setShowCompleteProfileModal(false);
+    setShowJoinConfetti(true);
+    setTimeout(() => setShowJoinConfetti(false), 4500);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const key = `upklick_student_${coachId}`;
+        const stored = localStorage.getItem(key) || localStorage.getItem('upklick_current_student');
+        let parsed = stored ? JSON.parse(stored) : { name: 'mohamed', email: 'mohamedhesham300000@gmail.com' };
+        parsed.bio = profileBio;
+        parsed.avatar = profileAvatarUrl;
+        const gid = group.id || group.slug;
+        parsed.joinedCommunities = Array.from(new Set([...(parsed.joinedCommunities || []), gid, group.slug].filter(Boolean)));
+        localStorage.setItem(key, JSON.stringify(parsed));
+        localStorage.setItem('upklick_current_student', JSON.stringify(parsed));
+      } catch (e) {}
+    }
+    showToast(isRTL ? 'تهانينا! لقد انضممت إلى المجموعة بنجاح 🎉' : 'Congratulations! You joined the group successfully 🎉');
+  };
+
   // Handle webcam preview when Go Live setup modal opens
   useEffect(() => {
     if (showGoLiveModal) {
@@ -1968,7 +2014,7 @@ export default function CommunityGroupExperience({
                     padding: '12px 0'
                   }}>
                     <div>
-                      <div style={{ fontSize: '15px', fontWeight: '900', color: cText }}>{group.memberCount || 1}</div>
+                      <div style={{ fontSize: '15px', fontWeight: '900', color: cText }}>{membersCount}</div>
                       <div style={{ fontSize: '11px', color: cTextSub }}>{isRTL ? 'أعضاء' : 'Members'}</div>
                     </div>
                     <div>
@@ -1999,46 +2045,71 @@ export default function CommunityGroupExperience({
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons (Screenshot 4 & 5: JOIN GROUP) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '4px' }}>
-                    <button
-                      onClick={() => setShowSettingsModal(true)}
-                      style={{
-                        width: '100%',
-                        background: isLight ? '#ffffff' : 'rgba(255,255,255,0.06)',
-                        border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255,255,255,0.15)',
-                        borderRadius: '8px',
-                        padding: '10px',
-                        fontSize: '12.5px',
-                        fontWeight: '800',
-                        letterSpacing: '0.5px',
-                        color: isLight ? '#334155' : '#f8fafc',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {isRTL ? 'الإعدادات' : 'SETTINGS'}
-                    </button>
+                    {!isJoined ? (
+                      <button
+                        onClick={() => setShowCompleteProfileModal(true)}
+                        style={{
+                          width: '100%',
+                          background: '#1d4ed8',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '12px',
+                          fontSize: '13px',
+                          fontWeight: '800',
+                          letterSpacing: '0.5px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          boxShadow: '0 4px 12px rgba(29, 78, 216, 0.35)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {isRTL ? 'الانضمام للمجموعة' : 'JOIN GROUP'}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setShowSettingsModal(true)}
+                          style={{
+                            width: '100%',
+                            background: isLight ? '#ffffff' : 'rgba(255,255,255,0.06)',
+                            border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255,255,255,0.15)',
+                            borderRadius: '8px',
+                            padding: '10px',
+                            fontSize: '12.5px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            color: isLight ? '#334155' : '#f8fafc',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {isRTL ? 'الإعدادات' : 'SETTINGS'}
+                        </button>
 
-                    <button
-                      onClick={() => setShowInviteModal(true)}
-                      style={{
-                        width: '100%',
-                        background: cNavy,
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '11px',
-                        fontSize: '12.5px',
-                        fontWeight: '800',
-                        letterSpacing: '0.5px',
-                        cursor: 'pointer',
-                        textAlign: 'center'
-                      }}
-                    >
-                      {isRTL ? 'دعوة الأعضاء' : 'INVITE MEMBERS'}
-                    </button>
+                        <button
+                          onClick={() => setShowInviteModal(true)}
+                          style={{
+                            width: '100%',
+                            background: cNavy,
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '11px',
+                            fontSize: '12.5px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {isRTL ? 'دعوة الأعضاء' : 'INVITE MEMBERS'}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -6152,6 +6223,209 @@ export default function CommunityGroupExperience({
       )}
 
 
+
+      {/* ===================================================================== */}
+      {/* SCREENSHOT 4: COMPLETE YOUR PROFILE MODAL                              */}
+      {/* ===================================================================== */}
+      {showCompleteProfileModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '460px',
+            padding: '36px 32px 28px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            textAlign: 'center',
+            position: 'relative'
+          }}>
+            {/* Close X */}
+            <button
+              onClick={() => setShowCompleteProfileModal(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#9ca3af',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            {/* Title & Subtitle */}
+            <h2 style={{
+              fontSize: '21px',
+              fontWeight: '800',
+              color: '#111827',
+              margin: '0 0 8px 0',
+              letterSpacing: '-0.3px'
+            }}>
+              Complete Your Profile
+            </h2>
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              lineHeight: '1.5',
+              maxWidth: '350px',
+              margin: '0 auto 22px auto'
+            }}>
+              Communities feel weird without faces and names. Profiles build trust and spark connection with others
+            </p>
+
+            {/* Avatar Circle */}
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '8px' }}>
+              <img
+                src={profileAvatarUrl}
+                alt="Profile"
+                style={{
+                  width: '110px',
+                  height: '110px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid #e5e7eb',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
+              />
+            </div>
+
+            {/* Avatar Filename & File Input */}
+            <label style={{ display: 'block', cursor: 'pointer', marginBottom: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#4b5563', fontWeight: '500' }}>file.jpg</span>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setProfileAvatarUrl(url);
+                  }
+                }}
+              />
+            </label>
+
+            {/* Upload Note with Red Asterisk */}
+            <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 20px 0' }}>
+              Upload a SVG, PNG, JPG, JPEG, WEBP, ICO. Recommended Aspect Ratio 1:1 <span style={{ color: '#ef4444' }}>*</span>
+            </p>
+
+            {/* Bio Box with Character Counter */}
+            <div style={{
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '24px',
+              textAlign: 'left',
+              background: '#ffffff'
+            }}>
+              <textarea
+                rows={3}
+                maxLength={200}
+                placeholder="Add a bio... (Optional)"
+                value={profileBio}
+                onChange={(e) => setProfileBio(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  outline: 'none',
+                  resize: 'none',
+                  fontSize: '13px',
+                  color: '#111827',
+                  fontFamily: 'inherit',
+                  background: 'transparent'
+                }}
+              />
+              <div style={{ textAlign: 'right', fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                {profileBio.length} / 200
+              </div>
+            </div>
+
+            {/* Solid Navy COMPLETE Button */}
+            <button
+              type="button"
+              onClick={handleCompleteJoin}
+              style={{
+                width: '100%',
+                background: '#1e3a8a',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '13px',
+                fontSize: '13px',
+                fontWeight: '800',
+                letterSpacing: '0.6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(30, 58, 138, 0.3)',
+                transition: 'background 0.15s'
+              }}
+            >
+              COMPLETE
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SCREENSHOT 5: CONFETTI CELEBRATION EXPLOSION                          */}
+      {/* ===================================================================== */}
+      {showJoinConfetti && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 1000000,
+          overflow: 'hidden'
+        }}>
+          <style>{`
+            @keyframes joinConfettiDrop {
+              0% { transform: translateY(-40px) rotate(0deg); opacity: 1; }
+              100% { transform: translateY(115vh) rotate(800deg); opacity: 0; }
+            }
+          `}</style>
+          {Array.from({ length: 90 }).map((_, i) => {
+            const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+            const color = colors[i % colors.length];
+            const left = `${(i * 1.15) % 100}%`;
+            const delay = `${((i * 0.04) % 1.5).toFixed(2)}s`;
+            const duration = `${2.4 + (i % 6) * 0.3}s`;
+            const w = i % 3 === 0 ? '11px' : '7px';
+            const h = i % 2 === 0 ? '11px' : '15px';
+            return (
+              <div
+                key={i}
+                style={{
+                  position: 'absolute',
+                  top: '-25px',
+                  left,
+                  width: w,
+                  height: h,
+                  borderRadius: i % 4 === 0 ? '50%' : '2px',
+                  backgroundColor: color,
+                  animation: `joinConfettiDrop ${duration} cubic-bezier(0.25, 1, 0.5, 1) ${delay} forwards`,
+                  transform: `rotate(${i * 24}deg)`
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
 
     </div>
   );
