@@ -31,7 +31,19 @@ import {
   Shield,
   BookOpen,
   Play,
-  Layers
+  Layers,
+  UploadCloud,
+  Globe,
+  Palette,
+  DollarSign,
+  HelpCircle,
+  Trophy,
+  Link2,
+  Flag,
+  Compass,
+  Eye,
+  Sliders,
+  FileText
 } from 'lucide-react';
 
 export default function CommunityGroupExperience({
@@ -124,10 +136,29 @@ export default function CommunityGroupExperience({
   const [copiedLink, setCopiedLink] = useState(false);
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('details'); // 'details' | 'subscriptions' | 'newsletter' | 'branding' | 'themes' | 'tabs' | 'questions' | 'gamification' | 'links' | 'reported' | 'import' | 'discovery'
   const [settingsForm, setSettingsForm] = useState({
     name: group.name || '',
     slug: group.slug || '',
     description: group.description || '',
+    privacy: group.privacy || 'public', // 'public' | 'private'
+    accessibleFromSwitcher: group.accessibleFromSwitcher !== false,
+    allowMemberInvites: group.allowMemberInvites !== false,
+    showMandatoryProfileModal: group.showMandatoryProfileModal || false,
+    subscriptionType: group.subscriptionType || 'free',
+    newsletterFreq: group.newsletterFreq || 'off',
+    faviconUrl: group.faviconUrl || '',
+    coverImageUrl: group.coverImageUrl || '',
+    logoUrl: group.logoUrl || '',
+    colorTheme: group.colorTheme || 'default',
+    hiddenTabs: group.hiddenTabs || [],
+    membershipQuestions: group.membershipQuestions || [
+      'What is your main goal in joining this community?',
+      'How did you discover our community?'
+    ],
+    customLinks: group.customLinks || [
+      { title: 'Community Guidelines', url: 'https://upklick.net/terms' }
+    ],
     discovery: group.discovery !== false
   });
 
@@ -281,11 +312,24 @@ export default function CommunityGroupExperience({
       name: settingsForm.name.trim() || group.name,
       slug: settingsForm.slug.trim() || group.slug,
       description: settingsForm.description.trim(),
+      privacy: settingsForm.privacy,
+      accessibleFromSwitcher: settingsForm.accessibleFromSwitcher,
+      allowMemberInvites: settingsForm.allowMemberInvites,
+      showMandatoryProfileModal: settingsForm.showMandatoryProfileModal,
+      subscriptionType: settingsForm.subscriptionType,
+      newsletterFreq: settingsForm.newsletterFreq,
+      faviconUrl: settingsForm.faviconUrl,
+      coverImageUrl: settingsForm.coverImageUrl,
+      logoUrl: settingsForm.logoUrl,
+      colorTheme: settingsForm.colorTheme,
+      hiddenTabs: settingsForm.hiddenTabs,
+      membershipQuestions: settingsForm.membershipQuestions,
+      customLinks: settingsForm.customLinks,
       discovery: settingsForm.discovery
     };
     onUpdateGroup(updated);
     setShowSettingsModal(false);
-    showToast(isRTL ? 'تم تحديث إعدادات المجتمع!' : 'Group settings saved!');
+    showToast(isRTL ? 'تم حفظ إعدادات المجتمع بنجاح!' : 'Group settings saved successfully!');
   };
 
   const copyGroupLink = () => {
@@ -2348,64 +2392,1262 @@ export default function CommunityGroupExperience({
         </div>
       )}
 
-      {/* MODAL: SETTINGS */}
+      {/* ========================================================================= */}
+      {/* MODAL: GROUP SETTINGS (GoHighLevel / ClientClub Full 12-Tab Replica)      */}
+      {/* ========================================================================= */}
       {showSettingsModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: cCardBg, border: `1px solid ${cBorder}`, borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: cText }}>
-                {isRTL ? 'إعدادات المجتمع' : 'Group Settings'}
-              </h3>
-              <button onClick={() => setShowSettingsModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: cTextSub }}><X size={16} /></button>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: cCardBg,
+            border: `1px solid ${cBorder}`,
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '920px',
+            height: '700px',
+            maxHeight: '92vh',
+            boxShadow: isLight ? '0 25px 50px -12px rgba(0,0,0,0.25)' : '0 25px 50px -12px rgba(0,0,0,0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* 1. Modal Top Header */}
+            <div style={{
+              padding: '14px 20px',
+              borderBottom: `1px solid ${cBorder}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: isLight ? '#ffffff' : 'rgba(255,255,255,0.02)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: isLight ? '#e0f2fe' : 'rgba(56, 189, 248, 0.15)',
+                  color: '#0284c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: `1px solid ${isLight ? '#bae6fd' : 'rgba(56, 189, 248, 0.3)'}`
+                }}>
+                  <Compass size={17} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '13.5px', fontWeight: '800', color: cText, lineHeight: 1.2 }}>
+                    {settingsForm.name || group.name || 'Group'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: cTextSub }}>
+                    {isRTL ? 'إعدادات المجتمع' : 'Group Settings'}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: cTextSub,
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: '6px'
+                }}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '4px' }}>
-                  {isRTL ? 'اسم المجتمع' : 'Group Name'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={settingsForm.name}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
-                  style={{ width: '100%', background: isLight ? '#f8fafc' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', color: cText, fontSize: '13px' }}
-                />
+            {/* 2. Modal Body (Sidebar + Content) */}
+            <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+              
+              {/* Left Sidebar Navigation (12 Tabs) */}
+              <div style={{
+                width: '190px',
+                flexShrink: 0,
+                borderRight: isRTL ? 'none' : `1px solid ${cBorder}`,
+                borderLeft: isRTL ? `1px solid ${cBorder}` : 'none',
+                background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.01)',
+                padding: '12px 8px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px'
+              }}>
+                {[
+                  { id: 'details', label: isRTL ? 'التفاصيل' : 'Details' },
+                  { id: 'subscriptions', label: isRTL ? 'الاشتراكات' : 'Subscriptions' },
+                  { id: 'newsletter', label: isRTL ? 'النشرة البريدية' : 'Newsletter' },
+                  { id: 'branding', label: isRTL ? 'الهوية البصرية' : 'Branding' },
+                  { id: 'themes', label: isRTL ? 'المظهر والألوان' : 'Themes' },
+                  { id: 'tabs', label: isRTL ? 'إظهار / إخفاء التبويبات' : 'Show / Hide Tabs' },
+                  { id: 'questions', label: isRTL ? 'أسئلة العضوية' : 'Membership Questions' },
+                  { id: 'gamification', label: isRTL ? 'المكافآت والتحفيز' : 'Gamification & Rewards' },
+                  { id: 'links', label: isRTL ? 'الروابط المخصصة' : 'Links' },
+                  { id: 'reported', label: isRTL ? 'المحتوى المُبلغ عنه' : 'Reported Content' },
+                  { id: 'import', label: isRTL ? 'استيراد الأعضاء' : 'Import' },
+                  { id: 'discovery', label: isRTL ? 'الاستكشاف' : 'Discovery' }
+                ].map(item => {
+                  const isActive = settingsTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSettingsTab(item.id)}
+                      style={{
+                        textAlign: isRTL ? 'right' : 'left',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: isActive ? (isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.08)') : 'transparent',
+                        color: isActive ? cText : cTextSub,
+                        fontSize: '12.5px',
+                        fontWeight: isActive ? '700' : '500',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '4px' }}>
-                  {isRTL ? 'الرابط التعريفي (Slug)' : 'Group Slug'}
-                </label>
-                <input
-                  type="text"
-                  value={settingsForm.slug}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, slug: e.target.value })}
-                  style={{ width: '100%', background: isLight ? '#f8fafc' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', color: cText, fontSize: '13px' }}
-                />
-              </div>
+              {/* Right Content Panel */}
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '24px 28px',
+                background: isLight ? '#ffffff' : 'transparent'
+              }}>
 
-              <div>
-                <label style={{ fontSize: '11.5px', fontWeight: '700', color: cTextSub, display: 'block', marginBottom: '4px' }}>
-                  {isRTL ? 'الوصف' : 'Description'}
-                </label>
-                <textarea
-                  rows={3}
-                  value={settingsForm.description}
-                  onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
-                  style={{ width: '100%', background: isLight ? '#f8fafc' : '#1e293b', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 12px', color: cText, fontSize: '13px', resize: 'vertical' }}
-                />
-              </div>
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 1: DETAILS (Screenshot 1)                                     */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'details' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'تحديث تفاصيل المجتمع' : 'Update Group Details'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'قم بتحديث تفاصيل مجتمعك هنا' : 'Update your group details here'}
+                      </p>
+                    </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setShowSettingsModal(false)} style={{ background: 'transparent', border: `1px solid ${cBorder}`, borderRadius: '8px', padding: '8px 16px', color: cTextSub, fontSize: '12.5px', cursor: 'pointer' }}>
-                  {isRTL ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button type="submit" style={{ background: cNavy, color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer' }}>
-                  {isRTL ? 'حفظ' : 'Save Changes'}
-                </button>
+                    {/* Group Name */}
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '6px' }}>
+                        {isRTL ? 'اسم المجتمع' : 'Group Name'}
+                      </label>
+                      <input
+                        type="text"
+                        value={settingsForm.name}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, name: e.target.value })}
+                        style={{
+                          width: '100%',
+                          background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${cBorder}`,
+                          borderRadius: '8px',
+                          padding: '9px 12px',
+                          fontSize: '13px',
+                          color: cText,
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    {/* URL */}
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '6px' }}>
+                        {isRTL ? 'رابط المجتمع (URL)' : 'URL'}
+                      </label>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '8px',
+                        overflow: 'hidden'
+                      }}>
+                        <span style={{
+                          padding: '9px 12px',
+                          fontSize: '12px',
+                          color: cTextSub,
+                          background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
+                          borderRight: isRTL ? 'none' : `1px solid ${cBorder}`,
+                          borderLeft: isRTL ? `1px solid ${cBorder}` : 'none',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          https://app.clientclub.net/communities/groups/
+                        </span>
+                        <input
+                          type="text"
+                          value={settingsForm.slug}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                          style={{
+                            flex: 1,
+                            border: 'none',
+                            padding: '9px 12px',
+                            fontSize: '13px',
+                            color: cText,
+                            background: 'transparent',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={copyGroupLink}
+                          title={isRTL ? 'نسخ الرابط' : 'Copy link'}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '9px 12px',
+                            color: cTextSub,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Link2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: '700', color: cText }}>
+                          {isRTL ? 'الوصف' : 'Description'}
+                        </label>
+                        <span style={{ fontSize: '11px', color: cTextMuted }}>
+                          {settingsForm.description?.length || 0} / 150
+                        </span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        maxLength={150}
+                        value={settingsForm.description}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, description: e.target.value })}
+                        placeholder={isRTL ? 'اكتب وصفاً موجزاً للمجتمع...' : 'Enter a brief group description...'}
+                        style={{
+                          width: '100%',
+                          background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${cBorder}`,
+                          borderRadius: '8px',
+                          padding: '9px 12px',
+                          fontSize: '13px',
+                          color: cText,
+                          outline: 'none',
+                          resize: 'vertical'
+                        }}
+                      />
+                    </div>
+
+                    {/* Privacy Radio Cards */}
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '8px' }}>
+                        {isRTL ? 'الخصوصية' : 'Privacy'}
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        {/* Public Option */}
+                        <div
+                          onClick={() => setSettingsForm({ ...settingsForm, privacy: 'public' })}
+                          style={{
+                            border: `1.5px solid ${settingsForm.privacy === 'public' ? '#2563eb' : cBorder}`,
+                            borderRadius: '10px',
+                            padding: '14px',
+                            cursor: 'pointer',
+                            background: settingsForm.privacy === 'public' ? (isLight ? '#eff6ff' : 'rgba(37, 99, 235, 0.12)') : (isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.03)'),
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <div style={{
+                              width: '15px',
+                              height: '15px',
+                              borderRadius: '50%',
+                              border: `2px solid ${settingsForm.privacy === 'public' ? '#2563eb' : cBorder}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {settingsForm.privacy === 'public' && (
+                                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#2563eb' }} />
+                              )}
+                            </div>
+                            <span style={{ fontSize: '13px', fontWeight: '800', color: cText }}>
+                              {isRTL ? 'عام (Public)' : 'Public'}
+                            </span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: '11px', color: cTextSub, lineHeight: 1.45 }}>
+                            {isRTL ? 'يمكن لأي شخص رؤية منشورات المجموعة وأعضائها' : 'Anyone can see the group posts and other members of the group'}
+                          </p>
+                        </div>
+
+                        {/* Private Option */}
+                        <div
+                          onClick={() => setSettingsForm({ ...settingsForm, privacy: 'private' })}
+                          style={{
+                            border: `1.5px solid ${settingsForm.privacy === 'private' ? '#2563eb' : cBorder}`,
+                            borderRadius: '10px',
+                            padding: '14px',
+                            cursor: 'pointer',
+                            background: settingsForm.privacy === 'private' ? (isLight ? '#eff6ff' : 'rgba(37, 99, 235, 0.12)') : (isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.03)'),
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <div style={{
+                              width: '15px',
+                              height: '15px',
+                              borderRadius: '50%',
+                              border: `2px solid ${settingsForm.privacy === 'private' ? '#2563eb' : cBorder}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {settingsForm.privacy === 'private' && (
+                                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#2563eb' }} />
+                              )}
+                            </div>
+                            <span style={{ fontSize: '13px', fontWeight: '800', color: cText }}>
+                              {isRTL ? 'خاص (Private)' : 'Private'}
+                            </span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: '11px', color: cTextSub, lineHeight: 1.45 }}>
+                            {isRTL ? 'فقط الأعضاء يمكنهم رؤية منشورات المجموعة والأعضاء' : 'Only members can see the group posts and other members of the group'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Checkbox 1: Accessible from switcher */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: `1px solid ${cBorder}`,
+                      background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                    }}>
+                      <input
+                        type="checkbox"
+                        id="accessibleFromSwitcher"
+                        checked={settingsForm.accessibleFromSwitcher}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, accessibleFromSwitcher: e.target.checked })}
+                        style={{ marginTop: '2px', cursor: 'pointer', width: '15px', height: '15px', accentColor: '#2563eb' }}
+                      />
+                      <div>
+                        <label htmlFor="accessibleFromSwitcher" style={{ fontSize: '12.5px', fontWeight: '700', color: cText, cursor: 'pointer', display: 'block' }}>
+                          {isRTL ? 'إمكانية الوصول من محدد المجتمعات (Accessible from switcher)' : 'Accessible from switcher'}
+                        </label>
+                        <div style={{ fontSize: '11px', color: cTextSub, marginTop: '2px' }}>
+                          {isRTL ? 'ستكون مجموعتك مرئية لغير الأعضاء في قائمة التبديل السريع' : 'Your group will be visible to non-group members in the switcher'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Checkbox 2: Allow members to invite new members */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: `1px solid ${cBorder}`,
+                      background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                    }}>
+                      <input
+                        type="checkbox"
+                        id="allowMemberInvites"
+                        checked={settingsForm.allowMemberInvites}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allowMemberInvites: e.target.checked })}
+                        style={{ marginTop: '2px', cursor: 'pointer', width: '15px', height: '15px', accentColor: '#2563eb' }}
+                      />
+                      <div>
+                        <label htmlFor="allowMemberInvites" style={{ fontSize: '12.5px', fontWeight: '700', color: cText, cursor: 'pointer', display: 'block' }}>
+                          {isRTL ? 'السماح للأعضاء بدعوة أعضاء جدد (Allow members to invite new members)' : 'Allow members to invite new members'}
+                        </label>
+                        <div style={{ fontSize: '11px', color: cTextSub, marginTop: '2px' }}>
+                          {isRTL ? 'يخفي زر الدعوة للأعضاء عند التعطيل. يمكن للأعضاء دعوة الآخرين فقط إذا تم تفعيل هذا الخيار.' : 'Hides the Invite button for members when turned off. Members can only invite others if this is enabled.'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Checkbox 3: Show mandatory profile modal */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: `1px solid ${cBorder}`,
+                      background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                    }}>
+                      <input
+                        type="checkbox"
+                        id="showMandatoryProfileModal"
+                        checked={settingsForm.showMandatoryProfileModal}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, showMandatoryProfileModal: e.target.checked })}
+                        style={{ marginTop: '2px', cursor: 'pointer', width: '15px', height: '15px', accentColor: '#2563eb' }}
+                      />
+                      <div>
+                        <label htmlFor="showMandatoryProfileModal" style={{ fontSize: '12.5px', fontWeight: '700', color: cText, cursor: 'pointer', display: 'block' }}>
+                          {isRTL ? 'إظهار نافذة إكمال الملف الشخصي الإلزامية (Show mandatory profile modal)' : 'Show mandatory profile modal'}
+                        </label>
+                        <div style={{ fontSize: '11px', color: cTextSub, marginTop: '2px' }}>
+                          {isRTL ? 'عند التفعيل، سيُطلب من الأعضاء إكمال بيانات ملفهم الشخصي عند الانضمام للمجموعة.' : 'When enabled, members will be prompted to complete their profile information when joining the group.'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 2: SUBSCRIPTIONS (Screenshot 2)                               */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'subscriptions' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'إدارة الاشتراكات' : 'Manage your Subscriptions'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'عرض وإدارة خطط أسعار واشتراكات المجموعة' : 'View and manage group subscriptions'}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      border: `1px solid ${cBorder}`,
+                      borderRadius: '10px',
+                      padding: '16px',
+                      background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <div style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        border: '2px solid #2563eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563eb' }} />
+                      </div>
+                      <span style={{ fontSize: '13.5px', fontWeight: '700', color: cText }}>
+                        {isRTL ? 'مجاني (Free)' : 'Free'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => showToast(isRTL ? 'تم تفعيل نافذة إضافة سعر اشتراك جديد' : 'Add price tier opened')}
+                        style={{
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 18px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Plus size={15} />
+                        <span>{isRTL ? '+ إضافة سعر' : '+ Add Price'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 3: NEWSLETTER (Screenshot 3)                                  */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'newsletter' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'النشرة البريدية' : 'Newsletter'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'ملخص مجتمعك الدوري' : 'Your Community Digest'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '6px' }}>
+                        {isRTL ? 'تكرار النشرة البريدية' : 'Newsletter Frequency'}
+                      </label>
+                      <select
+                        value={settingsForm.newsletterFreq}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, newsletterFreq: e.target.value })}
+                        style={{
+                          width: '280px',
+                          background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.05)',
+                          border: `1px solid ${cBorder}`,
+                          borderRadius: '8px',
+                          padding: '9px 12px',
+                          fontSize: '13px',
+                          color: cText,
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="off">{isRTL ? 'معطل (Off)' : 'Off'}</option>
+                        <option value="daily">{isRTL ? 'يومي (Daily)' : 'Daily'}</option>
+                        <option value="weekly">{isRTL ? 'أسبوعي (Weekly)' : 'Weekly'}</option>
+                        <option value="monthly">{isRTL ? 'شهري (Monthly)' : 'Monthly'}</option>
+                      </select>
+                      <div style={{ fontSize: '11px', color: cTextSub, marginTop: '6px' }}>
+                        {isRTL ? 'ملخص للمنشورات الأكثر شعبية ونشاط الأعضاء والفعاليات من هذه المجموعة' : 'A summary of popular posts, member activity and events from this group'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 4: BRANDING (Screenshot 4)                                    */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'branding' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'تخصيص الهوية البصرية لمجموعتك' : 'You can brand your group as per your choice here'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'تحديث الهوية البصرية والشعارات' : 'Update Branding'}
+                      </p>
+                    </div>
+
+                    {/* Favicon Upload */}
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '6px' }}>
+                        {isRTL ? 'أيقونة الموقع (Favicon)' : 'Favicon'}
+                      </label>
+                      <div
+                        onClick={() => {
+                          const url = prompt(isRTL ? 'أدخل رابط أيقونة Favicon:' : 'Enter Favicon URL:');
+                          if (url) setSettingsForm({ ...settingsForm, faviconUrl: url });
+                        }}
+                        style={{
+                          border: `1.5px dashed ${isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.2)'}`,
+                          borderRadius: '12px',
+                          padding: '24px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <UploadCloud size={24} style={{ color: cTextSub, marginBottom: '6px' }} />
+                        <span style={{ fontSize: '12.5px', fontWeight: '700', color: cText }}>
+                          {settingsForm.faviconUrl ? (isRTL ? 'تم الرفع بنجاح (انقر للتغيير)' : 'Favicon Uploaded (Click to replace)') : (isRTL ? 'انقر لرفع Favicon' : 'Click to upload Favicon')}
+                        </span>
+                        <span style={{ fontSize: '11px', color: cTextMuted, marginTop: '2px' }}>
+                          Drag and drop a SVG, PNG, JPG, JPEG, WEBP, ICO (Aspect Ratio 1:1)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Cover Image Upload */}
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '6px' }}>
+                        {isRTL ? 'صورة الغلاف (Cover Image)' : 'Cover Image'}
+                      </label>
+                      <div
+                        onClick={() => {
+                          const url = prompt(isRTL ? 'أدخل رابط صورة الغلاف:' : 'Enter Cover Image URL:');
+                          if (url) setSettingsForm({ ...settingsForm, coverImageUrl: url });
+                        }}
+                        style={{
+                          border: `1.5px dashed ${isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.2)'}`,
+                          borderRadius: '12px',
+                          padding: '28px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <UploadCloud size={24} style={{ color: cTextSub, marginBottom: '6px' }} />
+                        <span style={{ fontSize: '12.5px', fontWeight: '700', color: cText }}>
+                          {settingsForm.coverImageUrl ? (isRTL ? 'تم رفع الغلاف بنجاح (انقر للتغيير)' : 'Cover Uploaded (Click to replace)') : (isRTL ? 'انقر لرفع Cover' : 'Click to upload Cover')}
+                        </span>
+                        <span style={{ fontSize: '11px', color: cTextMuted, marginTop: '2px' }}>
+                          Drag and drop a SVG, PNG, JPG, JPEG, WEBP, ICO (Aspect Ratio 16:9)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Logo Upload */}
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: '700', color: cText, display: 'block', marginBottom: '6px' }}>
+                        {isRTL ? 'الشعار (Logo)' : 'Logo'}
+                      </label>
+                      <div
+                        onClick={() => {
+                          const url = prompt(isRTL ? 'أدخل رابط الشعار:' : 'Enter Logo URL:');
+                          if (url) setSettingsForm({ ...settingsForm, logoUrl: url });
+                        }}
+                        style={{
+                          border: `1.5px dashed ${isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.2)'}`,
+                          borderRadius: '12px',
+                          padding: '24px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <UploadCloud size={24} style={{ color: cTextSub, marginBottom: '6px' }} />
+                        <span style={{ fontSize: '12.5px', fontWeight: '700', color: cText }}>
+                          {settingsForm.logoUrl ? (isRTL ? 'تم رفع الشعار بنجاح (انقر للتغيير)' : 'Logo Uploaded (Click to replace)') : (isRTL ? 'انقر لرفع Group Logo' : 'Click to upload Group Logo')}
+                        </span>
+                        <span style={{ fontSize: '11px', color: cTextMuted, marginTop: '2px' }}>
+                          Drag and drop a SVG, PNG, JPG, JPEG, WEBP, ICO (Aspect Ratio 1:1)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Advanced Accordion */}
+                    <div
+                      onClick={() => showToast(isRTL ? 'إعدادات العلامة البيضاء المتقدمة مفعلة' : 'Advanced white-label settings ready')}
+                      style={{
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '10px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                      }}
+                    >
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: cText }}>
+                        {isRTL ? 'إعدادات متقدمة (Advanced)' : 'Advanced'}
+                      </span>
+                      <ChevronRight size={16} style={{ color: cTextSub }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 5: THEMES (Screenshot 5)                                      */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'themes' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'تخصيص مظهر المجموعة' : 'You can configure your group appearance as per your choice here'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'تحديث مظهر المجموعة والألوان هنا' : 'Update your group appearance here'}
+                      </p>
+                    </div>
+
+                    {/* Color Mode */}
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: cText, marginBottom: '2px' }}>
+                        {isRTL ? 'نمط الألوان (Color Mode)' : 'Color Mode'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: cTextSub, marginBottom: '10px' }}>
+                        {isRTL ? 'معاينة كيف ستبدو مجموعتك في الوضع الفاتح والداكن' : 'Preview how your group will look in light and dark mode'}
+                      </div>
+
+                      {/* Segmented Light / Dark */}
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        border: `1px solid ${cBorder}`,
+                        borderRadius: '8px',
+                        padding: '3px',
+                        background: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleTheme('light')}
+                          style={{
+                            background: isLight ? '#ffffff' : 'transparent',
+                            color: isLight ? '#0f172a' : cTextSub,
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 16px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                          }}
+                        >
+                          <Sun size={14} color={isLight ? '#f59e0b' : '#94a3b8'} />
+                          <span>{isRTL ? 'فاتح' : 'Light'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleTheme('dark')}
+                          style={{
+                            background: !isLight ? '#2563eb' : 'transparent',
+                            color: !isLight ? '#ffffff' : cTextSub,
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '6px 16px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: !isLight ? '0 1px 4px rgba(37, 99, 235, 0.4)' : 'none'
+                          }}
+                        >
+                          <Moon size={14} color={!isLight ? '#ffffff' : '#94a3b8'} />
+                          <span>{isRTL ? 'داكن' : 'Dark'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Sub-Tabs: Community Theme | Custom Theme */}
+                    <div style={{ display: 'flex', gap: '20px', borderBottom: `1px solid ${cBorder}`, paddingBottom: '6px' }}>
+                      <button
+                        type="button"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          fontSize: '13px',
+                          fontWeight: '700',
+                          color: '#2563eb',
+                          cursor: 'pointer',
+                          borderBottom: '2px solid #2563eb',
+                          paddingBottom: '6px'
+                        }}
+                      >
+                        {isRTL ? 'سمات المجتمع (Community Theme)' : 'Community Theme'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => showToast(isRTL ? 'أداة السمة المخصصة جاهزة' : 'Custom theme builder ready')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: cTextSub,
+                          cursor: 'pointer',
+                          paddingBottom: '6px'
+                        }}
+                      >
+                        {isRTL ? 'سمة مخصصة (Custom Theme)' : 'Custom Theme'}
+                      </button>
+                    </div>
+
+                    {/* 9 Palette Cards Grid (Screenshot 5) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                      {[
+                        { id: 'default', name: 'Default', color: '#1a365d', lightColor: '#e2e8f0' },
+                        { id: 'zesty-citrus', name: 'Zesty Citrus', color: '#ea580c', lightColor: '#fed7aa' },
+                        { id: 'royal-velvet', name: 'Royal Velvet', color: '#4c1d95', lightColor: '#e9d5ff' },
+                        { id: 'sunny-delight', name: 'Sunny Delight', color: '#ca8a04', lightColor: '#fef08a' },
+                        { id: 'lush-meadow', name: 'Lush Meadow', color: '#059669', lightColor: '#a7f3d0' },
+                        { id: 'azure-dreams', name: 'Azure Dreams', color: '#0284c7', lightColor: '#bae6fd' },
+                        { id: 'bubblegum-bliss', name: 'Bubblegum Bliss', color: '#db2777', lightColor: '#fbcfe8' },
+                        { id: 'ivory-whisper', name: 'Ivory Whisper', color: '#57534e', lightColor: '#f5f5f4' },
+                        { id: 'midnight-deep', name: 'Midnight Deep', color: '#1e1b4b', lightColor: '#c7d2fe' }
+                      ].map(pal => {
+                        const isSelected = (settingsForm.colorTheme || 'default') === pal.id;
+                        return (
+                          <div
+                            key={pal.id}
+                            onClick={() => setSettingsForm({ ...settingsForm, colorTheme: pal.id })}
+                            style={{
+                              border: `1.5px solid ${isSelected ? '#2563eb' : cBorder}`,
+                              borderRadius: '10px',
+                              padding: '10px 12px',
+                              cursor: 'pointer',
+                              background: isSelected ? (isLight ? '#eff6ff' : 'rgba(37, 99, 235, 0.12)') : (isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'),
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <div style={{
+                              width: '22px',
+                              height: '22px',
+                              borderRadius: '50%',
+                              background: pal.lightColor,
+                              border: `2px solid ${pal.color}`,
+                              flexShrink: 0
+                            }} />
+                            <span style={{ fontSize: '11.5px', fontWeight: isSelected ? '800' : '600', color: cText }}>
+                              {pal.name}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 6: SHOW / HIDE TABS                                           */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'tabs' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'إظهار / إخفاء التبويبات' : 'Show / Hide Tabs'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'تحكم في التبويبات التي تظهر للأعضاء في الشريط العلوي' : 'Configure which tabs appear in the group navigation'}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {[
+                        { id: 'discussion', label: isRTL ? 'المناقشات (Discussion)' : 'Discussion', locked: true },
+                        { id: 'learning', label: isRTL ? 'التعليم (Learning)' : 'Learning', locked: false },
+                        { id: 'events', label: isRTL ? 'الفعاليات (Events)' : 'Events', locked: false },
+                        { id: 'leaderboard', label: isRTL ? 'لوحة المتصدرين (Leaderboard)' : 'Leaderboard', locked: false },
+                        { id: 'members', label: isRTL ? 'الأعضاء (Members)' : 'Members', locked: false },
+                        { id: 'about', label: isRTL ? 'عن المجتمع (About)' : 'About', locked: false }
+                      ].map(tItem => {
+                        const isHidden = (settingsForm.hiddenTabs || []).includes(tItem.id);
+                        return (
+                          <div
+                            key={tItem.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '12px 14px',
+                              borderRadius: '8px',
+                              border: `1px solid ${cBorder}`,
+                              background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                            }}
+                          >
+                            <span style={{ fontSize: '13px', fontWeight: '700', color: cText }}>
+                              {tItem.label} {tItem.locked && <span style={{ fontSize: '10.5px', color: cTextMuted }}>({isRTL ? 'إلزامي' : 'Mandatory'})</span>}
+                            </span>
+                            {!tItem.locked && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentHidden = settingsForm.hiddenTabs || [];
+                                  const updated = isHidden
+                                    ? currentHidden.filter(x => x !== tItem.id)
+                                    : [...currentHidden, tItem.id];
+                                  setSettingsForm({ ...settingsForm, hiddenTabs: updated });
+                                }}
+                                style={{
+                                  background: !isHidden ? '#2563eb' : (isLight ? '#e2e8f0' : '#334155'),
+                                  color: !isHidden ? '#ffffff' : cTextSub,
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '4px 12px',
+                                  fontSize: '11.5px',
+                                  fontWeight: '700',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {!isHidden ? (isRTL ? 'ظاهر' : 'Visible') : (isRTL ? 'مخفي' : 'Hidden')}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 7: MEMBERSHIP QUESTIONS                                       */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'questions' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'أسئلة العضوية' : 'Membership Questions'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'اطرح أسئلة على الأعضاء الجدد قبل انضمامهم للمجتمع' : 'Ask questions to new members before they join the group'}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {(settingsForm.membershipQuestions || []).map((q, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: `1px solid ${cBorder}`,
+                            background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                          }}
+                        >
+                          <span style={{ fontSize: '12.5px', color: cText }}>
+                            <strong>Q{idx + 1}:</strong> {q}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = settingsForm.membershipQuestions.filter((_, i) => i !== idx);
+                              setSettingsForm({ ...settingsForm, membershipQuestions: updated });
+                            }}
+                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newQ = prompt(isRTL ? 'أدخل سؤال العضوية الجديد:' : 'Enter new question:');
+                          if (newQ?.trim()) {
+                            setSettingsForm({ ...settingsForm, membershipQuestions: [...(settingsForm.membershipQuestions || []), newQ.trim()] });
+                          }
+                        }}
+                        style={{
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Plus size={15} />
+                        <span>{isRTL ? '+ إضافة سؤال جديد' : '+ Add Question'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 8: GAMIFICATION & REWARDS                                     */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'gamification' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'المكافآت والتحفيز' : 'Gamification & Rewards'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'تخصيص نقاط التفاعل وسلم المستويات ومكافآت الأعضاء' : 'Customize community points, level thresholds and member rewards'}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                      <div style={{ padding: '14px', borderRadius: '10px', border: `1px solid ${cBorder}`, background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)' }}>
+                        <div style={{ fontSize: '11px', color: cTextSub, fontWeight: '700' }}>{isRTL ? 'نقاط إنشاء منشور' : 'Points per Post'}</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#2563eb', marginTop: '4px' }}>+5 Pts</div>
+                      </div>
+                      <div style={{ padding: '14px', borderRadius: '10px', border: `1px solid ${cBorder}`, background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)' }}>
+                        <div style={{ fontSize: '11px', color: cTextSub, fontWeight: '700' }}>{isRTL ? 'نقاط الإعجاب' : 'Points per Like'}</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#2563eb', marginTop: '4px' }}>+1 Pt</div>
+                      </div>
+                      <div style={{ padding: '14px', borderRadius: '10px', border: `1px solid ${cBorder}`, background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)' }}>
+                        <div style={{ fontSize: '11px', color: cTextSub, fontWeight: '700' }}>{isRTL ? 'نقاط التعليق' : 'Points per Comment'}</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#2563eb', marginTop: '4px' }}>+2 Pts</div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSettingsModal(false);
+                        setShowRewardsModal(true);
+                      }}
+                      style={{
+                        background: cNavy,
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '10px 18px',
+                        fontSize: '12.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      {isRTL ? 'إدارة مكافآت المستويات' : 'Manage Level Rewards'}
+                    </button>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 9: LINKS                                                      */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'links' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'الروابط المخصصة' : 'Custom Links'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'أضف روابط خارجية وقنوات تيليجرام وموارد مهمة للأعضاء' : 'Add external links, Telegram channels, or resources for members'}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {(settingsForm.customLinks || []).map((lnk, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: `1px solid ${cBorder}`,
+                            background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: cText }}>{lnk.title}</div>
+                            <div style={{ fontSize: '11px', color: '#2563eb' }}>{lnk.url}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = settingsForm.customLinks.filter((_, i) => i !== idx);
+                              setSettingsForm({ ...settingsForm, customLinks: updated });
+                            }}
+                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const title = prompt(isRTL ? 'عنوان الرابط:' : 'Link title:');
+                          const url = prompt(isRTL ? 'عنوان URL:' : 'Link URL:');
+                          if (title && url) {
+                            setSettingsForm({ ...settingsForm, customLinks: [...(settingsForm.customLinks || []), { title, url }] });
+                          }
+                        }}
+                        style={{
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Plus size={15} />
+                        <span>{isRTL ? '+ إضافة رابط مخصص' : '+ Add Custom Link'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 10: REPORTED CONTENT                                          */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'reported' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'المحتوى المُبلغ عنه' : 'Reported Content'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'إدارة المنشورات والتعليقات المحظورة أو المُبلغ عنها' : 'Manage flagged posts, comments, and members'}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      padding: '40px 20px',
+                      borderRadius: '12px',
+                      border: `1px dashed ${cBorder}`,
+                      textAlign: 'center',
+                      color: cTextSub
+                    }}>
+                      <Shield size={32} style={{ color: '#22c55e', marginBottom: '8px' }} />
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: cText }}>
+                        {isRTL ? 'لا يوجد محتوى مُبلغ عنه' : 'No reported content'}
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: cTextMuted, marginTop: '2px' }}>
+                        {isRTL ? 'مجتمعك آمن وجميع المنشورات متوافقة مع القواعد' : 'All clear! Community posts comply with guidelines.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 11: IMPORT                                                    */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'import' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'استيراد الأعضاء' : 'Import Members'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'استيراد الطلاب من ملف CSV أو الكورسات المسجلة' : 'Import members from CSV or enrolled academy students'}
+                      </p>
+                    </div>
+
+                    <div
+                      onClick={() => showToast(isRTL ? 'اختر ملف CSV لاستيراد الأعضاء' : 'Select CSV file to import members')}
+                      style={{
+                        border: `1.5px dashed ${isLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.2)'}`,
+                        borderRadius: '12px',
+                        padding: '30px 20px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        background: isLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.02)'
+                      }}
+                    >
+                      <UploadCloud size={30} style={{ color: cTextSub, marginBottom: '8px' }} />
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: cText }}>
+                        {isRTL ? 'انقر لرفع ملف CSV للأعضاء' : 'Click to upload members CSV'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: cTextMuted, marginTop: '4px' }}>
+                        Supports Name, Email, Phone, Role columns
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------------------------------------------------------- */}
+                {/* TAB 12: DISCOVERY                                                 */}
+                {/* ----------------------------------------------------------------- */}
+                {settingsTab === 'discovery' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: cText }}>
+                        {isRTL ? 'إعدادات الاستكشاف' : 'Discovery Settings'}
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: cTextSub }}>
+                        {isRTL ? 'التحكم في ظهور المجتمع في دليل الاستكشاف العام' : 'Control whether your community appears in the public discovery directory'}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      borderRadius: '10px',
+                      border: `1px solid ${cBorder}`,
+                      background: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.02)'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: cText }}>
+                          {isRTL ? 'الظهور في دليل الاستكشاف العام' : 'Show in Community Discovery'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: cTextSub, marginTop: '2px' }}>
+                          {isRTL ? 'يسمح للزوار والطلاب الجدد باكتشاف مجتمعك والانضمام إليه' : 'Allow prospective students and visitors to discover and join your group'}
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settingsForm.discovery !== false}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, discovery: e.target.checked })}
+                        style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: '#2563eb' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
               </div>
-            </form>
+            </div>
+
+            {/* 3. Modal Footer Actions */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: `1px solid ${cBorder}`,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              background: isLight ? '#ffffff' : 'rgba(255,255,255,0.02)'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowSettingsModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${cBorder}`,
+                  borderRadius: '8px',
+                  padding: '8px 20px',
+                  color: cTextSub,
+                  fontSize: '12.5px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                style={{
+                  background: cNavy,
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 26px',
+                  fontSize: '12.5px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  boxShadow: isLight ? '0 2px 6px rgba(26, 54, 93, 0.3)' : '0 2px 8px rgba(37, 99, 235, 0.4)'
+                }}
+              >
+                {isRTL ? 'حفظ' : 'Save'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
