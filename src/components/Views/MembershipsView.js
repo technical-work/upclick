@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -43,7 +43,17 @@ import {
   CheckCircle2,
   Sparkles,
   Link as LinkIcon,
-  MessageCircle
+  MessageCircle,
+  Share2,
+  Zap,
+  ArrowRight,
+  ArrowLeft,
+  Flame,
+  ShieldCheck,
+  FolderPlus,
+  GraduationCap,
+  Tv,
+  HelpCircle
 } from 'lucide-react';
 
 export default function MembershipsView() {
@@ -56,9 +66,8 @@ export default function MembershipsView() {
   const defaultSlug = (userData?.username || coachName).toLowerCase().replace(/[^a-z0-9]/g, '-');
 
   // Top Nav State
-  const [activeMainTab, setActiveMainTab] = useState('portal'); // 'portal', 'courses', 'communities', 'students', 'credentials'
-  const [activeSubTab, setActiveSubTab] = useState('dashboard'); // depends on main tab
-
+  const [activeTab, setActiveTab] = useState('portal'); // 'portal', 'courses', 'communities', 'students', 'settings', 'credentials'
+  
   // Data States
   const [portalSettings, setPortalSettings] = useState(DEFAULT_PORTAL_SETTINGS);
   const [courses, setCourses] = useState([]);
@@ -66,6 +75,11 @@ export default function MembershipsView() {
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  // Search & Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [courseFilter, setCourseFilter] = useState('all'); // 'all', 'published', 'draft'
+  const [studentSearch, setStudentSearch] = useState('');
 
   // Course Builder / Modals State
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -118,128 +132,114 @@ export default function MembershipsView() {
 
   // Settings Save State
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState(DEFAULT_PORTAL_SETTINGS);
 
-  // Search & Filter
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState('newest');
-
-  // Load portal settings and subscribe to data
+  // Load portal settings & subscriptions
   useEffect(() => {
-    let unsubCourses = () => {};
-    let unsubStudents = () => {};
-    let unsubComm = () => {};
-
-    async function init() {
+    let isMounted = true;
+    async function initData() {
       try {
         const settings = await getCoachPortalSettings(coachId);
-        if (!settings.portalSlug) {
-          settings.portalSlug = defaultSlug;
+        if (isMounted) {
+          const merged = { ...DEFAULT_PORTAL_SETTINGS, ...settings };
+          if (!merged.portalSlug || merged.portalSlug === 'academy') {
+            merged.portalSlug = defaultSlug || 'academy';
+          }
+          if (!merged.portalTitle || merged.portalTitle === 'UpKlick Academy') {
+            merged.portalTitle = `${coachName} Academy`;
+          }
+          setPortalSettings(merged);
+          setSettingsForm(merged);
         }
-        setPortalSettings(settings);
-
-        unsubCourses = subscribeCoachCourses(coachId, (data) => setCourses(data));
-        unsubStudents = subscribeCoachStudents(coachId, (data) => setStudents(data));
-        unsubComm = subscribeCoachCommunities(coachId, (data) => setCommunities(data));
       } catch (err) {
-        console.warn('Memberships load warning:', err);
+        console.warn('Error loading settings:', err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
 
-    init();
+    initData();
+
+    // Real-time subscriptions
+    const unsubCourses = subscribeCoachCourses(coachId, (data) => {
+      if (isMounted) setCourses(data || []);
+    });
+
+    const unsubStudents = subscribeCoachStudents(coachId, (data) => {
+      if (isMounted) setStudents(data || []);
+    });
+
+    const unsubCommunities = subscribeCoachCommunities(coachId, (data) => {
+      if (isMounted) setCommunities(data || []);
+    });
 
     return () => {
-      unsubCourses();
-      unsubStudents();
-      unsubComm();
+      isMounted = false;
+      if (unsubCourses) unsubCourses();
+      if (unsubStudents) unsubStudents();
+      if (unsubCommunities) unsubCommunities();
     };
-  }, [coachId, defaultSlug]);
+  }, [coachId, defaultSlug, coachName]);
 
-  // Public Portal URL
-  const portalSlug = portalSettings.portalSlug || defaultSlug;
+  // Derived Values
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://upklick.net';
-  const publicPortalUrl = `${baseUrl}/portal/${portalSlug}`;
+  const portalUrl = `${baseUrl}/portal/${portalSettings.portalSlug || defaultSlug}`;
 
-  const handleCopyLink = () => {
-    if (typeof navigator !== 'undefined') {
-      navigator.clipboard.writeText(publicPortalUrl);
+  const copyPortalLink = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(portalUrl);
       setCopied(true);
-      showToast(L('Portal link copied to clipboard!', 'تم نسخ رابط الأكاديمية بنجاح!'));
+      showToast(L('Portal link copied to clipboard!', 'تم نسخ رابط بوابة الطلاب بنجاح!'));
       setTimeout(() => setCopied(false), 2500);
     }
   };
 
-  // Save Portal Settings
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    setSavingSettings(true);
-    try {
-      await saveCoachPortalSettings(coachId, portalSettings);
-      showToast(L('Portal settings saved successfully!', 'تم حفظ إعدادات الأكاديمية بنجاح!'));
-    } catch (err) {
-      console.error(err);
-      showToast(L('Failed to save settings: ' + err.message, 'فشل حفظ الإعدادات: ' + err.message), 'error');
-    } finally {
-      setSavingSettings(false);
+  const totalLessonsCount = useMemo(() => {
+    return courses.reduce((acc, c) => {
+      const modCount = c.modules?.reduce((mAcc, m) => mAcc + (m.lessons?.length || 0), 0) || 0;
+      return acc + modCount;
+    }, 0);
+  }, [courses]);
+
+  const totalRevenueGenerated = useMemo(() => {
+    return courses.reduce((acc, c) => {
+      const price = Number(c.price || 0);
+      const studentCount = Number(c.studentCount || students.filter(s => s.enrolledCourses?.includes(c.id)).length || 0);
+      return acc + (price * studentCount);
+    }, 0);
+  }, [courses, students]);
+
+  // Course Handlers
+  const handleOpenCourseModal = (course = null) => {
+    if (course) {
+      setEditingCourse(course);
+      setCourseForm({
+        title: course.title || '',
+        description: course.description || '',
+        category: course.category || 'E-commerce & Business',
+        price: course.price || 0,
+        currency: course.currency || 'EGP',
+        thumbnailUrl: course.thumbnailUrl || '',
+        isPublished: course.isPublished !== undefined ? course.isPublished : true
+      });
+    } else {
+      setEditingCourse(null);
+      setCourseForm({
+        title: '',
+        description: '',
+        category: 'E-commerce & Business',
+        price: 0,
+        currency: 'EGP',
+        thumbnailUrl: '',
+        isPublished: true
+      });
     }
-  };
-
-  // Open Course Modal
-  const handleOpenCreateCourse = () => {
-    setEditingCourse(null);
-    setCourseForm({
-      title: '',
-      description: '',
-      category: 'E-commerce & Business',
-      price: 0,
-      currency: 'EGP',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop',
-      isPublished: true,
-      modules: [
-        {
-          id: 'mod_1',
-          title: isRTL ? 'الوحدة الأولى: البداية والأساسيات' : 'Module 1: Getting Started & Foundations',
-          lessons: [
-            {
-              id: 'les_1',
-              title: isRTL ? 'مقدمة ترحيبية وخريطة الطريق' : 'Welcome & Master Roadmap',
-              videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-              videoType: 'youtube',
-              duration: '10 min',
-              notes: 'أهلاً بك في هذا الكورس! جهز دفتر ملاحظاتك ولنبدأ.',
-              attachmentUrl: '',
-              attachmentName: '',
-              isFreePreview: true
-            }
-          ]
-        }
-      ]
-    });
-    setShowCourseModal(true);
-  };
-
-  const handleEditCourseInfo = (course) => {
-    setEditingCourse(course);
-    setCourseForm({
-      title: course.title || '',
-      description: course.description || '',
-      category: course.category || 'General',
-      price: course.price || 0,
-      currency: course.currency || 'EGP',
-      thumbnailUrl: course.thumbnailUrl || '',
-      isPublished: course.isPublished !== false,
-      modules: course.modules || []
-    });
     setShowCourseModal(true);
   };
 
   const handleSaveCourse = async (e) => {
     e.preventDefault();
-    if (!courseForm.title.trim()) {
-      showToast(L('Please enter a course title', 'يرجى إدخال عنوان الكورس'), 'error');
-      return;
-    }
+    if (!courseForm.title.trim()) return;
 
     try {
       const payload = {
@@ -259,7 +259,7 @@ export default function MembershipsView() {
   const handleDeleteCourse = async (courseId) => {
     if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الكورس وجميع دروسه؟' : 'Are you sure you want to delete this course and all its lessons?')) return;
     try {
-      await deleteCourse(courseId);
+      await deleteCourse(courseId, coachId);
       if (curriculumCourse?.id === courseId) setCurriculumCourse(null);
       showToast(L('Course deleted', 'تم حذف الكورس'));
     } catch (err) {
@@ -267,1073 +267,992 @@ export default function MembershipsView() {
     }
   };
 
-  // Curriculum Builder Actions
-  const handleOpenCurriculum = (course) => {
-    setCurriculumCourse(course);
-    setActiveMainTab('courses');
-    setActiveSubTab('curriculum');
-  };
-
+  // Curriculum Modules & Lessons Handlers
   const handleAddModule = () => {
-    if (!moduleTitle.trim()) return;
-    const updatedModules = [
-      ...(curriculumCourse.modules || []),
-      {
-        id: 'mod_' + Date.now(),
-        title: moduleTitle.trim(),
-        lessons: []
-      }
-    ];
-    saveCurriculumUpdate(updatedModules);
+    if (!moduleTitle.trim() || !curriculumCourse) return;
+    const currentModules = curriculumCourse.modules || [];
+    const newModule = {
+      id: `mod_${Date.now()}`,
+      title: moduleTitle.trim(),
+      lessons: []
+    };
+    const updated = { ...curriculumCourse, modules: [...currentModules, newModule] };
+    setCurriculumCourse(updated);
+    saveCourse(coachId, updated);
     setModuleTitle('');
     setShowModuleModal(false);
+    showToast(L('Module added!', 'تمت إضافة الفصل/الموديول!'));
   };
 
-  const handleDeleteModule = (modIdx) => {
-    if (!window.confirm(isRTL ? 'حذف هذه الوحدة بجميع دروسها؟' : 'Delete this module and its lessons?')) return;
-    const updatedModules = (curriculumCourse.modules || []).filter((_, idx) => idx !== modIdx);
-    saveCurriculumUpdate(updatedModules);
+  const handleDeleteModule = (moduleIdx) => {
+    if (!curriculumCourse) return;
+    const updatedModules = [...(curriculumCourse.modules || [])];
+    updatedModules.splice(moduleIdx, 1);
+    const updated = { ...curriculumCourse, modules: updatedModules };
+    setCurriculumCourse(updated);
+    saveCourse(coachId, updated);
+    showToast(L('Module removed', 'تم حذف الفصل'));
   };
 
-  const handleOpenAddLesson = (modIdx) => {
-    setActiveModuleIndex(modIdx);
-    setEditingLessonIndex(null);
-    setLessonForm({
-      title: '',
-      videoUrl: '',
-      videoType: 'youtube',
-      duration: '15 min',
-      notes: '',
-      attachmentUrl: '',
-      attachmentName: '',
-      isFreePreview: false
-    });
-    setShowLessonModal(true);
-  };
-
-  const handleOpenEditLesson = (modIdx, lessonIdx) => {
-    setActiveModuleIndex(modIdx);
+  const handleOpenLessonModal = (moduleIdx, lessonIdx = null) => {
+    setActiveModuleIndex(moduleIdx);
     setEditingLessonIndex(lessonIdx);
-    const existing = curriculumCourse.modules[modIdx].lessons[lessonIdx];
-    setLessonForm({
-      title: existing.title || '',
-      videoUrl: existing.videoUrl || '',
-      videoType: existing.videoType || 'youtube',
-      duration: existing.duration || '15 min',
-      notes: existing.notes || '',
-      attachmentUrl: existing.attachmentUrl || '',
-      attachmentName: existing.attachmentName || '',
-      isFreePreview: !!existing.isFreePreview
-    });
-    setShowLessonModal(true);
-  };
-
-  const handleSaveLesson = () => {
-    if (!lessonForm.title.trim()) {
-      showToast(L('Lesson title is required', 'عنوان الدرس مطلوب'), 'error');
-      return;
-    }
-
-    const currentModules = JSON.parse(JSON.stringify(curriculumCourse.modules || []));
-    const targetModule = currentModules[activeModuleIndex];
-    if (!targetModule) return;
-
-    if (!targetModule.lessons) targetModule.lessons = [];
-
-    if (editingLessonIndex !== null) {
-      targetModule.lessons[editingLessonIndex] = {
-        ...targetModule.lessons[editingLessonIndex],
-        ...lessonForm
-      };
+    if (lessonIdx !== null) {
+      const lesson = curriculumCourse.modules[moduleIdx].lessons[lessonIdx];
+      setLessonForm({
+        title: lesson.title || '',
+        videoUrl: lesson.videoUrl || '',
+        videoType: lesson.videoType || 'youtube',
+        duration: lesson.duration || '15 min',
+        notes: lesson.notes || '',
+        attachmentUrl: lesson.attachmentUrl || '',
+        attachmentName: lesson.attachmentName || '',
+        isFreePreview: lesson.isFreePreview || false
+      });
     } else {
-      targetModule.lessons.push({
-        id: 'les_' + Date.now(),
-        ...lessonForm
+      setLessonForm({
+        title: '',
+        videoUrl: '',
+        videoType: 'youtube',
+        duration: '15 min',
+        notes: '',
+        attachmentUrl: '',
+        attachmentName: '',
+        isFreePreview: false
       });
     }
-
-    saveCurriculumUpdate(currentModules);
-    setShowLessonModal(false);
+    setShowLessonModal(true);
   };
 
-  const handleDeleteLesson = (modIdx, lesIdx) => {
-    if (!window.confirm(isRTL ? 'حذف هذا الدرس؟' : 'Delete this lesson?')) return;
-    const currentModules = JSON.parse(JSON.stringify(curriculumCourse.modules || []));
-    currentModules[modIdx].lessons = currentModules[modIdx].lessons.filter((_, idx) => idx !== lesIdx);
-    saveCurriculumUpdate(currentModules);
-  };
-
-  const saveCurriculumUpdate = async (updatedModules) => {
-    const updated = {
-      ...curriculumCourse,
-      modules: updatedModules
-    };
-    setCurriculumCourse(updated);
-    try {
-      await saveCourse(coachId, updated);
-      showToast(L('Curriculum saved!', 'تم حفظ محتوى الكورس!'));
-    } catch (err) {
-      console.error(err);
-      showToast(L('Error updating curriculum', 'حدث خطأ أثناء التحديث'), 'error');
-    }
-  };
-
-  // Invite Student Action
-  const handleInviteStudent = async (e) => {
+  const handleSaveLesson = (e) => {
     e.preventDefault();
-    if (!inviteForm.email.trim()) {
-      showToast(L('Please enter student email', 'يرجى إدخال البريد الإلكتروني'), 'error');
-      return;
+    if (!curriculumCourse || activeModuleIndex === null || !lessonForm.title.trim()) return;
+
+    const updatedModules = [...(curriculumCourse.modules || [])];
+    const targetModule = { ...updatedModules[activeModuleIndex] };
+    const targetLessons = [...(targetModule.lessons || [])];
+
+    const lessonData = {
+      id: editingLessonIndex !== null ? targetLessons[editingLessonIndex].id : `lsn_${Date.now()}`,
+      ...lessonForm
+    };
+
+    if (editingLessonIndex !== null) {
+      targetLessons[editingLessonIndex] = lessonData;
+    } else {
+      targetLessons.push(lessonData);
     }
+
+    targetModule.lessons = targetLessons;
+    updatedModules[activeModuleIndex] = targetModule;
+
+    const updatedCourse = { ...curriculumCourse, modules: updatedModules };
+    setCurriculumCourse(updatedCourse);
+    saveCourse(coachId, updatedCourse);
+    setShowLessonModal(false);
+    showToast(L('Lesson saved successfully!', 'تم حفظ الدرس بنجاح!'));
+  };
+
+  const handleDeleteLesson = (moduleIdx, lessonIdx) => {
+    if (!curriculumCourse) return;
+    const updatedModules = [...(curriculumCourse.modules || [])];
+    const targetModule = { ...updatedModules[moduleIdx] };
+    const targetLessons = [...(targetModule.lessons || [])];
+    targetLessons.splice(lessonIdx, 1);
+    targetModule.lessons = targetLessons;
+    updatedModules[moduleIdx] = targetModule;
+
+    const updatedCourse = { ...curriculumCourse, modules: updatedModules };
+    setCurriculumCourse(updatedCourse);
+    saveCourse(coachId, updatedCourse);
+    showToast(L('Lesson deleted', 'تم حذف الدرس'));
+  };
+
+  // Student Invite Handlers
+  const handleEnrollStudent = async (e) => {
+    e.preventDefault();
+    if (!inviteForm.email.trim()) return;
+
     try {
       await enrollStudent(coachId, {
         name: inviteForm.name.trim() || inviteForm.email.split('@')[0],
         email: inviteForm.email.trim(),
-        enrolledCourses: inviteForm.selectedCourses
+        enrolledCourses: inviteForm.selectedCourses,
+        status: 'active'
       });
       setShowInviteModal(false);
       setInviteForm({ name: '', email: '', selectedCourses: [] });
-      showToast(L('Student added & enrolled successfully!', 'تم إضافة الطالب وتفعيله بنجاح!'));
+      showToast(L('Student enrolled successfully!', 'تم تفعيل حساب الطالب بنجاح!'));
     } catch (err) {
       console.error(err);
-      showToast(L('Error inviting student', 'حدث خطأ أثناء إضافة الطالب'), 'error');
+      showToast(L('Failed to enroll student', 'فشل تفعيل الطالب'), 'error');
     }
   };
 
-  // Create Community Group
+  // Community Group Handler
   const handleSaveGroup = async (e) => {
     e.preventDefault();
     if (!groupForm.name.trim()) return;
+
     try {
       await saveCommunityGroup(coachId, groupForm);
       setShowGroupModal(false);
       setGroupForm({ name: '', description: '', icon: '💬', isPrivate: false });
-      showToast(L('Community group created!', 'تم إنشاء مجتمع المحادثة بنجاح!'));
+      showToast(L('Community group created!', 'تم إنشاء مجتمع النقاش بنجاح!'));
     } catch (err) {
       console.error(err);
+      showToast(L('Failed to create group', 'فشل إنشاء المجتمع'), 'error');
     }
   };
 
-  // Metrics calculation
-  const totalLessonsCount = courses.reduce((acc, c) => {
-    return acc + (c.modules || []).reduce((mAcc, m) => mAcc + (m.lessons?.length || 0), 0);
-  }, 0);
-
-  const filteredCourses = courses.filter(c =>
-    (c.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.category || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Settings Save Handler
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      const saved = await saveCoachPortalSettings(coachId, settingsForm);
+      setPortalSettings(saved);
+      showToast(L('Portal settings saved successfully!', 'تم حفظ إعدادات وهوية البوابة بنجاح!'));
+    } catch (err) {
+      console.error(err);
+      showToast(L('Error saving settings', 'خطأ أثناء حفظ الإعدادات'), 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   return (
-    <div className="pg on" style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', paddingBottom: '60px' }}>
+    <div className="memberships-container" style={{ direction: isRTL ? 'rtl' : 'ltr', color: 'var(--text, #f8fafc)' }}>
+      {/* Scoped Animations & Micro-Interactions */}
+      <style jsx>{`
+        @keyframes floatSlow {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+        @keyframes shimmerLine {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .glass-panel {
+          background: rgba(17, 24, 39, 0.7);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 18px;
+          box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .interactive-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(99, 102, 241, 0.45);
+          box-shadow: 0 16px 36px -10px rgba(99, 102, 241, 0.22);
+        }
+        .glow-btn {
+          position: relative;
+          overflow: hidden;
+          transition: all 0.25s ease;
+        }
+        .glow-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        }
+        .glow-btn:active {
+          transform: translateY(0);
+        }
+        .nav-pill {
+          padding: 8px 18px;
+          border-radius: 12px;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          border: 1px solid transparent;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--text2, #94a3b8);
+          background: transparent;
+        }
+        .nav-pill:hover {
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .nav-pill.active {
+          color: #ffffff;
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25));
+          border-color: rgba(99, 102, 241, 0.5);
+          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);
+        }
+      `}</style>
 
-      {/* 1. GoHighLevel Style Main Header Navigation */}
-      <div style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--line)',
-        borderRadius: '16px',
-        padding: '8px 16px',
-        marginBottom: '22px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        {/* Left Side: Brand title & Navigation Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+      {/* ========================================================================= */}
+      {/* 1. TOP SUB-NAVBAR (GoHighLevel Clean Architecture)                        */}
+      {/* ========================================================================= */}
+      <div className="glass-panel" style={{ padding: '12px 20px', marginBottom: '22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+          
+          {/* Brand & Suite Identifier */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              boxShadow: '0 6px 16px rgba(99, 102, 241, 0.35)'
+            }}>
+              <GraduationCap size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '17px', fontWeight: '900', letterSpacing: '-0.3px' }}>
+                  {isRTL ? 'الأكاديمية والعضويات' : 'Memberships & LMS'}
+                </span>
+                <span style={{
+                  fontSize: '10.5px',
+                  fontWeight: '800',
+                  padding: '2px 8px',
+                  borderRadius: '20px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2))',
+                  color: '#a5b4fc',
+                  border: '1px solid rgba(99, 102, 241, 0.3)'
+                }}>
+                  {isRTL ? 'نظام GoHighLevel' : 'GHL PRO'}
+                </span>
+              </div>
+              <div style={{ fontSize: '11.5px', color: 'var(--text3, #64748b)' }}>
+                {isRTL ? 'إدارة الكورسات، المناهج، مجتمعات الطلاب، وبوابة التدريب المستقلة' : 'Courses, modules, community hubs & white-label student portal'}
+              </div>
+            </div>
+          </div>
+
+          {/* Central Segmented Tabs */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            paddingInlineEnd: '14px',
-            borderInlineEnd: '1px solid var(--line)',
-            fontWeight: '800',
-            fontSize: '15px',
-            color: 'var(--orange)'
+            gap: '6px',
+            background: 'rgba(0, 0, 0, 0.25)',
+            padding: '4px',
+            borderRadius: '14px',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            flexWrap: 'wrap'
           }}>
-            <BookOpen size={20} />
-            <span>{isRTL ? 'الأكاديمية والعضويات' : 'Memberships'}</span>
+            <button
+              onClick={() => { setActiveTab('portal'); setCurriculumCourse(null); }}
+              className={`nav-pill ${activeTab === 'portal' ? 'active' : ''}`}
+            >
+              <Globe size={15} />
+              <span>{isRTL ? 'بوابة الطلاب' : 'Client Portal'}</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('courses'); setCurriculumCourse(null); }}
+              className={`nav-pill ${activeTab === 'courses' ? 'active' : ''}`}
+            >
+              <BookOpen size={15} />
+              <span>{isRTL ? 'الكورسات' : 'Courses'}</span>
+              <span style={{ fontSize: '10.5px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)' }}>
+                {courses.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('communities'); setCurriculumCourse(null); }}
+              className={`nav-pill ${activeTab === 'communities' ? 'active' : ''}`}
+            >
+              <Users size={15} />
+              <span>{isRTL ? 'المجتمعات' : 'Communities'}</span>
+              <span style={{ fontSize: '10.5px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)' }}>
+                {communities.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('students'); setCurriculumCourse(null); }}
+              className={`nav-pill ${activeTab === 'students' ? 'active' : ''}`}
+            >
+              <Flame size={15} />
+              <span>{isRTL ? 'الطلاب والمشتركين' : 'Students'}</span>
+              <span style={{ fontSize: '10.5px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.12)' }}>
+                {students.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('settings'); setCurriculumCourse(null); }}
+              className={`nav-pill ${activeTab === 'settings' ? 'active' : ''}`}
+            >
+              <Settings size={15} />
+              <span>{isRTL ? 'إعدادات الهوية' : 'Portal Settings'}</span>
+            </button>
           </div>
 
-          {/* Sub Navigation Items */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {/* 1. Client Portal */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => { setActiveMainTab('portal'); setActiveSubTab('dashboard'); }}
-                className={`btn btn-sm ${activeMainTab === 'portal' ? 'btn-prime' : 'btn-ghost'}`}
-                style={{ borderRadius: '8px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Globe size={15} />
-                <span>{L('Client Portal', 'بوابة الطلاب')}</span>
-              </button>
-            </div>
+          {/* Quick External Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={copyPortalLink}
+              className="btn btn-ghost"
+              style={{
+                fontSize: '12.5px',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                background: copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                color: copied ? '#4ade80' : 'var(--text, #f8fafc)',
+                border: copied ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)'
+              }}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              <span>{copied ? (isRTL ? 'تم النسخ!' : 'Copied!') : (isRTL ? 'نسخ رابط البوابة' : 'Copy Portal URL')}</span>
+            </button>
 
-            {/* 2. Courses */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => { setActiveMainTab('courses'); setActiveSubTab('products'); }}
-                className={`btn btn-sm ${activeMainTab === 'courses' ? 'btn-prime' : 'btn-ghost'}`}
-                style={{ borderRadius: '8px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Layers size={15} />
-                <span>{L('Courses', 'الكورسات')}</span>
-                <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '10px' }}>
-                  {courses.length}
-                </span>
-              </button>
-            </div>
-
-            {/* 3. Communities */}
-            <div>
-              <button
-                type="button"
-                onClick={() => { setActiveMainTab('communities'); setActiveSubTab('groups'); }}
-                className={`btn btn-sm ${activeMainTab === 'communities' ? 'btn-prime' : 'btn-ghost'}`}
-                style={{ borderRadius: '8px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Users size={15} />
-                <span>{L('Communities', 'المجتمعات')}</span>
-              </button>
-            </div>
-
-            {/* 4. Students & Members */}
-            <div>
-              <button
-                type="button"
-                onClick={() => { setActiveMainTab('students'); setActiveSubTab('list'); }}
-                className={`btn btn-sm ${activeMainTab === 'students' ? 'btn-prime' : 'btn-ghost'}`}
-                style={{ borderRadius: '8px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <CheckCircle2 size={15} />
-                <span>{L('Students & Members', 'الطلاب والمشتركين')}</span>
-                <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '10px' }}>
-                  {students.length}
-                </span>
-              </button>
-            </div>
-
-            {/* 5. Credentials */}
-            <div>
-              <button
-                type="button"
-                onClick={() => { setActiveMainTab('credentials'); setActiveSubTab('certs'); }}
-                className={`btn btn-sm ${activeMainTab === 'credentials' ? 'btn-prime' : 'btn-ghost'}`}
-                style={{ borderRadius: '8px', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Award size={15} />
-                <span>{L('Credentials', 'الشهادات')}</span>
-              </button>
-            </div>
+            <a
+              href={portalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glow-btn btn"
+              style={{
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '8px 16px',
+                fontSize: '12.5px',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                textDecoration: 'none'
+              }}
+            >
+              <span>{isRTL ? 'معاينة البوابة المباشرة' : 'Live Portal'}</span>
+              <ExternalLink size={13} />
+            </a>
           </div>
-        </div>
 
-        {/* Right Side: Fast Portal URL & Preview */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="btn btn-ghost btn-sm"
-            style={{ fontSize: '12px', border: '1px solid var(--line)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
-            title={publicPortalUrl}
-          >
-            {copied ? <Check size={14} color="var(--green)" /> : <Copy size={14} />}
-            <span>{copied ? L('Copied!', 'تم النسخ!') : L('Copy Portal Link', 'نسخ رابط البوابة')}</span>
-          </button>
-
-          <a
-            href={publicPortalUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-prime btn-sm"
-            style={{ fontSize: '12px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
-          >
-            <ExternalLink size={14} />
-            <span>{L('Preview Portal', 'معاينة البوابة')}</span>
-          </a>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: CLIENT PORTAL                                                      */}
+      {/* 2. SUB-VIEW: CLIENT PORTAL DASHBOARD                                      */}
       {/* ========================================================================= */}
-      {activeMainTab === 'portal' && (
-        <div>
-          {/* Sub Tabs: Dashboard vs Settings */}
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '18px' }}>
-            <button
-              onClick={() => setActiveSubTab('dashboard')}
-              className={`btn btn-sm ${activeSubTab === 'dashboard' ? 'btn-prime' : 'btn-ghost'}`}
-              style={{ borderRadius: '8px' }}
-            >
-              📊 {L('Dashboard', 'لوحة التحكم')}
-            </button>
-            <button
-              onClick={() => setActiveSubTab('settings')}
-              className={`btn btn-sm ${activeSubTab === 'settings' ? 'btn-prime' : 'btn-ghost'}`}
-              style={{ borderRadius: '8px' }}
-            >
-              ⚙️ {L('Client Portal Settings', 'إعدادات وهوية البوابة')}
-            </button>
+      {activeTab === 'portal' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+          
+          {/* Hero Promotional Banner (Gorgeous Mesh Gradient & Lighting) */}
+          <div className="glass-panel" style={{
+            position: 'relative',
+            overflow: 'hidden',
+            padding: '36px 36px',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.12) 50%, rgba(236, 72, 153, 0.1) 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.25)'
+          }}>
+            {/* Ambient Background Glow Orbs */}
+            <div style={{
+              position: 'absolute',
+              top: '-60px',
+              left: isRTL ? 'auto' : '-60px',
+              right: isRTL ? '-60px' : 'auto',
+              width: '240px',
+              height: '240px',
+              background: 'radial-gradient(circle, rgba(99,102,241,0.35) 0%, transparent 70%)',
+              filter: 'blur(30px)',
+              pointerEvents: 'none'
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: '-80px',
+              right: isRTL ? 'auto' : '-80px',
+              left: isRTL ? '-80px' : 'auto',
+              width: '280px',
+              height: '280px',
+              background: 'radial-gradient(circle, rgba(236,72,153,0.3) 0%, transparent 70%)',
+              filter: 'blur(40px)',
+              pointerEvents: 'none'
+            }} />
+
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
+              <div style={{ maxWidth: '640px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '5px 12px', borderRadius: '30px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', marginBottom: '14px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e' }} />
+                  <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {isRTL ? 'بوابة المدرب المستقلة • نشطة ومحمية' : 'White-Label Coach Gateway • Active & Protected'}
+                  </span>
+                </div>
+
+                <h1 style={{ margin: '0 0 10px 0', fontSize: '28px', fontWeight: '900', letterSpacing: '-0.5px', lineHeight: '1.25' }}>
+                  {portalSettings.portalTitle || `${coachName} Academy`}
+                </h1>
+
+                <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--text2, #94a3b8)', lineHeight: '1.6' }}>
+                  {portalSettings.portalTagline || (isRTL 
+                    ? 'أطلق أكاديميتك الخاصة الآن. يدخل طلابك عبر رابط مخصص لمشاهدة المناهج والمحاضرات والمشاركة في المجتمع التفاعلي بدون ظهور أي أدوات داخلية أو كريديت لـ UpKlick.'
+                    : 'Launch your branded online academy. Students access courses, video lessons, and communities through your dedicated portal without seeing any UpKlick tools or credits.')}
+                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => handleOpenCourseModal()}
+                    className="glow-btn btn"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '11px 22px',
+                      fontSize: '13.5px',
+                      fontWeight: '800',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Plus size={16} />
+                    <span>{isRTL ? 'إضافة كورس جديد' : 'Create New Course'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className="btn"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      backdropFilter: 'blur(10px)',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '12px',
+                      padding: '11px 20px',
+                      fontSize: '13.5px',
+                      fontWeight: '700',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Sliders size={16} />
+                    <span>{isRTL ? 'تخصيص الهوية والشعار' : 'Branding & Theme'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Preview Card Badge */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '16px',
+                padding: '20px 24px',
+                minWidth: '260px',
+                boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text3, #64748b)', textTransform: 'uppercase' }}>
+                  {isRTL ? 'حالة البوابة' : 'Portal Status'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#22c55e'
+                  }}>
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#ffffff' }}>
+                      {isRTL ? 'بوابة آمنة ومحمية' : 'Secure & Protected'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#22c55e', fontWeight: '600' }}>
+                      {isRTL ? 'معزولة تماماً للطلاب' : '100% Student Isolation'}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                  <span style={{ color: 'var(--text3, #64748b)' }}>{isRTL ? 'الكورسات المتاحة:' : 'Live Courses:'}</span>
+                  <strong style={{ color: '#ffffff' }}>{courses.length} {isRTL ? 'كورس' : 'courses'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                  <span style={{ color: 'var(--text3, #64748b)' }}>{isRTL ? 'المحاضرات:' : 'Total Lessons:'}</span>
+                  <strong style={{ color: '#ffffff' }}>{totalLessonsCount} {isRTL ? 'درس' : 'lessons'}</strong>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {activeSubTab === 'dashboard' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* GoHighLevel Top Banner */}
-              <div style={{
-                background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)',
-                borderRadius: '16px',
-                padding: '28px 32px',
-                color: '#fff',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                boxShadow: '0 10px 30px rgba(124, 58, 237, 0.25)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{ maxWidth: '600px', zIndex: 1 }}>
-                  <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '12px', fontWeight: 'bold' }}>
-                    🚀 {L('White-Label Client Portal', 'بوابة المدرب البيضاء')}
-                  </span>
-                  <h2 style={{ fontSize: '24px', fontWeight: '900', margin: '10px 0 6px', color: '#fff' }}>
-                    {portalSettings.portalTitle || `${coachName}'s Academy`}
-                  </h2>
-                  <p style={{ fontSize: '13.5px', opacity: 0.9, lineHeight: '1.5', margin: 0 }}>
-                    {L(
-                      'Launch your custom student gateway. Students access courses and community discussions without seeing any UpKlick branding.',
-                      'أطلق بوابتك التعليمية الخاصة. يدخل طلابك لمشاهدة الكورسات والمجتمع بدون ظهور أي أدوات داخلية لـ UpKlick.'
-                    )}
-                  </p>
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px', zIndex: 1 }}>
-                  <button
-                    onClick={() => setActiveSubTab('settings')}
-                    className="btn btn-sm"
-                    style={{ background: '#fff', color: '#7c3aed', fontWeight: '800', border: 'none', borderRadius: '10px', padding: '10px 18px' }}
-                  >
-                    🎨 {L('Customize Branding', 'تخصيص الهوية')}
-                  </button>
-                  <button
-                    onClick={handleOpenCreateCourse}
-                    className="btn btn-sm"
-                    style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '10px', padding: '10px 18px' }}
-                  >
-                    + {L('Add Course', 'إضافة كورس')}
-                  </button>
-                </div>
-              </div>
-
-              {/* Public Portal URL Card (from Screenshot 1) */}
-              <div className="card" style={{ padding: '24px', borderRadius: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
-                  <div style={{ flex: '1 1 450px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 6px 0', color: 'var(--text)' }}>
-                      {L('Creating a protected online gateway for client interactions', 'بوابة تعليمية آمنة مخصصة لطلابك')}
-                    </h3>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text3)', margin: '0 0 16px 0' }}>
-                      {L(
-                        'What is a client portal? Your clients and students can log in anytime to access courses, watch video lessons, and interact in your community.',
-                        'ما هي بوابة الطلاب؟ هي رابط مخصص يدخل عليه طلابك للتسجيل، دراسة الكورسات، ومتابعة المحادثات داخل مجتمعك.'
-                      )}
-                    </p>
-
-                    <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                      {L('Client Portal Public URL', 'رابط بوابة الطلاب العامة (أرسله للطلاب)')}
-                    </label>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      background: 'var(--bg3)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '10px',
-                      padding: '8px 12px',
-                      gap: '10px'
-                    }}>
-                      <LinkIcon size={16} color="var(--orange)" />
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', direction: 'ltr', textAlign: 'left' }}>
-                        {publicPortalUrl}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyLink}
-                        className="btn btn-sm btn-ghost"
-                        style={{ padding: '4px 10px', color: 'var(--orange)', fontWeight: 'bold' }}
-                      >
-                        {copied ? <Check size={16} /> : <Copy size={16} />}
-                      </button>
-                    </div>
+          {/* Client Gateway Card with Quick Copy & High-Impact Stats */}
+          <div className="glass-panel" style={{ padding: '28px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px', alignItems: 'center' }}>
+              
+              {/* Gateway URL Info */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#818cf8'
+                  }}>
+                    <LinkIcon size={16} />
                   </div>
-
-                  {/* Quick Stat Counters from Screenshot 1 */}
-                  <div style={{ display: 'flex', gap: '14px', flex: '0 0 auto' }}>
-                    <div style={{
-                      background: 'var(--bg2)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '14px',
-                      padding: '20px 24px',
-                      textAlign: 'center',
-                      minWidth: '130px'
-                    }}>
-                      <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
-                        {L('Invited', 'المدعوون')}
-                      </div>
-                      <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text)' }}>
-                        {students.length}
-                      </div>
-                    </div>
-
-                    <div style={{
-                      background: 'var(--bg2)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '14px',
-                      padding: '20px 24px',
-                      textAlign: 'center',
-                      minWidth: '130px'
-                    }}>
-                      <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
-                        {L('Active Users', 'الطلاب النشطون')}
-                      </div>
-                      <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--orange)' }}>
-                        {students.filter(s => s.status === 'active').length || students.length}
-                      </div>
-                    </div>
-
-                    <div style={{
-                      background: 'var(--bg2)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '14px',
-                      padding: '20px 24px',
-                      textAlign: 'center',
-                      minWidth: '130px'
-                    }}>
-                      <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: '700', marginBottom: '4px' }}>
-                        {L('Courses', 'الكورسات')}
-                      </div>
-                      <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--green)' }}>
-                        {courses.length}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                <div className="card" style={{ padding: '20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(255, 107, 53, 0.12)', color: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BookOpen size={20} />
-                    </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Manage Courses', 'إدارة الكورسات والدروس')}</h4>
-                      <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text3)' }}>{courses.length} {L('active products created', 'كورس متوفر حالياً')}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setActiveMainTab('courses'); setActiveSubTab('products'); }}
-                    className="btn btn-ghost btn-sm"
-                    style={{ marginTop: 'auto', width: '100%', justifyContent: 'center' }}
-                  >
-                    {L('Go to Courses', 'عرض الكورسات')} →
-                  </button>
-                </div>
-
-                <div className="card" style={{ padding: '20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.12)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Users size={20} />
-                    </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Invite Students', 'إضافة ودعوة الطلاب')}</h4>
-                      <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text3)' }}>{students.length} {L('enrolled members', 'طالب مسجل')}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowInviteModal(true)}
-                    className="btn btn-prime btn-sm"
-                    style={{ marginTop: 'auto', width: '100%', justifyContent: 'center' }}
-                  >
-                    + {L('Add New Student', 'إضافة طالب جديد')}
-                  </button>
-                </div>
-
-                <div className="card" style={{ padding: '20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.12)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MessageSquare size={20} />
-                    </div>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Community Groups', 'مجتمعات النقاش')}</h4>
-                      <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text3)' }}>{communities.length} {L('active spaces', 'مجتمع تفاعلي')}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setActiveMainTab('communities'); setActiveSubTab('groups'); }}
-                    className="btn btn-ghost btn-sm"
-                    style={{ marginTop: 'auto', width: '100%', justifyContent: 'center' }}
-                  >
-                    {L('Open Communities', 'فتح المجتمعات')} →
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Settings Sub-Tab (From Screenshot 4) */}
-          {activeSubTab === 'settings' && (
-            <div className="card" style={{ padding: '28px', borderRadius: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', borderBottom: '1px solid var(--line)', paddingBottom: '14px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>
-                    {L('Client Portal Settings', 'إعدادات وهوية بوابة الطلاب')}
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800' }}>
+                    {isRTL ? 'رابط بوابة الطلاب المباشر (Client Portal URL)' : 'Client Portal URL'}
                   </h3>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text3)' }}>
-                    {L('Configure custom branding, portal URL slug, access permissions, and contact widget', 'خصص هوية الأكاديمية، رابط البوابة، وصلاحيات التسجيل')}
+                </div>
+
+                <p style={{ margin: '0 0 16px 0', fontSize: '12.5px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                  {isRTL 
+                    ? 'أرسل هذا الرابط المباشر إلى طلابك للتسجيل ومتابعة الدورات والمجتمع. يمكنك أيضاً تخصيص الرابط من الإعدادات.' 
+                    : 'Share this link with your enrolled learners to register and access all their training courses and discussions.'}
+                </p>
+
+                {/* Sleek Interactive URL Box */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  padding: '6px 8px 6px 14px',
+                  gap: '10px',
+                  transition: 'border-color 0.2s'
+                }}>
+                  <Globe size={16} style={{ color: '#818cf8', flexShrink: 0 }} />
+                  <span style={{
+                    flex: 1,
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    color: '#e2e8f0',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    direction: 'ltr',
+                    textAlign: isRTL ? 'right' : 'left'
+                  }}>
+                    {portalUrl}
+                  </span>
+
+                  <button
+                    onClick={copyPortalLink}
+                    className="btn glow-btn"
+                    style={{
+                      background: copied ? '#22c55e' : 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 14px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    <span>{copied ? (isRTL ? 'تم!' : 'Copied') : (isRTL ? 'نسخ' : 'Copy')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3 Metric Cards Grid (GoHighLevel KPIs) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+                
+                {/* Metric 1: Invited / Total */}
+                <div className="interactive-card glass-panel" style={{ padding: '18px 16px', textAlign: 'center', borderRadius: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text3, #64748b)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    {isRTL ? 'الطلاب المدعوون' : 'Invited'}
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#818cf8', lineHeight: '1' }}>
+                    {students.length}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#22c55e', marginTop: '6px', fontWeight: '700' }}>
+                    ● {isRTL ? 'جاهزون للدخول' : 'Access Granted'}
+                  </div>
+                </div>
+
+                {/* Metric 2: Active Learners */}
+                <div className="interactive-card glass-panel" style={{ padding: '18px 16px', textAlign: 'center', borderRadius: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text3, #64748b)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    {isRTL ? 'الطلاب النشطون' : 'Active Users'}
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#38bdf8', lineHeight: '1' }}>
+                    {students.filter(s => s.status === 'active').length}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#38bdf8', marginTop: '6px', fontWeight: '700' }}>
+                    ↑ 100% {isRTL ? 'تفاعل' : 'Engagement'}
+                  </div>
+                </div>
+
+                {/* Metric 3: Total Courses */}
+                <div className="interactive-card glass-panel" style={{ padding: '18px 16px', textAlign: 'center', borderRadius: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text3, #64748b)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    {isRTL ? 'الكورسات المنشورة' : 'Courses'}
+                  </div>
+                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#c084fc', lineHeight: '1' }}>
+                    {courses.length}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#c084fc', marginTop: '6px', fontWeight: '700' }}>
+                    {totalLessonsCount} {isRTL ? 'محاضرة' : 'Lessons'}
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          {/* Quick Action Navigation Cards (4 Interactive Pillars) */}
+          <div>
+            <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: '800' }}>
+              {isRTL ? 'إدارة أقسام الأكاديمية' : 'Academy Management Modules'}
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+              
+              {/* Pillar 1: Courses & Modules */}
+              <div
+                onClick={() => setActiveTab('courses')}
+                className="glass-panel interactive-card"
+                style={{ padding: '22px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px' }}
+              >
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#818cf8'
+                }}>
+                  <BookOpen size={22} />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800' }}>
+                    {isRTL ? 'المناهج والكورسات' : 'Courses & Curriculum'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                    {isRTL ? 'إنشاء الفصول، رفع الفيديوهات، وإرفاق مذكرات وملفات التحميل.' : 'Build modules, embed video lectures, and attach downloadable notes.'}
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleSaveSettings}
-                  disabled={savingSettings}
-                  className="btn btn-prime"
-                  style={{ borderRadius: '10px', padding: '8px 20px', fontWeight: '700' }}
-                >
-                  {savingSettings ? L('Saving...', 'جاري الحفظ...') : L('Save Settings', 'حفظ الإعدادات')}
-                </button>
-              </div>
-
-              {/* 6 Settings Cards Grid from Screenshot 4 */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                {/* 1. Domain & Slug Setup */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '14px', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <Globe size={18} color="var(--orange)" />
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Domain & Slug Setup', 'رابط البوابة (Slug)')}</h4>
-                  </div>
-                  <label style={{ fontSize: '11.5px', color: 'var(--text3)', display: 'block', marginBottom: '6px' }}>
-                    {L('Portal URL identifier:', 'معرف الرابط:')}
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '6px 10px', gap: '6px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text3)', direction: 'ltr' }}>/portal/</span>
-                    <input
-                      type="text"
-                      value={portalSettings.portalSlug || ''}
-                      onChange={(e) => setPortalSettings({ ...portalSettings, portalSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                      placeholder="mohamed-joe"
-                      style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '13px', fontWeight: '700', outline: 'none', width: '100%', direction: 'ltr' }}
-                    />
-                  </div>
-                </div>
-
-                {/* 2. Branding */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '14px', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <Sparkles size={18} color="#a855f7" />
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Branding & Academy Name', 'اسم وهوية الأكاديمية')}</h4>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={portalSettings.portalTitle || ''}
-                      onChange={(e) => setPortalSettings({ ...portalSettings, portalTitle: e.target.value })}
-                      placeholder={isRTL ? 'اسم الأكاديمية (مثال: أكاديمية محمد جو)' : 'Academy Name (e.g. Mohamed Joe Academy)'}
-                      style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                    />
-                    <input
-                      type="text"
-                      value={portalSettings.portalTagline || ''}
-                      onChange={(e) => setPortalSettings({ ...portalSettings, portalTagline: e.target.value })}
-                      placeholder={isRTL ? 'الوصف الترحيبي أو الشعار' : 'Tagline or short subtitle'}
-                      style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{L('Accent Color:', 'اللون الرئيسي:')}</span>
-                      <input
-                        type="color"
-                        value={portalSettings.themeColor || '#FF6B35'}
-                        onChange={(e) => setPortalSettings({ ...portalSettings, themeColor: e.target.value })}
-                        style={{ border: 'none', background: 'none', width: '32px', height: '32px', cursor: 'pointer' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Logo & Banner */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '14px', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <Sliders size={18} color="var(--green)" />
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Logo & Cover Banner', 'اللوجو والغلاف')}</h4>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={portalSettings.logoUrl || ''}
-                      onChange={(e) => setPortalSettings({ ...portalSettings, logoUrl: e.target.value })}
-                      placeholder={L('Logo Image URL', 'رابط اللوجو')}
-                      style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                    />
-                    <input
-                      type="text"
-                      value={portalSettings.bannerUrl || ''}
-                      onChange={(e) => setPortalSettings({ ...portalSettings, bannerUrl: e.target.value })}
-                      placeholder={L('Banner Image URL', 'رابط بانر الغلاف')}
-                      style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                    />
-                  </div>
-                </div>
-
-                {/* 4. App Permissions & Access */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '14px', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <Lock size={18} color="var(--accent)" />
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('App Permissions & Access', 'صلاحيات الدخول')}</h4>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={portalSettings.isOpenRegistration !== false}
-                        onChange={(e) => setPortalSettings({ ...portalSettings, isOpenRegistration: e.target.checked })}
-                      />
-                      <span>{L('Open Registration (Anyone with link can join)', 'تسجيل مفتوح (يمكن لأي شخص لديه الرابط التسجيل)')}</span>
-                    </label>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={portalSettings.showCommunities !== false}
-                        onChange={(e) => setPortalSettings({ ...portalSettings, showCommunities: e.target.checked })}
-                      />
-                      <span>{L('Enable Community Discussions', 'تفعيل مجتمعات ونقاشات الطلاب')}</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* 5. Support & Chat Widget */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '14px', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <MessageCircle size={18} color="var(--green)" />
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Chat & Support Widget', 'زر الدعم والتواصل المباشر')}</h4>
-                  </div>
-                  <input
-                    type="text"
-                    value={portalSettings.whatsappNumber || ''}
-                    onChange={(e) => setPortalSettings({ ...portalSettings, whatsappNumber: e.target.value })}
-                    placeholder={isRTL ? 'رقم واتساب للتواصل (مثال: +201012345678)' : 'WhatsApp Support (+2010...)'}
-                    style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                  />
-                </div>
-
-                {/* 6. Welcome Message */}
-                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '14px', padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <FileText size={18} color="var(--orange)" />
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800' }}>{L('Welcome Message', 'رسالة الترحيب للطلاب')}</h4>
-                  </div>
-                  <textarea
-                    value={portalSettings.welcomeMessage || ''}
-                    onChange={(e) => setPortalSettings({ ...portalSettings, welcomeMessage: e.target.value })}
-                    rows={3}
-                    placeholder={isRTL ? 'رسالة ترحيبية تظهر للطالب عند فتح البوابة...' : 'Welcome announcement for students...'}
-                    style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12px', resize: 'none' }}
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#818cf8', marginTop: 'auto' }}>
+                  <span>{isRTL ? 'فتح الكورسات' : 'Manage Courses'}</span>
+                  {isRTL ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}
                 </div>
               </div>
+
+              {/* Pillar 2: Students & Enrollments */}
+              <div
+                onClick={() => setActiveTab('students')}
+                className="glass-panel interactive-card"
+                style={{ padding: '22px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px' }}
+              >
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#38bdf8'
+                }}>
+                  <Users size={22} />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800' }}>
+                    {isRTL ? 'إدارة ودعوة الطلاب' : 'Learners & Access'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                    {isRTL ? 'إضافة الطلاب يدوياً، تفعيل الكورسات، ومتابعة نسب إنجازهم.' : 'Enroll students, grant course permissions, and monitor completion rates.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#38bdf8', marginTop: 'auto' }}>
+                  <span>{isRTL ? 'قائمة الطلاب' : 'View Students'}</span>
+                  {isRTL ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}
+                </div>
+              </div>
+
+              {/* Pillar 3: Communities & Groups */}
+              <div
+                onClick={() => setActiveTab('communities')}
+                className="glass-panel interactive-card"
+                style={{ padding: '22px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px' }}
+              >
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(192, 132, 252, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#c084fc'
+                }}>
+                  <MessageSquare size={22} />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800' }}>
+                    {isRTL ? 'مجتمعات الطلاب' : 'Community Groups'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                    {isRTL ? 'مساحات نقاش وتفاعل تشبه Skool تجمع طلابك مع تعليقات وتفاعل.' : 'Interactive discussion feeds where learners ask questions and connect.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#c084fc', marginTop: 'auto' }}>
+                  <span>{isRTL ? 'فتح المجتمعات' : 'Open Groups'}</span>
+                  {isRTL ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}
+                </div>
+              </div>
+
+              {/* Pillar 4: Branding & Settings */}
+              <div
+                onClick={() => setActiveTab('settings')}
+                className="glass-panel interactive-card"
+                style={{ padding: '22px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '12px' }}
+              >
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(244, 114, 182, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#f472b6'
+                }}>
+                  <Settings size={22} />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800' }}>
+                    {isRTL ? 'تخصيص الهوية والشعار' : 'Portal Settings'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                    {isRTL ? 'تعديل الرابط، الشعار، البانر، ودعم الواتساب المباشر.' : 'Configure custom URL slug, brand logo, colors, and WhatsApp widget.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#f472b6', marginTop: 'auto' }}>
+                  <span>{isRTL ? 'فتح الإعدادات' : 'Custom Branding'}</span>
+                  {isRTL ? <ArrowLeft size={14} /> : <ArrowRight size={14} />}
+                </div>
+              </div>
+
             </div>
-          )}
+          </div>
+
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: COURSES (PRODUCTS & CURRICULUM BUILDER)                             */}
+      {/* 3. SUB-VIEW: COURSES PRODUCTS & CURRICULUM BUILDER                        */}
       {/* ========================================================================= */}
-      {activeMainTab === 'courses' && (
-        <div>
-          {/* Sub Navigation: Products list vs Curriculum builder */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => { setActiveSubTab('products'); setCurriculumCourse(null); }}
-                className={`btn btn-sm ${activeSubTab === 'products' ? 'btn-prime' : 'btn-ghost'}`}
-                style={{ borderRadius: '8px' }}
-              >
-                📦 {L('Products (Courses)', 'الكورسات والمنتجات')}
-              </button>
-              {curriculumCourse && (
-                <button
-                  onClick={() => setActiveSubTab('curriculum')}
-                  className={`btn btn-sm ${activeSubTab === 'curriculum' ? 'btn-prime' : 'btn-ghost'}`}
-                  style={{ borderRadius: '8px', background: 'rgba(255,107,53,0.15)', color: 'var(--orange)' }}
-                >
-                  ⚡ {L('Curriculum:', 'محتوى:')} {curriculumCourse.title}
-                </button>
-              )}
-            </div>
-
-            {activeSubTab === 'products' && (
-              <button
-                onClick={handleOpenCreateCourse}
-                className="btn btn-prime btn-sm"
-                style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: '700' }}
-              >
-                + {L('Create New Course', 'إنشاء كورس جديد')}
-              </button>
-            )}
-          </div>
-
-          {/* 1. Products List (Matches Screenshot 5) */}
-          {activeSubTab === 'products' && (
-            <div>
-              {/* Search & Filter Header */}
-              <div style={{
-                background: 'var(--panel)',
-                border: '1px solid var(--line)',
-                borderRadius: '14px',
-                padding: '12px 16px',
-                marginBottom: '18px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '6px 12px', minWidth: '240px' }}>
-                  <Search size={16} color="var(--text3)" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={L('Search Courses...', 'بحث في الكورسات...')}
-                    style={{ background: 'none', border: 'none', color: 'var(--text)', outline: 'none', width: '100%', fontSize: '13px' }}
-                  />
-                </div>
-
-                <div style={{ fontSize: '12.5px', color: 'var(--text3)' }}>
-                  {filteredCourses.length} {L('Courses Found', 'كورس متاح')}
-                </div>
-              </div>
-
-              {/* Course Cards Grid */}
-              {filteredCourses.length === 0 ? (
-                <div className="card" style={{ padding: '60px 20px', textAlign: 'center', borderRadius: '16px' }}>
-                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 107, 53, 0.1)', color: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                    <BookOpen size={28} />
+      {activeTab === 'courses' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* If editing curriculum for a course */}
+          {curriculumCourse ? (
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    onClick={() => setCurriculumCourse(null)}
+                    className="btn btn-ghost"
+                    style={{ padding: '8px 12px', borderRadius: '10px' }}
+                  >
+                    {isRTL ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
+                    <span>{isRTL ? 'رجوع للكورسات' : 'Back to Courses'}</span>
+                  </button>
+                  <div>
+                    <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '900' }}>
+                      {curriculumCourse.title}
+                    </h2>
+                    <div style={{ fontSize: '12px', color: 'var(--text2, #94a3b8)' }}>
+                      {isRTL ? 'بناء المنهج: الفصول، المحاضرات، روابط الفيديو، ومصادر التحميل' : 'Curriculum Builder: Modules, video lectures, and student resources'}
+                    </div>
                   </div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 8px 0' }}>
-                    {L('Start Creating Your First Course', 'ابدأ في إنشاء أول كورس لك')}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text3)', maxWidth: '420px', margin: '0 auto 20px' }}>
-                    {L(
-                      'You haven\'t created any courses yet. Click the button below to upload your videos and build your curriculum.',
-                      'لم تقم بإنشاء أي كورس بعد. اضغط على الزر بالأسفل لرفع دروسك وبناء هيكل الكورس لطلابك.'
-                    )}
-                  </p>
-                  <button
-                    onClick={handleOpenCreateCourse}
-                    className="btn btn-prime"
-                    style={{ borderRadius: '10px', padding: '10px 24px', fontWeight: '700' }}
-                  >
-                    + {L('Create New Course', 'إنشاء كورس جديد')}
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-                  {filteredCourses.map((course) => {
-                    const lessonCount = (course.modules || []).reduce((sum, m) => sum + (m.lessons?.length || 0), 0);
-                    return (
-                      <div
-                        key={course.id}
-                        className="card"
-                        style={{
-                          borderRadius: '16px',
-                          overflow: 'hidden',
-                          padding: 0,
-                          border: '1px solid var(--line)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          transition: 'transform 0.2s, box-shadow 0.2s'
-                        }}
-                      >
-                        {/* Course Thumbnail */}
-                        <div style={{ position: 'relative', width: '100%', height: '170px', background: '#111', overflow: 'hidden' }}>
-                          <img
-                            src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop'}
-                            alt={course.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                          <div style={{
-                            position: 'absolute',
-                            top: '12px',
-                            right: isRTL ? 'auto' : '12px',
-                            left: isRTL ? '12px' : 'auto',
-                            background: course.isPublished ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
-                            color: '#fff',
-                            fontSize: '11px',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontWeight: 'bold',
-                            backdropFilter: 'blur(4px)'
-                          }}>
-                            {course.isPublished ? L('Published', 'منشور 🟢') : L('Draft', 'مسودة ⚪')}
-                          </div>
-
-                          <div style={{
-                            position: 'absolute',
-                            bottom: '12px',
-                            left: isRTL ? 'auto' : '12px',
-                            right: isRTL ? '12px' : 'auto',
-                            background: 'rgba(0, 0, 0, 0.75)',
-                            color: 'var(--orange)',
-                            fontSize: '11px',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontWeight: 'bold',
-                            backdropFilter: 'blur(4px)'
-                          }}>
-                            {Number(course.price) > 0 ? `${course.price} ${course.currency || 'EGP'}` : L('Free Access', 'دخول مجاني 🎁')}
-                          </div>
-                        </div>
-
-                        {/* Card Body */}
-                        <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
-                            {course.category || 'General'}
-                          </span>
-                          <h4 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '800', color: 'var(--text)', lineHeight: '1.4' }}>
-                            {course.title}
-                          </h4>
-                          <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: 'var(--text3)', lineHeight: '1.5', flex: 1 }}>
-                            {course.description || L('No description provided.', 'لا يوجد وصف.')}
-                          </p>
-
-                          {/* Stats: Modules & Lessons */}
-                          <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid var(--line)', paddingTop: '12px', marginBottom: '14px', fontSize: '11.5px', color: 'var(--text2)' }}>
-                            <span>📁 {(course.modules || []).length} {L('Modules', 'وحدات')}</span>
-                            <span>🎥 {lessonCount} {L('Lessons', 'دروس')}</span>
-                            <span>👥 {course.studentCount || 0} {L('Students', 'طلاب')}</span>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenCurriculum(course)}
-                              className="btn btn-prime btn-sm"
-                              style={{ flex: 1, justifyContent: 'center', fontSize: '12px', fontWeight: '700', borderRadius: '8px' }}
-                            >
-                              ⚡ {L('Edit Curriculum', 'إدارة الدروس')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEditCourseInfo(course)}
-                              className="btn btn-ghost btn-sm"
-                              style={{ border: '1px solid var(--line)', borderRadius: '8px', padding: '6px 10px' }}
-                              title={L('Edit Course Info', 'تعديل بيانات الكورس')}
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCourse(course.id)}
-                              className="btn btn-ghost btn-sm"
-                              style={{ border: '1px solid var(--line)', borderRadius: '8px', padding: '6px 10px', color: 'var(--red)' }}
-                              title={L('Delete Course', 'حذف الكورس')}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 2. Interactive Curriculum Manager */}
-          {activeSubTab === 'curriculum' && curriculumCourse && (
-            <div className="card" style={{ padding: '24px', borderRadius: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                  <button
-                    onClick={() => setActiveSubTab('products')}
-                    style={{ background: 'none', border: 'none', color: 'var(--orange)', fontSize: '12px', fontWeight: '700', cursor: 'pointer', padding: 0, marginBottom: '4px' }}
-                  >
-                    ← {L('Back to Courses', 'الرجوع إلى الكورسات')}
-                  </button>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>
-                    {curriculumCourse.title}
-                  </h3>
-                  <span style={{ fontSize: '12px', color: 'var(--text3)' }}>
-                    {(curriculumCourse.modules || []).length} {L('Modules', 'وحدات')} • {totalLessonsCount} {L('Lessons', 'دروس')}
-                  </span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => setShowModuleModal(true)}
-                    className="btn btn-prime btn-sm"
-                    style={{ borderRadius: '8px' }}
+                    className="glow-btn btn"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      padding: '9px 18px',
+                      fontSize: '13px',
+                      fontWeight: '800',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
                   >
-                    + {L('Add Module (Section)', 'إضافة وحدة جديدة')}
+                    <FolderPlus size={15} />
+                    <span>{isRTL ? '+ إضافة فصل / موديول' : '+ Add Module'}</span>
                   </button>
-                  <a
-                    href={`${publicPortalUrl}?course=${curriculumCourse.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-ghost btn-sm"
-                    style={{ border: '1px solid var(--line)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Eye size={14} />
-                    <span>{L('View As Student', 'معاينة كطالب')}</span>
-                  </a>
                 </div>
               </div>
 
-              {/* Modules & Lessons List */}
-              {(curriculumCourse.modules || []).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
-                  <p>{L('No modules created yet. Add your first module to start uploading lessons.', 'لا توجد وحدات تعليمية بعد. أضف وحدتك الأولى لتبدأ بإضافة الدروس.')}</p>
+              {/* Modules List */}
+              {(!curriculumCourse.modules || curriculumCourse.modules.length === 0) ? (
+                <div style={{
+                  padding: '50px 20px',
+                  textAlign: 'center',
+                  background: 'rgba(0,0,0,0.2)',
+                  borderRadius: '14px',
+                  border: '1px dashed rgba(255,255,255,0.15)'
+                }}>
+                  <div style={{ fontSize: '38px', marginBottom: '10px' }}>📚</div>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '800' }}>
+                    {isRTL ? 'لا توجد فصول دراسية في هذا الكورس بعد' : 'No Modules Added Yet'}
+                  </h3>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
+                    {isRTL ? 'ابدأ بإضافة أول فصل دراسي ثم قم بإضافة الدروس والمحاضرات بداخله.' : 'Start by creating your first module to organize lessons and video content.'}
+                  </p>
                   <button
                     onClick={() => setShowModuleModal(true)}
-                    className="btn btn-prime btn-sm"
-                    style={{ borderRadius: '8px', marginTop: '10px' }}
+                    className="btn glow-btn"
+                    style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '10px', padding: '9px 18px', fontWeight: '700', fontSize: '13px' }}
                   >
-                    + {L('Add Module', 'إضافة وحدة')}
+                    {isRTL ? '+ أضف أول موديول' : '+ Add First Module'}
                   </button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {curriculumCourse.modules.map((mod, modIdx) => (
-                    <div
-                      key={mod.id || modIdx}
-                      style={{
-                        background: 'var(--bg2)',
-                        border: '1px solid var(--line)',
-                        borderRadius: '12px',
-                        overflow: 'hidden'
-                      }}
-                    >
+                  {curriculumCourse.modules.map((module, mIdx) => (
+                    <div key={module.id || mIdx} style={{
+                      background: 'rgba(0, 0, 0, 0.25)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '14px',
+                      overflow: 'hidden'
+                    }}>
                       {/* Module Header */}
                       <div style={{
-                        padding: '12px 18px',
-                        background: 'var(--bg3)',
-                        borderBottom: '1px solid var(--line)',
+                        padding: '14px 18px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                         display: 'flex',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '10px'
+                        justifyContent: 'space-between'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontWeight: '800', color: 'var(--orange)', fontSize: '13px' }}>
-                            #{modIdx + 1}
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: 'rgba(99, 102, 241, 0.2)',
+                            color: '#a5b4fc',
+                            fontSize: '11px',
+                            fontWeight: '800'
+                          }}>
+                            {isRTL ? `الفصل ${mIdx + 1}` : `Module ${mIdx + 1}`}
                           </span>
-                          <span style={{ fontWeight: '800', color: 'var(--text)', fontSize: '14px' }}>
-                            {mod.title}
-                          </span>
-                          <span style={{ fontSize: '11px', color: 'var(--text3)', background: 'var(--panel)', padding: '2px 8px', borderRadius: '10px' }}>
-                            {(mod.lessons || []).length} {L('Lessons', 'دروس')}
+                          <span style={{ fontSize: '15px', fontWeight: '800' }}>{module.title}</span>
+                          <span style={{ fontSize: '11.5px', color: 'var(--text3, #64748b)' }}>
+                            ({module.lessons?.length || 0} {isRTL ? 'دروس' : 'lessons'})
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <button
-                            type="button"
-                            onClick={() => handleOpenAddLesson(modIdx)}
-                            className="btn btn-sm btn-prime"
-                            style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '6px' }}
+                            onClick={() => handleOpenLessonModal(mIdx)}
+                            className="btn btn-ghost"
+                            style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '8px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.1)' }}
                           >
-                            + {L('Add Lesson', 'إضافة درس')}
+                            <Plus size={14} />
+                            <span>{isRTL ? 'إضافة درس' : 'Add Lesson'}</span>
                           </button>
+
                           <button
-                            type="button"
-                            onClick={() => handleDeleteModule(modIdx)}
-                            className="btn btn-sm btn-ghost"
-                            style={{ color: 'var(--red)', padding: '4px 8px' }}
-                            title={L('Delete Module', 'حذف الوحدة')}
+                            onClick={() => handleDeleteModule(mIdx)}
+                            className="btn btn-ghost"
+                            style={{ padding: '6px', color: '#ef4444', borderRadius: '8px' }}
+                            title={isRTL ? 'حذف الفصل' : 'Delete Module'}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </div>
 
-                      {/* Lessons in Module */}
-                      <div style={{ padding: '8px 14px' }}>
-                        {(mod.lessons || []).length === 0 ? (
-                          <div style={{ padding: '14px', textAlign: 'center', fontSize: '12px', color: 'var(--text3)' }}>
-                            {L('No lessons in this module yet.', 'لا توجد دروس في هذه الوحدة بعد.')}
+                      {/* Lessons List in Module */}
+                      <div style={{ padding: '10px 14px' }}>
+                        {(!module.lessons || module.lessons.length === 0) ? (
+                          <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                            {isRTL ? 'لا توجد دروس في هذا الفصل بعد. اضغط "+ إضافة درس" لإضافة الفيديو والمذكرات.' : 'No lessons in this module. Click "+ Add Lesson" to upload lectures.'}
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {mod.lessons.map((lesson, lesIdx) => (
-                              <div
-                                key={lesson.id || lesIdx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  background: 'var(--panel)',
-                                  border: '1px solid var(--line)',
-                                  borderRadius: '8px',
-                                  padding: '10px 14px',
-                                  gap: '12px'
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255, 107, 53, 0.12)', color: 'var(--orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                    <Video size={14} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {module.lessons.map((lesson, lIdx) => (
+                              <div key={lesson.id || lIdx} style={{
+                                padding: '10px 14px',
+                                background: 'rgba(255, 255, 255, 0.02)',
+                                border: '1px solid rgba(255, 255, 255, 0.04)',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'all 0.2s'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div style={{
+                                    width: '30px',
+                                    height: '30px',
+                                    borderRadius: '8px',
+                                    background: 'rgba(99, 102, 241, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#818cf8'
+                                  }}>
+                                    <Video size={15} />
                                   </div>
                                   <div>
-                                    <div style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text)' }}>
-                                      {lesson.title}
-                                    </div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '8px', marginTop: '2px' }}>
-                                      <span>⏱ {lesson.duration || '15 min'}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{lesson.title}</span>
                                       {lesson.isFreePreview && (
-                                        <span style={{ color: 'var(--green)', fontWeight: 'bold' }}>
-                                          🎁 {L('Free Preview', 'معاينة مجانية')}
+                                        <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontWeight: '800' }}>
+                                          {isRTL ? 'معاينة مجانية' : 'Free Preview'}
                                         </span>
                                       )}
-                                      {lesson.videoUrl && (
-                                        <span style={{ color: 'var(--accent)' }}>
-                                          ✓ {L('Video Attached', 'فيديو مرفق')}
-                                        </span>
-                                      )}
-                                      {lesson.attachmentUrl && (
-                                        <span style={{ color: '#a855f7' }}>
-                                          📎 {L('File Resource', 'ملف مرفق')}
-                                        </span>
-                                      )}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', display: 'flex', gap: '10px' }}>
+                                      <span>⏱ {lesson.duration || '15 min'}</span>
+                                      <span>📺 {lesson.videoType?.toUpperCase() || 'VIDEO'}</span>
+                                      {lesson.attachmentUrl && <span>📎 {isRTL ? 'ملف مرفق' : 'Attachment'}</span>}
                                     </div>
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <button
-                                    type="button"
-                                    onClick={() => handleOpenEditLesson(modIdx, lesIdx)}
-                                    className="btn btn-sm btn-ghost"
-                                    style={{ padding: '4px 8px' }}
-                                    title={L('Edit Lesson', 'تعديل الدرس')}
+                                    onClick={() => handleOpenLessonModal(mIdx, lIdx)}
+                                    className="btn btn-ghost"
+                                    style={{ padding: '6px', borderRadius: '6px', color: 'var(--text2, #94a3b8)' }}
                                   >
-                                    <Edit size={13} />
+                                    <Edit size={14} />
                                   </button>
                                   <button
-                                    type="button"
-                                    onClick={() => handleDeleteLesson(modIdx, lesIdx)}
-                                    className="btn btn-sm btn-ghost"
-                                    style={{ color: 'var(--red)', padding: '4px 8px' }}
-                                    title={L('Delete Lesson', 'حذف الدرس')}
+                                    onClick={() => handleDeleteLesson(mIdx, lIdx)}
+                                    className="btn btn-ghost"
+                                    style={{ padding: '6px', borderRadius: '6px', color: '#ef4444' }}
                                   >
-                                    <Trash2 size={13} />
+                                    <Trash2 size={14} />
                                   </button>
                                 </div>
                               </div>
@@ -1346,209 +1265,701 @@ export default function MembershipsView() {
                 </div>
               )}
             </div>
+          ) : (
+            /* Courses Catalog & Products Grid */
+            <div>
+              {/* Header Action Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, maxWidth: '420px' }}>
+                  <div style={{
+                    position: 'relative',
+                    width: '100%',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '0 12px'
+                  }}>
+                    <Search size={16} style={{ color: 'var(--text3, #64748b)' }} />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={isRTL ? 'بحث في الكورسات...' : 'Search courses...'}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ffffff',
+                        padding: '10px 10px',
+                        fontSize: '13px',
+                        width: '100%',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    onClick={() => handleOpenCourseModal()}
+                    className="glow-btn btn"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '10px 20px',
+                      fontSize: '13.5px',
+                      fontWeight: '800',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Plus size={16} />
+                    <span>{isRTL ? 'إنشاء كورس جديد' : 'Create Course'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Courses Grid */}
+              {courses.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '44px', marginBottom: '12px' }}>🎓</div>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>
+                    {isRTL ? 'ابدأ بإنشاء أول كورس تدريبي لك' : 'Start Creating Your First Course'}
+                  </h3>
+                  <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--text2, #94a3b8)', maxWidth: '480px', marginInline: 'auto' }}>
+                    {isRTL 
+                      ? 'قم بإنشاء كورس متكامل، أضف الفصول والدروس التفاعلية، وشارك رابط البوابة مع طلابك لمشاهدته فوراً.'
+                      : 'Create structured courses with video modules, downloadable resources, and quizzes for your students.'}
+                  </p>
+                  <button
+                    onClick={() => handleOpenCourseModal()}
+                    className="glow-btn btn"
+                    style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '12px', padding: '11px 24px', fontWeight: '800', fontSize: '14px' }}
+                  >
+                    {isRTL ? '+ إنشاء كورس جديد الآن' : '+ Create Course Now'}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))', gap: '20px' }}>
+                  {courses
+                    .filter(c => c.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .map((course) => {
+                      const modulesCount = course.modules?.length || 0;
+                      const lessonsCount = course.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
+                      const enrolledCount = students.filter(s => s.enrolledCourses?.includes(course.id)).length;
+
+                      return (
+                        <div key={course.id} className="glass-panel interactive-card" style={{
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          position: 'relative'
+                        }}>
+                          {/* Course Thumbnail */}
+                          <div style={{
+                            height: '160px',
+                            background: course.thumbnailUrl 
+                              ? `url(${course.thumbnailUrl}) center/cover no-repeat` 
+                              : 'linear-gradient(135deg, #1e1b4b, #312e81)',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            padding: '12px'
+                          }}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              background: 'rgba(0, 0, 0, 0.65)',
+                              backdropFilter: 'blur(8px)',
+                              color: '#ffffff',
+                              fontSize: '11px',
+                              fontWeight: '800'
+                            }}>
+                              {course.category || 'Business'}
+                            </span>
+
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              background: course.isPublished ? 'rgba(34, 197, 94, 0.85)' : 'rgba(234, 179, 8, 0.85)',
+                              color: '#ffffff',
+                              fontSize: '11px',
+                              fontWeight: '800'
+                            }}>
+                              {course.isPublished ? (isRTL ? 'منشور' : 'Published') : (isRTL ? 'مسودة' : 'Draft')}
+                            </span>
+                          </div>
+
+                          {/* Course Content */}
+                          <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '800', lineHeight: '1.35' }}>
+                              {course.title}
+                            </h3>
+
+                            <p style={{
+                              margin: '0 0 16px 0',
+                              fontSize: '12px',
+                              color: 'var(--text2, #94a3b8)',
+                              lineHeight: '1.5',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {course.description || (isRTL ? 'لا يوجد وصف لهذا الكورس.' : 'No description provided.')}
+                            </p>
+
+                            {/* Meta Info */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              fontSize: '11.5px',
+                              color: 'var(--text3, #64748b)',
+                              padding: '10px 0',
+                              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                              marginBottom: '16px'
+                            }}>
+                              <span>📚 {modulesCount} {isRTL ? 'فصول' : 'modules'}</span>
+                              <span>🎬 {lessonsCount} {isRTL ? 'دروس' : 'lessons'}</span>
+                              <span>👥 {enrolledCount} {isRTL ? 'طالب' : 'students'}</span>
+                            </div>
+
+                            {/* Price & Actions */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', gap: '8px' }}>
+                              <div>
+                                <div style={{ fontSize: '10.5px', color: 'var(--text3, #64748b)', textTransform: 'uppercase' }}>
+                                  {isRTL ? 'السعر' : 'Price'}
+                                </div>
+                                <div style={{ fontSize: '15px', fontWeight: '900', color: Number(course.price) === 0 ? '#4ade80' : '#ffffff' }}>
+                                  {Number(course.price) === 0 ? (isRTL ? 'مجاني' : 'FREE') : `${course.price} ${course.currency || 'EGP'}`}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  onClick={() => setCurriculumCourse(course)}
+                                  className="glow-btn btn"
+                                  style={{
+                                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '7px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '700',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}
+                                >
+                                  <Layers size={13} />
+                                  <span>{isRTL ? 'المنهج والدروس' : 'Curriculum'}</span>
+                                </button>
+
+                                <button
+                                  onClick={() => handleOpenCourseModal(course)}
+                                  className="btn btn-ghost"
+                                  style={{ padding: '7px 8px', borderRadius: '8px', color: 'var(--text2, #94a3b8)' }}
+                                  title={isRTL ? 'تعديل البيانات' : 'Edit Info'}
+                                >
+                                  <Edit size={14} />
+                                </button>
+
+                                <button
+                                  onClick={() => handleDeleteCourse(course.id)}
+                                  className="btn btn-ghost"
+                                  style={{ padding: '7px 8px', borderRadius: '8px', color: '#ef4444' }}
+                                  title={isRTL ? 'حذف الكورس' : 'Delete Course'}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           )}
+
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: COMMUNITIES (GROUPS & FORUMS)                                      */}
+      {/* 4. SUB-VIEW: COMMUNITIES & DISCUSSION GROUPS                              */}
       {/* ========================================================================= */}
-      {activeMainTab === 'communities' && (
-        <div className="card" style={{ padding: '24px', borderRadius: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '14px' }}>
+      {activeTab === 'communities' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>
-                {L('Community Groups', 'مجتمعات النقاش التفاعلية')}
-              </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text3)' }}>
-                {L('Connect your students in exclusive spaces to share insights, discuss assignments, and build network', 'مكان يجمع طلابك لتبادل الخبرات والأسئلة والواجبات')}
-              </p>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '900' }}>
+                {isRTL ? 'مجتمعات الطلاب التفاعلية' : 'Community Discussion Groups'}
+              </h2>
+              <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
+                {isRTL ? 'أنشئ مجموعات نقاش وغرف تفاعلية لطلابك لمشاركة الأسئلة والتفاعل.' : 'Create topic-based discussion groups where students connect and share feedback.'}
+              </div>
             </div>
 
             <button
               onClick={() => setShowGroupModal(true)}
-              className="btn btn-prime btn-sm"
-              style={{ borderRadius: '8px' }}
+              className="glow-btn btn"
+              style={{
+                background: 'linear-gradient(135deg, #a855f7, #9333ea)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 20px',
+                fontSize: '13.5px',
+                fontWeight: '800',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              + {L('Create Community Group', 'إنشاء مجتمع جديد')}
+              <Plus size={16} />
+              <span>{isRTL ? 'إنشاء مجتمع جديد' : 'Create Group'}</span>
             </button>
           </div>
 
           {communities.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text3)' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <Users size={28} />
-              </div>
-              <h4 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 6px' }}>{L('You don\'t have a community yet', 'ليس لديك أي مجتمع تفاعلي بعد')}</h4>
-              <p style={{ fontSize: '12.5px', maxWidth: '400px', margin: '0 auto 18px' }}>
-                {L('Create your first group space so students can chat, ask questions, and celebrate their wins!', 'أنشئ أول مجتمع ليتفاعل فيه طلابك مع بعضهم ومع المدرب مباشرة!')}
+            <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: '44px', marginBottom: '12px' }}>💬</div>
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>
+                {isRTL ? 'لا يوجد مجتمع نقاش مفعل بعد' : 'No Community Groups Yet'}
+              </h3>
+              <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--text2, #94a3b8)', maxWidth: '460px', marginInline: 'auto' }}>
+                {isRTL ? 'أنشئ أول مجموعة نقاش لطلابك (مثل: مجتمع دورة التجارة الإلكترونية) لتوفير تجربة تشبه Skool.' : 'Launch interactive discussion spaces for your cohorts to build active student engagement.'}
               </p>
               <button
                 onClick={() => setShowGroupModal(true)}
-                className="btn btn-prime"
-                style={{ borderRadius: '8px', padding: '8px 20px' }}
+                className="btn glow-btn"
+                style={{ background: '#a855f7', color: '#fff', border: 'none', borderRadius: '12px', padding: '11px 24px', fontWeight: '800', fontSize: '14px' }}
               >
-                + {L('Create Community Group', 'إنشاء مجتمع الآن')}
+                {isRTL ? '+ إنشاء أول مجتمع' : '+ Create First Group'}
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-              {communities.map((g) => (
-                <div
-                  key={g.id}
-                  style={{
-                    background: 'var(--bg2)',
-                    border: '1px solid var(--line)',
-                    borderRadius: '14px',
-                    padding: '18px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '26px' }}>{g.icon || '💬'}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '18px' }}>
+              {communities.map((group) => (
+                <div key={group.id} className="glass-panel interactive-card" style={{ padding: '22px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '12px',
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '22px'
+                    }}>
+                      {group.icon || '💬'}
+                    </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>{g.name}</h4>
-                      <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{g.memberCount || 1} {L('Members', 'عضو')}</span>
+                      <h4 style={{ margin: '0 0 2px 0', fontSize: '16px', fontWeight: '800' }}>
+                        {group.name}
+                      </h4>
+                      <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                        👥 {group.memberCount || 1} {isRTL ? 'أعضاء' : 'members'}
+                      </div>
                     </div>
                   </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text3)', margin: 0, flex: 1, lineHeight: '1.5' }}>
-                    {g.description || L('Private coaching and discussion group for enrolled students.', 'مجموعة تدريب ونقاش مخصصة للطلاب المسجلين.')}
+
+                  <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text2, #94a3b8)', lineHeight: '1.5' }}>
+                    {group.description || (isRTL ? 'مجتمع نقاش تفاعلي للطلاب.' : 'Active student discussion group.')}
                   </p>
-                  <a
-                    href={`${publicPortalUrl}?tab=community`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-ghost btn-sm"
-                    style={{ marginTop: '6px', justifyContent: 'center', fontSize: '12px' }}
-                  >
-                    💬 {L('Open Discussion Board', 'فتح لوحة النقاش')} →
-                  </a>
+
+                  <div style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(0,0,0,0.2)',
+                    fontSize: '11.5px',
+                    color: '#c084fc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>{isRTL ? 'المنشورات في بوابة الطلاب' : 'Live on Student Portal'}</span>
+                    <CheckCircle2 size={14} />
+                  </div>
                 </div>
               ))}
             </div>
           )}
+
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: STUDENTS & MEMBERS                                                 */}
+      {/* 5. SUB-VIEW: STUDENTS & ENROLLMENTS CRM                                   */}
       {/* ========================================================================= */}
-      {activeMainTab === 'students' && (
-        <div className="card" style={{ padding: '24px', borderRadius: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+      {activeTab === 'students' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>
-                {L('Enrolled Students & Learners', 'قائمة الطلاب والمشتركين')}
-              </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text3)' }}>
-                {L('Track learning progress, active enrollments, and grant access to courses', 'متابعة تقدم الطلاب، الكورسات المفعلة لهم، وإضافة طلاب جدد')}
-              </p>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '900' }}>
+                {isRTL ? 'الطلاب والمشتركون في الأكاديمية' : 'Learners & Enrollments'}
+              </h2>
+              <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
+                {isRTL ? 'قائمة بجميع الطلاب المسجلين، الكورسات المفعلة لهم، ونسبة إنجازهم للمحاضرات.' : 'Monitor registered students, granted courses, and real-time progress percentages.'}
+              </div>
             </div>
 
             <button
               onClick={() => setShowInviteModal(true)}
-              className="btn btn-prime btn-sm"
-              style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: '700' }}
+              className="glow-btn btn"
+              style={{
+                background: 'linear-gradient(135deg, #38bdf8, #0284c7)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 20px',
+                fontSize: '13.5px',
+                fontWeight: '800',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              + {L('Invite / Enroll Student', 'إضافة وتفعيل طالب')}
+              <Plus size={16} />
+              <span>{isRTL ? 'تسجيل / دعوة طالب' : 'Enroll Student'}</span>
             </button>
           </div>
 
-          {students.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text3)' }}>
-              <Users size={32} color="var(--orange)" style={{ margin: '0 auto 12px' }} />
-              <h4 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 6px' }}>{L('No students enrolled yet', 'لم يتم تسجيل أي طالب حتى الآن')}</h4>
-              <p style={{ fontSize: '12.5px', maxWidth: '400px', margin: '0 auto 16px' }}>
-                {L('Click the button below to manually enroll a student or share your portal link for instant self-registration.', 'أضف طالباً مباشرة أو شارك رابط الأكاديمية ليسجل بنفسه.')}
-              </p>
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="btn btn-prime btn-sm"
-                style={{ borderRadius: '8px' }}
-              >
-                + {L('Enroll First Student', 'إضافة أول طالب')}
-              </button>
+          {/* Students Table */}
+          <div className="glass-panel" style={{ overflowX: 'auto', padding: '16px' }}>
+            <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '360px' }}>
+              <Search size={15} style={{ color: 'var(--text3, #64748b)' }} />
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                placeholder={isRTL ? 'بحث بالاسم أو الإيميل...' : 'Filter by name or email...'}
+                style={{
+                  background: 'rgba(0,0,0,0.25)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '8px',
+                  padding: '7px 12px',
+                  color: '#ffffff',
+                  fontSize: '12.5px',
+                  width: '100%',
+                  outline: 'none'
+                }}
+              />
             </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+
+            {students.length === 0 ? (
+              <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '36px', marginBottom: '8px' }}>👥</div>
+                <div style={{ fontSize: '15px', fontWeight: '800', marginBottom: '4px' }}>
+                  {isRTL ? 'لا يوجد طلاب مسجلون بعد' : 'No Students Enrolled Yet'}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)', marginBottom: '16px' }}>
+                  {isRTL ? 'سجل الطلاب يدوياً عبر الزر أعلاه أو شارك رابط البوابة العام ليسجل الطلاب بأنفسهم.' : 'Enroll students manually or share your public portal URL for self-registration.'}
+                </div>
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="btn glow-btn"
+                  style={{ background: '#38bdf8', color: '#fff', border: 'none', borderRadius: '10px', padding: '9px 18px', fontWeight: '700', fontSize: '13px' }}
+                >
+                  {isRTL ? '+ تسجيل طالب جديد' : '+ Enroll First Student'}
+                </button>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: isRTL ? 'right' : 'left' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--line)', textAlign: isRTL ? 'right' : 'left', color: 'var(--text3)' }}>
-                    <th style={{ padding: '10px 12px' }}>{L('Student Name', 'اسم الطالب')}</th>
-                    <th style={{ padding: '10px 12px' }}>{L('Email', 'البريد')}</th>
-                    <th style={{ padding: '10px 12px' }}>{L('Enrolled Courses', 'الكورسات المشترك بها')}</th>
-                    <th style={{ padding: '10px 12px' }}>{L('Status', 'الحالة')}</th>
-                    <th style={{ padding: '10px 12px' }}>{L('Joined Date', 'تاريخ الانضمام')}</th>
+                  <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: 'var(--text3, #64748b)', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '12px 14px' }}>{isRTL ? 'الطالب' : 'Student'}</th>
+                    <th style={{ padding: '12px 14px' }}>{isRTL ? 'البريد الإلكتروني' : 'Email'}</th>
+                    <th style={{ padding: '12px 14px' }}>{isRTL ? 'الكورسات المفعلة' : 'Enrolled Courses'}</th>
+                    <th style={{ padding: '12px 14px' }}>{isRTL ? 'نسبة الإنجاز' : 'Progress'}</th>
+                    <th style={{ padding: '12px 14px' }}>{isRTL ? 'الحالة' : 'Status'}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((st) => (
-                    <tr key={st.id || st.email} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <td style={{ padding: '12px', fontWeight: '700', color: 'var(--text)' }}>
-                        {st.name || st.email?.split('@')[0]}
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--text2)', direction: 'ltr', textAlign: isRTL ? 'right' : 'left' }}>
-                        {st.email}
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ background: 'rgba(255,107,53,0.12)', color: 'var(--orange)', padding: '2px 8px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px' }}>
-                          {(st.enrolledCourses || []).length > 0 ? `${st.enrolledCourses.length} ${L('Courses', 'كورسات')}` : L('All Portal Courses', 'جميع الكورسات')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ color: 'var(--green)', fontWeight: 'bold', fontSize: '11.5px' }}>
-                          ● {L('Active', 'نشط')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--text3)', fontSize: '11.5px' }}>
-                        {st.createdAt?.seconds ? new Date(st.createdAt.seconds * 1000).toLocaleDateString() : '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {students
+                    .filter(s => (s.name || '').toLowerCase().includes(studentSearch.toLowerCase()) || (s.email || '').toLowerCase().includes(studentSearch.toLowerCase()))
+                    .map((student) => {
+                      const studentCourses = courses.filter(c => student.enrolledCourses?.includes(c.id));
+                      const avgProgress = student.progress ? Math.round(Object.values(student.progress).reduce((a, b) => a + b, 0) / (Object.keys(student.progress).length || 1)) : 0;
+
+                      return (
+                        <tr key={student.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)', fontSize: '13px' }}>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: '800',
+                                color: '#ffffff',
+                                fontSize: '12px'
+                              }}>
+                                {(student.name || 'S')[0].toUpperCase()}
+                              </div>
+                              <span style={{ fontWeight: '700' }}>{student.name || 'Student'}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 14px', color: 'var(--text2, #94a3b8)', direction: 'ltr', textAlign: isRTL ? 'right' : 'left' }}>
+                            {student.email}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {studentCourses.length === 0 ? (
+                                <span style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>{isRTL ? 'الكل (افتراضي)' : 'All Access'}</span>
+                              ) : (
+                                studentCourses.map(c => (
+                                  <span key={c.id} style={{ fontSize: '10.5px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc' }}>
+                                    {c.title}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ flex: 1, height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden', minWidth: '60px' }}>
+                                <div style={{ width: `${avgProgress}%`, height: '100%', background: '#22c55e', borderRadius: '3px' }} />
+                              </div>
+                              <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#22c55e' }}>{avgProgress}%</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{
+                              padding: '3px 8px',
+                              borderRadius: '20px',
+                              background: 'rgba(34, 197, 94, 0.15)',
+                              color: '#4ade80',
+                              fontSize: '11px',
+                              fontWeight: '700'
+                            }}>
+                              ● {student.status || 'Active'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
-            </div>
-          )}
+            )}
+          </div>
+
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 5: CREDENTIALS & CERTIFICATES                                         */}
+      {/* 6. SUB-VIEW: PORTAL BRANDING & DOMAIN SETTINGS                            */}
       {/* ========================================================================= */}
-      {activeMainTab === 'credentials' && (
-        <div className="card" style={{ padding: '28px', borderRadius: '16px', textAlign: 'center' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(234, 179, 8, 0.12)', color: '#eab308', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <Award size={32} />
-          </div>
-          <h3 style={{ fontSize: '18px', fontWeight: '800', margin: '0 0 8px 0' }}>
-            {L('Course Completion Certificates', 'شهادات إتمام الكورسات')}
-          </h3>
-          <p style={{ fontSize: '13px', color: 'var(--text3)', maxWidth: '500px', margin: '0 auto 20px', lineHeight: '1.5' }}>
-            {L(
-              'Automated certificates are granted to students who complete 100% of all video lessons in your academy.',
-              'يتم إصدار شهادة تخرج معتمدة باسم مدرب الأكاديمية تلقائياً لكل طالب يكمل 100% من دروس الكورس.'
-            )}
-          </p>
-          <div style={{
-            maxWidth: '500px',
-            margin: '0 auto',
-            padding: '24px',
-            background: 'linear-gradient(135deg, rgba(234,179,8,0.05) 0%, rgba(255,107,53,0.05) 100%)',
-            border: '2px dashed #eab308',
-            borderRadius: '16px'
-          }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#eab308', marginBottom: '6px' }}>
-              📜 {portalSettings.portalTitle || `${coachName}'s Academy`}
+      {activeTab === 'settings' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '900' }}>
+                {isRTL ? 'إعدادات وهوية بوابة الطلاب' : 'Portal Branding & Settings'}
+              </h2>
+              <div style={{ fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
+                {isRTL ? 'خصص اسم الأكاديمية، الرابط المباشر، الشعار، الألوان، وودجت الدعم المباشر عبر واتساب.' : 'Configure your custom academy title, slug URL, logo, banner, and WhatsApp support.'}
+              </div>
             </div>
-            <div style={{ fontSize: '16px', fontWeight: '900', color: 'var(--text)', margin: '8px 0' }}>
-              {L('Certificate of Achievement', 'شهادة اجتياز وإتمام تدريب')}
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--text3)', margin: 0 }}>
-              {L('Awarded to students upon completing all modules.', 'تمنح للطلاب الملتزمين عند إنهاء جميع الوحدات.')}
-            </p>
+
+            <button
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="glow-btn btn"
+              style={{
+                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 24px',
+                fontSize: '13.5px',
+                fontWeight: '800',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Check size={16} />
+              <span>{savingSettings ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التعديلات' : 'Save Changes')}</span>
+            </button>
           </div>
+
+          {/* Settings Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+            
+            {/* Card 1: Domain & Slug */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <Globe size={18} style={{ color: '#818cf8' }} />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>
+                  {isRTL ? 'رابط البوابة والـ Slug المخصص' : 'Portal URL Slug'}
+                </h3>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'اسم الرابط المخصص (Slug)' : 'URL Slug'}
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '8px 12px' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text3, #64748b)', direction: 'ltr' }}>/portal/</span>
+                  <input
+                    type="text"
+                    value={settingsForm.portalSlug}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, portalSlug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                    placeholder="my-academy"
+                    style={{ background: 'transparent', border: 'none', color: '#ffffff', fontSize: '13px', width: '100%', outline: 'none', direction: 'ltr' }}
+                  />
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', marginTop: '4px' }}>
+                  {isRTL ? `الرابط الكامل: ${baseUrl}/portal/${settingsForm.portalSlug || 'slug'}` : `Full URL: ${baseUrl}/portal/${settingsForm.portalSlug || 'slug'}`}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'اسم الأكاديمية المعروض' : 'Academy Display Name'}
+                </label>
+                <input
+                  type="text"
+                  value={settingsForm.portalTitle}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, portalTitle: e.target.value })}
+                  placeholder={isRTL ? 'مثال: أكاديمية محمد جو' : 'e.g. Mohamed Joe Academy'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                />
+              </div>
+            </div>
+
+            {/* Card 2: Branding & Appearance */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <Sliders size={18} style={{ color: '#c084fc' }} />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>
+                  {isRTL ? 'الشعار والبانر والألوان' : 'Branding & Visuals'}
+                </h3>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'رابط الشعار (Logo URL)' : 'Logo Image URL'}
+                </label>
+                <input
+                  type="text"
+                  value={settingsForm.logoUrl}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, logoUrl: e.target.value })}
+                  placeholder="https://.../logo.png"
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px', direction: 'ltr' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'رابط بانر الخلفية (Banner Image URL)' : 'Hero Banner URL'}
+                </label>
+                <input
+                  type="text"
+                  value={settingsForm.bannerUrl}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, bannerUrl: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px', direction: 'ltr' }}
+                />
+              </div>
+            </div>
+
+            {/* Card 3: Support & Contact Widget */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <MessageCircle size={18} style={{ color: '#22c55e' }} />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>
+                  {isRTL ? 'زر الدعم المباشر (WhatsApp Widget)' : 'Student Support Widget'}
+                </h3>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'رقم الواتساب مع كود الدولة' : 'WhatsApp Number (with country code)'}
+                </label>
+                <input
+                  type="text"
+                  value={settingsForm.whatsappNumber}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, whatsappNumber: e.target.value })}
+                  placeholder="201012345678"
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px', direction: 'ltr' }}
+                />
+                <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', marginTop: '4px' }}>
+                  {isRTL ? 'سيظهر زر عائم للطلاب للتواصل معك مباشرة على واتساب عند وجود استفسار.' : 'A floating button will appear on the portal for instant learner help.'}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'رسالة الترحيب للطلاب' : 'Welcome Message'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={settingsForm.welcomeMessage}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, welcomeMessage: e.target.value })}
+                  placeholder={isRTL ? 'أهلاً بك في الأكاديمية...' : 'Welcome to the academy...'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12.5px', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+
+            {/* Card 4: Access & Registration Permissions */}
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <Lock size={18} style={{ color: '#f59e0b' }} />
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>
+                  {isRTL ? 'صلاحيات التسجيل والدخول' : 'Access Permissions'}
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.isOpenRegistration}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, isOpenRegistration: e.target.checked })}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700' }}>{isRTL ? 'السماح للطلاب الجدد بالتسجيل الذاتي' : 'Allow Open Registration'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>{isRTL ? 'يمكن لأي شخص لديه الرابط التسجيل في البوابة.' : 'Anyone with your portal link can sign up and browse free content.'}</div>
+                  </div>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.showCommunities}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, showCommunities: e.target.checked })}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700' }}>{isRTL ? 'تفعيل مجتمع الطلاب التفاعلي' : 'Enable Community Groups'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>{isRTL ? 'إظهار تبويب المجتمع للمناقشات في بوابة الطلاب.' : 'Show discussion channels on student portal.'}</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       )}
 
@@ -1556,99 +1967,91 @@ export default function MembershipsView() {
       {/* MODAL 1: CREATE / EDIT COURSE                                             */}
       {/* ========================================================================= */}
       {showCourseModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '520px', padding: '24px', borderRadius: '18px', animation: 'scaleUp 0.25s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>
-                {editingCourse ? L('Edit Course Details', 'تعديل بيانات الكورس') : L('Create New Course', 'إنشاء كورس جديد')}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowCourseModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: '18px', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '520px', padding: '28px', borderRadius: '20px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '800' }}>
+              {editingCourse ? (isRTL ? 'تعديل الكورس التدريبي' : 'Edit Course') : (isRTL ? 'إنشاء كورس تدريبي جديد' : 'Create New Course')}
+            </h3>
 
             <form onSubmit={handleSaveCourse} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Course Title *', 'عنوان الكورس *')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'عنوان الكورس *' : 'Course Title *'}
                 </label>
                 <input
                   type="text"
                   required
                   value={courseForm.title}
                   onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
-                  placeholder={isRTL ? 'مثال: أسرار التجارة الإلكترونية والأتمتة' : 'e.g. E-commerce Mastery & Automation'}
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text)', fontSize: '13px' }}
+                  placeholder={isRTL ? 'مثال: كورس إتقان التسويق الرقمي 2026' : 'e.g. Master Digital Marketing 2026'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#ffffff', fontSize: '13.5px' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Description', 'الوصف')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'وصف الكورس' : 'Description'}
                 </label>
                 <textarea
+                  rows={3}
                   value={courseForm.description}
                   onChange={(e) => setCourseForm({ ...courseForm, description: e.target.value })}
-                  rows={3}
-                  placeholder={isRTL ? 'نبذة عن مخرجات الكورس وما سيتعلمه الطالب...' : 'What students will learn in this course...'}
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text)', fontSize: '12.5px', resize: 'none' }}
+                  placeholder={isRTL ? 'اكتب نبذة مختصرة عما سيتعلمه الطالب في هذا الكورس...' : 'Brief summary of what students will achieve...'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', color: '#ffffff', fontSize: '13px', resize: 'vertical' }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                    {L('Category', 'التصنيف')}
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'التصنيف' : 'Category'}
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={courseForm.category}
                     onChange={(e) => setCourseForm({ ...courseForm, category: e.target.value })}
-                    placeholder="Marketing, Coaching..."
-                    style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                  />
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  >
+                    <option value="E-commerce & Business">{isRTL ? 'تجارة إلكترونية وأعمال' : 'E-commerce & Business'}</option>
+                    <option value="Marketing & Ads">{isRTL ? 'تسويق وإعلانات' : 'Marketing & Ads'}</option>
+                    <option value="Coaching & Mentorship">{isRTL ? 'كوتشينج وتطوير' : 'Coaching & Mentorship'}</option>
+                    <option value="Design & Creative">{isRTL ? 'تصميم وصناعة محتوى' : 'Design & Creative'}</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                    {L('Price (0 for Free)', 'السعر (0 للمجاني)')}
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'السعر (0 = مجاني)' : 'Price (0 = Free)'}
                   </label>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <input
-                      type="number"
-                      value={courseForm.price}
-                      onChange={(e) => setCourseForm({ ...courseForm, price: Number(e.target.value) })}
-                      style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
-                    />
-                    <span style={{ alignSelf: 'center', fontSize: '11px', color: 'var(--text3)' }}>{courseForm.currency}</span>
-                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    value={courseForm.price}
+                    onChange={(e) => setCourseForm({ ...courseForm, price: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  />
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Thumbnail Image URL', 'رابط صورة الغلاف')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'رابط صورة الغلاف (Thumbnail URL)' : 'Cover Image URL'}
                 </label>
                 <input
                   type="text"
                   value={courseForm.thumbnailUrl}
                   onChange={(e) => setCourseForm({ ...courseForm, thumbnailUrl: e.target.value })}
                   placeholder="https://images.unsplash.com/..."
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12px' }}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px', direction: 'ltr' }}
                 />
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', margin: '4px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '4px' }}>
                 <input
                   type="checkbox"
                   checked={courseForm.isPublished}
                   onChange={(e) => setCourseForm({ ...courseForm, isPublished: e.target.checked })}
                 />
-                <span>{L('Publish course immediately in portal', 'نشر الكورس مباشرة في بوابة الطلاب')}</span>
+                <span style={{ fontSize: '13px', fontWeight: '700' }}>{isRTL ? 'نشر الكورس وجعله متاحاً للطلاب في البوابة' : 'Publish course live to student portal'}</span>
               </label>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -1656,16 +2059,16 @@ export default function MembershipsView() {
                   type="button"
                   onClick={() => setShowCourseModal(false)}
                   className="btn btn-ghost"
-                  style={{ flex: 1, borderRadius: '8px' }}
+                  style={{ flex: 1 }}
                 >
-                  {L('Cancel', 'إلغاء')}
+                  {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-prime"
-                  style={{ flex: 1.5, borderRadius: '8px', fontWeight: '700' }}
+                  className="glow-btn btn"
+                  style={{ flex: 1.5, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
                 >
-                  {editingCourse ? L('Update Course', 'تحديث الكورس') : L('Create & Open Curriculum', 'إنشاء والبدء بإضافة الدروس')}
+                  {editingCourse ? (isRTL ? 'حفظ التعديلات' : 'Save Changes') : (isRTL ? 'إنشاء الكورس' : 'Create Course')}
                 </button>
               </div>
             </form>
@@ -1677,35 +2080,40 @@ export default function MembershipsView() {
       {/* MODAL 2: ADD MODULE                                                       */}
       {/* ========================================================================= */}
       {showModuleModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '18px', animation: 'scaleUp 0.25s ease' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '18px' }}>
             <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: '800' }}>
-              {L('Add New Module (Section)', 'إضافة وحدة جديدة')}
+              {isRTL ? 'إضافة فصل / موديول جديد' : 'Add New Module'}
             </h3>
-            <input
-              type="text"
-              autoFocus
-              value={moduleTitle}
-              onChange={(e) => setModuleTitle(e.target.value)}
-              placeholder={isRTL ? 'عنوان الوحدة (مثال: الوحدة 2: إعداد المتجر)' : 'Module Title (e.g. Module 2: Setup)'}
-              style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text)', fontSize: '13px', marginBottom: '16px' }}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                {isRTL ? 'عنوان الفصل *' : 'Module Title *'}
+              </label>
+              <input
+                type="text"
+                value={moduleTitle}
+                onChange={(e) => setModuleTitle(e.target.value)}
+                placeholder={isRTL ? 'مثال: مقدمة في استراتيجيات النمو' : 'e.g. Module 1: Foundations & Setup'}
+                style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
               <button
                 type="button"
-                onClick={() => { setShowModuleModal(false); setModuleTitle(''); }}
+                onClick={() => setShowModuleModal(false)}
                 className="btn btn-ghost"
                 style={{ flex: 1 }}
               >
-                {L('Cancel', 'إلغاء')}
+                {isRTL ? 'إلغاء' : 'Cancel'}
               </button>
               <button
                 type="button"
                 onClick={handleAddModule}
-                className="btn btn-prime"
-                style={{ flex: 1, fontWeight: '700' }}
+                className="glow-btn btn"
+                style={{ flex: 1.5, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
               >
-                {L('Add Module', 'إضافة الوحدة')}
+                {isRTL ? 'إضافة الفصل' : 'Add Module'}
               </button>
             </div>
           </div>
@@ -1716,168 +2124,170 @@ export default function MembershipsView() {
       {/* MODAL 3: ADD / EDIT LESSON                                                */}
       {/* ========================================================================= */}
       {showLessonModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', padding: '24px', borderRadius: '18px', animation: 'scaleUp 0.25s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>
-                {editingLessonIndex !== null ? L('Edit Lesson', 'تعديل الدرس') : L('Add Lesson to Module', 'إضافة درس جديد')}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowLessonModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: '18px', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10002, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto', padding: '26px', borderRadius: '20px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '17px', fontWeight: '800' }}>
+              {editingLessonIndex !== null ? (isRTL ? 'تعديل الدرس' : 'Edit Lesson') : (isRTL ? 'إضافة درس جديد' : 'Add New Lesson')}
+            </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleSaveLesson} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Lesson Title *', 'عنوان الدرس *')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'عنوان الدرس *' : 'Lesson Title *'}
                 </label>
                 <input
                   type="text"
                   required
                   value={lessonForm.title}
                   onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
-                  placeholder={isRTL ? 'مثال: الدرس الأول: شرح المنظومة' : 'Lesson title...'}
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text)', fontSize: '13px' }}
+                  placeholder={isRTL ? 'مثال: كيفية إطلاق أول حملة إعلانية ناجحة' : 'e.g. Setting up your tracking pixel'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
                 />
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Video Hosting & URL (YouTube / Vimeo / Loom / MP4)', 'رابط الفيديو (يوتيوب / فيميو / لوم / MP4)')}
-                </label>
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'منصة الفيديو' : 'Video Provider'}
+                  </label>
                   <select
                     value={lessonForm.videoType}
                     onChange={(e) => setLessonForm({ ...lessonForm, videoType: e.target.value })}
-                    style={{ background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', color: 'var(--text)', padding: '8px 10px', fontSize: '12px' }}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
                   >
                     <option value="youtube">YouTube</option>
                     <option value="vimeo">Vimeo</option>
                     <option value="loom">Loom</option>
-                    <option value="mp4">Direct MP4 URL</option>
+                    <option value="mp4">Direct MP4 Video</option>
                   </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'مدة الدرس' : 'Duration'}
+                  </label>
                   <input
                     type="text"
-                    value={lessonForm.videoUrl}
-                    onChange={(e) => setLessonForm({ ...lessonForm, videoUrl: e.target.value })}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px', direction: 'ltr' }}
+                    value={lessonForm.duration}
+                    onChange={(e) => setLessonForm({ ...lessonForm, duration: e.target.value })}
+                    placeholder="15 min"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Estimated Duration', 'المدة الزمنية التقديرية')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'رابط الفيديو (YouTube / Vimeo / Loom / MP4)' : 'Video URL'}
                 </label>
                 <input
                   type="text"
-                  value={lessonForm.duration}
-                  onChange={(e) => setLessonForm({ ...lessonForm, duration: e.target.value })}
-                  placeholder="15 min"
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12.5px' }}
+                  value={lessonForm.videoUrl}
+                  onChange={(e) => setLessonForm({ ...lessonForm, videoUrl: e.target.value })}
+                  placeholder="https://www.youtube.com/watch?v=... or https://www.loom.com/share/..."
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px', direction: 'ltr' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Lesson Notes & Study Guide (Markdown supported)', 'ملاحظات الدرس والملخص')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'مذكرات وشرح الدرس للطالب' : 'Lesson Notes & Description'}
                 </label>
                 <textarea
+                  rows={3}
                   value={lessonForm.notes}
                   onChange={(e) => setLessonForm({ ...lessonForm, notes: e.target.value })}
-                  rows={3}
-                  placeholder={isRTL ? 'اكتب ملاحظات الدرس، روابط هامة، ونقاط التركيز...' : 'Notes, summary, key takeaways...'}
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12px', resize: 'none' }}
+                  placeholder={isRTL ? 'اكتب ملاحظات الدرس، الروابط المهمة، والنقاط الرئيسية...' : 'Key takeaways, resources, instructions...'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12.5px', resize: 'vertical' }}
                 />
               </div>
 
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Downloadable Resource URL (PDF, Drive file)', 'رابط تحميل ملف مرفق (PDF / ملف درايف)')}
-                </label>
-                <input
-                  type="text"
-                  value={lessonForm.attachmentUrl}
-                  onChange={(e) => setLessonForm({ ...lessonForm, attachmentUrl: e.target.value })}
-                  placeholder="https://drive.google.com/..."
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '12px', direction: 'ltr' }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'اسم المرفق للتحميل' : 'Attachment Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={lessonForm.attachmentName}
+                    onChange={(e) => setLessonForm({ ...lessonForm, attachmentName: e.target.value })}
+                    placeholder={isRTL ? 'ملف العمل PDF' : 'Action Plan.pdf'}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12.5px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'رابط تحميل المرفق' : 'Attachment URL'}
+                  </label>
+                  <input
+                    type="text"
+                    value={lessonForm.attachmentUrl}
+                    onChange={(e) => setLessonForm({ ...lessonForm, attachmentUrl: e.target.value })}
+                    placeholder="https://.../guide.pdf"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12.5px', direction: 'ltr' }}
+                  />
+                </div>
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', margin: '4px 0' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={lessonForm.isFreePreview}
                   onChange={(e) => setLessonForm({ ...lessonForm, isFreePreview: e.target.checked })}
                 />
-                <span>{L('Make this lesson a Free Preview', 'إتاحة هذا الدرس كمعاينة مجانية للمشاهدة')}</span>
+                <span style={{ fontSize: '12.5px', fontWeight: '700' }}>{isRTL ? 'معاينة مجانية (يمكن لأي زائر مشاهدته قبل الاشتراك)' : 'Free Preview (accessible before enrollment)'}</span>
               </label>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
                 <button
                   type="button"
                   onClick={() => setShowLessonModal(false)}
                   className="btn btn-ghost"
                   style={{ flex: 1 }}
                 >
-                  {L('Cancel', 'إلغاء')}
+                  {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  type="button"
-                  onClick={handleSaveLesson}
-                  className="btn btn-prime"
-                  style={{ flex: 1.5, fontWeight: '700' }}
+                  type="submit"
+                  className="glow-btn btn"
+                  style={{ flex: 1.5, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
                 >
-                  {editingLessonIndex !== null ? L('Update Lesson', 'تحديث الدرس') : L('Add Lesson', 'حفظ الدرس')}
+                  {isRTL ? 'حفظ الدرس' : 'Save Lesson'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 4: INVITE / ENROLL STUDENT                                          */}
+      {/* MODAL 4: ENROLL STUDENT                                                   */}
       {/* ========================================================================= */}
       {showInviteModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '460px', padding: '24px', borderRadius: '18px', animation: 'scaleUp 0.25s ease' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800' }}>
-                {L('Invite & Enroll Student', 'إضافة وتفعيل طالب جديد')}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowInviteModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: '18px', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '460px', padding: '26px', borderRadius: '20px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '17px', fontWeight: '800' }}>
+              {isRTL ? 'تسجيل / تفعيل حساب طالب جديد' : 'Enroll New Student'}
+            </h3>
 
-            <form onSubmit={handleInviteStudent} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <form onSubmit={handleEnrollStudent} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Student Name', 'اسم الطالب')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'اسم الطالب' : 'Student Name'}
                 </label>
                 <input
                   type="text"
                   value={inviteForm.name}
                   onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
-                  placeholder={isRTL ? 'مثال: أحمد محمد' : 'Ahmed Mohamed'}
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '9px 12px', color: 'var(--text)', fontSize: '13px' }}
+                  placeholder={isRTL ? 'مثال: أحمد علي' : 'e.g. John Doe'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Student Email *', 'البريد الإلكتروني للطالب *')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'البريد الإلكتروني للطالب *' : 'Student Email *'}
                 </label>
                 <input
                   type="email"
@@ -1885,19 +2295,19 @@ export default function MembershipsView() {
                   value={inviteForm.email}
                   onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                   placeholder="student@example.com"
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '9px 12px', color: 'var(--text)', fontSize: '13px', direction: 'ltr' }}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px', direction: 'ltr' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Grant Access to Courses:', 'تفعيل الكورسات المحددة:')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'تفعيل الكورسات المحددة:' : 'Grant Access to Courses:'}
                 </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto', background: 'var(--bg3)', padding: '10px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
                   {courses.map((c) => {
                     const isChecked = inviteForm.selectedCourses.includes(c.id);
                     return (
-                      <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                      <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -1921,14 +2331,14 @@ export default function MembershipsView() {
                   className="btn btn-ghost"
                   style={{ flex: 1 }}
                 >
-                  {L('Cancel', 'إلغاء')}
+                  {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-prime"
-                  style={{ flex: 1.5, fontWeight: '700' }}
+                  className="glow-btn btn"
+                  style={{ flex: 1.5, background: 'linear-gradient(135deg, #38bdf8, #0284c7)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
                 >
-                  {L('Enroll Student', 'تفعيل الطالب')}
+                  {isRTL ? 'تفعيل الطالب' : 'Grant Enrollment'}
                 </button>
               </div>
             </form>
@@ -1940,15 +2350,15 @@ export default function MembershipsView() {
       {/* MODAL 5: CREATE COMMUNITY GROUP                                           */}
       {/* ========================================================================= */}
       {showGroupModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '18px', animation: 'scaleUp 0.25s ease' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '24px', borderRadius: '18px' }}>
             <h3 style={{ margin: '0 0 14px 0', fontSize: '16px', fontWeight: '800' }}>
-              {L('Create Community Group', 'إنشاء مجتمع نقاش جديد')}
+              {isRTL ? 'إنشاء مجتمع نقاش جديد' : 'Create Community Group'}
             </h3>
             <form onSubmit={handleSaveGroup} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Group Name *', 'اسم المجتمع *')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'اسم المجتمع *' : 'Group Name *'}
                 </label>
                 <input
                   type="text"
@@ -1956,27 +2366,27 @@ export default function MembershipsView() {
                   value={groupForm.name}
                   onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
                   placeholder={isRTL ? 'مثال: مجتمع رواد الأعمال 2026' : 'Entrepreneurs Cohort 2026'}
-                  style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '9px 12px', color: 'var(--text)', fontSize: '13px' }}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
-                  {L('Icon & Description', 'الأيقونة والوصف')}
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'الأيقونة والوصف' : 'Icon & Description'}
                 </label>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <input
                     type="text"
                     value={groupForm.icon}
                     onChange={(e) => setGroupForm({ ...groupForm, icon: e.target.value })}
-                    style={{ width: '45px', textAlign: 'center', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', fontSize: '18px' }}
+                    style={{ width: '45px', textAlign: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', fontSize: '18px' }}
                   />
                   <input
                     type="text"
                     value={groupForm.description}
                     onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
                     placeholder={isRTL ? 'وصف المجتمع...' : 'Description...'}
-                    style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: '8px', padding: '9px 12px', color: 'var(--text)', fontSize: '12px' }}
+                    style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12px' }}
                   />
                 </div>
               </div>
@@ -1988,14 +2398,14 @@ export default function MembershipsView() {
                   className="btn btn-ghost"
                   style={{ flex: 1 }}
                 >
-                  {L('Cancel', 'إلغاء')}
+                  {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-prime"
-                  style={{ flex: 1.5, fontWeight: '700' }}
+                  className="glow-btn btn"
+                  style={{ flex: 1.5, background: 'linear-gradient(135deg, #a855f7, #9333ea)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
                 >
-                  {L('Create Group', 'إنشاء')}
+                  {isRTL ? 'إنشاء' : 'Create Group'}
                 </button>
               </div>
             </form>
