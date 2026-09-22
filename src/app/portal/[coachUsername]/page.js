@@ -10,8 +10,7 @@ import {
   createCommunityPost,
   enrollStudent,
   updateStudentLessonProgress,
-  DEFAULT_PORTAL_SETTINGS,
-  SAMPLE_MASTERCLASS_COURSES
+  DEFAULT_PORTAL_SETTINGS
 } from '../../../lib/membershipsService';
 import {
   BookOpen,
@@ -61,9 +60,9 @@ export default function StudentClientPortalPage() {
   const initialCourseId = searchParams.get('course');
   const initialTab = searchParams.get('tab') || 'courses';
 
-  // Portal & Content States
+  // Portal & Content States (Production: 100% real data from coach)
   const [portalSettings, setPortalSettings] = useState(DEFAULT_PORTAL_SETTINGS);
-  const [courses, setCourses] = useState(SAMPLE_MASTERCLASS_COURSES);
+  const [courses, setCourses] = useState([]);
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -79,7 +78,7 @@ export default function StudentClientPortalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('الكل');
 
-  // Student Auth & Gamification State
+  // Student Auth & Progress State
   const [currentStudent, setCurrentStudent] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authForm, setAuthForm] = useState({ name: '', email: '' });
@@ -96,7 +95,7 @@ export default function StudentClientPortalPage() {
   const [lessonComments, setLessonComments] = useState({});
   const [newLessonComment, setNewLessonComment] = useState('');
 
-  // Load Portal data
+  // Load Real Portal Data from coach
   useEffect(() => {
     async function loadPortal() {
       try {
@@ -110,30 +109,19 @@ export default function StudentClientPortalPage() {
           getCoachCommunities(coachId)
         ]);
 
-        const rawCourses = cList && cList.length > 0 ? cList : [];
-        const cleanedCustomCourses = rawCourses.map(c => ({
-          ...c,
-          title: (c.title && c.title.trim().length > 1 && c.title.trim() !== '1') ? c.title : (c.category ? `ماستر كلاس ${c.category}` : 'ماستر كلاس التجارة الإلكترونية المتقدمة'),
-          description: (c.description && c.description.trim().length > 1 && c.description.trim() !== '1') ? c.description : 'دليل تطبيقي شامل لاحتراف التجارة الرقمية وبناء أنظمة مبيعات مربحة ومستدامة.',
-          thumbnailUrl: (c.thumbnailUrl && !c.thumbnailUrl.includes('placeholder')) ? c.thumbnailUrl : 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=1200&auto=format&fit=crop'
-        }));
+        const realCourses = Array.isArray(cList) ? cList : [];
+        const realCommunities = Array.isArray(commList) ? commList : [];
 
-        // Always provide a complete academy experience with all masterclasses
-        const existingIds = new Set(cleanedCustomCourses.map(c => c.id));
-        const additionalSamples = SAMPLE_MASTERCLASS_COURSES.filter(s => !existingIds.has(s.id));
-        const finalCourses = [...cleanedCustomCourses, ...additionalSamples];
-        setCourses(finalCourses);
-        setCommunities(commList && commList.length > 0 ? commList : [{ id: 'vip_lounge', name: 'صالون النقاشات الحصري VIP', memberCount: 248 }]);
+        setCourses(realCourses);
+        setCommunities(realCommunities);
 
-        if (commList && commList.length > 0) {
-          setActiveCommunityId(commList[0].id);
-        } else {
-          setActiveCommunityId('vip_lounge');
+        if (realCommunities.length > 0) {
+          setActiveCommunityId(realCommunities[0].id);
         }
 
-        // Direct course deep link
-        if (initialCourseId && finalCourses.length > 0) {
-          const target = finalCourses.find(c => c.id === initialCourseId);
+        // Direct course deep link if present
+        if (initialCourseId && realCourses.length > 0) {
+          const target = realCourses.find(c => c.id === initialCourseId);
           if (target) {
             handleSelectCourse(target);
           }
@@ -164,12 +152,15 @@ export default function StudentClientPortalPage() {
     }
   }, [coachUsername]);
 
-  // Load community posts when active community changes
+  // Load real community posts when active community changes
   useEffect(() => {
-    if (!activeCommunityId) return;
+    if (!activeCommunityId) {
+      setPosts([]);
+      return;
+    }
     async function fetchPosts() {
       const pList = await getCommunityPosts(activeCommunityId);
-      setPosts(pList);
+      setPosts(Array.isArray(pList) ? pList : []);
     }
     fetchPosts();
   }, [activeCommunityId]);
@@ -238,7 +229,7 @@ export default function StudentClientPortalPage() {
       updated = completedLessons.filter(id => id !== lessonId);
     } else {
       updated = [...completedLessons, lessonId];
-      // Trigger celebratory confetti effect
+      // Celebratory Confetti Particle Shower
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
     }
@@ -265,7 +256,7 @@ export default function StudentClientPortalPage() {
     }));
   };
 
-  // Navigation between lessons
+  // All lessons for active course
   const allCurrentLessons = useMemo(() => {
     if (!activeCourse) return [];
     const list = [];
@@ -294,13 +285,13 @@ export default function StudentClientPortalPage() {
     }
   };
 
-  // Submit Community Post
+  // Submit Real Community Post
   const handleSubmitPost = async (e) => {
     e.preventDefault();
     if (!newPostContent.trim() || !activeCommunityId) return;
     setSubmittingPost(true);
     try {
-      const authorName = currentStudent?.name || 'طالب متميز';
+      const authorName = currentStudent?.name || 'طالب مسجل';
       const coachId = portalSettings.coachId || portalSettings.id || coachUsername;
       const created = await createCommunityPost({
         communityId: activeCommunityId,
@@ -321,16 +312,14 @@ export default function StudentClientPortalPage() {
   const handleAddLessonComment = (e) => {
     e.preventDefault();
     if (!newLessonComment.trim() || !activeLesson?.id) return;
-    const author = currentStudent?.name || 'طالب متميز';
+    const author = currentStudent?.name || 'طالب مسجل';
     const newComment = {
       id: `comment_${Date.now()}`,
       authorName: author,
       content: newLessonComment.trim(),
       time: 'الآن'
     };
-    const currentList = lessonComments[activeLesson.id] || [
-      { id: 'c_init', authorName: 'Mohamed Hesham (المدرب)', content: 'أي سؤال أو نقطة غير واضحة في هذا الدرس، لا تتردد في طرحها هنا!', time: 'منذ يوم' }
-    ];
+    const currentList = lessonComments[activeLesson.id] || [];
     setLessonComments({
       ...lessonComments,
       [activeLesson.id]: [newComment, ...currentList]
@@ -366,19 +355,27 @@ export default function StudentClientPortalPage() {
     return Math.round((completedCount / allLessonIds.length) * 100);
   };
 
-  // Total Academy Progress
+  // Total Academy Metrics (Real production numbers)
+  const totalLessonsCount = useMemo(() => {
+    return courses.reduce((acc, c) => acc + (c.modules || []).reduce((mAcc, m) => mAcc + (m.lessons?.length || 0), 0), 0);
+  }, [courses]);
+
+  const totalModulesCount = useMemo(() => {
+    return courses.reduce((acc, c) => acc + (c.modules?.length || 0), 0);
+  }, [courses]);
+
   const totalAcademyProgress = useMemo(() => {
-    let totalLessonsCount = 0;
-    courses.forEach(c => {
-      (c.modules || []).forEach(m => {
-        totalLessonsCount += (m.lessons || []).length;
-      });
-    });
     if (totalLessonsCount === 0) return 0;
     return Math.round((completedLessons.length / totalLessonsCount) * 100);
-  }, [courses, completedLessons]);
+  }, [totalLessonsCount, completedLessons]);
 
-  // Filtered Courses
+  // Dynamically derive categories from actual courses
+  const availableCategories = useMemo(() => {
+    const cats = new Set(courses.map(c => c.category).filter(Boolean));
+    return ['الكل', ...Array.from(cats)];
+  }, [courses]);
+
+  // Filtered Courses based on real search and dynamic categories
   const filteredCourses = useMemo(() => {
     return courses.filter(c => {
       const matchCat = selectedCategory === 'الكل' || c.category === selectedCategory;
@@ -400,10 +397,10 @@ export default function StudentClientPortalPage() {
               <Video size={52} color="#FF6B35" />
             </div>
             <h3 style={{ margin: '14px 0 6px', fontSize: '18px', fontWeight: '800', color: '#fff' }}>
-              {lesson?.title || 'محاضرة تعليمية حصرية'}
+              {lesson?.title || 'محاضرة تعليمية'}
             </h3>
             <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0, maxWidth: '420px', lineHeight: '1.6' }}>
-              الدرس متاح للمشاهدة المباشرة. اضغط على تشغيل أو تصفح المحتوى والملفات المرفقة أدناه.
+              لم يتم ربط فيديو مباشر بهذا الدرس بعد. تصفح الملاحظات والملفات المرفقة أدناه.
             </p>
           </div>
         </div>
@@ -495,7 +492,7 @@ export default function StudentClientPortalPage() {
             جاري فتح بوابة الأكاديمية...
           </h2>
           <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
-            تحضير البيئة التعليمية والمحتوى التدريبي الحصري
+            تحضير البيئة التعليمية والمحتوى التدريبي
           </p>
         </div>
       </div>
@@ -513,8 +510,8 @@ export default function StudentClientPortalPage() {
           100% { transform: translate(0px, 0px) scale(1); }
         }
         @keyframes glowPulse {
-          0%, 100% { opacity: 0.45; filter: blur(28px); }
-          50% { opacity: 0.8; filter: blur(36px); }
+          0%, 100% { opacity: 0.4; filter: blur(28px); }
+          50% { opacity: 0.75; filter: blur(36px); }
         }
         @keyframes shimmerSweep {
           0% { transform: translateX(120%); }
@@ -531,10 +528,6 @@ export default function StudentClientPortalPage() {
         @keyframes confettiFall {
           0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
           100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
-        }
-        @keyframes cardHoverIn {
-          from { transform: translateY(0) scale(1); }
-          to { transform: translateY(-6px) scale(1.015); }
         }
 
         .portal-master-container {
@@ -636,7 +629,7 @@ export default function StudentClientPortalPage() {
           border-radius: 2px;
         }
 
-        /* Glassmorphic Luxury Cards */
+        /* Glassmorphic Cards */
         .glass-card {
           background: linear-gradient(135deg, rgba(20, 26, 39, 0.75) 0%, rgba(13, 17, 27, 0.85) 100%);
           backdrop-filter: blur(20px);
@@ -650,7 +643,7 @@ export default function StudentClientPortalPage() {
         .glass-card:hover {
           border-color: rgba(255, 107, 53, 0.35);
           box-shadow: 0 20px 45px -15px rgba(255, 107, 53, 0.2), 0 0 20px rgba(255, 107, 53, 0.05);
-          transform: translateY(-5px);
+          transform: translateY(-4px);
         }
 
         /* Shimmer Effect on CTA */
@@ -731,7 +724,7 @@ export default function StudentClientPortalPage() {
           animation: floatSlow 3s ease-in-out infinite;
         }
 
-        /* Soundwave Equalizer for playing lesson */
+        /* Soundwave Equalizer */
         .eq-container {
           display: inline-flex;
           align-items: flex-end;
@@ -822,11 +815,11 @@ export default function StudentClientPortalPage() {
       <div className="ambient-orb-2" />
 
       {/* ===================================================================== */}
-      {/* 1. STANDALONE CINEMA ACADEMY HEADER                                   */}
+      {/* 1. STANDALONE ACADEMY HEADER                                          */}
       {/* ===================================================================== */}
       <header className="portal-header">
         <div className="portal-header-inner">
-          {/* Brand & Coach Verified Badge */}
+          {/* Brand & Verified Badge */}
           <div
             onClick={() => { setActiveCourse(null); setActiveTab('courses'); }}
             style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
@@ -851,13 +844,13 @@ export default function StudentClientPortalPage() {
                 fontSize: '20px',
                 boxShadow: `0 8px 20px ${themeColor}45`
               }}>
-                {(portalSettings.portalTitle || 'A')[0]}
+                {(portalSettings.portalTitle || coachUsername)[0].toUpperCase()}
               </div>
             )}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h1 style={{ margin: 0, fontSize: '17px', fontWeight: '900', color: '#fff', letterSpacing: '-0.3px' }}>
-                  {portalSettings.portalTitle || 'UpKlick MasterClass Academy'}
+                  {portalSettings.portalTitle || `${coachUsername} Academy`}
                 </h1>
                 <span style={{
                   display: 'inline-flex',
@@ -875,7 +868,7 @@ export default function StudentClientPortalPage() {
                 </span>
               </div>
               <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                {portalSettings.portalTagline || 'بوابة النخبة للتعلم واحتراف المهارات وتطوير الأعمال'}
+                {portalSettings.portalTagline || 'بوابة التدريب والتعلم المستقلة'}
               </span>
             </div>
           </div>
@@ -905,17 +898,19 @@ export default function StudentClientPortalPage() {
                 className={`nav-pill-btn ${activeTab === 'community' && !activeCourse ? 'active' : ''}`}
               >
                 <Users size={17} color={activeTab === 'community' && !activeCourse ? themeColor : '#94a3b8'} />
-                <span>مجتمع الطلاب VIP</span>
-                <span style={{
-                  background: 'rgba(255, 107, 53, 0.15)',
-                  color: themeColor,
-                  padding: '2px 7px',
-                  borderRadius: '10px',
-                  fontSize: '11px',
-                  fontWeight: '800'
-                }}>
-                  تفاعل مباشر
-                </span>
+                <span>مجتمع الطلاب</span>
+                {communities.length > 0 && (
+                  <span style={{
+                    background: 'rgba(255, 107, 53, 0.15)',
+                    color: themeColor,
+                    padding: '2px 7px',
+                    borderRadius: '10px',
+                    fontSize: '11px',
+                    fontWeight: '800'
+                  }}>
+                    {communities.length}
+                  </span>
+                )}
               </button>
             )}
 
@@ -959,7 +954,7 @@ export default function StudentClientPortalPage() {
                     {currentStudent.name}
                   </div>
                   <div style={{ fontSize: '10.5px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Sparkles size={11} /> طالب مسجل • {totalAcademyProgress}% إنجاز
+                    <Sparkles size={11} /> طالب مسجل {totalLessonsCount > 0 && `• ${totalAcademyProgress}% إنجاز`}
                   </div>
                 </div>
                 <button
@@ -1018,11 +1013,11 @@ export default function StudentClientPortalPage() {
       <main style={{ flex: 1, maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '32px 24px', position: 'relative', zIndex: 10 }}>
 
         {/* ----------------------------------------------------------------- */}
-        {/* VIEW A: INTERACTIVE CINEMA VIDEO THEATER MODE                     */}
+        {/* VIEW A: INTERACTIVE VIDEO THEATER MODE                            */}
         {/* ----------------------------------------------------------------- */}
         {activeCourse ? (
           <div>
-            {/* Top Navigation & Breadcrumbs */}
+            {/* Top Navigation Bar */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -1093,7 +1088,7 @@ export default function StudentClientPortalPage() {
               </div>
             </div>
 
-            {/* Split Screen Cinema Layout: Left Video (70% or 100%) + Right Curriculum (30% or hidden/bottom) */}
+            {/* Split Screen Cinema Layout */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: theaterMode ? '1fr' : '1fr 380px',
@@ -1118,19 +1113,23 @@ export default function StudentClientPortalPage() {
                   }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{
-                          background: 'rgba(255, 107, 53, 0.15)',
-                          color: themeColor,
-                          fontSize: '11px',
-                          fontWeight: '800',
-                          padding: '3px 8px',
-                          borderRadius: '6px'
-                        }}>
-                          {activeCourse.category || 'كورس احترافي'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                          ⏱ {activeLesson?.duration || '15 دقيقة'}
-                        </span>
+                        {activeCourse.category && (
+                          <span style={{
+                            background: 'rgba(255, 107, 53, 0.15)',
+                            color: themeColor,
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            padding: '3px 8px',
+                            borderRadius: '6px'
+                          }}>
+                            {activeCourse.category}
+                          </span>
+                        )}
+                        {activeLesson?.duration && (
+                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                            ⏱ {activeLesson.duration}
+                          </span>
+                        )}
                       </div>
                       <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#fff', lineHeight: '1.4' }}>
                         {activeLesson?.title || activeCourse.title}
@@ -1172,55 +1171,57 @@ export default function StudentClientPortalPage() {
                   </div>
 
                   {/* Previous / Next Lesson Navigation Row */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                    <button
-                      type="button"
-                      onClick={handlePrevLesson}
-                      disabled={currentLessonIndex <= 0}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        color: currentLessonIndex <= 0 ? '#64748b' : '#fff',
-                        borderRadius: '10px',
-                        padding: '8px 16px',
-                        fontSize: '12.5px',
-                        fontWeight: '700',
-                        cursor: currentLessonIndex <= 0 ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <ArrowRight size={14} />
-                      <span>الدرس السابق</span>
-                    </button>
+                  {allCurrentLessons.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                      <button
+                        type="button"
+                        onClick={handlePrevLesson}
+                        disabled={currentLessonIndex <= 0}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          color: currentLessonIndex <= 0 ? '#64748b' : '#fff',
+                          borderRadius: '10px',
+                          padding: '8px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: currentLessonIndex <= 0 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <ArrowRight size={14} />
+                        <span>الدرس السابق</span>
+                      </button>
 
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                      الدرس {currentLessonIndex + 1} من {allCurrentLessons.length}
-                    </span>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                        الدرس {currentLessonIndex + 1} من {allCurrentLessons.length}
+                      </span>
 
-                    <button
-                      type="button"
-                      onClick={handleNextLesson}
-                      disabled={currentLessonIndex >= allCurrentLessons.length - 1}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        color: currentLessonIndex >= allCurrentLessons.length - 1 ? '#64748b' : '#fff',
-                        borderRadius: '10px',
-                        padding: '8px 16px',
-                        fontSize: '12.5px',
-                        fontWeight: '700',
-                        cursor: currentLessonIndex >= allCurrentLessons.length - 1 ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <span>الدرس التالي</span>
-                      <ArrowLeft size={14} />
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={handleNextLesson}
+                        disabled={currentLessonIndex >= allCurrentLessons.length - 1}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          color: currentLessonIndex >= allCurrentLessons.length - 1 ? '#64748b' : '#fff',
+                          borderRadius: '10px',
+                          padding: '8px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          cursor: currentLessonIndex >= allCurrentLessons.length - 1 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <span>الدرس التالي</span>
+                        <ArrowLeft size={14} />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Interactive Under-Video Tabs Header */}
                   <div style={{
@@ -1228,7 +1229,8 @@ export default function StudentClientPortalPage() {
                     gap: '8px',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                     paddingBottom: '12px',
-                    marginBottom: '16px'
+                    marginBottom: '16px',
+                    flexWrap: 'wrap'
                   }}>
                     <button
                       type="button"
@@ -1269,7 +1271,7 @@ export default function StudentClientPortalPage() {
                       }}
                     >
                       <Download size={15} color={activeLessonTab === 'resources' ? themeColor : '#94a3b8'} />
-                      <span>الملفات والمرفقات (3)</span>
+                      <span>الملفات والمرفقات</span>
                     </button>
 
                     <button
@@ -1315,7 +1317,7 @@ export default function StudentClientPortalPage() {
                     </button>
                   </div>
 
-                  {/* Tab 1: Lesson Notes & Practical Checklist */}
+                  {/* Tab 1: Real Lesson Notes */}
                   {activeLessonTab === 'notes' && (
                     <div>
                       <div style={{
@@ -1329,155 +1331,112 @@ export default function StudentClientPortalPage() {
                         marginBottom: '18px',
                         whiteSpace: 'pre-line'
                       }}>
-                        {activeLesson?.notes || '📌 ركائز التطبيق العملي لهذا الدرس:\n1. قم بمراجعة النقاط الأساسية وتدوين ملاحظاتك الخاصة.\n2. حمل ملفات العمل المرفقة لتطبيق الخطوات على مشروعك التجاري.\n3. شارك تساؤلاتك في خانة النقاش للحصول على تغذية راجعة فورية.'}
+                        {activeLesson?.notes || 'لا توجد ملاحظات إضافية لهذا الدرس حتى الآن.'}
                       </div>
 
-                      {/* Interactive Checklist */}
-                      <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff', margin: '0 0 10px' }}>
-                        📋 قائمة المهام والتطبيق الفوري (Action Checklist):
-                      </h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {[
-                          'مشاهدة المحاضرة بتركيز وتدوين النقاط الجوهرية',
-                          'تحميل الملف المرفق واستخراج قوالب العمل الجاهزة',
-                          'تطبيق الخطوة الأولى على نشاطك الإعلاني أو البيعي فوراً'
-                        ].map((task, idx) => {
-                          const isDone = !!checkedChecklist[`${activeLesson?.id}_${idx}`];
-                          return (
-                            <div
-                              key={idx}
-                              onClick={() => toggleChecklist(`${activeLesson?.id}_${idx}`)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '10px 14px',
-                                borderRadius: '10px',
-                                background: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.03)',
-                                border: isDone ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              {isDone ? (
-                                <CheckSquare size={16} color="#10b981" />
-                              ) : (
-                                <Square size={16} color="#64748b" />
-                              )}
-                              <span style={{
-                                fontSize: '13px',
-                                color: isDone ? '#fff' : '#94a3b8',
-                                textDecoration: isDone ? 'line-through' : 'none'
-                              }}>
-                                {task}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {activeLesson?.resources && activeLesson.resources.length > 0 && (
+                        <div>
+                          <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff', margin: '0 0 10px' }}>
+                            📋 قائمة المهام والتطبيق العملي:
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {activeLesson.resources.map((task, idx) => {
+                              const isDone = !!checkedChecklist[`${activeLesson?.id}_${idx}`];
+                              return (
+                                <div
+                                  key={idx}
+                                  onClick={() => toggleChecklist(`${activeLesson?.id}_${idx}`)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '10px 14px',
+                                    borderRadius: '10px',
+                                    background: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                                    border: isDone ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(255, 255, 255, 0.05)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  {isDone ? (
+                                    <CheckSquare size={16} color="#10b981" />
+                                  ) : (
+                                    <Square size={16} color="#64748b" />
+                                  )}
+                                  <span style={{
+                                    fontSize: '13px',
+                                    color: isDone ? '#fff' : '#94a3b8',
+                                    textDecoration: isDone ? 'line-through' : 'none'
+                                  }}>
+                                    {task}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Tab 2: Downloadable Resources */}
+                  {/* Tab 2: Real Resources & Attachments */}
                   {activeLessonTab === 'resources' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 6px' }}>
-                        الملفات والقوالب المعتمدة المرفقة لمساعدتك في التطبيق السريع:
-                      </p>
-
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '14px 18px',
-                        borderRadius: '12px',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                            <FileText size={20} />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff' }}>
-                              {activeLesson?.attachmentName || 'دليل_التطبيق_العملي_الشامل.pdf'}
+                      {activeLesson?.attachmentUrl ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '14px 18px',
+                          borderRadius: '12px',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                              <FileText size={20} />
                             </div>
-                            <span style={{ fontSize: '11px', color: '#64748b' }}>PDF Document • 3.4 MB</span>
-                          </div>
-                        </div>
-
-                        <a
-                          href={activeLesson?.attachmentUrl || '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            background: 'rgba(255, 107, 53, 0.15)',
-                            border: '1px solid rgba(255, 107, 53, 0.3)',
-                            color: themeColor,
-                            padding: '8px 16px',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            fontWeight: '800',
-                            textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <Download size={13} />
-                          <span>تحميل الملف</span>
-                        </a>
-                      </div>
-
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '14px 18px',
-                        borderRadius: '12px',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
-                            <Layers size={20} />
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff' }}>
-                              قالب_حساب_الأرباح_والـ_ROAS.xlsx
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff' }}>
+                                {activeLesson?.attachmentName || 'ملف_مرفق_للدرس'}
+                              </div>
+                              <span style={{ fontSize: '11px', color: '#64748b' }}>مستند تدريبي متاح للتحميل</span>
                             </div>
-                            <span style={{ fontSize: '11px', color: '#64748b' }}>Excel Spreadsheet • 1.2 MB</span>
                           </div>
-                        </div>
 
-                        <a
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); alert('جاري تجهيز التحميل المباشر للجدول'); }}
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.06)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            color: '#fff',
-                            padding: '8px 16px',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            fontWeight: '800',
-                            textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <Download size={13} />
-                          <span>تحميل</span>
-                        </a>
-                      </div>
+                          <a
+                            href={activeLesson.attachmentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              background: 'rgba(255, 107, 53, 0.15)',
+                              border: '1px solid rgba(255, 107, 53, 0.3)',
+                              color: themeColor,
+                              padding: '8px 16px',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: '800',
+                              textDecoration: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <Download size={13} />
+                            <span>تحميل الملف</span>
+                          </a>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                          لا توجد ملفات مرفقة مخصصة لهذا الدرس حالياً.
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* Tab 3: Lesson Discussion */}
                   {activeLessonTab === 'comments' && (
                     <div>
-                      {/* Post Comment Input */}
                       <form onSubmit={handleAddLessonComment} style={{ marginBottom: '18px' }}>
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <input
@@ -1520,26 +1479,30 @@ export default function StudentClientPortalPage() {
 
                       {/* Comments List */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {(lessonComments[activeLesson?.id] || [
-                          { id: 'c_default', authorName: 'Mohamed Hesham (المدرب)', content: 'أي سؤال أو نقطة ترغب في توضيحها أكثر في هذا الدرس، اكتبها هنا وسأجيبك شخصياً 🚀', time: 'منذ يوم' }
-                        ]).map((c) => (
-                          <div key={c.id} style={{
-                            background: 'rgba(255, 255, 255, 0.02)',
-                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                            borderRadius: '10px',
-                            padding: '12px 14px'
-                          }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                              <span style={{ fontSize: '12.5px', fontWeight: '800', color: themeColor }}>
-                                {c.authorName}
-                              </span>
-                              <span style={{ fontSize: '11px', color: '#64748b' }}>{c.time}</span>
-                            </div>
-                            <p style={{ margin: 0, fontSize: '12.5px', color: '#cbd5e1', lineHeight: '1.5' }}>
-                              {c.content}
-                            </p>
+                        {(lessonComments[activeLesson?.id] || []).length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '12.5px' }}>
+                            كن أول من يطرح سؤالاً أو يشارك انطباعاً حول هذا الدرس!
                           </div>
-                        ))}
+                        ) : (
+                          (lessonComments[activeLesson?.id] || []).map((c) => (
+                            <div key={c.id} style={{
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: '1px solid rgba(255, 255, 255, 0.05)',
+                              borderRadius: '10px',
+                              padding: '12px 14px'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                <span style={{ fontSize: '12.5px', fontWeight: '800', color: themeColor }}>
+                                  {c.authorName}
+                                </span>
+                                <span style={{ fontSize: '11px', color: '#64748b' }}>{c.time}</span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: '12.5px', color: '#cbd5e1', lineHeight: '1.5' }}>
+                                {c.content}
+                              </p>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
@@ -1577,7 +1540,7 @@ export default function StudentClientPortalPage() {
                         fontWeight: '800'
                       }}>
                         <span>نسبة تقدمك الحالية: {getCourseProgress(activeCourse)}%</span>
-                        {getCourseProgress(activeCourse) >= 100 ? '🎉 مكتمل وجاهز للطباعة' : '⏳ متبقي القليل'}
+                        {getCourseProgress(activeCourse) >= 100 ? '🎉 مكتمل وجاهز للإصدار' : '⏳ متبقي استكمال باقي الدروس'}
                       </div>
                     </div>
                   )}
@@ -1662,7 +1625,6 @@ export default function StudentClientPortalPage() {
                                     }}
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                                      {/* Playing Soundwave or Checkmark */}
                                       {isCurrent ? (
                                         <div className="eq-container">
                                           <div className="eq-bar" />
@@ -1687,9 +1649,11 @@ export default function StudentClientPortalPage() {
                                       </span>
                                     </div>
 
-                                    <span style={{ fontSize: '11px', color: '#64748b', marginRight: '6px' }}>
-                                      {lesson.duration || '15د'}
-                                    </span>
+                                    {lesson.duration && (
+                                      <span style={{ fontSize: '11px', color: '#64748b', marginRight: '6px' }}>
+                                        {lesson.duration}
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -1705,10 +1669,10 @@ export default function StudentClientPortalPage() {
           </div>
         ) : activeTab === 'courses' ? (
           /* ----------------------------------------------------------------- */
-          /* VIEW B: CINEMA COURSES CATALOG & HERO BANNER                      */
+          /* VIEW B: REAL COURSES CATALOG & HERO BANNER                        */
           /* ----------------------------------------------------------------- */
           <div>
-            {/* MasterClass Hero Banner */}
+            {/* Academy Hero Banner */}
             <div className="glass-card" style={{
               padding: '42px 36px',
               marginBottom: '36px',
@@ -1722,7 +1686,7 @@ export default function StudentClientPortalPage() {
                   backgroundImage: `url(${portalSettings.bannerUrl})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
-                  opacity: 0.16,
+                  opacity: 0.18,
                   zIndex: 0
                 }} />
               )}
@@ -1742,7 +1706,7 @@ export default function StudentClientPortalPage() {
                   marginBottom: '14px'
                 }}>
                   <Flame size={14} />
-                  <span>الأكاديمية الرسمية المعتمدة | Official MasterClass Portal</span>
+                  <span>بوابة التدريب والتعلم المباشر</span>
                 </div>
 
                 <h2 style={{
@@ -1753,7 +1717,7 @@ export default function StudentClientPortalPage() {
                   lineHeight: '1.3',
                   letterSpacing: '-0.5px'
                 }}>
-                  {portalSettings.portalTitle || 'UpKlick MasterClass Academy'}
+                  {portalSettings.portalTitle || `${coachUsername} Academy`}
                 </h2>
 
                 <p style={{
@@ -1762,336 +1726,396 @@ export default function StudentClientPortalPage() {
                   lineHeight: '1.7',
                   margin: '0 0 24px'
                 }}>
-                  {portalSettings.welcomeMessage || 'مرحباً بك في الأكاديمية! يسعدنا انضمامك لرحلتنا التعليمية المتكاملة مع التدريب العملي والتطبيق المباشر خطوة بخطوة.'}
+                  {portalSettings.welcomeMessage || 'مرحباً بك في الأكاديمية! يسعدنا انضمامك لرحلتنا التعليمية والتدريبية.'}
                 </p>
 
-                {/* 4 Luxury Stat Badges */}
+                {/* Real Dynamic Metrics Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
                   <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fbbf24', fontSize: '13px', fontWeight: '800' }}>
-                      <Star size={15} fill="#fbbf24" /> 4.95 / 5.0
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: themeColor, fontSize: '13px', fontWeight: '800' }}>
+                      <BookOpen size={15} /> {courses.length} مسار تدريبي
                     </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>تقييم متميز من مئات الطلاب</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>المسارات المتاحة للتعلم</span>
                   </div>
 
                   <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '13px', fontWeight: '800' }}>
-                      <Award size={15} /> شهادة معتمدة
+                      <Video size={15} /> {totalLessonsCount} محاضرة
                     </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>تصدر فور إتمام المنهج</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>محتوى وشروحات تطبيقية</span>
                   </div>
 
                   <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontSize: '13px', fontWeight: '800' }}>
-                      <Users size={15} /> +1,480 طالب
+                      <Layers size={15} /> {totalModulesCount} وحدات
                     </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>في مجتمع النخبة النشط</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>منهج تدريبي منظم</span>
                   </div>
 
                   <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '14px', padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#c084fc', fontSize: '13px', fontWeight: '800' }}>
-                      <Sparkles size={15} /> وصول مدى الحياة
+                      <Sparkles size={15} /> وصول مباشر
                     </div>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>يشمل التحديثات الدورية</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>متابعة وحفظ مستمر للتقدم</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Smart Search & Filter Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '16px',
-              marginBottom: '26px'
-            }}>
-              <div>
-                <h3 style={{ fontSize: '20px', fontWeight: '900', margin: '0 0 4px', color: '#fff' }}>
-                  المسارات التدريبية المتاحة ({filteredCourses.length})
-                </h3>
-                <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>
-                  اختر المسار التدريبي للبدء في مشاهدة المحاضرات والتطبيقات العملية
-                </span>
-              </div>
-
-              {/* Search Box & Category Filters */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{
-                  position: 'relative',
-                  width: '260px'
-                }}>
-                  <Search size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="ابحث في الكورسات..."
-                    style={{
-                      width: '100%',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '10px',
-                      padding: '8px 36px 8px 12px',
-                      color: '#fff',
-                      fontSize: '12.5px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
+            {/* Smart Search & Real Filter Header */}
+            {courses.length > 0 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                marginBottom: '26px'
+              }}>
+                <div>
+                  <h3 style={{ fontSize: '20px', fontWeight: '900', margin: '0 0 4px', color: '#fff' }}>
+                    المسارات التدريبية المتاحة ({filteredCourses.length})
+                  </h3>
+                  <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>
+                    اختر المسار التدريبي للبدء في متابعة المحاضرات والدروس
+                  </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {['الكل', 'التسويق والإعلانات', 'المبيعات وتطوير الأعمال', 'الذكاء الاصطناعي والأتمتة'].map(cat => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat)}
+                {/* Search Box & Dynamic Category Filters */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{
+                    position: 'relative',
+                    width: '260px'
+                  }}>
+                    <Search size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="ابحث في الكورسات..."
                       style={{
-                        background: selectedCategory === cat ? themeColor : 'rgba(255, 255, 255, 0.05)',
-                        border: 'none',
-                        color: '#fff',
-                        borderRadius: '8px',
-                        padding: '6px 12px',
-                        fontSize: '11.5px',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Courses 3-Column Responsive Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
-              gap: '26px'
-            }}>
-              {filteredCourses.map((course) => {
-                const progress = getCourseProgress(course);
-                const lessonCount = (course.modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
-                return (
-                  <div
-                    key={course.id}
-                    className="glass-card"
-                    style={{ display: 'flex', flexDirection: 'column' }}
-                  >
-                    {/* 16:9 Thumbnail with Overlay & Badges */}
-                    <div
-                      onClick={() => handleSelectCourse(course)}
-                      style={{
-                        position: 'relative',
                         width: '100%',
-                        aspectRatio: '16/9',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        background: '#0d111b'
-                      }}
-                    >
-                      <img
-                        src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop'}
-                        alt={course.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          transition: 'transform 0.4s ease'
-                        }}
-                      />
-
-                      {/* Dark Vignette Overlay */}
-                      <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'linear-gradient(to top, rgba(7, 9, 14, 0.9) 0%, transparent 60%)'
-                      }} />
-
-                      {/* Top Badges */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '12px',
-                        right: '12px',
-                        left: '12px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{
-                          background: 'rgba(10, 14, 23, 0.85)',
-                          backdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          color: '#fff',
-                          fontSize: '11px',
-                          fontWeight: '800',
-                          padding: '3px 9px',
-                          borderRadius: '6px'
-                        }}>
-                          {course.level || 'احترافي'}
-                        </span>
-
-                        <span style={{
-                          background: 'rgba(255, 107, 53, 0.85)',
-                          backdropFilter: 'blur(8px)',
-                          color: '#fff',
-                          fontSize: '11px',
-                          fontWeight: '800',
-                          padding: '3px 9px',
-                          borderRadius: '6px'
-                        }}>
-                          {course.badge || '🔥 ماستر كلاس'}
-                        </span>
-                      </div>
-
-                      {/* Center Hover Play Icon */}
-                      <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <div style={{
-                          width: '54px',
-                          height: '54px',
-                          borderRadius: '50%',
-                          background: 'rgba(255, 107, 53, 0.9)',
-                          boxShadow: '0 0 25px rgba(255, 107, 53, 0.6)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#fff',
-                          transform: 'scale(0.95)',
-                          transition: 'transform 0.2s ease'
-                        }}>
-                          <Play size={22} style={{ marginRight: '-2px' }} fill="#fff" />
-                        </div>
-                      </div>
-
-                      {/* Progress Line */}
-                      {progress > 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          height: '4px',
-                          background: 'rgba(0,0,0,0.6)'
-                        }}>
-                          <div style={{ width: `${progress}%`, height: '100%', background: '#10b981' }} />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Course Body Details */}
-                    <div style={{ padding: '22px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '11.5px', color: themeColor, fontWeight: '800' }}>
-                          {course.category || 'المسار التدريبي'}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fbbf24', fontSize: '11.5px', fontWeight: '800' }}>
-                          <Star size={12} fill="#fbbf24" /> {course.rating || 4.9}
-                        </div>
-                      </div>
-
-                      <h4 style={{
-                        margin: '0 0 8px',
-                        fontSize: '16.5px',
-                        fontWeight: '900',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '10px',
+                        padding: '8px 36px 8px 12px',
                         color: '#fff',
-                        lineHeight: '1.4'
-                      }}>
-                        {course.title}
-                      </h4>
-
-                      <p style={{
-                        margin: '0 0 18px',
                         fontSize: '12.5px',
-                        color: '#94a3b8',
-                        lineHeight: '1.6',
-                        flex: 1
-                      }}>
-                        {course.description}
-                      </p>
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
 
-                      {/* Module, Lesson, & Student Count Bar */}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                        paddingTop: '14px',
-                        marginBottom: '16px',
-                        fontSize: '12px',
-                        color: '#94a3b8'
-                      }}>
-                        <span>📁 {(course.modules || []).length} وحدات</span>
-                        <span>🎥 {lessonCount} دروس</span>
-                        <span>⏱ {course.duration || '4 ساعات'}</span>
-                      </div>
+                  {availableCategories.length > 2 && (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {availableCategories.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat)}
+                          style={{
+                            background: selectedCategory === cat ? themeColor : 'rgba(255, 255, 255, 0.05)',
+                            border: 'none',
+                            color: '#fff',
+                            borderRadius: '8px',
+                            padding: '6px 12px',
+                            fontSize: '11.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-                      {/* CTA Button */}
-                      <button
-                        type="button"
+            {/* Courses Content Area (Real Data or Production Empty State) */}
+            {courses.length === 0 ? (
+              <div className="glass-card" style={{
+                padding: '64px 24px',
+                textAlign: 'center',
+                margin: '20px 0',
+                border: '1px solid rgba(255, 255, 255, 0.08)'
+              }}>
+                <div style={{
+                  width: '76px',
+                  height: '76px',
+                  borderRadius: '50%',
+                  background: 'rgba(255, 107, 53, 0.12)',
+                  border: '1px solid rgba(255, 107, 53, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: themeColor,
+                  marginBottom: '20px',
+                  boxShadow: '0 0 30px rgba(255, 107, 53, 0.25)'
+                }}>
+                  <BookOpen size={36} />
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: '900', color: '#fff', margin: '0 0 8px' }}>
+                  المحتوى التدريبي قيد التجهيز
+                </h3>
+                <p style={{ fontSize: '14px', color: '#94a3b8', margin: '0 auto 24px', maxWidth: '500px', lineHeight: '1.7' }}>
+                  المدرب يقوم حالياً بإعداد ورفع المحاضرات والمواد التعليمية المخصصة للأكاديمية. ستظهر المسارات التدريبية هنا فور نشرها.
+                </p>
+                {portalSettings.whatsappNumber && portalSettings.whatsappNumber.trim() !== '' && (
+                  <a
+                    href={`https://wa.me/${portalSettings.whatsappNumber.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shimmer-button"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: '#25D366',
+                      color: '#fff',
+                      padding: '12px 26px',
+                      borderRadius: '12px',
+                      fontSize: '13.5px',
+                      fontWeight: '800',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 18px rgba(37, 211, 102, 0.35)'
+                    }}
+                  >
+                    <span>💬 تواصل مع المدرب عبر واتساب</span>
+                  </a>
+                )}
+              </div>
+            ) : filteredCourses.length === 0 ? (
+              <div className="glass-card" style={{ padding: '48px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                <Search size={34} style={{ margin: '0 auto 12px', opacity: 0.6 }} />
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '0 0 6px', fontWeight: '800' }}>
+                  لا توجد نتائج مطابقة لبحثك
+                </h4>
+                <p style={{ fontSize: '13px', margin: 0 }}>جرب البحث بكلمات أخرى أو اختر تصنيف "الكل".</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+                gap: '26px'
+              }}>
+                {filteredCourses.map((course) => {
+                  const progress = getCourseProgress(course);
+                  const lessonCount = (course.modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
+                  return (
+                    <div
+                      key={course.id}
+                      className="glass-card"
+                      style={{ display: 'flex', flexDirection: 'column' }}
+                    >
+                      {/* 16:9 Thumbnail with Overlay & Badges */}
+                      <div
                         onClick={() => handleSelectCourse(course)}
-                        className="shimmer-button"
                         style={{
+                          position: 'relative',
                           width: '100%',
-                          background: progress > 0
-                            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                            : `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`,
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '12px',
-                          padding: '12px',
-                          fontWeight: '900',
-                          fontSize: '13.5px',
+                          aspectRatio: '16/9',
+                          overflow: 'hidden',
                           cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          boxShadow: progress > 0 ? '0 4px 16px rgba(16, 185, 129, 0.3)' : `0 4px 16px ${themeColor}35`
+                          background: '#0d111b'
                         }}
                       >
-                        <Play size={15} fill="#fff" />
-                        <span>{progress > 0 ? `متابعة المشاهدة (${progress}%)` : 'ابدأ دراسة الكورس الآن'}</span>
-                      </button>
+                        <img
+                          src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=800&auto=format&fit=crop'}
+                          alt={course.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            transition: 'transform 0.4s ease'
+                          }}
+                        />
+
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'linear-gradient(to top, rgba(7, 9, 14, 0.9) 0%, transparent 60%)'
+                        }} />
+
+                        {/* Badges */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '12px',
+                          right: '12px',
+                          left: '12px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          {course.level && (
+                            <span style={{
+                              background: 'rgba(10, 14, 23, 0.85)',
+                              backdropFilter: 'blur(8px)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              color: '#fff',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              padding: '3px 9px',
+                              borderRadius: '6px'
+                            }}>
+                              {course.level}
+                            </span>
+                          )}
+
+                          {course.category && (
+                            <span style={{
+                              background: 'rgba(255, 107, 53, 0.85)',
+                              backdropFilter: 'blur(8px)',
+                              color: '#fff',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              marginRight: 'auto'
+                            }}>
+                              {course.category}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Center Hover Play Icon */}
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <div style={{
+                            width: '54px',
+                            height: '54px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 107, 53, 0.9)',
+                            boxShadow: '0 0 25px rgba(255, 107, 53, 0.6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            transform: 'scale(0.95)',
+                            transition: 'transform 0.2s ease'
+                          }}>
+                            <Play size={22} style={{ marginRight: '-2px' }} fill="#fff" />
+                          </div>
+                        </div>
+
+                        {/* Progress Line */}
+                        {progress > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: '4px',
+                            background: 'rgba(0,0,0,0.6)'
+                          }}>
+                            <div style={{ width: `${progress}%`, height: '100%', background: '#10b981' }} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Course Body Details */}
+                      <div style={{ padding: '22px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <h4 style={{
+                          margin: '0 0 8px',
+                          fontSize: '16.5px',
+                          fontWeight: '900',
+                          color: '#fff',
+                          lineHeight: '1.4'
+                        }}>
+                          {course.title}
+                        </h4>
+
+                        {course.description && (
+                          <p style={{
+                            margin: '0 0 18px',
+                            fontSize: '12.5px',
+                            color: '#94a3b8',
+                            lineHeight: '1.6',
+                            flex: 1
+                          }}>
+                            {course.description}
+                          </p>
+                        )}
+
+                        {/* Modules, Lessons, Duration Bar */}
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                          paddingTop: '14px',
+                          marginBottom: '16px',
+                          fontSize: '12px',
+                          color: '#94a3b8'
+                        }}>
+                          <span>📁 {(course.modules || []).length} وحدات</span>
+                          <span>🎥 {lessonCount} دروس</span>
+                          {course.duration ? (
+                            <span>⏱ {course.duration}</span>
+                          ) : (
+                            <span>متاح الآن</span>
+                          )}
+                        </div>
+
+                        {/* CTA Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectCourse(course)}
+                          className="shimmer-button"
+                          style={{
+                            width: '100%',
+                            background: progress > 0
+                              ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                              : `linear-gradient(135deg, ${themeColor} 0%, #ea580c 100%)`,
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            fontWeight: '900',
+                            fontSize: '13.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            boxShadow: progress > 0 ? '0 4px 16px rgba(16, 185, 129, 0.3)' : `0 4px 16px ${themeColor}35`
+                          }}
+                        >
+                          <Play size={15} fill="#fff" />
+                          <span>{progress > 0 ? `متابعة المشاهدة (${progress}%)` : 'ابدأ دراسة الكورس الآن'}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : activeTab === 'community' ? (
           /* ----------------------------------------------------------------- */
-          /* VIEW C: SKOOL-STYLE VIP COMMUNITY LOUNGE                          */
+          /* VIEW C: COMMUNITY LOUNGE                                          */
           /* ----------------------------------------------------------------- */
           <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-            {/* Community Header Banner */}
             <div className="glass-card" style={{ padding: '24px 28px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 107, 53, 0.15)', color: themeColor, fontSize: '11px', fontWeight: '800', padding: '3px 10px', borderRadius: '12px', marginBottom: '8px' }}>
-                    <Users size={12} /> صالون مجتمع الأكاديمية VIP
+                    <Users size={12} /> مجتمع ونقاشات الأكاديمية
                   </div>
                   <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '900', color: '#fff' }}>
-                    ملتقى النقاشات وتبادل الخبرات المباشر
+                    ملتقى الطلاب وتبادل الخبرات المباشر
                   </h3>
                   <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#94a3b8' }}>
-                    تفاعل مع زملائك، اطرح أسئلتك التقنية والبيعية، وشارك نتائجك اليومية مباشرة مع المدرب.
+                    تفاعل مع زملائك، اطرح استفساراتك حول الدروس، وشارك تطبيقك العملي مباشرة.
                   </p>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#10b981', fontWeight: '800', background: 'rgba(16, 185, 129, 0.15)', padding: '6px 12px', borderRadius: '10px' }}>
-                    🟢 +48 متصل الآن
-                  </span>
                 </div>
               </div>
             </div>
@@ -2116,7 +2140,7 @@ export default function StudentClientPortalPage() {
                 <textarea
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
-                  placeholder="شارك سؤالاً، إنجازاً حققته، أو فكرة ترغب في مناقشتها مع زملائك..."
+                  placeholder="شارك سؤالاً، فكرة، أو تجربة ترغب في مناقشتها مع زملائك..."
                   rows={3}
                   style={{
                     flex: 1,
@@ -2159,135 +2183,99 @@ export default function StudentClientPortalPage() {
               </div>
             </form>
 
-            {/* Posts List */}
+            {/* Real Posts Feed */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {posts.map((post) => {
-                const isLiked = !!likedPosts[post.id];
-                const likeCount = (post.likesCount || 0) + (isLiked ? 1 : 0);
+              {posts.length === 0 ? (
+                <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center', color: '#94a3b8' }}>
+                  <MessageSquare size={36} color={themeColor} style={{ margin: '0 auto 12px', opacity: 0.8 }} />
+                  <h4 style={{ color: '#fff', fontSize: '16.5px', fontWeight: '800', margin: '0 0 6px' }}>
+                    لم تبدأ أي نقاشات بعد في هذا المجتمع
+                  </h4>
+                  <p style={{ fontSize: '13px', margin: 0 }}>
+                    كن أول من يشارك فكرة، يطرح سؤالاً، أو يبدأ نقاشاً مع زملائه والمدرب!
+                  </p>
+                </div>
+              ) : (
+                posts.map((post) => {
+                  const isLiked = !!likedPosts[post.id];
+                  const likeCount = (post.likesCount || 0) + (isLiked ? 1 : 0);
 
-                return (
-                  <div key={post.id} className="glass-card" style={{ padding: '22px' }}>
-                    {post.isPinned && (
-                      <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: 'rgba(245, 158, 11, 0.15)',
-                        border: '1px solid rgba(245, 158, 11, 0.3)',
-                        color: '#f59e0b',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        padding: '3px 10px',
-                        borderRadius: '6px',
-                        marginBottom: '12px'
-                      }}>
-                        📌 منشور وإعلان مثبت من المدرب
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: post.isCoach
-                          ? `linear-gradient(135deg, ${themeColor} 0%, #f59e0b 100%)`
-                          : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: '900',
-                        fontSize: '16px',
-                        color: '#fff',
-                        boxShadow: post.isCoach ? '0 0 15px rgba(255, 107, 53, 0.4)' : 'none'
-                      }}>
-                        {(post.authorName || 'ط')[0]}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>{post.authorName}</span>
-                          {post.isCoach && (
-                            <span style={{ background: themeColor, color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                              المدرب
-                            </span>
-                          )}
-                        </div>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>
-                          {post.createdAt?.seconds ? new Date(post.createdAt.seconds * 1000).toLocaleString('ar-EG') : 'منذ قليل'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: '14px', lineHeight: '1.7', color: '#e2e8f0', margin: '0 0 16px', whiteSpace: 'pre-line' }}>
-                      {post.content}
-                    </p>
-
-                    {/* Post Actions (Like, Reply) */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                      paddingTop: '12px'
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => handleLikePost(post.id)}
-                        style={{
-                          background: isLiked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                          border: isLiked ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.08)',
-                          color: isLiked ? '#f87171' : '#94a3b8',
-                          borderRadius: '8px',
-                          padding: '6px 14px',
-                          fontSize: '12px',
-                          fontWeight: '800',
-                          cursor: 'pointer',
+                  return (
+                    <div key={post.id} className="glass-card" style={{ padding: '22px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: post.isCoach
+                            ? `linear-gradient(135deg, ${themeColor} 0%, #f59e0b 100%)`
+                            : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <ThumbsUp size={13} />
-                        <span>{likeCount} تفاعل</span>
-                      </button>
-
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                        💬 {(post.comments || []).length} تعليقات
-                      </span>
-                    </div>
-
-                    {/* Comments Thread */}
-                    {post.comments && post.comments.length > 0 && (
-                      <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px' }}>
-                        {post.comments.map(c => (
-                          <div key={c.id} style={{
-                            background: 'rgba(255, 255, 255, 0.02)',
-                            borderRadius: '10px',
-                            padding: '10px 14px',
-                            border: '1px solid rgba(255, 255, 255, 0.04)'
-                          }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '12.5px', fontWeight: '800', color: c.isCoach ? themeColor : '#fff' }}>
-                                {c.authorName} {c.isCoach && '👑'}
+                          justifyContent: 'center',
+                          fontWeight: '900',
+                          fontSize: '16px',
+                          color: '#fff'
+                        }}>
+                          {(post.authorName || 'ط')[0]}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>{post.authorName}</span>
+                            {post.isCoach && (
+                              <span style={{ background: themeColor, color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                المدرب
                               </span>
-                              <span style={{ fontSize: '10.5px', color: '#64748b' }}>{c.createdAt}</span>
-                            </div>
-                            <p style={{ margin: 0, fontSize: '12.5px', color: '#cbd5e1', lineHeight: '1.5' }}>
-                              {c.content}
-                            </p>
+                            )}
                           </div>
-                        ))}
+                          <span style={{ fontSize: '11px', color: '#64748b' }}>
+                            {post.createdAt?.seconds ? new Date(post.createdAt.seconds * 1000).toLocaleString('ar-EG') : 'منذ قليل'}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                      <p style={{ fontSize: '14px', lineHeight: '1.7', color: '#e2e8f0', margin: '0 0 16px', whiteSpace: 'pre-line' }}>
+                        {post.content}
+                      </p>
+
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        paddingTop: '12px'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => handleLikePost(post.id)}
+                          style={{
+                            background: isLiked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                            border: isLiked ? '1px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.08)',
+                            color: isLiked ? '#f87171' : '#94a3b8',
+                            borderRadius: '8px',
+                            padding: '6px 14px',
+                            fontSize: '12px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <ThumbsUp size={13} />
+                          <span>{likeCount} تفاعل</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         ) : (
           /* ----------------------------------------------------------------- */
-          /* VIEW D: STUDENT ACHIEVEMENTS & CERTIFICATE VAULT                  */
+          /* VIEW D: STUDENT ACHIEVEMENTS & CERTIFICATES                       */
           /* ----------------------------------------------------------------- */
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div className="glass-card" style={{ padding: '32px', textAlign: 'center', marginBottom: '28px' }}>
@@ -2310,7 +2298,7 @@ export default function StudentClientPortalPage() {
                 لوحة إنجازات الطالب وشهادات التخرج
               </h3>
               <p style={{ fontSize: '14px', color: '#94a3b8', margin: '0 auto 24px', maxWidth: '520px', lineHeight: '1.6' }}>
-                تابع مسار تطورك التعليمي، الساعات التدريبية المكتملة، واحصل على شهاداتك الرسمية المعتمدة فور إنهاء الكورسات.
+                تابع مسار تطورك التعليمي، الدروس المكتملة، واحصل على شهاداتك الرسمية المعتمدة فور إنهاء الكورس.
               </p>
 
               {/* Progress Summary Cards */}
@@ -2334,88 +2322,98 @@ export default function StudentClientPortalPage() {
             <h4 style={{ fontSize: '17px', fontWeight: '900', color: '#fff', margin: '0 0 16px' }}>
               🎓 شهادات الكورسات المعتمدة:
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {courses.map(course => {
-                const prog = getCourseProgress(course);
-                const isCertified = prog >= 100;
-                return (
-                  <div key={course.id} className="glass-card" style={{
-                    padding: '22px 26px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '16px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{
-                        width: '46px',
-                        height: '46px',
-                        borderRadius: '12px',
-                        background: isCertified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                        border: isCertified ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: isCertified ? '#10b981' : '#64748b'
-                      }}>
-                        <Award size={24} />
-                      </div>
-                      <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '15.5px', fontWeight: '800', color: '#fff' }}>
-                          شهادة إتمام {course.title}
-                        </h4>
-                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                          المستوى: {course.level || 'احترافي'} • نسبة الإنجاز: {prog}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      {isCertified ? (
-                        <button
-                          type="button"
-                          onClick={() => alert(`مبروك! تم إصدار شهادتك المعتمدة باسم: ${currentStudent?.name || 'الطالب'}`)}
-                          style={{
-                            background: '#10b981',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '10px',
-                            padding: '10px 20px',
-                            fontSize: '13px',
-                            fontWeight: '800',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)'
-                          }}
-                        >
-                          <Download size={14} />
-                          <span>تحميل الشهادة المعتمدة PDF</span>
-                        </button>
-                      ) : (
-                        <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '700' }}>
-                          🔒 يتطلب إنهاء 100% من الدروس
+            {courses.length === 0 ? (
+              <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                <Award size={36} color={themeColor} style={{ margin: '0 auto 12px', opacity: 0.8 }} />
+                <h4 style={{ color: '#fff', fontSize: '16px', margin: '0 0 6px', fontWeight: '800' }}>
+                  لا توجد مسارات منشورة بعد
+                </h4>
+                <p style={{ fontSize: '13px', margin: 0 }}>ستظهر شهادات التخرج هنا فور نشر الدروس وإتمامها.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {courses.map(course => {
+                  const prog = getCourseProgress(course);
+                  const isCertified = prog >= 100;
+                  return (
+                    <div key={course.id} className="glass-card" style={{
+                      padding: '22px 26px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{
+                          width: '46px',
+                          height: '46px',
+                          borderRadius: '12px',
+                          background: isCertified ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          border: isCertified ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isCertified ? '#10b981' : '#64748b'
+                        }}>
+                          <Award size={24} />
                         </div>
-                      )}
+                        <div>
+                          <h4 style={{ margin: '0 0 4px', fontSize: '15.5px', fontWeight: '800', color: '#fff' }}>
+                            شهادة إتمام {course.title}
+                          </h4>
+                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                            نسبة الإنجاز: {prog}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        {isCertified ? (
+                          <button
+                            type="button"
+                            onClick={() => alert(`تم إصدار الشهادة الرسمية بنجاح باسم: ${currentStudent?.name || 'الطالب'}`)}
+                            style={{
+                              background: '#10b981',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '10px',
+                              padding: '10px 20px',
+                              fontSize: '13px',
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)'
+                            }}
+                          >
+                            <Download size={14} />
+                            <span>تحميل الشهادة المعتمدة PDF</span>
+                          </button>
+                        ) : (
+                          <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '700' }}>
+                            🔒 يتطلب إنهاء 100% من الدروس
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
       </main>
 
-      {/* Floating WhatsApp Support Button with Online Beacon */}
-      {portalSettings.whatsappNumber && (
+      {/* Floating WhatsApp Support Button (Only when configured by coach) */}
+      {portalSettings.whatsappNumber && portalSettings.whatsappNumber.trim() !== '' && (
         <a
           href={`https://wa.me/${portalSettings.whatsappNumber.replace(/[^0-9]/g, '')}`}
           target="_blank"
           rel="noreferrer"
-          title="تواصل المباشر مع دعم الأكاديمية عبر واتساب"
+          title="تواصل مع المدرب عبر واتساب"
           style={{
             position: 'fixed',
             bottom: '28px',
