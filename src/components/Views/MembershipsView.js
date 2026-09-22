@@ -15,6 +15,7 @@ import {
   saveCommunityGroup,
   DEFAULT_PORTAL_SETTINGS
 } from '../../lib/membershipsService';
+import CommunityGroupExperience from '../Memberships/CommunityGroupExperience';
 import {
   BookOpen,
   Users,
@@ -64,7 +65,19 @@ import {
   Calendar,
   ChevronUp,
   Info,
-  Palette
+  Palette,
+  Bell,
+  Sun,
+  Moon,
+  Grid,
+  Shield,
+  Megaphone,
+  Clock,
+  Mail,
+  Heart,
+  Send,
+  Radio,
+  Home
 } from 'lucide-react';
 
 export default function MembershipsView() {
@@ -222,6 +235,68 @@ export default function MembershipsView() {
     owner: '',
     memberCount: 1
   });
+
+  // GoHighLevel ClientClub Community Group Experience State ("when open it")
+  const [activeCommunityGroup, setActiveCommunityGroup] = useState(null);
+  const [communityActiveTab, setCommunityActiveTab] = useState('discussion'); // 'discussion' | 'learning' | 'events' | 'leaderboard' | 'members' | 'about'
+  const [communityTheme, setCommunityTheme] = useState('light'); // 'light' | 'dark'
+  const [communityChannels, setCommunityChannels] = useState([
+    { id: 'home', name: 'Home', icon: 'home' },
+    { id: 'announcements', name: 'Announcements', icon: 'megaphone' }
+  ]);
+  const [communityActiveChannel, setCommunityActiveChannel] = useState('home');
+  const [showAddChannelModal, setShowAddChannelModal] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+
+  // Discussion & Posts
+  const [communityPosts, setCommunityPosts] = useState([]);
+  const [newPostText, setNewPostText] = useState('');
+  const [showPostComposerModal, setShowPostComposerModal] = useState(false);
+  const [showGoLiveModal, setShowGoLiveModal] = useState(false);
+  const [goLiveForm, setGoLiveForm] = useState({ title: 'Live Q&A Session', link: '' });
+
+  // Events & Calendar
+  const [communityEvents, setCommunityEvents] = useState([]);
+  const [calendarViewMode, setCalendarViewMode] = useState('month'); // 'month' | 'week' | 'list' | 'recordings'
+  const [calendarMonth, setCalendarMonth] = useState({ year: 2026, month: 8 }); // September 2026
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    date: '2026-09-24',
+    time: '18:00',
+    link: '',
+    description: ''
+  });
+
+  // Learning & Courses
+  const [linkedCommunityCourseIds, setLinkedCommunityCourseIds] = useState([]);
+  const [showLinkCourseModal, setShowLinkCourseModal] = useState(false);
+
+  // Leaderboard & Rewards
+  const [showAddRewardsModal, setShowAddRewardsModal] = useState(false);
+  const [newRewardForm, setNewRewardForm] = useState({ level: 2, title: '' });
+  const [communityRewards, setCommunityRewards] = useState([
+    { level: 2, title: 'VIP Resource Library Access' },
+    { level: 3, title: 'Private 1-on-1 Strategy Pass' },
+    { level: 5, title: 'Mastermind Inner Circle' }
+  ]);
+
+  // Members & Invitations
+  const [memberFilter, setMemberFilter] = useState('Active'); // 'Active' | 'Admins' | 'Contributors' | 'Requested' | 'Banned'
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [showInviteMembersModal, setShowInviteMembersModal] = useState(false);
+  const [inviteMemberEmail, setInviteMemberEmail] = useState('');
+
+  // Settings Modal
+  const [showGroupSettingsModal, setShowGroupSettingsModal] = useState(false);
+  const [editGroupForm, setEditGroupForm] = useState({ name: '', slug: '', description: '', discovery: true });
+
+  // Community Chat Drawer
+  const [showCommunityChat, setShowCommunityChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { id: '1', sender: 'UpKlick Bot', initials: 'UB', text: 'Welcome to the group chat! Connect, chat, and share updates in real-time.', time: 'Today' }
+  ]);
+  const [chatInputText, setChatInputText] = useState('');
 
   // Settings Save State
   const [savingSettings, setSavingSettings] = useState(false);
@@ -840,6 +915,137 @@ export default function MembershipsView() {
     }
   };
 
+  // GoHighLevel Community Group Handlers
+  const handleCreateCommunityPost = (e) => {
+    e?.preventDefault();
+    if (!newPostText.trim()) return;
+    const authorInitials = (coachName || 'Mohamed Joe')
+      .split(' ')
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'SS';
+
+    const newPost = {
+      id: `post_${Date.now()}`,
+      authorName: coachName,
+      authorHandle: `@${(userData?.username || coachName).toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      authorInitials: authorInitials,
+      channelId: communityActiveChannel,
+      channelName: communityChannels.find(c => c.id === communityActiveChannel)?.name || 'Home',
+      content: newPostText.trim(),
+      likesCount: 0,
+      liked: false,
+      comments: [],
+      createdAt: 'Just now'
+    };
+    setCommunityPosts(prev => [newPost, ...prev]);
+    setNewPostText('');
+    setShowPostComposerModal(false);
+    showToast(isRTL ? 'تم نشر المنشور بنجاح!' : 'Post published successfully!');
+  };
+
+  const handleLikeCommunityPost = (postId) => {
+    setCommunityPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        const liked = !p.liked;
+        return {
+          ...p,
+          liked,
+          likesCount: liked ? (p.likesCount || 0) + 1 : Math.max(0, (p.likesCount || 1) - 1)
+        };
+      }
+      return p;
+    }));
+  };
+
+  const handleAddCommunityChannel = (e) => {
+    e?.preventDefault();
+    if (!newChannelName.trim()) return;
+    const newChan = {
+      id: `chan_${Date.now()}`,
+      name: newChannelName.trim(),
+      icon: 'message'
+    };
+    setCommunityChannels(prev => [...prev, newChan]);
+    setCommunityActiveChannel(newChan.id);
+    setNewChannelName('');
+    setShowAddChannelModal(false);
+    showToast(isRTL ? 'تم إنشاء القناة بنجاح!' : 'Channel created successfully!');
+  };
+
+  const handleCreateCommunityEvent = (e) => {
+    e?.preventDefault();
+    if (!eventForm.title.trim()) return;
+    const newEvt = {
+      id: `evt_${Date.now()}`,
+      ...eventForm,
+      host: coachName,
+      createdAt: 'Just now'
+    };
+    setCommunityEvents(prev => [...prev, newEvt]);
+    setShowCreateEventModal(false);
+    setEventForm({ title: '', date: '2026-09-24', time: '18:00', link: '', description: '' });
+    showToast(isRTL ? 'تمت جدولة الفعالية بنجاح!' : 'Event scheduled successfully!');
+  };
+
+  const handleLinkCourseToCommunity = (courseId) => {
+    if (!courseId) return;
+    if (!linkedCommunityCourseIds.includes(courseId)) {
+      setLinkedCommunityCourseIds(prev => [...prev, courseId]);
+      showToast(isRTL ? 'تم ربط الكورس بالمجتمع بنجاح!' : 'Course added to community successfully!');
+    }
+    setShowLinkCourseModal(false);
+  };
+
+  const handleAddCommunityReward = (e) => {
+    e?.preventDefault();
+    if (!newRewardForm.title.trim()) return;
+    setCommunityRewards(prev => [...prev, { level: Number(newRewardForm.level), title: newRewardForm.title.trim() }]);
+    setNewRewardForm({ level: 2, title: '' });
+    setShowAddRewardsModal(false);
+    showToast(isRTL ? 'تمت إضافة المكافأة بنجاح!' : 'Level reward added!');
+  };
+
+  const handleSendCommunityChat = (e) => {
+    e?.preventDefault();
+    if (!chatInputText.trim()) return;
+    const authorInitials = (coachName || 'Mohamed Joe')
+      .split(' ')
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'SS';
+
+    const newMsg = {
+      id: `msg_${Date.now()}`,
+      sender: coachName,
+      initials: authorInitials,
+      text: chatInputText.trim(),
+      time: 'Just now',
+      isMe: true
+    };
+    setChatMessages(prev => [...prev, newMsg]);
+    setChatInputText('');
+  };
+
+  const handleSaveGroupSettingsFromCommunity = async (e) => {
+    e?.preventDefault();
+    if (!activeCommunityGroup || !editGroupForm.name.trim()) return;
+    const updated = {
+      ...activeCommunityGroup,
+      name: editGroupForm.name.trim(),
+      slug: editGroupForm.slug.trim(),
+      description: editGroupForm.description.trim(),
+      discovery: editGroupForm.discovery
+    };
+    setActiveCommunityGroup(updated);
+    setCommunities(prev => prev.map(c => c.id === updated.id ? updated : c));
+    await saveCommunityGroup(coachId, updated);
+    setShowGroupSettingsModal(false);
+    showToast(isRTL ? 'تم حفظ إعدادات المجتمع!' : 'Group settings saved successfully!');
+  };
+
   return (
     <div className="memberships-container" style={{ direction: isRTL ? 'rtl' : 'ltr', color: 'var(--text, #f8fafc)' }}>
       {/* Scoped Animations & Micro-Interactions */}
@@ -911,7 +1117,8 @@ export default function MembershipsView() {
       {/* ========================================================================= */}
       {/* 1. TOP SUB-NAVBAR (GoHighLevel Clean Architecture)                        */}
       {/* ========================================================================= */}
-      <div className="glass-panel" style={{ padding: '12px 20px', marginBottom: '22px' }}>
+      {!activeCommunityGroup && (
+        <div className="glass-panel" style={{ padding: '12px 20px', marginBottom: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
           
           {/* Brand & Suite Identifier */}
@@ -1057,6 +1264,7 @@ export default function MembershipsView() {
 
         </div>
       </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. SUB-VIEW: CLIENT PORTAL DASHBOARD                                      */}
@@ -4723,7 +4931,25 @@ export default function MembershipsView() {
       {/* 4. SUB-VIEW: COMMUNITIES & DISCUSSION GROUPS                              */}
       {/* ========================================================================= */}
       {activeTab === 'communities' && (
-        showCreateGroupStudio ? (
+        activeCommunityGroup ? (
+          <CommunityGroupExperience
+            group={activeCommunityGroup}
+            onClose={() => setActiveCommunityGroup(null)}
+            coachName={coachName}
+            userData={userData}
+            coachId={coachId}
+            isRTL={isRTL}
+            showToast={showToast}
+            courses={courses}
+            students={students}
+            communities={communities}
+            onUpdateGroup={(updated) => {
+              setActiveCommunityGroup(updated);
+              setCommunities(prev => prev.map(c => c.id === updated.id ? updated : c));
+              saveCommunityGroup(coachId, updated);
+            }}
+          />
+        ) : showCreateGroupStudio ? (
           /* ========================================================================= */
           /* CREATE GROUP STUDIO (GoHighLevel Exact Replica - Screenshots 1 & 2)      */
           /* ========================================================================= */
@@ -5448,8 +5674,15 @@ export default function MembershipsView() {
                         <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
                           <button
                             onClick={() => {
-                              const slug = coachPortalSettings?.slug || defaultSlug;
-                              window.open(`/portal/${slug}?tab=community`, '_blank');
+                              setActiveCommunityGroup(group);
+                              setCommunityActiveTab('discussion');
+                              setCommunityActiveChannel('home');
+                              setEditGroupForm({
+                                name: group.name || '',
+                                slug: group.slug || '',
+                                description: group.description || '',
+                                discovery: group.discovery !== false
+                              });
                             }}
                             className="btn glow-btn"
                             style={{
