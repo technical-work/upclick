@@ -81,7 +81,7 @@ import {
 } from 'lucide-react';
 
 export default function MembershipsView() {
-  const { lang, L, t, showToast } = useBusiness();
+  const { lang, L, t, showToast, theme, setTheme } = useBusiness();
   const { user, userData } = useAuth();
   const isRTL = lang === 'ar';
 
@@ -4943,6 +4943,8 @@ export default function MembershipsView() {
             courses={courses}
             students={students}
             communities={communities}
+            currentTheme={theme}
+            onToggleTheme={(next) => setTheme && setTheme(next)}
             onUpdateGroup={(updated) => {
               setActiveCommunityGroup(updated);
               setCommunities(prev => prev.map(c => c.id === updated.id ? updated : c));

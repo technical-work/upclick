@@ -45,11 +45,41 @@ export default function CommunityGroupExperience({
   courses = [],
   students = [],
   communities = [],
-  onUpdateGroup = () => {}
+  onUpdateGroup = () => {},
+  currentTheme,
+  onToggleTheme
 }) {
-  // Theme state: defaults to light mode to match screenshots, toggles to dark mode
-  const [theme, setTheme] = useState('light');
+  // Theme state: defaults to currentTheme or saved theme, or dark if dashboard is dark
+  const [theme, setTheme] = useState(() => {
+    if (currentTheme) return currentTheme;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('upklick_theme');
+      if (saved) return saved;
+      const docTheme = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme');
+      if (docTheme) return docTheme;
+    }
+    return 'dark'; // matches UpKlick dashboard default
+  });
+
+  // Sync with external theme if changed outside
+  React.useEffect(() => {
+    if (currentTheme && currentTheme !== theme) {
+      setTheme(currentTheme);
+    }
+  }, [currentTheme]);
+
   const isLight = theme === 'light';
+
+  const toggleTheme = (targetTheme) => {
+    const next = targetTheme || (isLight ? 'dark' : 'light');
+    setTheme(next);
+    if (onToggleTheme) onToggleTheme(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('upklick_theme', next);
+      document.body.setAttribute('data-theme', next);
+      document.documentElement.setAttribute('data-theme', next);
+    }
+  };
 
   // Navigation state
   const [activeTab, setActiveTab] = useState('discussion'); // 'discussion' | 'learning' | 'events' | 'leaderboard' | 'members' | 'about'
@@ -126,14 +156,17 @@ export default function CommunityGroupExperience({
   const [memberFilter, setMemberFilter] = useState('Active'); // 'Active' | 'Admins' | 'Contributors' | 'Requested' | 'Banned'
   const [memberSearch, setMemberSearch] = useState('');
 
-  // Styling Tokens
+  // Styling Tokens for Dark Mode & White Mode
   const cBg = isLight ? '#f8fafc' : '#0b0f19';
   const cCardBg = isLight ? '#ffffff' : '#111827';
   const cBorder = isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)';
   const cText = isLight ? '#0f172a' : '#f8fafc';
   const cTextSub = isLight ? '#64748b' : '#94a3b8';
   const cTextMuted = isLight ? '#94a3b8' : '#64748b';
-  const cNavy = '#1a365d'; // ClientClub dark navy
+  const cNavy = isLight ? '#1a365d' : '#2563eb'; // Deep ClientClub navy in white mode, vibrant sapphire blue in dark mode
+  const cActiveTabIndicator = isLight ? '#1a365d' : '#38bdf8';
+  const cShadow = isLight ? '0 4px 20px rgba(0,0,0,0.06)' : '0 20px 40px rgba(0,0,0,0.4)';
+  const cHover = isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)';
 
   const authorInitials = (coachName || 'Mohamed Hesham')
     .split(' ')
@@ -394,23 +427,63 @@ export default function CommunityGroupExperience({
           />
         </div>
 
-        {/* Right: Theme Toggle, Grid, Bell, User Avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <button
-            onClick={() => setTheme(isLight ? 'dark' : 'light')}
-            title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: cTextSub,
-              display: 'flex',
-              alignItems: 'center',
-              padding: '4px'
-            }}
-          >
-            {isLight ? <Sun size={17} color="#64748b" /> : <Moon size={17} color="#fbbf24" />}
-          </button>
+        {/* Right: Theme Toggle Capsule, Grid, Bell, User Avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Theme Switcher Pill (Dark Mode / White Mode) */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: isLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.06)',
+            border: `1px solid ${cBorder}`,
+            borderRadius: '9999px',
+            padding: '3px',
+            gap: '2px'
+          }}>
+            <button
+              onClick={() => toggleTheme('light')}
+              title={isRTL ? 'الوضع الفاتح (White Mode)' : 'White / Light Mode'}
+              style={{
+                background: isLight ? '#ffffff' : 'transparent',
+                color: isLight ? '#0f172a' : cTextSub,
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '4px 10px',
+                fontSize: '11.5px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Sun size={13} color={isLight ? '#f59e0b' : '#94a3b8'} />
+              <span>{isRTL ? 'فاتح' : 'Light'}</span>
+            </button>
+            <button
+              onClick={() => toggleTheme('dark')}
+              title={isRTL ? 'الوضع الداكن (Dark Mode)' : 'Dark Mode'}
+              style={{
+                background: !isLight ? '#2563eb' : 'transparent',
+                color: !isLight ? '#ffffff' : cTextSub,
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '4px 10px',
+                fontSize: '11.5px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                boxShadow: !isLight ? '0 1px 4px rgba(37, 99, 235, 0.4)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <Moon size={13} color={!isLight ? '#ffffff' : '#94a3b8'} />
+              <span>{isRTL ? 'داكن' : 'Dark'}</span>
+            </button>
+          </div>
 
           <button
             onClick={() => showToast(isRTL ? 'قائمة تطبيقات المجتمع' : 'App Switcher')}
@@ -479,7 +552,7 @@ export default function CommunityGroupExperience({
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: isActive ? `2px solid ${cNavy}` : '2px solid transparent',
+                  borderBottom: isActive ? `2px solid ${cActiveTabIndicator}` : '2px solid transparent',
                   color: isActive ? (isLight ? '#0f172a' : '#ffffff') : cTextSub,
                   padding: '14px 18px',
                   fontSize: '13.5px',
@@ -509,7 +582,7 @@ export default function CommunityGroupExperience({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            boxShadow: '0 2px 8px rgba(26, 54, 93, 0.3)'
+            boxShadow: isLight ? '0 2px 8px rgba(26, 54, 93, 0.3)' : '0 2px 8px rgba(37, 99, 235, 0.4)'
           }}
         >
           <span>{isRTL ? 'المحادثة' : 'Chat'}</span>
@@ -676,21 +749,21 @@ export default function CommunityGroupExperience({
                   textAlign: 'center'
                 }}>
                   {/* Kite Flyer Line Art SVG */}
-                  <svg width="180" height="150" viewBox="0 0 200 160" fill="none" style={{ opacity: 0.85 }}>
-                    <polygon points="40,20 60,10 50,35 30,25" stroke="#94a3b8" strokeWidth="1.5" fill="none" />
-                    <line x1="45" y1="15" x2="45" y2="30" stroke="#94a3b8" strokeWidth="1" />
-                    <line x1="35" y1="22" x2="55" y2="22" stroke="#94a3b8" strokeWidth="1" />
-                    <path d="M40 30 Q35 40 42 45 T38 55" stroke="#cbd5e1" strokeWidth="1.2" fill="none" />
-                    <path d="M45 28 Q80 70 120 95" stroke="#cbd5e1" strokeWidth="1.2" strokeDasharray="3 3" fill="none" />
-                    <path d="M90 140 Q130 135 170 140" stroke="#cbd5e1" strokeWidth="1.5" fill="none" />
-                    <path d="M100 137 L102 133 L104 137" stroke="#94a3b8" strokeWidth="1.2" />
-                    <path d="M150 138 L152 134 L154 138" stroke="#94a3b8" strokeWidth="1.2" />
-                    <circle cx="126" cy="78" r="6" stroke="#475569" strokeWidth="2" fill="none" />
-                    <line x1="126" y1="84" x2="124" y2="108" stroke="#475569" strokeWidth="2" />
-                    <line x1="125" y1="90" x2="120" y2="95" stroke="#475569" strokeWidth="2" />
-                    <line x1="125" y1="90" x2="132" y2="98" stroke="#475569" strokeWidth="2" />
-                    <line x1="124" y1="108" x2="114" y2="132" stroke="#475569" strokeWidth="2" />
-                    <line x1="124" y1="108" x2="136" y2="132" stroke="#475569" strokeWidth="2" />
+                  <svg width="180" height="150" viewBox="0 0 200 160" fill="none" style={{ opacity: isLight ? 0.85 : 0.95 }}>
+                    <polygon points="40,20 60,10 50,35 30,25" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1.5" fill="none" />
+                    <line x1="45" y1="15" x2="45" y2="30" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1" />
+                    <line x1="35" y1="22" x2="55" y2="22" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1" />
+                    <path d="M40 30 Q35 40 42 45 T38 55" stroke={isLight ? '#cbd5e1' : '#334155'} strokeWidth="1.2" fill="none" />
+                    <path d="M45 28 Q80 70 120 95" stroke={isLight ? '#cbd5e1' : '#334155'} strokeWidth="1.2" strokeDasharray="3 3" fill="none" />
+                    <path d="M90 140 Q130 135 170 140" stroke={isLight ? '#cbd5e1' : '#334155'} strokeWidth="1.5" fill="none" />
+                    <path d="M100 137 L102 133 L104 137" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1.2" />
+                    <path d="M150 138 L152 134 L154 138" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1.2" />
+                    <circle cx="126" cy="78" r="6" stroke={isLight ? '#475569' : '#94a3b8'} strokeWidth="2" fill="none" />
+                    <line x1="126" y1="84" x2="124" y2="108" stroke={isLight ? '#475569' : '#94a3b8'} strokeWidth="2" />
+                    <line x1="125" y1="90" x2="120" y2="95" stroke={isLight ? '#475569' : '#94a3b8'} strokeWidth="2" />
+                    <line x1="125" y1="90" x2="132" y2="98" stroke={isLight ? '#475569' : '#94a3b8'} strokeWidth="2" />
+                    <line x1="124" y1="108" x2="114" y2="132" stroke={isLight ? '#475569' : '#94a3b8'} strokeWidth="2" />
+                    <line x1="124" y1="108" x2="136" y2="132" stroke={isLight ? '#475569' : '#94a3b8'} strokeWidth="2" />
                   </svg>
 
                   <div style={{ fontSize: '14.5px', color: cTextSub, fontWeight: '600', marginTop: '14px' }}>
@@ -899,16 +972,17 @@ export default function CommunityGroupExperience({
                       onClick={() => setShowSettingsModal(true)}
                       style={{
                         width: '100%',
-                        background: cCardBg,
-                        border: `1px solid ${cBorder}`,
+                        background: isLight ? '#ffffff' : 'rgba(255,255,255,0.06)',
+                        border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255,255,255,0.15)',
                         borderRadius: '8px',
                         padding: '10px',
                         fontSize: '12.5px',
                         fontWeight: '800',
                         letterSpacing: '0.5px',
-                        color: cText,
+                        color: isLight ? '#334155' : '#f8fafc',
                         cursor: 'pointer',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       {isRTL ? 'الإعدادات' : 'SETTINGS'}
@@ -1086,12 +1160,12 @@ export default function CommunityGroupExperience({
 
                 {/* Megaphone Coming Up Events Illustration */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                  <svg width="100" height="90" viewBox="0 0 100 90" fill="none" style={{ opacity: 0.85 }}>
-                    <path d="M25 45 L50 25 L50 65 Z" stroke="#64748b" strokeWidth="2" fill="none" />
-                    <rect x="50" y="32" width="22" height="26" rx="2" stroke="#64748b" strokeWidth="2" fill="none" />
-                    <path d="M72 40 Q80 45 72 50" stroke="#94a3b8" strokeWidth="1.5" />
-                    <path d="M76 35 Q88 45 76 55" stroke="#94a3b8" strokeWidth="1.5" />
-                    <line x1="38" y1="55" x2="32" y2="70" stroke="#64748b" strokeWidth="2.5" />
+                  <svg width="100" height="90" viewBox="0 0 100 90" fill="none" style={{ opacity: isLight ? 0.85 : 0.95 }}>
+                    <path d="M25 45 L50 25 L50 65 Z" stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth="2" fill="none" />
+                    <rect x="50" y="32" width="22" height="26" rx="2" stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth="2" fill="none" />
+                    <path d="M72 40 Q80 45 72 50" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1.5" />
+                    <path d="M76 35 Q88 45 76 55" stroke={isLight ? '#94a3b8' : '#64748b'} strokeWidth="1.5" />
+                    <line x1="38" y1="55" x2="32" y2="70" stroke={isLight ? '#64748b' : '#94a3b8'} strokeWidth="2.5" />
                   </svg>
                   <div style={{ fontSize: '12px', color: cTextSub, fontWeight: '700', marginTop: '10px' }}>
                     {isRTL ? 'فعاليات قادمة قريباً!' : 'Coming up events!'}
@@ -1324,7 +1398,7 @@ export default function CommunityGroupExperience({
                   width: '110px',
                   height: '110px',
                   borderRadius: '50%',
-                  border: '3px dashed #cbd5e1',
+                  border: isLight ? '3px dashed #cbd5e1' : '3px dashed rgba(255, 255, 255, 0.2)',
                   padding: '5px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1335,8 +1409,8 @@ export default function CommunityGroupExperience({
                     width: '100%',
                     height: '100%',
                     borderRadius: '50%',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: isLight ? '#ffffff' : '#1e293b',
+                    border: `1px solid ${cBorder}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -1578,8 +1652,8 @@ export default function CommunityGroupExperience({
                       width: '42px',
                       height: '42px',
                       borderRadius: '50%',
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
+                      background: isLight ? '#ffffff' : '#1e293b',
+                      border: `1px solid ${cBorder}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
