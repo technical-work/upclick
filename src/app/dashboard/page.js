@@ -388,6 +388,7 @@ function DashboardShell() {
       case 'revenue':
         return <RevenueView />;
       case 'courses':
+      case 'memberships':
         return <CoursesView />;
       case 'launchpad':
         return <LaunchpadView />;

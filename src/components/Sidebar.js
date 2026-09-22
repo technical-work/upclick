@@ -170,7 +170,7 @@ export default function Sidebar() {
       items: [
         { page: 'sites', label: 'Funnels', icon: Globe },
         { page: 'landing', label: 'Landing Page AI', icon: Globe },
-        { page: 'courses', label: 'Courses', icon: BookOpen },
+        { page: 'courses', label: 'Memberships & Academy', icon: BookOpen },
         { page: 'digital', label: 'Digital Products', icon: Package },
         { page: 'niche', label: 'Niche & Brand Studio', icon: Compass },
         { page: 'community', label: 'Community Hub', icon: Users },
