@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -53,7 +53,14 @@ import {
   FolderPlus,
   GraduationCap,
   Tv,
-  HelpCircle
+  HelpCircle,
+  UploadCloud,
+  Tag,
+  Repeat,
+  CreditCard,
+  Minus,
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function MembershipsView() {
@@ -80,6 +87,27 @@ export default function MembershipsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [courseFilter, setCourseFilter] = useState('all'); // 'all', 'published', 'draft'
   const [studentSearch, setStudentSearch] = useState('');
+
+  // Course Studio (GoHighLevel 3-Step Wizard) State
+  const [isCreatingCourse, setIsCreatingCourse] = useState(false);
+  const [studioStep, setStudioStep] = useState(1); // 1: Details, 2: Upload Thumbnail, 3: Pricing
+  const [studioForm, setStudioForm] = useState({
+    title: '',
+    description: '',
+    thumbnailUrl: '',
+    offerTitle: '',
+    pricingPlan: 'free', // 'free' | 'recurring' | 'one_time'
+    billingPeriod: 'Monthly', // 'Monthly' | 'Quarterly' | 'Yearly' | 'Weekly'
+    price: 1.00,
+    currency: 'EUR',
+    trialDays: 0,
+    priceTextOverride: '',
+    category: 'E-commerce & Business',
+    isPublished: true
+  });
+  const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
+  const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Course Builder / Modals State
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -209,32 +237,180 @@ export default function MembershipsView() {
     }, 0);
   }, [courses, students]);
 
-  // Course Handlers
-  const handleOpenCourseModal = (course = null) => {
+  // Course Studio Handlers (GoHighLevel 3-Step Wizard)
+  const handleOpenCourseStudio = (course = null) => {
+    setActiveTab('courses');
+    setCurriculumCourse(null);
     if (course) {
       setEditingCourse(course);
-      setCourseForm({
+      const isFree = Number(course.price || 0) === 0;
+      const detectedPlan = course.pricingPlan || (isFree ? 'free' : (course.billingPeriod ? 'recurring' : 'one_time'));
+      setStudioForm({
         title: course.title || '',
         description: course.description || '',
-        category: course.category || 'E-commerce & Business',
-        price: course.price || 0,
-        currency: course.currency || 'EGP',
         thumbnailUrl: course.thumbnailUrl || '',
+        offerTitle: course.offerTitle || course.title || '',
+        pricingPlan: detectedPlan,
+        billingPeriod: course.billingPeriod || 'Monthly',
+        price: course.price !== undefined ? Number(course.price) : 1.00,
+        currency: course.currency || 'EUR',
+        trialDays: course.trialDays || 0,
+        priceTextOverride: course.priceTextOverride || '',
+        category: course.category || 'E-commerce & Business',
         isPublished: course.isPublished !== undefined ? course.isPublished : true
       });
     } else {
       setEditingCourse(null);
-      setCourseForm({
+      setStudioForm({
         title: '',
         description: '',
-        category: 'E-commerce & Business',
-        price: 0,
-        currency: 'EGP',
         thumbnailUrl: '',
+        offerTitle: '',
+        pricingPlan: 'free',
+        billingPeriod: 'Monthly',
+        price: 1.00,
+        currency: 'EUR',
+        trialDays: 0,
+        priceTextOverride: '',
+        category: 'E-commerce & Business',
         isPublished: true
       });
     }
-    setShowCourseModal(true);
+    setStudioStep(1);
+    setIsCreatingCourse(true);
+  };
+
+  const handleTitleChange = (val) => {
+    setStudioForm(prev => ({
+      ...prev,
+      title: val,
+      offerTitle: (!prev.offerTitle || prev.offerTitle === prev.title) ? val : prev.offerTitle
+    }));
+  };
+
+  const handleProceedToThumbnail = () => {
+    if (!studioForm.title.trim()) {
+      showToast(isRTL ? 'يرجى إدخال عنوان الكورس أولاً' : 'Please enter a course title first', 'error');
+      return;
+    }
+    if (!studioForm.offerTitle) {
+      setStudioForm(prev => ({ ...prev, offerTitle: prev.title.trim() }));
+    }
+    setStudioStep(2);
+  };
+
+  const handleThumbnailUpload = (e) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast(isRTL ? 'حجم الصورة كبير جداً (الحد الأقصى 5 ميجابايت)' : 'Image too large (max 5MB)', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setStudioForm(prev => ({ ...prev, thumbnailUrl: event.target.result }));
+      showToast(isRTL ? 'تم رفع صورة الغلاف بنجاح!' : 'Course thumbnail uploaded!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleThumbnailDrop = (e) => {
+    e.preventDefault();
+    setIsDraggingThumbnail(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast(isRTL ? 'يرجى اختيار ملف صورة صالح' : 'Please upload a valid image file', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setStudioForm(prev => ({ ...prev, thumbnailUrl: event.target.result }));
+      showToast(isRTL ? 'تم رفع صورة الغلاف بنجاح!' : 'Course thumbnail uploaded!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleStepPrice = (delta) => {
+    setStudioForm(prev => ({
+      ...prev,
+      price: Math.max(0, Number((Number(prev.price || 0) + delta).toFixed(2)))
+    }));
+  };
+
+  const handleStepTrial = (delta) => {
+    setStudioForm(prev => ({
+      ...prev,
+      trialDays: Math.max(0, Number(prev.trialDays || 0) + delta)
+    }));
+  };
+
+  const handleCompleteCourseStudio = async () => {
+    if (!studioForm.title.trim()) {
+      setStudioStep(1);
+      showToast(isRTL ? 'يرجى إدخال عنوان الكورس' : 'Please enter a course title', 'error');
+      return;
+    }
+
+    setIsSubmittingStudio(true);
+    try {
+      const finalPrice = studioForm.pricingPlan === 'free' ? 0 : (Number(studioForm.price) || 0);
+      const payload = {
+        title: studioForm.title.trim(),
+        description: studioForm.description.trim(),
+        thumbnailUrl: studioForm.thumbnailUrl || '',
+        category: studioForm.category || 'E-commerce & Business',
+        pricingPlan: studioForm.pricingPlan,
+        price: finalPrice,
+        currency: studioForm.currency || 'EUR',
+        billingPeriod: studioForm.pricingPlan === 'recurring' ? studioForm.billingPeriod : null,
+        trialDays: studioForm.pricingPlan === 'recurring' ? (Number(studioForm.trialDays) || 0) : 0,
+        priceTextOverride: studioForm.priceTextOverride?.trim() || '',
+        offerTitle: studioForm.offerTitle?.trim() || studioForm.title.trim(),
+        isPublished: studioForm.isPublished,
+        coachName,
+        id: editingCourse?.id || undefined,
+        modules: editingCourse?.modules?.length ? editingCourse.modules : [
+          {
+            id: `mod_${Date.now()}_1`,
+            title: isRTL ? 'الفصل 1: مقدمة الكورس والبداية' : 'Module 1: Introduction & Fundamentals',
+            lessons: [
+              {
+                id: `les_${Date.now()}_1`,
+                title: isRTL ? 'مرحباً بك في الكورس: نظرة عامة' : 'Welcome to the Course: Overview & Setup',
+                videoUrl: '',
+                videoType: 'youtube',
+                duration: '10 min',
+                isFreePreview: true,
+                notes: isRTL ? 'مرحباً بك! في هذه المحاضرة التمهيدية نستعرض المحاور والمخرجات التدريبية.' : 'Welcome! In this introductory lecture, we explore the course outcomes and roadmap.'
+              }
+            ]
+          }
+        ]
+      };
+
+      const saved = await saveCourse(coachId, payload);
+      showToast(editingCourse ? (isRTL ? '🎉 تم تحديث بيانات الكورس!' : '🎉 Course updated successfully!') : (isRTL ? '🎉 تم إنشاء الكورس بنجاح!' : '🎉 Course created successfully!'));
+      setIsCreatingCourse(false);
+      // Immediately open curriculum builder for the newly created course!
+      if (saved) {
+        setCurriculumCourse(saved);
+      }
+    } catch (err) {
+      console.error('Error saving course in studio:', err);
+      showToast(isRTL ? 'حدث خطأ أثناء حفظ الكورس' : 'Failed to save course', 'error');
+    } finally {
+      setIsSubmittingStudio(false);
+    }
+  };
+
+  // Compatibility Handlers
+  const handleOpenCourseModal = (course = null) => {
+    handleOpenCourseStudio(course);
   };
 
   const handleSaveCourse = async (e) => {
@@ -1064,8 +1240,1144 @@ export default function MembershipsView() {
       {activeTab === 'courses' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* If editing curriculum for a course */}
-          {curriculumCourse ? (
+          {/* A. GoHighLevel 3-Step Course Creation Studio */}
+          {isCreatingCourse ? (
+            <div className="glass-panel" style={{ padding: '28px 32px', position: 'relative', overflow: 'hidden' }}>
+              {/* Subtle Ambient Glow */}
+              <div style={{
+                position: 'absolute',
+                top: '-80px',
+                right: '-80px',
+                width: '280px',
+                height: '280px',
+                background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+                pointerEvents: 'none',
+                filter: 'blur(40px)'
+              }} />
+
+              {/* Breadcrumb Back Button */}
+              <div style={{ marginBottom: '28px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingCourse(false)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                >
+                  {isRTL ? <ArrowRight size={17} /> : <ArrowLeft size={17} />}
+                  <span>{editingCourse ? (isRTL ? 'تعديل الكورس' : 'Edit Course') : (isRTL ? 'إنشاء كورس' : 'Create Course')}</span>
+                </button>
+              </div>
+
+              {/* Studio 3-Column Workspace */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '220px 1fr 360px',
+                gap: '40px',
+                alignItems: 'start'
+              }}>
+
+                {/* COLUMN 1: VERTICAL PROGRESS STEPPER */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+                  {/* Step 1: Details */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setStudioStep(1)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: studioStep > 1 ? '#2563eb' : (studioStep === 1 ? '#2563eb' : 'rgba(255, 255, 255, 0.1)'),
+                          color: '#ffffff',
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '800',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          zIndex: 2,
+                          boxShadow: studioStep === 1 ? '0 0 16px rgba(37, 99, 235, 0.7)' : 'none',
+                          transition: 'all 0.25s ease'
+                        }}
+                      >
+                        {studioStep > 1 ? <Check size={16} strokeWidth={3} /> : '1'}
+                      </button>
+                      <div style={{
+                        width: '2px',
+                        height: '48px',
+                        background: studioStep > 1 ? '#2563eb' : 'rgba(255, 255, 255, 0.12)',
+                        transition: 'background 0.3s ease'
+                      }} />
+                    </div>
+                    <div style={{ paddingTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setStudioStep(1)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          color: studioStep === 1 ? '#ffffff' : (studioStep > 1 ? '#e2e8f0' : '#64748b'),
+                          fontWeight: studioStep === 1 ? '800' : '600',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          textAlign: isRTL ? 'right' : 'left'
+                        }}
+                      >
+                        {isRTL ? 'التفاصيل' : 'Details'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Upload Thumbnail */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => { if (studioForm.title.trim()) setStudioStep(2); }}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: studioStep > 2 ? '#2563eb' : (studioStep === 2 ? '#2563eb' : 'transparent'),
+                          color: studioStep >= 2 ? '#ffffff' : '#64748b',
+                          border: studioStep >= 2 ? 'none' : '2px solid rgba(255, 255, 255, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '800',
+                          fontSize: '13px',
+                          cursor: studioForm.title.trim() ? 'pointer' : 'not-allowed',
+                          zIndex: 2,
+                          boxShadow: studioStep === 2 ? '0 0 16px rgba(37, 99, 235, 0.7)' : 'none',
+                          transition: 'all 0.25s ease'
+                        }}
+                      >
+                        {studioStep > 2 ? <Check size={16} strokeWidth={3} /> : '2'}
+                      </button>
+                      <div style={{
+                        width: '2px',
+                        height: '48px',
+                        background: studioStep > 2 ? '#2563eb' : 'rgba(255, 255, 255, 0.12)',
+                        transition: 'background 0.3s ease'
+                      }} />
+                    </div>
+                    <div style={{ paddingTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => { if (studioForm.title.trim()) setStudioStep(2); }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          color: studioStep === 2 ? '#ffffff' : (studioStep > 2 ? '#e2e8f0' : '#64748b'),
+                          fontWeight: studioStep === 2 ? '800' : '600',
+                          fontSize: '14px',
+                          cursor: studioForm.title.trim() ? 'pointer' : 'not-allowed',
+                          textAlign: isRTL ? 'right' : 'left'
+                        }}
+                      >
+                        {isRTL ? 'صورة الغلاف' : 'Upload Thumbnail'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Step 3: Pricing */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => { if (studioForm.title.trim()) setStudioStep(3); }}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: studioStep === 3 ? '#2563eb' : 'transparent',
+                          color: studioStep === 3 ? '#ffffff' : '#64748b',
+                          border: studioStep === 3 ? 'none' : '2px solid rgba(255, 255, 255, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '800',
+                          fontSize: '13px',
+                          cursor: studioForm.title.trim() ? 'pointer' : 'not-allowed',
+                          zIndex: 2,
+                          boxShadow: studioStep === 3 ? '0 0 16px rgba(37, 99, 235, 0.7)' : 'none',
+                          transition: 'all 0.25s ease'
+                        }}
+                      >
+                        3
+                      </button>
+                    </div>
+                    <div style={{ paddingTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => { if (studioForm.title.trim()) setStudioStep(3); }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          color: studioStep === 3 ? '#ffffff' : '#64748b',
+                          fontWeight: studioStep === 3 ? '800' : '600',
+                          fontSize: '14px',
+                          cursor: studioForm.title.trim() ? 'pointer' : 'not-allowed',
+                          textAlign: isRTL ? 'right' : 'left'
+                        }}
+                      >
+                        {isRTL ? 'التسعير والعرض' : 'Pricing'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* COLUMN 2: ACTIVE STEP FORM CONTROLS */}
+                <div style={{ minWidth: 0 }}>
+
+                  {/* STEP 1: START WITH THE BASICS */}
+                  {studioStep === 1 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                      <div>
+                        <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0', letterSpacing: '-0.4px' }}>
+                          {isRTL ? 'ابدأ بالأساسيات' : 'Start with the basics'}
+                        </h2>
+                        <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: 0 }}>
+                          {isRTL ? 'أضف عنواناً ووصفاً للتعريف بكورسك التدريبي.' : 'Add a title and description to introduce your course.'}
+                        </p>
+                      </div>
+
+                      {/* Course Title */}
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                          {isRTL ? 'عنوان الكورس *' : 'Course Title *'}
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type="text"
+                            maxLength={255}
+                            value={studioForm.title}
+                            onChange={(e) => handleTitleChange(e.target.value)}
+                            placeholder={isRTL ? 'أدخل عنوان الكورس' : 'Enter course title'}
+                            style={{
+                              width: '100%',
+                              padding: isRTL ? '12px 14px 12px 80px' : '12px 80px 12px 14px',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '10px',
+                              color: '#ffffff',
+                              fontSize: '14px',
+                              outline: 'none',
+                              transition: 'border-color 0.2s'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                            onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+                          />
+                          <span style={{
+                            position: 'absolute',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            [isRTL ? 'left' : 'right']: '14px',
+                            fontSize: '11.5px',
+                            color: '#64748b',
+                            pointerEvents: 'none'
+                          }}>
+                            {studioForm.title.length} / 255
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                          {isRTL ? 'اختر اسماً وصفياً ومميزاً للكورس.' : 'Give your course a descriptive name.'}
+                        </div>
+                      </div>
+
+                      {/* Course Description */}
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                          {isRTL ? 'وصف الكورس' : 'Course Description'}
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <textarea
+                            rows={4}
+                            maxLength={2500}
+                            value={studioForm.description}
+                            onChange={(e) => setStudioForm(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder={isRTL ? 'أخبر الطلاب بما سيتعلمونه في هذا الكورس' : 'Tell members about this course'}
+                            style={{
+                              width: '100%',
+                              padding: '12px 14px 30px 14px',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '10px',
+                              color: '#ffffff',
+                              fontSize: '13.5px',
+                              lineHeight: '1.5',
+                              resize: 'vertical',
+                              outline: 'none',
+                              transition: 'border-color 0.2s'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                            onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+                          />
+                          <span style={{
+                            position: 'absolute',
+                            bottom: '10px',
+                            [isRTL ? 'left' : 'right']: '14px',
+                            fontSize: '11.5px',
+                            color: '#64748b',
+                            pointerEvents: 'none'
+                          }}>
+                            {studioForm.description.length} / 2500
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                          {isRTL ? 'اشرح ما سيتعلمه الأعضاء والنتائج التي سيحققونها.' : 'Explain what members will learn from this course.'}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingTop: '16px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsCreatingCourse(false)}
+                          className="btn btn-ghost"
+                          style={{
+                            padding: '9px 20px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#94a3b8',
+                            fontSize: '13.5px',
+                            fontWeight: '700'
+                          }}
+                        >
+                          {isRTL ? 'إلغاء' : 'Cancel'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleProceedToThumbnail}
+                          disabled={!studioForm.title.trim()}
+                          className="glow-btn btn"
+                          style={{
+                            padding: '10px 22px',
+                            borderRadius: '10px',
+                            background: studioForm.title.trim() ? '#2563eb' : 'rgba(37, 99, 235, 0.35)',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: '13.5px',
+                            fontWeight: '800',
+                            cursor: studioForm.title.trim() ? 'pointer' : 'not-allowed',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          <span>{isRTL ? 'رفع صورة الغلاف' : 'Upload Thumbnail'}</span>
+                          {isRTL ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 2: ADD A VISUAL IDENTITY */}
+                  {studioStep === 2 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                      <div>
+                        <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0', letterSpacing: '-0.4px' }}>
+                          {isRTL ? 'أضف هوية بصرية' : 'Add a visual identity'}
+                        </h2>
+                        <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: 0 }}>
+                          {isRTL ? 'اختر صورة تعبر عن محتوى وتميز كورسك التدريبي' : 'Pick an image that reflects your course'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                          {isRTL ? 'رفع صورة غلاف الكورس' : 'Upload Course Thumbnail'}
+                        </label>
+
+                        {/* Upload Dropzone */}
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          onDragOver={(e) => { e.preventDefault(); setIsDraggingThumbnail(true); }}
+                          onDragLeave={() => setIsDraggingThumbnail(false)}
+                          onDrop={handleThumbnailDrop}
+                          style={{
+                            border: isDraggingThumbnail ? '2px dashed #3b82f6' : '1px dashed rgba(255, 255, 255, 0.22)',
+                            borderRadius: '14px',
+                            padding: '44px 20px',
+                            textAlign: 'center',
+                            background: isDraggingThumbnail ? 'rgba(37, 99, 235, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '12px'
+                          }}
+                        >
+                          <div style={{
+                            width: '52px',
+                            height: '52px',
+                            borderRadius: '50%',
+                            background: 'rgba(37, 99, 235, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#3b82f6'
+                          }}>
+                            <UploadCloud size={28} />
+                          </div>
+
+                          {studioForm.thumbnailUrl ? (
+                            <div>
+                              <div style={{ fontSize: '14px', fontWeight: '800', color: '#22c55e', marginBottom: '8px' }}>
+                                ✓ {isRTL ? 'تم اختيار صورة الغلاف بنجاح' : 'Thumbnail selected successfully'}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                                  style={{
+                                    background: 'rgba(37, 99, 235, 0.2)',
+                                    border: '1px solid rgba(37, 99, 235, 0.4)',
+                                    color: '#60a5fa',
+                                    borderRadius: '8px',
+                                    padding: '5px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '700',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {isRTL ? 'تغيير الصورة' : 'Change Image'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setStudioForm(prev => ({ ...prev, thumbnailUrl: '' })); }}
+                                  style={{
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    color: '#f87171',
+                                    borderRadius: '8px',
+                                    padding: '5px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '700',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {isRTL ? 'حذف واستخدام الرسم الافتراضي' : 'Use 3D Artwork'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div style={{ fontSize: '14px', color: '#ffffff', marginBottom: '4px' }}>
+                                <span style={{ color: '#3b82f6', fontWeight: '800', textDecoration: 'underline' }}>
+                                  {isRTL ? 'اضغط للرفع' : 'Click to upload'}
+                                </span>
+                                {' '}{isRTL ? 'أو اسحب الصورة وأفلتها هنا' : 'or drag and drop'}
+                              </div>
+                              <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                                {isRTL ? 'الصيغ المدعومة: .svg, .png, .jpg, .jpeg' : 'Supported file types: .svg, .png, .jpg, .jpeg'}
+                              </div>
+                            </div>
+                          )}
+
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept=".svg,.png,.jpg,.jpeg,image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleThumbnailUpload}
+                          />
+                        </div>
+
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                          {isRTL ? '(الأبعاد الموصى بها للغلاف: 1280x720)' : '(Recommended aspect ratio for media: 1280x720)'}
+                        </div>
+                      </div>
+
+                      {/* Optional URL input */}
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                          {isRTL ? 'أو أدخل رابط صورة مباشر (Image URL)' : 'Or paste an Image URL'}
+                        </label>
+                        <input
+                          type="text"
+                          value={studioForm.thumbnailUrl.startsWith('data:') ? '' : studioForm.thumbnailUrl}
+                          onChange={(e) => setStudioForm(prev => ({ ...prev, thumbnailUrl: e.target.value }))}
+                          placeholder="https://images.unsplash.com/..."
+                          style={{
+                            width: '100%',
+                            padding: '9px 12px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '8px',
+                            color: '#ffffff',
+                            fontSize: '13px',
+                            direction: 'ltr'
+                          }}
+                        />
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingTop: '16px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setStudioStep(1)}
+                          className="btn btn-ghost"
+                          style={{
+                            padding: '9px 20px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#94a3b8',
+                            fontSize: '13.5px',
+                            fontWeight: '700'
+                          }}
+                        >
+                          {isRTL ? 'السابق' : 'Back'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setStudioStep(3)}
+                          className="glow-btn btn"
+                          style={{
+                            padding: '10px 22px',
+                            borderRadius: '10px',
+                            background: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: '13.5px',
+                            fontWeight: '800',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          <span>{isRTL ? 'إعداد التسعير' : 'Set Up Pricing'}</span>
+                          {isRTL ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: CREATE AN OFFER */}
+                  {studioStep === 3 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                      <div>
+                        <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#ffffff', margin: '0 0 6px 0', letterSpacing: '-0.4px' }}>
+                          {isRTL ? 'إنشاء العرض والتسعير' : 'Create an Offer'}
+                        </h2>
+                        <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: 0 }}>
+                          {isRTL ? 'حدد طريقة تقديم الكورس لطلابك' : 'Select how to offer your course'}
+                        </p>
+                      </div>
+
+                      {/* Offer Title */}
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                          {isRTL ? 'عنوان العرض' : 'Offer Title'}
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type="text"
+                            maxLength={255}
+                            value={studioForm.offerTitle}
+                            onChange={(e) => setStudioForm(prev => ({ ...prev, offerTitle: e.target.value }))}
+                            placeholder={studioForm.title || (isRTL ? 'عنوان العرض' : 'Offer title')}
+                            style={{
+                              width: '100%',
+                              padding: isRTL ? '12px 14px 12px 80px' : '12px 80px 12px 14px',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '10px',
+                              color: '#ffffff',
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          />
+                          <span style={{
+                            position: 'absolute',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            [isRTL ? 'left' : 'right']: '14px',
+                            fontSize: '11.5px',
+                            color: '#64748b',
+                            pointerEvents: 'none'
+                          }}>
+                            {studioForm.offerTitle.length} / 255
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                          {isRTL ? 'اسم العرض الذي يظهر عند الشراء أو التسجيل.' : 'Title of your offer'}
+                        </div>
+                      </div>
+
+                      {/* Pricing Plan Selector */}
+                      <div>
+                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '10px' }}>
+                          {isRTL ? 'خطة التسعير' : 'Pricing Plan'}
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                          
+                          {/* Free Card */}
+                          <button
+                            type="button"
+                            onClick={() => setStudioForm(prev => ({ ...prev, pricingPlan: 'free' }))}
+                            style={{
+                              padding: '14px 12px',
+                              borderRadius: '12px',
+                              background: studioForm.pricingPlan === 'free' ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                              border: studioForm.pricingPlan === 'free' ? '2px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '10px',
+                              cursor: 'pointer',
+                              color: studioForm.pricingPlan === 'free' ? '#ffffff' : '#94a3b8',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <Tag size={16} style={{ color: studioForm.pricingPlan === 'free' ? '#3b82f6' : '#64748b' }} />
+                            <span style={{ fontSize: '13.5px', fontWeight: '800' }}>{isRTL ? 'مجاني' : 'Free'}</span>
+                          </button>
+
+                          {/* Recurring Card */}
+                          <button
+                            type="button"
+                            onClick={() => setStudioForm(prev => ({ ...prev, pricingPlan: 'recurring' }))}
+                            style={{
+                              padding: '14px 12px',
+                              borderRadius: '12px',
+                              background: studioForm.pricingPlan === 'recurring' ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                              border: studioForm.pricingPlan === 'recurring' ? '2px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '10px',
+                              cursor: 'pointer',
+                              color: studioForm.pricingPlan === 'recurring' ? '#ffffff' : '#94a3b8',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <Repeat size={16} style={{ color: studioForm.pricingPlan === 'recurring' ? '#3b82f6' : '#64748b' }} />
+                            <span style={{ fontSize: '13.5px', fontWeight: '800' }}>{isRTL ? 'اشتراك متكرر' : 'Recurring'}</span>
+                          </button>
+
+                          {/* One Time Card */}
+                          <button
+                            type="button"
+                            onClick={() => setStudioForm(prev => ({ ...prev, pricingPlan: 'one_time' }))}
+                            style={{
+                              padding: '14px 12px',
+                              borderRadius: '12px',
+                              background: studioForm.pricingPlan === 'one_time' ? 'rgba(37, 99, 235, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                              border: studioForm.pricingPlan === 'one_time' ? '2px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '10px',
+                              cursor: 'pointer',
+                              color: studioForm.pricingPlan === 'one_time' ? '#ffffff' : '#94a3b8',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <CreditCard size={16} style={{ color: studioForm.pricingPlan === 'one_time' ? '#3b82f6' : '#64748b' }} />
+                            <span style={{ fontSize: '13.5px', fontWeight: '800' }}>{isRTL ? 'دفعة واحدة' : 'One Time'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Recurring Configuration (GoHighLevel Screen 4) */}
+                      {studioForm.pricingPlan === 'recurring' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                          <div>
+                            <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                              {isRTL ? 'فترة الدفع' : 'Billing Period'}
+                            </label>
+                            <select
+                              value={studioForm.billingPeriod}
+                              onChange={(e) => setStudioForm(prev => ({ ...prev, billingPeriod: e.target.value }))}
+                              style={{
+                                width: '100%',
+                                padding: '11px 14px',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '10px',
+                                color: '#ffffff',
+                                fontSize: '13.5px',
+                                outline: 'none'
+                              }}
+                            >
+                              <option value="Monthly" style={{ background: '#1e293b', color: '#fff' }}>{isRTL ? 'شهرياً (Monthly)' : 'Monthly'}</option>
+                              <option value="Yearly" style={{ background: '#1e293b', color: '#fff' }}>{isRTL ? 'سنوياً (Yearly)' : 'Yearly'}</option>
+                              <option value="Quarterly" style={{ background: '#1e293b', color: '#fff' }}>{isRTL ? 'كل 3 أشهر (Quarterly)' : 'Quarterly'}</option>
+                              <option value="Weekly" style={{ background: '#1e293b', color: '#fff' }}>{isRTL ? 'أسبوعياً (Weekly)' : 'Weekly'}</option>
+                            </select>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                              {isRTL ? 'دورية تجديد الاشتراك' : 'Frequency of billing'}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
+                            {/* Price Column */}
+                            <div>
+                              <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                                {isRTL ? 'السعر' : 'Price'}
+                              </label>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '10px',
+                                padding: '4px 10px'
+                              }}>
+                                <span style={{ fontSize: '13px', color: '#94a3b8', marginInlineEnd: '6px' }}>
+                                  {studioForm.currency === 'EUR' ? '€' : studioForm.currency === 'USD' ? '$' : studioForm.currency}
+                                </span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={studioForm.price}
+                                  onChange={(e) => setStudioForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                                  style={{
+                                    width: '100%',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#ffffff',
+                                    fontSize: '14px',
+                                    fontWeight: '700',
+                                    outline: 'none'
+                                  }}
+                                />
+                                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginInlineEnd: '8px' }}>
+                                  {studioForm.currency}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStepPrice(-1)}
+                                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '4px', width: '24px', height: '24px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStepPrice(1)}
+                                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '4px', width: '24px', height: '24px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginInlineStart: '4px' }}
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                                {isRTL ? 'قيمة الدفعة في نهاية دورة الفوترة' : 'Amount of each payment at the end of the billing cycle'}
+                              </div>
+                            </div>
+
+                            {/* Trial Days Column */}
+                            <div>
+                              <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                                {isRTL ? 'أيام التجربة المجانية' : 'Trial Days'}
+                              </label>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                borderRadius: '10px',
+                                padding: '4px 10px'
+                              }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={studioForm.trialDays}
+                                  onChange={(e) => setStudioForm(prev => ({ ...prev, trialDays: parseInt(e.target.value) || 0 }))}
+                                  style={{
+                                    width: '100%',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#ffffff',
+                                    fontSize: '14px',
+                                    fontWeight: '700',
+                                    outline: 'none'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleStepTrial(-1)}
+                                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '4px', width: '24px', height: '24px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Minus size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStepTrial(1)}
+                                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '4px', width: '24px', height: '24px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginInlineStart: '4px' }}
+                                >
+                                  <Plus size={12} />
+                                </button>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                                {isRTL ? 'عدد الأيام حتى أول عملية دفع' : 'Number of days until first billing'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Price Text Override */}
+                          <div>
+                            <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                              {isRTL ? 'النص المخصص للسعر (اختياري)' : 'Price Text Override'}
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                type="text"
+                                maxLength={255}
+                                value={studioForm.priceTextOverride}
+                                onChange={(e) => setStudioForm(prev => ({ ...prev, priceTextOverride: e.target.value }))}
+                                placeholder={isRTL ? 'عبارة مخصصة' : 'Custom Phrase'}
+                                style={{
+                                  width: '100%',
+                                  padding: isRTL ? '12px 14px 12px 80px' : '12px 80px 12px 14px',
+                                  background: 'rgba(255, 255, 255, 0.04)',
+                                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                                  borderRadius: '10px',
+                                  color: '#ffffff',
+                                  fontSize: '14px',
+                                  outline: 'none'
+                                }}
+                              />
+                              <span style={{
+                                position: 'absolute',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                [isRTL ? 'left' : 'right']: '14px',
+                                fontSize: '11.5px',
+                                color: '#64748b',
+                                pointerEvents: 'none'
+                              }}>
+                                {studioForm.priceTextOverride.length} / 255
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                              {isRTL ? '(اختياري) استخدم عبارة مخصصة لوصف سعر هذا العرض' : '(Optional) Use a custom phrase to describe the price of this offer'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* One Time Configuration */}
+                      {studioForm.pricingPlan === 'one_time' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                          <div>
+                            <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                              {isRTL ? 'السعر لمرة واحدة' : 'One Time Price'}
+                            </label>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              borderRadius: '10px',
+                              padding: '4px 10px'
+                            }}>
+                              <span style={{ fontSize: '13px', color: '#94a3b8', marginInlineEnd: '6px' }}>
+                                {studioForm.currency === 'EUR' ? '€' : studioForm.currency === 'USD' ? '$' : studioForm.currency}
+                              </span>
+                              <input
+                                type="number"
+                                step="1"
+                                min="0"
+                                value={studioForm.price}
+                                onChange={(e) => setStudioForm(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                                style={{
+                                  width: '100%',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ffffff',
+                                  fontSize: '14px',
+                                  fontWeight: '700',
+                                  outline: 'none'
+                                }}
+                              />
+                              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', marginInlineEnd: '8px' }}>
+                                {studioForm.currency}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleStepPrice(-5)}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '4px', width: '24px', height: '24px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStepPrice(5)}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '4px', width: '24px', height: '24px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginInlineStart: '4px' }}
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                              {isRTL ? 'المبلغ المطلوب لمرة واحدة للحصول على وصول دائم' : 'Amount paid one time for full lifetime access'}
+                            </div>
+                          </div>
+
+                          {/* Price Text Override */}
+                          <div>
+                            <label style={{ fontSize: '13px', fontWeight: '700', color: '#e2e8f0', display: 'block', marginBottom: '8px' }}>
+                              {isRTL ? 'النص المخصص للسعر (اختياري)' : 'Price Text Override'}
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                type="text"
+                                maxLength={255}
+                                value={studioForm.priceTextOverride}
+                                onChange={(e) => setStudioForm(prev => ({ ...prev, priceTextOverride: e.target.value }))}
+                                placeholder={isRTL ? 'عبارة مخصصة' : 'Custom Phrase'}
+                                style={{
+                                  width: '100%',
+                                  padding: isRTL ? '12px 14px 12px 80px' : '12px 80px 12px 14px',
+                                  background: 'rgba(255, 255, 255, 0.04)',
+                                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                                  borderRadius: '10px',
+                                  color: '#ffffff',
+                                  fontSize: '14px',
+                                  outline: 'none'
+                                }}
+                              />
+                              <span style={{
+                                position: 'absolute',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                [isRTL ? 'left' : 'right']: '14px',
+                                fontSize: '11.5px',
+                                color: '#64748b',
+                                pointerEvents: 'none'
+                              }}>
+                                {studioForm.priceTextOverride.length} / 255
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                              {isRTL ? '(اختياري) استخدم عبارة مخصصة لوصف سعر هذا العرض' : '(Optional) Use a custom phrase to describe the price of this offer'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Free Plan Notice */}
+                      {studioForm.pricingPlan === 'free' && (
+                        <div style={{
+                          padding: '14px 18px',
+                          borderRadius: '12px',
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          border: '1px solid rgba(34, 197, 94, 0.25)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <span style={{ fontSize: '20px' }}>🎁</span>
+                          <div style={{ fontSize: '13px', color: '#86efac' }}>
+                            {isRTL 
+                              ? 'هذا الكورس مجاني 100%. سيتمكن أي طالب مسجل في بوابتك من مشاهدته والتعلم منه فوراً.' 
+                              : 'This course will be 100% free. Any registered student on your portal can access and learn immediately.'}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', paddingTop: '16px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setStudioStep(2)}
+                          className="btn btn-ghost"
+                          style={{
+                            padding: '9px 20px',
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#94a3b8',
+                            fontSize: '13.5px',
+                            fontWeight: '700'
+                          }}
+                        >
+                          {isRTL ? 'السابق' : 'Back'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleCompleteCourseStudio}
+                          disabled={isSubmittingStudio}
+                          className="glow-btn btn"
+                          style={{
+                            padding: '10px 24px',
+                            borderRadius: '10px',
+                            background: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: '13.5px',
+                            fontWeight: '800',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          <span>
+                            {isSubmittingStudio 
+                              ? (isRTL ? 'جاري الحفظ...' : 'Creating...') 
+                              : (editingCourse ? (isRTL ? 'حفظ التعديلات' : 'Save Changes') : (isRTL ? 'إنشاء الكورس' : 'Create Course'))}
+                          </span>
+                          {!isSubmittingStudio && (isRTL ? <Check size={16} /> : <ArrowRight size={16} />)}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* COLUMN 3: STICKY LIVE PRODUCT PREVIEW CARD */}
+                <div style={{ position: 'sticky', top: '24px' }}>
+                  <div style={{
+                    background: '#ffffff',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0,0,0,0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                  }}>
+                    {/* Top Visual Artwork / Thumbnail Area */}
+                    <div style={{
+                      position: 'relative',
+                      width: '100%',
+                      height: '195px',
+                      background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #ede9fe 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      {studioForm.thumbnailUrl ? (
+                        <img
+                          src={studioForm.thumbnailUrl}
+                          alt="Course Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        /* High-Fidelity 3D Isometric Play-Book Artwork */
+                        <svg viewBox="0 0 400 225" style={{ width: '100%', height: '100%', display: 'block' }}>
+                          <defs>
+                            <linearGradient id="studioBookBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#dbeafe" />
+                              <stop offset="50%" stopColor="#e0e7ff" />
+                              <stop offset="100%" stopColor="#f3e8ff" />
+                            </linearGradient>
+                            <linearGradient id="bookCoverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#c7d2fe" />
+                              <stop offset="40%" stopColor="#a5b4fc" />
+                              <stop offset="100%" stopColor="#818cf8" />
+                            </linearGradient>
+                            <linearGradient id="bookSpineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#818cf8" />
+                              <stop offset="100%" stopColor="#6366f1" />
+                            </linearGradient>
+                            <linearGradient id="bookPagesGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#ffffff" />
+                              <stop offset="100%" stopColor="#f1f5f9" />
+                            </linearGradient>
+                          </defs>
+                          
+                          <rect width="400" height="225" fill="url(#studioBookBg)" />
+
+                          {/* Isometric 3D Book */}
+                          <g transform="translate(200, 115)">
+                            {/* Underneath Soft Shadow */}
+                            <ellipse cx="0" cy="30" rx="80" ry="20" fill="#4338ca" opacity="0.18" />
+
+                            {/* Bottom Cover Base */}
+                            <path d="M-65 14 L0 44 L65 14 L0 -14 Z" fill="#6366f1" />
+
+                            {/* Right Pages Edge */}
+                            <path d="M0 40 L62 12 L62 -2 L0 26 Z" fill="url(#bookPagesGrad)" stroke="#cbd5e1" strokeWidth="0.5" />
+                            {/* Left Spine Edge */}
+                            <path d="M-65 10 L0 40 L0 26 L-65 -4 Z" fill="url(#bookSpineGrad)" />
+
+                            {/* Top Cover Rhombus */}
+                            <path d="M-66 -5 L-2 25 L63 -3 L-1 -33 Z" fill="url(#bookCoverGrad)" />
+
+                            {/* Cover Spine Highlight Line */}
+                            <path d="M-66 -5 L-2 25" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round" />
+
+                            {/* Dark Play Triangle Icon on Top Cover */}
+                            <polygon points="-5, -6 -5, 8 8, 1" fill="#312e81" opacity="0.75" />
+                          </g>
+                        </svg>
+                      )}
+
+                      {/* Bottom-Right Price Badge */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '12px',
+                        right: '12px',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        backdropFilter: 'blur(8px)',
+                        borderRadius: '6px',
+                        padding: '3px 8px',
+                        border: studioForm.pricingPlan === 'free' ? '1px solid #16a34a' : '1px solid #3b82f6',
+                        color: studioForm.pricingPlan === 'free' ? '#16a34a' : '#2563eb',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        letterSpacing: '0.2px',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
+                      }}>
+                        {studioForm.pricingPlan === 'free' 
+                          ? (isRTL ? 'مجاني' : 'Free')
+                          : (studioForm.priceTextOverride || `${studioForm.currency === 'EUR' ? '€' : studioForm.currency === 'USD' ? '$' : studioForm.currency} ${Number(studioForm.price || 0).toFixed(2)}${studioForm.pricingPlan === 'recurring' ? (studioForm.billingPeriod === 'Monthly' ? '/mo' : studioForm.billingPeriod === 'Yearly' ? '/yr' : '') : ''}`)}
+                      </div>
+                    </div>
+
+                    {/* Bottom Card Body */}
+                    <div style={{ padding: '16px 18px', background: '#ffffff', color: '#0f172a' }}>
+                      <div style={{
+                        fontSize: '14.5px',
+                        fontWeight: '800',
+                        color: '#0f172a',
+                        lineHeight: '1.3',
+                        marginBottom: '5px',
+                        minHeight: '20px'
+                      }}>
+                        {studioForm.title || (isRTL ? 'عنوان الكورس' : 'Course Title')}
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#64748b',
+                        lineHeight: '1.45',
+                        minHeight: '18px',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {studioForm.description || (isRTL ? 'وصف الكورس' : 'Course Description')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          ) : curriculumCourse ? (
             <div className="glass-panel" style={{ padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
