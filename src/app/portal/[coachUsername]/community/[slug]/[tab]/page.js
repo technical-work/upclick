@@ -158,7 +158,7 @@ export default function PortalCommunityGroupTabSubPage() {
     : (coachUsername === 'moha' ? 'Mohamed Hesham' : 'Coach');
 
   return (
-    <div style={{ minHeight: '100vh', width: '100%', position: 'relative' }}>
+    <div style={{ height: '100vh', minHeight: '100vh', width: '100%', position: 'relative', overflow: 'hidden' }}>
       {toastMessage && (
         <div style={{
           position: 'fixed',

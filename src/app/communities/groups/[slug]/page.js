@@ -152,7 +152,7 @@ export default function ClientClubCommunityGroupDirectPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', width: '100%', position: 'relative' }}>
+    <div style={{ height: '100vh', minHeight: '100vh', width: '100%', position: 'relative', overflow: 'hidden' }}>
       {toastMessage && (
         <div style={{
           position: 'fixed',

@@ -1194,13 +1194,14 @@ export default function CommunityGroupExperience({
     <div style={{
       background: cBg,
       color: cText,
-      borderRadius: '16px',
-      border: `1px solid ${cBorder}`,
-      boxShadow: isLight ? '0 4px 20px rgba(0,0,0,0.06)' : '0 20px 40px rgba(0,0,0,0.4)',
+      width: '100%',
+      height: '100vh',
+      minHeight: '100vh',
+      maxHeight: '100vh',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'row',
-      minHeight: '860px',
+      boxSizing: 'border-box',
       transition: 'background 0.2s, color 0.2s',
       fontFamily: 'inherit'
     }}>
@@ -1237,6 +1238,7 @@ export default function CommunityGroupExperience({
       {/* ========================================================================= */}
       <div style={{
         width: '68px',
+        height: '100%',
         flexShrink: 0,
         background: isLight ? '#f1f5f9' : '#0b0f19',
         borderRight: `1px solid ${cBorder}`,
@@ -1245,7 +1247,8 @@ export default function CommunityGroupExperience({
         alignItems: 'center',
         padding: '12px 0',
         gap: '8px',
-        zIndex: 50
+        zIndex: 50,
+        boxSizing: 'border-box'
       }}>
         {/* App Switcher / Hub (⊞) */}
         <button
@@ -1337,6 +1340,7 @@ export default function CommunityGroupExperience({
           gap: '8px',
           width: '100%',
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto'
         }}>
           {allCommunitiesList.map((comm) => {
@@ -1443,6 +1447,7 @@ export default function CommunityGroupExperience({
         key={`sidebar-${activeGroup?.id || activeGroup?.slug || 'comm'}`}
         style={{
           width: '230px',
+          height: '100%',
           flexShrink: 0,
           background: isLight ? '#ffffff' : '#0f172a',
           borderRight: `1px solid ${cBorder}`,
@@ -1450,6 +1455,7 @@ export default function CommunityGroupExperience({
           flexDirection: 'column',
           position: 'relative',
           zIndex: 40,
+          boxSizing: 'border-box',
           animation: isSwitchingGroup ? 'discordSidebarAnim 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none'
         }}
       >
@@ -1617,7 +1623,7 @@ export default function CommunityGroupExperience({
         )}
 
         {/* Channels List */}
-        <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {channels.map((chan, idx) => {
             const isActive = activeChannel === chan.id;
             return (
@@ -1667,7 +1673,7 @@ export default function CommunityGroupExperience({
         </div>
 
         {/* Bottom Add Channel Solid Blue Button (Screenshot 2) */}
-        <div style={{ padding: '16px 12px', borderTop: `1px solid ${cBorder}` }}>
+        <div style={{ marginTop: 'auto', padding: '16px 12px', borderTop: `1px solid ${cBorder}`, flexShrink: 0 }}>
           <button
             onClick={() => setShowAddChannelModal(true)}
             style={{
@@ -1703,9 +1709,11 @@ export default function CommunityGroupExperience({
         key={`workspace-${activeGroup?.id || activeGroup?.slug || 'comm'}`}
         style={{
           flex: 1,
+          height: '100%',
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          minHeight: 0,
           overflow: 'hidden',
           animation: isSwitchingGroup ? 'discordWorkspaceAnim 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none'
         }}
@@ -2016,7 +2024,8 @@ export default function CommunityGroupExperience({
         padding: '0 24px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
         {/* Horizontal Tabs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -2631,6 +2640,8 @@ export default function CommunityGroupExperience({
           display: 'flex',
           gap: '24px',
           flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
           background: cBg
         }}>
 
