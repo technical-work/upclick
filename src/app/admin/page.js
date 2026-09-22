@@ -770,6 +770,9 @@ const AdminDashboard = () => {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState('');
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [paymentToReject, setPaymentToReject] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejectingPayment, setIsRejectingPayment] = useState(false);
   const [selectedAnalysisUser, setSelectedAnalysisUser] = useState(null);
   const [activityFilter, setActivityFilter] = useState('all');
   const [roleCategoryFilter, setRoleCategoryFilter] = useState('all');
@@ -1144,23 +1147,29 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleRejectSubscription = async (payment) => {
+  const handleRejectSubscription = (payment) => {
     if (!payment?.id) return;
-    if (!window.confirm(isRTL ? "هل أنت متأكد من رفض إثبات الدفع هذا؟" : "Are you sure you want to reject this payment receipt?")) return;
-    
-    setProcessingPaymentId(payment.id);
+    setPaymentToReject(payment);
+    setRejectReason('');
+  };
+
+  const handleConfirmRejectPayment = async () => {
+    if (!paymentToReject?.id) return;
+    setIsRejectingPayment(true);
     try {
-      await setDoc(doc(db, 'payments', payment.id), {
+      await setDoc(doc(db, 'payments', paymentToReject.id), {
         status: 'rejected',
+        rejectionReason: rejectReason.trim() || (isRTL ? 'إثبات دفع غير صالح' : 'Invalid payment receipt'),
         rejectedAt: serverTimestamp()
       }, { merge: true });
-      
-      alert(t('branding.rejectSuccess') || "Payment verification rejected.");
+
+      setPaymentToReject(null);
+      setRejectReason('');
     } catch (err) {
       console.error("Failed to reject subscription:", err);
-      setError(t('common.error') + ": " + err.message);
+      setError((t('common.error') || 'Error') + ": " + err.message);
     } finally {
-      setProcessingPaymentId('');
+      setIsRejectingPayment(false);
     }
   };
 
@@ -4297,6 +4306,224 @@ const AdminDashboard = () => {
                 style={{ flex: 1, background: 'var(--red)', border: 'none', color: '#fff', fontWeight: 'bold' }}
               >
                 {isDeletingUser ? (isRTL ? 'جاري الحذف...' : 'Deleting...') : (isRTL ? 'تأكيد الحذف النهائي' : 'Confirm Delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Payment Confirmation Modal */}
+      {paymentToReject && (
+        <div className="modal-backdrop" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(8, 8, 15, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          padding: '16px'
+        }}>
+          <div className="card" style={{
+            width: '95%',
+            maxWidth: '480px',
+            margin: 'auto',
+            padding: '24px',
+            borderRadius: '18px',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            background: 'var(--panel)',
+            boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.25), 0 10px 30px rgba(0,0,0,0.7)',
+            animation: 'scaleUp 0.25s ease'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--red)',
+                  flexShrink: 0
+                }}>
+                  <XCircle size={24} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>
+                    {isRTL ? 'رفض إثبات الدفع' : 'Reject Payment Receipt'}
+                  </h3>
+                  <span style={{ fontSize: '12px', color: 'var(--text3)' }}>
+                    {isRTL ? 'تأكيد رفض طلب التحويل اليدوي' : 'Confirm manual payment rejection'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setPaymentToReject(null); setRejectReason(''); }}
+                style={{
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '8px',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text2)',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Payment Details Box */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--line)',
+              borderRadius: '12px',
+              padding: '14px',
+              marginBottom: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              fontSize: '12.5px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text3)' }}>{isRTL ? 'العميل:' : 'Customer:'}</span>
+                <span style={{ fontWeight: '700', color: 'var(--text)' }}>
+                  {paymentToReject.userName || paymentToReject.userEmail}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text3)' }}>{isRTL ? 'المبلغ المطلوب:' : 'Amount:'}</span>
+                <span style={{ fontWeight: '800', color: 'var(--orange)', fontFamily: 'var(--mono)' }}>
+                  {paymentToReject.amount} {paymentToReject.currency}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text3)' }}>{isRTL ? 'طريقة التحويل:' : 'Method:'}</span>
+                <span style={{ fontWeight: '600', color: 'var(--text2)' }}>
+                  {paymentToReject.paymentMethod === 'instapay' ? 'Instapay ⚡' : 'Vodafone Cash 📱'}
+                </span>
+              </div>
+              {paymentToReject.receiptUrl && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--line)', paddingTop: '8px', marginTop: '2px' }}>
+                  <span style={{ color: 'var(--text3)' }}>{isRTL ? 'الإيصال المرفق:' : 'Attached Receipt:'}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedReceiptUrl(paymentToReject.receiptUrl);
+                      setShowReceiptModal(true);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent)',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    {isRTL ? 'معاينة الإيصال 🔍' : 'View Receipt 🔍'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Reason Presets */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2)', display: 'block', marginBottom: '6px' }}>
+                {isRTL ? 'سبب الرفض (اختياري / سريع):' : 'Rejection Reason (Optional):'}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                {[
+                  isRTL ? 'إيصال غير واضح / مقصوص' : 'Unclear / cropped receipt',
+                  isRTL ? 'المبلغ المحوّل غير مطابق' : 'Amount mismatch',
+                  isRTL ? 'رقم المعاملة غير صالح أو مكرر' : 'Duplicate or invalid reference',
+                  isRTL ? 'لم يتم استلام التحويل بالمحفظة' : 'Payment not received in wallet'
+                ].map((reasonText, rIdx) => (
+                  <button
+                    key={rIdx}
+                    type="button"
+                    onClick={() => setRejectReason(reasonText)}
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      border: rejectReason === reasonText ? '1px solid var(--red)' : '1px solid var(--line)',
+                      background: rejectReason === reasonText ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg3)',
+                      color: rejectReason === reasonText ? 'var(--red)' : 'var(--text2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {reasonText}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={isRTL ? 'أو اكتب سبب الرفض المخصص هنا ليكون واضحاً في السجل...' : 'Or type custom rejection reason...'}
+                rows={2}
+                style={{
+                  width: '100%',
+                  background: 'var(--bg3)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '10px',
+                  padding: '8px 12px',
+                  color: 'var(--text)',
+                  fontSize: '12.5px',
+                  resize: 'none',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Warning Text */}
+            <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '10px 14px', borderRadius: '10px', marginBottom: '18px' }}>
+              <p style={{ fontSize: '11.5px', color: 'var(--red)', margin: 0, fontWeight: '600' }}>
+                ⚠️ {isRTL ? 'سيتم تحويل حالة الإيصال إلى "مرفوض" ولن يتم تفعيل أو تمديد الباقة للعميل.' : 'Payment will be marked as "Rejected" and the subscription will not be activated.'}
+              </p>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => { setPaymentToReject(null); setRejectReason(''); }}
+                disabled={isRejectingPayment}
+                className="btn"
+                style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--line)', color: 'var(--text2)', borderRadius: '10px', padding: '10px' }}
+              >
+                {isRTL ? 'إلغاء وتراجع' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRejectPayment}
+                disabled={isRejectingPayment}
+                className="btn"
+                style={{
+                  flex: 1.3,
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                  cursor: isRejectingPayment ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isRejectingPayment ? (isRTL ? 'جاري الرفض...' : 'Rejecting...') : (isRTL ? 'تأكيد رفض الطلب ✕' : 'Confirm Reject ✕')}
               </button>
             </div>
           </div>

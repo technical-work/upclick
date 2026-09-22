@@ -73,7 +73,11 @@ export default function StripePaymentButton({
       }
     } catch (err) {
       console.error('Stripe redirect error:', err);
-      setError(err.message || 'Payment request failed. Please try again.');
+      let msg = err.message || 'Payment request failed. Please try again.';
+      if (msg.toLowerCase().includes('unauthenticated') || msg.toLowerCase().includes('oauth') || msg.toLowerCase().includes('devconsole')) {
+        msg = 'خدمة الدفع بالبطاقة غير متوفرة حالياً. يرجى تجربة وسيلة دفع أخرى أو التواصل مع الدعم.';
+      }
+      setError(msg);
       setLoading(false);
     }
   };
