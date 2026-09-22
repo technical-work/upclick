@@ -60,7 +60,11 @@ import {
   CreditCard,
   Minus,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Calendar,
+  ChevronUp,
+  Info,
+  Palette
 } from 'lucide-react';
 
 export default function MembershipsView() {
@@ -108,6 +112,57 @@ export default function MembershipsView() {
   const [isSubmittingStudio, setIsSubmittingStudio] = useState(false);
   const [isDraggingThumbnail, setIsDraggingThumbnail] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Course Details Manager (GoHighLevel view=manager) State
+  const [courseManagerTab, setCourseManagerTab] = useState('outline'); // 'outline' | 'liveSessions' | 'settings' | 'customize' | 'offers' | 'comments' | 'credentials' | 'communityGroups'
+  const [outlineSearch, setOutlineSearch] = useState('');
+  const [isAllCollapsed, setIsAllCollapsed] = useState(false);
+  const [collapsedModules, setCollapsedModules] = useState({});
+  const [welcomeBadgeStatus, setWelcomeBadgeStatus] = useState('published');
+  const [credentialStatus, setCredentialStatus] = useState('published');
+  const [showAddContentDropdown, setShowAddContentDropdown] = useState(false);
+
+  // Live Sessions
+  const [liveSessionsSubTab, setLiveSessionsSubTab] = useState('sessions'); // 'sessions' | 'recordings'
+  const [showCancelledSessions, setShowCancelledSessions] = useState(false);
+  const [liveSessionSearch, setLiveSessionSearch] = useState('');
+  const [showLiveSessionModal, setShowLiveSessionModal] = useState(false);
+  const [liveSessionForm, setLiveSessionForm] = useState({
+    title: '',
+    type: 'zoom', // 'zoom' | 'google_meet' | 'youtube_live'
+    date: '',
+    time: '18:00',
+    link: '',
+    description: ''
+  });
+  const [liveSessionsList, setLiveSessionsList] = useState([]);
+
+  // Course Settings Sub-View
+  const [courseSettingsForm, setCourseSettingsForm] = useState({
+    title: '',
+    description: '',
+    thumbnailUrl: '',
+    language: 'Arabic',
+    difficulty: 'All Levels',
+    topic: 'Business',
+    instructorName: '',
+    instructorBio: '',
+    instructorAvatar: ''
+  });
+  const [showInstructorAccordion, setShowInstructorAccordion] = useState(false);
+  const [isSavingCourseSettings, setIsSavingCourseSettings] = useState(false);
+
+  // Offers Sub-View
+  const [offersSearch, setOffersSearch] = useState('');
+  const [offersFilter, setOffersFilter] = useState('all'); // 'all' | 'published' | 'draft'
+  const [showCreateOfferModal, setShowCreateOfferModal] = useState(false);
+  const [newOfferForm, setNewOfferForm] = useState({
+    title: '',
+    type: 'free',
+    price: 0,
+    currency: 'EUR',
+    isPublished: true
+  });
 
   // Course Builder / Modals State
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -405,6 +460,149 @@ export default function MembershipsView() {
       showToast(isRTL ? 'حدث خطأ أثناء حفظ الكورس' : 'Failed to save course', 'error');
     } finally {
       setIsSubmittingStudio(false);
+    }
+  };
+
+  // Sync course settings & live sessions when a course is opened
+  useEffect(() => {
+    if (curriculumCourse) {
+      setCourseSettingsForm({
+        title: curriculumCourse.title || '',
+        description: curriculumCourse.description || '',
+        thumbnailUrl: curriculumCourse.thumbnailUrl || '',
+        language: curriculumCourse.language || (isRTL ? 'العربية' : 'Arabic'),
+        difficulty: curriculumCourse.difficulty || (isRTL ? 'جميع المستويات' : 'All Levels'),
+        topic: curriculumCourse.topic || curriculumCourse.category || 'Business',
+        instructorName: curriculumCourse.instructorName || coachName,
+        instructorBio: curriculumCourse.instructorBio || (isRTL ? 'مدرب معتمد وخبير في مجاله.' : 'Certified coach and industry mentor.'),
+        instructorAvatar: curriculumCourse.instructorAvatar || ''
+      });
+      setLiveSessionsList(curriculumCourse.liveSessions || []);
+    }
+  }, [curriculumCourse, coachName, isRTL]);
+
+  const handleSaveCourseSettings = async () => {
+    if (!curriculumCourse || !courseSettingsForm.title.trim()) return;
+    setIsSavingCourseSettings(true);
+    try {
+      const updated = {
+        ...curriculumCourse,
+        title: courseSettingsForm.title.trim(),
+        description: courseSettingsForm.description.trim(),
+        thumbnailUrl: courseSettingsForm.thumbnailUrl || '',
+        language: courseSettingsForm.language,
+        difficulty: courseSettingsForm.difficulty,
+        topic: courseSettingsForm.topic,
+        instructorName: courseSettingsForm.instructorName,
+        instructorBio: courseSettingsForm.instructorBio,
+        instructorAvatar: courseSettingsForm.instructorAvatar
+      };
+      const saved = await saveCourse(coachId, updated);
+      setCurriculumCourse(saved);
+      showToast(isRTL ? 'تم حفظ إعدادات الكورس بنجاح!' : 'Course settings saved successfully!');
+    } catch (err) {
+      console.error(err);
+      showToast(isRTL ? 'خطأ أثناء حفظ الإعدادات' : 'Error saving course settings', 'error');
+    } finally {
+      setIsSavingCourseSettings(false);
+    }
+  };
+
+  const handleAddLiveSession = async (e) => {
+    e.preventDefault();
+    if (!liveSessionForm.title.trim()) return;
+
+    const newSession = {
+      id: `session_${Date.now()}`,
+      title: liveSessionForm.title.trim(),
+      type: liveSessionForm.type,
+      date: liveSessionForm.date || new Date().toISOString().split('T')[0],
+      time: liveSessionForm.time || '18:00',
+      link: liveSessionForm.link || '',
+      description: liveSessionForm.description || '',
+      status: 'scheduled',
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedSessions = [...liveSessionsList, newSession];
+    setLiveSessionsList(updatedSessions);
+    setShowLiveSessionModal(false);
+    setLiveSessionForm({ title: '', type: 'zoom', date: '', time: '18:00', link: '', description: '' });
+
+    if (curriculumCourse) {
+      const updated = { ...curriculumCourse, liveSessions: updatedSessions };
+      await saveCourse(coachId, updated);
+      setCurriculumCourse(updated);
+    }
+    showToast(isRTL ? 'تمت إضافة الجلسة المباشرة بنجاح!' : 'Live session scheduled successfully!');
+  };
+
+  const handleDeleteLiveSession = async (sessionId) => {
+    const updatedSessions = liveSessionsList.filter(s => s.id !== sessionId);
+    setLiveSessionsList(updatedSessions);
+    if (curriculumCourse) {
+      const updated = { ...curriculumCourse, liveSessions: updatedSessions };
+      await saveCourse(coachId, updated);
+      setCurriculumCourse(updated);
+    }
+    showToast(isRTL ? 'تم حذف الجلسة المباشرة' : 'Live session deleted');
+  };
+
+  const handleCreateCourseOffer = async (e) => {
+    e.preventDefault();
+    if (!newOfferForm.title.trim()) return;
+
+    const offerItem = {
+      id: `offer_${Date.now()}`,
+      title: newOfferForm.title.trim(),
+      version: `Version ${(curriculumCourse?.offers?.length || 0) + 1}`,
+      type: newOfferForm.type,
+      price: newOfferForm.type === 'free' ? 0 : Number(newOfferForm.price) || 0,
+      currency: newOfferForm.currency || 'EUR',
+      isPublished: newOfferForm.isPublished,
+      createdAt: new Date().toISOString()
+    };
+
+    const currentOffers = curriculumCourse?.offers || [
+      {
+        id: 'initial_offer',
+        title: curriculumCourse.title,
+        version: 'Version 1',
+        type: curriculumCourse.pricingPlan || (curriculumCourse.price > 0 ? 'paid' : 'free'),
+        price: curriculumCourse.price || 0,
+        currency: curriculumCourse.currency || 'EUR',
+        isPublished: true,
+        createdAt: new Date().toISOString()
+      }
+    ];
+    const updatedOffers = [...currentOffers, offerItem];
+
+    if (curriculumCourse) {
+      const updated = { ...curriculumCourse, offers: updatedOffers };
+      await saveCourse(coachId, updated);
+      setCurriculumCourse(updated);
+    }
+    setShowCreateOfferModal(false);
+    setNewOfferForm({ title: '', type: 'free', price: 0, currency: 'EUR', isPublished: true });
+    showToast(isRTL ? 'تم إنشاء العرض بنجاح!' : 'Offer created successfully!');
+  };
+
+  const handleToggleModuleCollapse = (mIdx) => {
+    setCollapsedModules(prev => ({
+      ...prev,
+      [mIdx]: !prev[mIdx]
+    }));
+  };
+
+  const handleToggleAllCollapse = () => {
+    const nextState = !isAllCollapsed;
+    setIsAllCollapsed(nextState);
+    if (curriculumCourse?.modules) {
+      const all = {};
+      curriculumCourse.modules.forEach((_, idx) => {
+        all[idx] = nextState;
+      });
+      setCollapsedModules(all);
     }
   };
 
@@ -2378,204 +2576,1874 @@ export default function MembershipsView() {
               </div>
             </div>
           ) : curriculumCourse ? (
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            /* ========================================================================= */
+            /* COURSE DETAILS MANAGER STUDIO (GoHighLevel Exact Replica)                 */
+            /* ========================================================================= */
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '220px 1fr',
+              minHeight: '750px',
+              background: '#0d1322',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              overflow: 'hidden',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
+              margin: '0 -4px'
+            }}>
+              {/* ------------------------------------------------------------- */}
+              {/* LEFT SIDEBAR NAVIGATION                                       */}
+              {/* ------------------------------------------------------------- */}
+              <div style={{
+                borderRight: isRTL ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                borderLeft: isRTL ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+                background: '#0a0f1d',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '16px 0'
+              }}>
+                {/* Back Link + Course Title */}
+                <div style={{ padding: '0 16px 14px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
                   <button
                     onClick={() => setCurriculumCourse(null)}
-                    className="btn btn-ghost"
-                    style={{ padding: '8px 12px', borderRadius: '10px' }}
-                  >
-                    {isRTL ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
-                    <span>{isRTL ? 'رجوع للكورسات' : 'Back to Courses'}</span>
-                  </button>
-                  <div>
-                    <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: '900' }}>
-                      {curriculumCourse.title}
-                    </h2>
-                    <div style={{ fontSize: '12px', color: 'var(--text2, #94a3b8)' }}>
-                      {isRTL ? 'بناء المنهج: الفصول، المحاضرات، روابط الفيديو، ومصادر التحميل' : 'Curriculum Builder: Modules, video lectures, and student resources'}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setShowModuleModal(true)}
-                    className="glow-btn btn"
                     style={{
-                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      padding: '9px 18px',
-                      fontSize: '13px',
-                      fontWeight: '800',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text2, #94a3b8)',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      padding: '4px 0',
+                      fontWeight: '600',
+                      transition: 'color 0.15s'
                     }}
+                    onMouseOver={(e) => e.currentTarget.style.color = '#38bdf8'}
+                    onMouseOut={(e) => e.currentTarget.style.color = 'var(--text2, #94a3b8)'}
                   >
-                    <FolderPlus size={15} />
-                    <span>{isRTL ? '+ إضافة فصل / موديول' : '+ Add Module'}</span>
+                    {isRTL ? <ArrowRight size={15} /> : <ArrowLeft size={15} />}
+                    <span style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '800', color: '#ffffff' }}>
+                      {curriculumCourse.title || (isRTL ? 'الكورس' : 'Course')}
+                    </span>
                   </button>
+                </div>
+
+                {/* Nav Items List */}
+                <div style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
+                  {[
+                    { id: 'outline', label: isRTL ? 'المحتوى' : 'Outline', icon: BookOpen },
+                    { id: 'liveSessions', label: isRTL ? 'الجلسات المباشرة' : 'Live Sessions', icon: Video },
+                    { id: 'settings', label: isRTL ? 'الإعدادات' : 'Settings', icon: Settings },
+                    { id: 'customize', label: isRTL ? 'المظهر والقالب' : 'Customize', icon: Palette },
+                    { id: 'offers', label: isRTL ? 'العروض' : 'Offers', icon: Tag },
+                    { id: 'comments', label: isRTL ? 'التعليقات' : 'Comments', icon: MessageSquare },
+                    { id: 'credentials', label: isRTL ? 'الشهادات' : 'Credentials', icon: Award },
+                    { id: 'communityGroups', label: isRTL ? 'مجموعات المجتمع' : 'Community Groups', icon: Users },
+                  ].map(tab => {
+                    const isActive = courseManagerTab === tab.id;
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setCourseManagerTab(tab.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: isActive ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
+                          color: isActive ? '#38bdf8' : 'var(--text2, #94a3b8)',
+                          fontWeight: isActive ? '700' : '500',
+                          fontSize: '13px',
+                          textAlign: isRTL ? 'right' : 'left',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          position: 'relative'
+                        }}
+                        onMouseOver={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                            e.currentTarget.style.color = '#fff';
+                          }
+                        }}
+                        onMouseOut={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = 'var(--text2, #94a3b8)';
+                          }
+                        }}
+                      >
+                        <Icon size={16} style={{ color: isActive ? '#38bdf8' : 'inherit' }} />
+                        <span>{tab.label}</span>
+                        {isActive && (
+                          <div style={{
+                            position: 'absolute',
+                            [isRTL ? 'right' : 'left']: '0px',
+                            top: '18%',
+                            bottom: '18%',
+                            width: '3px',
+                            borderRadius: '4px',
+                            background: '#38bdf8'
+                          }} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Modules List */}
-              {(!curriculumCourse.modules || curriculumCourse.modules.length === 0) ? (
-                <div style={{
-                  padding: '50px 20px',
-                  textAlign: 'center',
-                  background: 'rgba(0,0,0,0.2)',
-                  borderRadius: '14px',
-                  border: '1px dashed rgba(255,255,255,0.15)'
-                }}>
-                  <div style={{ fontSize: '38px', marginBottom: '10px' }}>📚</div>
-                  <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '800' }}>
-                    {isRTL ? 'لا توجد فصول دراسية في هذا الكورس بعد' : 'No Modules Added Yet'}
-                  </h3>
-                  <p style={{ margin: '0 0 16px 0', fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
-                    {isRTL ? 'ابدأ بإضافة أول فصل دراسي ثم قم بإضافة الدروس والمحاضرات بداخله.' : 'Start by creating your first module to organize lessons and video content.'}
-                  </p>
-                  <button
-                    onClick={() => setShowModuleModal(true)}
-                    className="btn glow-btn"
-                    style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: '10px', padding: '9px 18px', fontWeight: '700', fontSize: '13px' }}
-                  >
-                    {isRTL ? '+ أضف أول موديول' : '+ Add First Module'}
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {curriculumCourse.modules.map((module, mIdx) => (
-                    <div key={module.id || mIdx} style={{
-                      background: 'rgba(0, 0, 0, 0.25)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '14px',
-                      overflow: 'hidden'
-                    }}>
-                      {/* Module Header */}
+              {/* ------------------------------------------------------------- */}
+              {/* RIGHT MAIN CONTENT AREA                                       */}
+              {/* ------------------------------------------------------------- */}
+              <div style={{ padding: '24px 32px', overflowY: 'auto', maxHeight: 'calc(100vh - 120px)', background: '#0b1120' }}>
+                
+                {/* SUB-VIEW 1: OUTLINE */}
+                {courseManagerTab === 'outline' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Top Action Toolbar */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                       <div style={{
-                        padding: '14px 18px',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                        position: 'relative',
+                        width: '320px',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between'
+                        padding: '0 12px'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            background: 'rgba(99, 102, 241, 0.2)',
-                            color: '#a5b4fc',
-                            fontSize: '11px',
-                            fontWeight: '800'
-                          }}>
-                            {isRTL ? `الفصل ${mIdx + 1}` : `Module ${mIdx + 1}`}
-                          </span>
-                          <span style={{ fontSize: '15px', fontWeight: '800' }}>{module.title}</span>
-                          <span style={{ fontSize: '11.5px', color: 'var(--text3, #64748b)' }}>
-                            ({module.lessons?.length || 0} {isRTL ? 'دروس' : 'lessons'})
-                          </span>
+                        <Search size={15} style={{ color: 'var(--text3, #64748b)' }} />
+                        <input
+                          type="text"
+                          value={outlineSearch}
+                          onChange={(e) => setOutlineSearch(e.target.value)}
+                          placeholder={isRTL ? 'بحث في الموديلات أو الدروس...' : 'Search Module or Lesson'}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ffffff',
+                            padding: '8px 10px',
+                            fontSize: '13px',
+                            width: '100%',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button
+                          onClick={() => setShowLiveSessionModal(true)}
+                          className="btn"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '8px 14px',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Video size={14} style={{ color: '#38bdf8' }} />
+                          <span>{isRTL ? 'إضافة جلسة بث' : 'Add live session'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const slug = coachPortalSettings?.slug || defaultSlug;
+                            window.open(`/portal/${slug}?preview=1`, '_blank');
+                          }}
+                          className="btn"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '8px 14px',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Eye size={14} />
+                          <span>{isRTL ? 'معاينة' : 'Preview'}</span>
+                        </button>
+
+                        {/* Add Content Dropdown / Button */}
+                        <div style={{ position: 'relative' }}>
+                          <button
+                            onClick={() => setShowAddContentDropdown(!showAddContentDropdown)}
+                            className="btn glow-btn"
+                            style={{
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '8px 16px',
+                              fontSize: '13px',
+                              fontWeight: '700',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <Plus size={15} />
+                            <span>{isRTL ? 'إضافة محتوى +' : '+ Add Content'}</span>
+                            <ChevronDown size={14} />
+                          </button>
+
+                          {showAddContentDropdown && (
+                            <div style={{
+                              position: 'absolute',
+                              [isRTL ? 'left' : 'right']: 0,
+                              top: '105%',
+                              background: '#1e293b',
+                              border: '1px solid rgba(255, 255, 255, 0.12)',
+                              borderRadius: '10px',
+                              boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                              zIndex: 100,
+                              minWidth: '180px',
+                              padding: '6px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '2px'
+                            }}>
+                              <button
+                                onClick={() => {
+                                  setShowAddContentDropdown(false);
+                                  setShowModuleModal(true);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 12px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ffffff',
+                                  fontSize: '12.5px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  textAlign: isRTL ? 'right' : 'left'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <FolderPlus size={14} style={{ color: '#38bdf8' }} />
+                                <span>{isRTL ? 'إضافة فصل / موديول' : 'Add Module'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setShowAddContentDropdown(false);
+                                  if (!curriculumCourse.modules || curriculumCourse.modules.length === 0) {
+                                    setShowModuleModal(true);
+                                  } else {
+                                    handleOpenLessonModal(0);
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 12px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ffffff',
+                                  fontSize: '12.5px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  textAlign: isRTL ? 'right' : 'left'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <FileText size={14} style={{ color: '#10b981' }} />
+                                <span>{isRTL ? 'إضافة درس / محاضرة' : 'Add Lesson'}</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
+                      </div>
+                    </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button
-                            onClick={() => handleOpenLessonModal(mIdx)}
-                            className="btn btn-ghost"
-                            style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '8px', color: '#818cf8', background: 'rgba(99, 102, 241, 0.1)' }}
-                          >
-                            <Plus size={14} />
-                            <span>{isRTL ? 'إضافة درس' : 'Add Lesson'}</span>
-                          </button>
+                    {/* Modules Count + Collapse All Action */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text2, #94a3b8)' }}>
+                        {(curriculumCourse.modules?.length || 0)} {isRTL ? 'فصول دراسية' : ((curriculumCourse.modules?.length || 0) === 1 ? 'Module' : 'Modules')}
+                      </span>
 
-                          <button
-                            onClick={() => handleDeleteModule(mIdx)}
-                            className="btn btn-ghost"
-                            style={{ padding: '6px', color: '#ef4444', borderRadius: '8px' }}
-                            title={isRTL ? 'حذف الفصل' : 'Delete Module'}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                      <button
+                        onClick={handleToggleAllCollapse}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text2, #94a3b8)',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {isAllCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                        <span>{isAllCollapsed ? (isRTL ? 'توسيع الكل' : 'Expand All') : (isRTL ? 'طي الكل' : 'Collapse All')}</span>
+                      </button>
+                    </div>
+
+                    {/* 1. Welcome Badge Row */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '14px 18px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.06)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: 'rgba(56, 189, 248, 0.12)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#38bdf8'
+                        }}>
+                          <Award size={18} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#ffffff' }}>
+                            {isRTL ? 'شارة الترحيب (Welcome Badge)' : 'Welcome Badge'}
+                          </span>
+                          <span title={isRTL ? 'شارة رقمية يحصل عليها الطالب فور انضمامه للكورس' : 'Unlocked automatically when learner starts the course'} style={{ cursor: 'help', color: 'var(--text3, #64748b)' }}>
+                            <Info size={14} />
+                          </span>
                         </div>
                       </div>
 
-                      {/* Lessons List in Module */}
-                      <div style={{ padding: '10px 14px' }}>
-                        {(!module.lessons || module.lessons.length === 0) ? (
-                          <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: 'var(--text3, #64748b)' }}>
-                            {isRTL ? 'لا توجد دروس في هذا الفصل بعد. اضغط "+ إضافة درس" لإضافة الفيديو والمذكرات.' : 'No lessons in this module. Click "+ Add Lesson" to upload lectures.'}
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {module.lessons.map((lesson, lIdx) => (
-                              <div key={lesson.id || lIdx} style={{
-                                padding: '10px 14px',
-                                background: 'rgba(255, 255, 255, 0.02)',
-                                border: '1px solid rgba(255, 255, 255, 0.04)',
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                transition: 'all 0.2s'
-                              }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <div style={{
-                                    width: '30px',
-                                    height: '30px',
-                                    borderRadius: '8px',
-                                    background: 'rgba(99, 102, 241, 0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#818cf8'
-                                  }}>
-                                    <Video size={15} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <select
+                          value={welcomeBadgeStatus}
+                          onChange={(e) => setWelcomeBadgeStatus(e.target.value)}
+                          style={{
+                            background: welcomeBadgeStatus === 'published' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.12)',
+                            color: welcomeBadgeStatus === 'published' ? '#34d399' : '#94a3b8',
+                            border: `1px solid ${welcomeBadgeStatus === 'published' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`,
+                            borderRadius: '20px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="published" style={{ background: '#1e293b', color: '#fff' }}>● {isRTL ? 'منشور (Published)' : 'Published'}</option>
+                          <option value="draft" style={{ background: '#1e293b', color: '#fff' }}>● {isRTL ? 'مسودة (Draft)' : 'Draft'}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 2. Modules & Lessons List */}
+                    {(!curriculumCourse.modules || curriculumCourse.modules.length === 0) ? (
+                      <div style={{
+                        padding: '48px 20px',
+                        textAlign: 'center',
+                        background: 'rgba(255,255,255,0.02)',
+                        borderRadius: '12px',
+                        border: '1px dashed rgba(255,255,255,0.12)'
+                      }}>
+                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📂</div>
+                        <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '800', color: '#ffffff' }}>
+                          {isRTL ? 'لا توجد فصول دراسية بعد' : 'No Modules Added Yet'}
+                        </h4>
+                        <p style={{ margin: '0 0 16px 0', fontSize: '12.5px', color: 'var(--text2, #94a3b8)' }}>
+                          {isRTL ? 'ابدأ بإضافة أول فصل دراسي ثم أضف الدروس والمحاضرات بداخله.' : 'Start by creating your first module to organize lessons and video content.'}
+                        </p>
+                        <button
+                          onClick={() => setShowModuleModal(true)}
+                          className="btn"
+                          style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 18px', fontWeight: '700', fontSize: '13px' }}
+                        >
+                          {isRTL ? '+ أضف أول فصل دراسي' : '+ Add First Module'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        {curriculumCourse.modules
+                          .filter(mod => {
+                            if (!outlineSearch.trim()) return true;
+                            const query = outlineSearch.toLowerCase();
+                            const matchesMod = mod.title?.toLowerCase().includes(query);
+                            const matchesLesson = mod.lessons?.some(l => l.title?.toLowerCase().includes(query));
+                            return matchesMod || matchesLesson;
+                          })
+                          .map((module, mIdx) => {
+                            const isCollapsed = !!collapsedModules[mIdx];
+                            return (
+                              <div
+                                key={module.id || mIdx}
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.025)',
+                                  borderRadius: '10px',
+                                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                                  overflow: 'hidden'
+                                }}
+                              >
+                                {/* Module Header Row */}
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '12px 16px',
+                                  background: 'rgba(255, 255, 255, 0.02)',
+                                  borderBottom: isCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.06)'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                                    <FolderPlus size={16} style={{ color: '#38bdf8' }} />
+                                    <span style={{ fontSize: '13.5px', fontWeight: '800', color: '#ffffff' }}>
+                                      {module.title}
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: 'var(--text3, #64748b)', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '12px' }}>
+                                      {module.lessons?.length || 0} {isRTL ? 'دروس' : 'lessons'}
+                                    </span>
                                   </div>
-                                  <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{lesson.title}</span>
-                                      {lesson.isFreePreview && (
-                                        <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontWeight: '800' }}>
-                                          {isRTL ? 'معاينة مجانية' : 'Free Preview'}
-                                        </span>
-                                      )}
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <button
+                                      onClick={() => handleOpenLessonModal(mIdx)}
+                                      style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#38bdf8',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        borderRadius: '6px'
+                                      }}
+                                    >
+                                      {isRTL ? '+ إضافة درس' : '+ Add Content'}
+                                    </button>
+
+                                    <div style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      fontSize: '12px',
+                                      fontWeight: '700',
+                                      color: '#34d399',
+                                      background: 'rgba(16, 185, 129, 0.12)',
+                                      padding: '3px 9px',
+                                      borderRadius: '12px'
+                                    }}>
+                                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399' }} />
+                                      <span>{isRTL ? 'منشور' : 'Published'}</span>
                                     </div>
-                                    <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', display: 'flex', gap: '10px' }}>
-                                      <span>⏱ {lesson.duration || '15 min'}</span>
-                                      <span>📺 {lesson.videoType?.toUpperCase() || 'VIDEO'}</span>
-                                      {lesson.attachmentUrl && <span>📎 {isRTL ? 'ملف مرفق' : 'Attachment'}</span>}
-                                    </div>
+
+                                    <button
+                                      onClick={() => handleToggleModuleCollapse(mIdx)}
+                                      style={{ background: 'transparent', border: 'none', color: 'var(--text2, #94a3b8)', cursor: 'pointer', padding: '4px' }}
+                                    >
+                                      {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleDeleteModule(mIdx)}
+                                      style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                      title={isRTL ? 'حذف الفصل' : 'Delete Module'}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {/* Nested Lessons */}
+                                {!isCollapsed && (
+                                  <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {(!module.lessons || module.lessons.length === 0) ? (
+                                      <div style={{ padding: '14px', textAlign: 'center', fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                                        {isRTL ? 'لا توجد دروس داخل هذا الفصل. اضغط "+ إضافة درس" لإضافة محتوى.' : 'No lessons in this module. Click "+ Add Content" to add your first lesson.'}
+                                      </div>
+                                    ) : (
+                                      module.lessons
+                                        .filter(l => !outlineSearch.trim() || l.title?.toLowerCase().includes(outlineSearch.toLowerCase()))
+                                        .map((lesson, lIdx) => (
+                                          <div
+                                            key={lesson.id || lIdx}
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'space-between',
+                                              padding: '10px 14px',
+                                              background: 'rgba(0, 0, 0, 0.25)',
+                                              borderRadius: '8px',
+                                              border: '1px solid rgba(255, 255, 255, 0.04)',
+                                              transition: 'background 0.15s'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.25)'}
+                                          >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+                                              <div style={{
+                                                width: '24px',
+                                                height: '24px',
+                                                borderRadius: '6px',
+                                                background: 'rgba(255,255,255,0.06)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: 'var(--text2, #94a3b8)'
+                                              }}>
+                                                {lesson.videoUrl ? <Play size={11} /> : <FileText size={11} />}
+                                              </div>
+                                              <span style={{ fontSize: '13px', fontWeight: '600', color: '#f1f5f9' }}>
+                                                {lesson.title}
+                                              </span>
+                                              {lesson.duration && (
+                                                <span style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                                                  ({lesson.duration})
+                                                </span>
+                                              )}
+                                              {lesson.isFreePreview && (
+                                                <span style={{
+                                                  fontSize: '10px',
+                                                  fontWeight: '700',
+                                                  padding: '2px 6px',
+                                                  borderRadius: '4px',
+                                                  background: 'rgba(56, 189, 248, 0.15)',
+                                                  color: '#38bdf8'
+                                                }}>
+                                                  {isRTL ? 'معاينة مجانية' : 'Free Preview'}
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                              <div style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                fontSize: '11.5px',
+                                                fontWeight: '700',
+                                                color: '#34d399',
+                                                background: 'rgba(16, 185, 129, 0.1)',
+                                                padding: '2px 8px',
+                                                borderRadius: '10px'
+                                              }}>
+                                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#34d399' }} />
+                                                <span>{isRTL ? 'منشور' : 'Published'}</span>
+                                              </div>
+
+                                              <button
+                                                onClick={() => handleOpenLessonModal(mIdx, lIdx)}
+                                                style={{ background: 'transparent', border: 'none', color: 'var(--text2, #94a3b8)', cursor: 'pointer', padding: '4px' }}
+                                                title={isRTL ? 'تعديل الدرس' : 'Edit Lesson'}
+                                              >
+                                                <Edit size={13} />
+                                              </button>
+
+                                              <button
+                                                onClick={() => handleDeleteLesson(mIdx, lIdx)}
+                                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                title={isRTL ? 'حذف الدرس' : 'Delete Lesson'}
+                                              >
+                                                <Trash2 size={13} />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ))
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+
+                    {/* 3. Course Completion Credential Row */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '14px 18px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.06)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: 'rgba(168, 85, 247, 0.12)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#c084fc'
+                        }}>
+                          <ShieldCheck size={18} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#ffffff' }}>
+                            {isRTL ? 'شهادة إتمام الكورس (Course Completion Credential)' : 'Course Completion Credential'}
+                          </span>
+                          <span title={isRTL ? 'شهادة تخرج تصدر تلقائياً للطالب بعد إنهائه كافة الدروس' : 'Issued automatically upon completing 100% of the lessons'} style={{ cursor: 'help', color: 'var(--text3, #64748b)' }}>
+                            <Info size={14} />
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <select
+                          value={credentialStatus}
+                          onChange={(e) => setCredentialStatus(e.target.value)}
+                          style={{
+                            background: credentialStatus === 'published' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.12)',
+                            color: credentialStatus === 'published' ? '#34d399' : '#94a3b8',
+                            border: `1px solid ${credentialStatus === 'published' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`,
+                            borderRadius: '20px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="published" style={{ background: '#1e293b', color: '#fff' }}>● {isRTL ? 'منشور (Published)' : 'Published'}</option>
+                          <option value="draft" style={{ background: '#1e293b', color: '#fff' }}>● {isRTL ? 'مسودة (Draft)' : 'Draft'}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 2: LIVE SESSIONS */}
+                {courseManagerTab === 'liveSessions' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Top Controls Row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Sub-tabs pills */}
+                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '3px' }}>
+                          <button
+                            onClick={() => setLiveSessionsSubTab('sessions')}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '12.5px',
+                              fontWeight: '700',
+                              background: liveSessionsSubTab === 'sessions' ? '#2563eb' : 'transparent',
+                              color: liveSessionsSubTab === 'sessions' ? '#ffffff' : 'var(--text2, #94a3b8)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {isRTL ? 'الجلسات' : 'Sessions'}
+                          </button>
+                          <button
+                            onClick={() => setLiveSessionsSubTab('recordings')}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '12.5px',
+                              fontWeight: '700',
+                              background: liveSessionsSubTab === 'recordings' ? '#2563eb' : 'transparent',
+                              color: liveSessionsSubTab === 'recordings' ? '#ffffff' : 'var(--text2, #94a3b8)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {isRTL ? 'التسجيلات' : 'Recordings'}
+                          </button>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div style={{
+                          position: 'relative',
+                          width: '240px',
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '0 10px'
+                        }}>
+                          <Search size={14} style={{ color: 'var(--text3, #64748b)' }} />
+                          <input
+                            type="text"
+                            value={liveSessionSearch}
+                            onChange={(e) => setLiveSessionSearch(e.target.value)}
+                            placeholder={isRTL ? 'بحث...' : 'Search'}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '7px 8px',
+                              fontSize: '12.5px',
+                              width: '100%',
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        {/* Toggle Show Cancelled */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--text2, #94a3b8)' }}>
+                          <input
+                            type="checkbox"
+                            checked={showCancelledSessions}
+                            onChange={(e) => setShowCancelledSessions(e.target.checked)}
+                          />
+                          <span>{isRTL ? 'إظهار الجلسات الملغاة' : 'Show cancelled sessions'}</span>
+                        </label>
+
+                        {/* Add Live Session Button */}
+                        <button
+                          onClick={() => setShowLiveSessionModal(true)}
+                          className="btn"
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                            color: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '7px 14px',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Video size={14} style={{ color: '#38bdf8' }} />
+                          <span>{isRTL ? 'إضافة جلسة بث' : 'Add live session'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Sessions Table Header & Content */}
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 80px',
+                        padding: '12px 18px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: 'var(--text3, #64748b)'
+                      }}>
+                        <div>{isRTL ? 'الجلسات' : 'Sessions'}</div>
+                        <div>{isRTL ? 'الحالة' : 'Status'}</div>
+                        <div>{isRTL ? 'النوع' : 'Type'}</div>
+                        <div>{isRTL ? 'التاريخ' : 'Date'}</div>
+                        <div>{isRTL ? 'الوقت' : 'Time'}</div>
+                        <div style={{ textAlign: 'center' }}>{isRTL ? 'الإجراءات' : 'Actions'}</div>
+                      </div>
+
+                      {/* Sessions List or Empty State */}
+                      {liveSessionsList.length === 0 ? (
+                        <div style={{
+                          padding: '60px 20px',
+                          textAlign: 'center',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <div style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '50%',
+                            background: 'rgba(56, 189, 248, 0.12)',
+                            color: '#38bdf8',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Info size={22} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                              {isRTL ? 'لم يتم العثور على أي جلسات' : 'No sessions found'}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                              {isRTL ? 'ستظهر الجلسات هنا بمجرد إنشائها وجدولتها' : 'Sessions will appear here once they are created'}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          {liveSessionsList
+                            .filter(s => !liveSessionSearch.trim() || s.title?.toLowerCase().includes(liveSessionSearch.toLowerCase()))
+                            .map(s => (
+                              <div
+                                key={s.id}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 80px',
+                                  padding: '14px 18px',
+                                  alignItems: 'center',
+                                  borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                                  fontSize: '12.5px'
+                                }}
+                              >
+                                <div>
+                                  <div style={{ fontWeight: '700', color: '#ffffff' }}>{s.title}</div>
+                                  {s.description && <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>{s.description}</div>}
+                                </div>
+                                <div>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    fontWeight: '700',
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    color: '#34d399'
+                                  }}>
+                                    ● {s.status || 'Scheduled'}
+                                  </span>
+                                </div>
+                                <div style={{ textTransform: 'capitalize', color: 'var(--text2, #94a3b8)' }}>{s.type || 'Zoom'}</div>
+                                <div style={{ color: 'var(--text2, #94a3b8)' }}>{s.date}</div>
+                                <div style={{ color: 'var(--text2, #94a3b8)' }}>{s.time}</div>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                                  {s.link && (
+                                    <a
+                                      href={s.link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{ color: '#38bdf8', padding: '4px' }}
+                                      title={isRTL ? 'انضمام' : 'Join'}
+                                    >
+                                      <ExternalLink size={14} />
+                                    </a>
+                                  )}
                                   <button
-                                    onClick={() => handleOpenLessonModal(mIdx, lIdx)}
-                                    className="btn btn-ghost"
-                                    style={{ padding: '6px', borderRadius: '6px', color: 'var(--text2, #94a3b8)' }}
-                                  >
-                                    <Edit size={14} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteLesson(mIdx, lIdx)}
-                                    className="btn btn-ghost"
-                                    style={{ padding: '6px', borderRadius: '6px', color: '#ef4444' }}
+                                    onClick={() => handleDeleteLiveSession(s.id)}
+                                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                    title={isRTL ? 'حذف' : 'Delete'}
                                   >
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
                               </div>
                             ))}
-                          </div>
-                        )}
+                        </div>
+                      )}
+
+                      {/* Pagination Footer */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        padding: '10px 18px',
+                        background: 'rgba(255, 255, 255, 0.01)',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        gap: '16px',
+                        fontSize: '12px',
+                        color: 'var(--text3, #64748b)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{isRTL ? 'صفوف في الصفحة:' : 'Rows per page'}</span>
+                          <span style={{ color: '#ffffff', fontWeight: '600' }}>10 ▾</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button disabled style={{ background: 'transparent', border: 'none', color: 'var(--text3, #64748b)', cursor: 'not-allowed' }}>{isRTL ? 'السابق' : 'Previous'}</button>
+                          <span style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>1</span>
+                          <button disabled style={{ background: 'transparent', border: 'none', color: 'var(--text3, #64748b)', cursor: 'not-allowed' }}>{isRTL ? 'التالي' : 'Next'}</button>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
+
+                {/* SUB-VIEW 3: SETTINGS */}
+                {courseManagerTab === 'settings' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '860px' }}>
+                    {/* Basic Details Section */}
+                    <div>
+                      <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '800', color: '#ffffff' }}>
+                        {isRTL ? 'التفاصيل الأساسية' : 'Basic details'}
+                      </h3>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Title */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>
+                              {isRTL ? 'عنوان الكورس *' : 'Title *'}
+                            </label>
+                            <span style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                              {(courseSettingsForm.title?.length || 0)}/255
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            maxLength={255}
+                            value={courseSettingsForm.title}
+                            onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, title: e.target.value })}
+                            placeholder={isRTL ? 'عنوان الكورس...' : 'Course title...'}
+                            style={{
+                              width: '100%',
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              padding: '10px 14px',
+                              color: '#ffffff',
+                              fontSize: '13px'
+                            }}
+                          />
+                          <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', marginTop: '4px' }}>
+                            {isRTL ? 'هذا هو العنوان الذي سيراه الطلاب في صفحة تفاصيل الكورس ومكتبتهم' : 'This is the title learners will see on the course detail page and in their library'}
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>
+                              {isRTL ? 'الوصف' : 'Description'}
+                            </label>
+                            <span style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                              {(courseSettingsForm.description?.length || 0)}/2500
+                            </span>
+                          </div>
+                          <textarea
+                            rows={4}
+                            maxLength={2500}
+                            value={courseSettingsForm.description}
+                            onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, description: e.target.value })}
+                            placeholder={isRTL ? 'اكتب وصفاً مفصلاً عن الكورس ومخرجات التعلم...' : 'Course description...'}
+                            style={{
+                              width: '100%',
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              padding: '10px 14px',
+                              color: '#ffffff',
+                              fontSize: '13px',
+                              resize: 'vertical'
+                            }}
+                          />
+                          <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', marginTop: '4px' }}>
+                            {isRTL ? 'يظهر هذا الوصف في صفحة تفاصيل الكورس وصفحات الشراء' : 'This description appears on the course detail and checkout pages'}
+                          </div>
+                        </div>
+
+                        {/* Course Thumbnail */}
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '6px' }}>
+                            {isRTL ? 'صورة الغلاف (Thumbnail)' : 'Course thumbnail'}
+                          </label>
+
+                          <div style={{
+                            border: '1px dashed rgba(255, 255, 255, 0.15)',
+                            borderRadius: '10px',
+                            padding: '24px 20px',
+                            textAlign: 'center',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            {courseSettingsForm.thumbnailUrl ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '100%' }}>
+                                <img
+                                  src={courseSettingsForm.thumbnailUrl}
+                                  alt="Thumbnail Preview"
+                                  style={{ maxWidth: '240px', maxHeight: '135px', borderRadius: '8px', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setCourseSettingsForm({ ...courseSettingsForm, thumbnailUrl: '' })}
+                                  style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '11.5px', cursor: 'pointer', fontWeight: '600' }}
+                                >
+                                  {isRTL ? 'إزالة الصورة' : 'Remove image'}
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <UploadCloud size={24} style={{ color: '#38bdf8' }} />
+                                <div style={{ fontSize: '13px', fontWeight: '700', color: '#38bdf8' }}>
+                                  {isRTL ? 'انقر للرفع أو اسحب الصورة وأفلتها هنا' : 'Click to upload or drag and drop'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                                  Supported file types: .svg, .png, .jpg, .jpeg
+                                </div>
+                                <input
+                                  type="text"
+                                  placeholder={isRTL ? 'أو ألصق رابط الصورة مباشرة (URL)...' : 'Or paste direct image URL...'}
+                                  value={courseSettingsForm.thumbnailUrl}
+                                  onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, thumbnailUrl: e.target.value })}
+                                  style={{
+                                    marginTop: '6px',
+                                    width: '80%',
+                                    maxWidth: '380px',
+                                    background: 'rgba(0,0,0,0.3)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    color: '#ffffff',
+                                    fontSize: '11.5px',
+                                    textAlign: 'center'
+                                  }}
+                                />
+                              </>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', marginTop: '4px' }}>
+                            {isRTL ? 'ستظهر هذه الصورة عند تصفح الأعضاء لمكتبتهم. الأبعاد الموصى بها: 1280x720 بكسل' : 'This image will be displayed when your members view their library. Recommended dimensions of 1280x720'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Course Tags Section */}
+                    <div>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#ffffff' }}>
+                        {isRTL ? 'وسوم وتصنيف الكورس' : 'Course tags'}
+                      </h3>
+                      <div style={{ fontSize: '11.5px', color: 'var(--text3, #64748b)', marginBottom: '14px' }}>
+                        {isRTL ? 'أضف وسوماً لمساعدة الطلاب على اكتشاف الكورس وتصفيته بسهولة' : 'Add tags to your course to help learners quickly filter and discover it'}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                        <div>
+                          <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '6px' }}>
+                            {isRTL ? 'اللغة' : 'Language'}
+                          </label>
+                          <select
+                            value={courseSettingsForm.language}
+                            onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, language: e.target.value })}
+                            style={{
+                              width: '100%',
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              padding: '9px 12px',
+                              color: '#ffffff',
+                              fontSize: '12.5px'
+                            }}
+                          >
+                            <option value="Arabic" style={{ background: '#1e293b' }}>العربية (Arabic)</option>
+                            <option value="English" style={{ background: '#1e293b' }}>English</option>
+                            <option value="French" style={{ background: '#1e293b' }}>Français</option>
+                            <option value="Spanish" style={{ background: '#1e293b' }}>Español</option>
+                            <option value="German" style={{ background: '#1e293b' }}>Deutsch</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '6px' }}>
+                            {isRTL ? 'المستوى والصعوبة' : 'Difficulty'}
+                          </label>
+                          <select
+                            value={courseSettingsForm.difficulty}
+                            onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, difficulty: e.target.value })}
+                            style={{
+                              width: '100%',
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              padding: '9px 12px',
+                              color: '#ffffff',
+                              fontSize: '12.5px'
+                            }}
+                          >
+                            <option value="All Levels" style={{ background: '#1e293b' }}>{isRTL ? 'جميع المستويات' : 'All Levels'}</option>
+                            <option value="Beginner" style={{ background: '#1e293b' }}>{isRTL ? 'مبتدئ' : 'Beginner'}</option>
+                            <option value="Intermediate" style={{ background: '#1e293b' }}>{isRTL ? 'متوسط' : 'Intermediate'}</option>
+                            <option value="Advanced" style={{ background: '#1e293b' }}>{isRTL ? 'متقدم' : 'Advanced'}</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '6px' }}>
+                            {isRTL ? 'الموضوع والتصنيف' : 'Topic'}
+                          </label>
+                          <select
+                            value={courseSettingsForm.topic}
+                            onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, topic: e.target.value })}
+                            style={{
+                              width: '100%',
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              padding: '9px 12px',
+                              color: '#ffffff',
+                              fontSize: '12.5px'
+                            }}
+                          >
+                            <option value="Business" style={{ background: '#1e293b' }}>Business & Entrepreneurship</option>
+                            <option value="Marketing" style={{ background: '#1e293b' }}>Marketing & Growth</option>
+                            <option value="Design" style={{ background: '#1e293b' }}>Design & Creative</option>
+                            <option value="Technology" style={{ background: '#1e293b' }}>Technology & Code</option>
+                            <option value="Coaching" style={{ background: '#1e293b' }}>Coaching & Consulting</option>
+                            <option value="E-commerce" style={{ background: '#1e293b' }}>E-Commerce & Dropshipping</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Instructor Details Accordion */}
+                    <div style={{
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      overflow: 'hidden'
+                    }}>
+                      <button
+                        onClick={() => setShowInstructorAccordion(!showInstructorAccordion)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '14px 18px',
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          fontWeight: '800',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <span>{isRTL ? 'بيانات المحاضر / المدرب' : 'Instructor details'}</span>
+                        {showInstructorAccordion ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+
+                      {showInstructorAccordion && (
+                        <div style={{ padding: '16px 18px', borderTop: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div>
+                            <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '6px' }}>
+                              {isRTL ? 'اسم المحاضر' : 'Instructor Name'}
+                            </label>
+                            <input
+                              type="text"
+                              value={courseSettingsForm.instructorName}
+                              onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, instructorName: e.target.value })}
+                              style={{
+                                width: '100%',
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                padding: '8px 12px',
+                                color: '#ffffff',
+                                fontSize: '13px'
+                              }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#ffffff', display: 'block', marginBottom: '6px' }}>
+                              {isRTL ? 'نبذة مختصرة عن المحاضر' : 'Instructor Bio'}
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={courseSettingsForm.instructorBio}
+                              onChange={(e) => setCourseSettingsForm({ ...courseSettingsForm, instructorBio: e.target.value })}
+                              style={{
+                                width: '100%',
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '8px',
+                                padding: '8px 12px',
+                                color: '#ffffff',
+                                fontSize: '12.5px',
+                                resize: 'vertical'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Footer */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <button
+                        onClick={() => {
+                          setCourseSettingsForm({
+                            title: curriculumCourse.title || '',
+                            description: curriculumCourse.description || '',
+                            thumbnailUrl: curriculumCourse.thumbnailUrl || '',
+                            language: curriculumCourse.language || 'Arabic',
+                            difficulty: curriculumCourse.difficulty || 'All Levels',
+                            topic: curriculumCourse.topic || 'Business',
+                            instructorName: curriculumCourse.instructorName || coachName,
+                            instructorBio: curriculumCourse.instructorBio || '',
+                            instructorAvatar: curriculumCourse.instructorAvatar || ''
+                          });
+                        }}
+                        className="btn btn-ghost"
+                        style={{ padding: '8px 18px', fontSize: '12.5px' }}
+                      >
+                        {isRTL ? 'إلغاء' : 'Cancel'}
+                      </button>
+
+                      <button
+                        onClick={handleSaveCourseSettings}
+                        disabled={isSavingCourseSettings}
+                        className="btn glow-btn"
+                        style={{
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 24px',
+                          fontSize: '13px',
+                          fontWeight: '700',
+                          opacity: isSavingCourseSettings ? 0.7 : 1,
+                          cursor: isSavingCourseSettings ? 'wait' : 'pointer'
+                        }}
+                      >
+                        {isSavingCourseSettings ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التغييرات' : 'Save')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 4: CUSTOMIZE (THEMES) */}
+                {courseManagerTab === 'customize' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '860px' }}>
+                    {/* Top Title & Action */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '800', color: '#ffffff' }}>
+                          {isRTL ? 'تخصيص القالب والمظهر' : 'Customize Theme'}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                          {isRTL ? 'قم بتخصيص قالب الكورس الحالي أو اختر من القوالب المحفوظة والمتاحة للنظام' : 'Customize your current course template or select one from your saved or system templates.'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => showToast(isRTL ? 'قوالب النظام الإضافية قادمة قريباً!' : 'System templates library coming soon!')}
+                        className="btn glow-btn"
+                        style={{
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700'
+                        }}
+                      >
+                        {isRTL ? 'تصفح القوالب' : 'Browse Templates'}
+                      </button>
+                    </div>
+
+                    {/* Current Theme Card */}
+                    <div>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '800', color: '#ffffff' }}>
+                        {isRTL ? 'القالب النشط الحالي' : 'Current Theme'}
+                      </h4>
+
+                      <div style={{
+                        maxWidth: '440px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        overflow: 'hidden'
+                      }}>
+                        {/* Mock Theme Graphic */}
+                        <div style={{
+                          height: '180px',
+                          background: 'linear-gradient(135deg, #090e1a 0%, #1e1b4b 50%, #0f172a 100%)',
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '16px',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+                        }}>
+                          <div style={{
+                            width: '90%',
+                            height: '85%',
+                            background: 'rgba(15, 23, 42, 0.85)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#eab308' }} />
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }} />
+                            </div>
+                            <div style={{ height: '8px', width: '60%', background: 'rgba(255,255,255,0.2)', borderRadius: '4px' }} />
+                            <div style={{ display: 'flex', gap: '8px', flex: 1, marginTop: '4px' }}>
+                              <div style={{ flex: 1.5, background: 'rgba(255,255,255,0.06)', borderRadius: '4px' }} />
+                              <div style={{ flex: 1, background: 'rgba(56, 189, 248, 0.15)', borderRadius: '4px' }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Theme Info & Actions */}
+                        <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: '800', color: '#ffffff' }}>Neo Classic Theme</span>
+                              <span style={{
+                                fontSize: '10.5px',
+                                fontWeight: '700',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                color: '#34d399'
+                              }}>
+                                Active
+                              </span>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const slug = coachPortalSettings?.slug || defaultSlug;
+                                window.open(`/portal/${slug}?preview=1`, '_blank');
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#38bdf8',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Eye size={13} />
+                              <span>{isRTL ? 'معاينة' : 'Preview'}</span>
+                            </button>
+                          </div>
+
+                          <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', lineHeight: 1.5 }}>
+                            {isRTL ? 'هذا القالب نشط حالياً على هذا الكورس. التعديلات هنا ستؤثر على تجربة عرض هذا الكورس فقط.' : 'This template is currently in use. Any changes made here will only impact this particular course.'}
+                          </div>
+
+                          <button
+                            onClick={() => showToast(isRTL ? 'محرر القوالب المتقدم مفتوح!' : 'Advanced theme customizer loaded!')}
+                            className="btn"
+                            style={{
+                              width: '100%',
+                              background: 'transparent',
+                              border: '1px solid rgba(255, 255, 255, 0.15)',
+                              color: '#ffffff',
+                              borderRadius: '8px',
+                              padding: '8px',
+                              fontSize: '12.5px',
+                              fontWeight: '700',
+                              textAlign: 'center',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {isRTL ? 'تخصيص القالب' : 'Customize'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* My Templates Empty State */}
+                    <div>
+                      <h4 style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: '800', color: '#ffffff' }}>
+                        {isRTL ? 'قوالبي المحفوظة' : 'My Templates'}
+                      </h4>
+                      <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)', marginBottom: '14px' }}>
+                        {isRTL ? 'عرض وإدارة القوالب المنشأة مسبقاً' : 'View and manage created templates'}
+                      </div>
+
+                      <div style={{
+                        padding: '40px 20px',
+                        textAlign: 'center',
+                        background: 'rgba(255, 255, 255, 0.015)',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <div style={{ fontSize: '32px' }}>📁</div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#ffffff' }}>
+                          {isRTL ? 'لا توجد قوالب محفوظة' : 'No templates found'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text3, #64748b)' }}>
+                          {isRTL ? 'أنشئ أول قالب لك لإعادة استخدامه عبر كورسات متعددة' : 'Create your first template to reuse across courses'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 5: OFFERS */}
+                {courseManagerTab === 'offers' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Top Filter & Create Bar */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Search */}
+                        <div style={{
+                          position: 'relative',
+                          width: '240px',
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '0 10px'
+                        }}>
+                          <Search size={14} style={{ color: 'var(--text3, #64748b)' }} />
+                          <input
+                            type="text"
+                            value={offersSearch}
+                            onChange={(e) => setOffersSearch(e.target.value)}
+                            placeholder={isRTL ? 'بحث في العروض...' : 'Search'}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '7px 8px',
+                              fontSize: '12.5px',
+                              width: '100%',
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+
+                        {/* Filter pills */}
+                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '3px' }}>
+                          {[
+                            { id: 'all', label: isRTL ? 'الكل' : 'All' },
+                            { id: 'published', label: isRTL ? 'منشور' : 'Published' },
+                            { id: 'draft', label: isRTL ? 'مسودة' : 'Draft' },
+                          ].map(pill => (
+                            <button
+                              key={pill.id}
+                              onClick={() => setOffersFilter(pill.id)}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                background: offersFilter === pill.id ? '#2563eb' : 'transparent',
+                                color: offersFilter === pill.id ? '#ffffff' : 'var(--text2, #94a3b8)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {pill.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setShowCreateOfferModal(true)}
+                        className="btn"
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid rgba(59, 130, 246, 0.5)',
+                          color: '#38bdf8',
+                          borderRadius: '8px',
+                          padding: '7px 16px',
+                          fontSize: '12.5px',
+                          fontWeight: '700',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Plus size={14} />
+                        <span>{isRTL ? 'إنشاء عرض جديد' : 'Create Offer'}</span>
+                      </button>
+                    </div>
+
+                    {/* Offers Table */}
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 1fr 1fr 1fr 120px',
+                        padding: '12px 18px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: 'var(--text3, #64748b)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>{isRTL ? 'العنوان' : 'Title'}</span>
+                          <span>▾</span>
+                        </div>
+                        <div>{isRTL ? 'النوع' : 'Type'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span>{isRTL ? 'السعر' : 'Price'}</span>
+                          <span>⇅</span>
+                        </div>
+                        <div>{isRTL ? 'الظهور' : 'Visibility'}</div>
+                        <div style={{ textAlign: 'center' }}>{isRTL ? 'الإجراءات' : 'Actions'}</div>
+                      </div>
+
+                      {/* Offers List */}
+                      {(() => {
+                        const allOffers = curriculumCourse.offers && curriculumCourse.offers.length > 0
+                          ? curriculumCourse.offers
+                          : [
+                            {
+                              id: 'default_offer',
+                              title: curriculumCourse.title,
+                              version: 'Version 1',
+                              type: curriculumCourse.pricingPlan || (curriculumCourse.price > 0 ? 'paid' : 'free'),
+                              price: curriculumCourse.price || 0,
+                              currency: curriculumCourse.currency || 'EUR',
+                              isPublished: true
+                            }
+                          ];
+
+                        const filtered = allOffers.filter(o => {
+                          if (offersFilter === 'published' && !o.isPublished) return false;
+                          if (offersFilter === 'draft' && o.isPublished) return false;
+                          if (offersSearch.trim() && !o.title?.toLowerCase().includes(offersSearch.toLowerCase())) return false;
+                          return true;
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text3, #64748b)', fontSize: '13px' }}>
+                              {isRTL ? 'لم يتم العثور على أي عروض مطابقة' : 'No offers found matching your filter'}
+                            </div>
+                          );
+                        }
+
+                        return filtered.map(offer => (
+                          <div
+                            key={offer.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '2fr 1fr 1fr 1fr 120px',
+                              padding: '14px 18px',
+                              alignItems: 'center',
+                              borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                              fontSize: '12.5px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                background: 'rgba(255,255,255,0.06)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text2, #94a3b8)'
+                              }}>
+                                <Tag size={13} />
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontWeight: '700', color: '#ffffff' }}>{offer.title}</span>
+                                <span style={{
+                                  fontSize: '10px',
+                                  fontWeight: '700',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  background: 'rgba(59, 130, 246, 0.15)',
+                                  color: '#38bdf8',
+                                  border: '1px solid rgba(59, 130, 246, 0.25)'
+                                }}>
+                                  {offer.version || 'Version 1'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div style={{ textTransform: 'capitalize', color: 'var(--text2, #94a3b8)' }}>
+                              {offer.type === 'free' ? (isRTL ? 'مجاني' : 'Free') : (offer.type || 'One-time')}
+                            </div>
+
+                            <div style={{ fontWeight: '700', color: '#ffffff' }}>
+                              {offer.type === 'free' ? '0.00' : `${offer.currency || 'EUR'} ${(Number(offer.price) || 0).toFixed(2)}`}
+                            </div>
+
+                            <div>
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                background: offer.isPublished ? 'rgba(16, 185, 129, 0.15)' : 'rgba(148, 163, 184, 0.15)',
+                                color: offer.isPublished ? '#34d399' : '#94a3b8'
+                              }}>
+                                ● {offer.isPublished ? (isRTL ? 'منشور' : 'Published') : (isRTL ? 'مسودة' : 'Draft')}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                              <button
+                                onClick={() => {
+                                  const link = `${window.location.origin}/portal/${coachPortalSettings?.slug || defaultSlug}?course=${curriculumCourse.id}`;
+                                  navigator.clipboard?.writeText(link);
+                                  showToast(isRTL ? 'تم نسخ رابط العرض!' : 'Offer checkout link copied!');
+                                }}
+                                style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: '4px' }}
+                                title={isRTL ? 'نسخ الرابط' : 'Copy link'}
+                              >
+                                <LinkIcon size={14} />
+                              </button>
+
+                              <button
+                                onClick={() => showToast(isRTL ? 'تعديل العرض متاح' : 'Editing offer')}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text2, #94a3b8)', cursor: 'pointer', padding: '4px' }}
+                                title={isRTL ? 'تعديل' : 'Edit'}
+                              >
+                                <Edit size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+
+                      {/* Table Pagination Bar */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        padding: '10px 18px',
+                        background: 'rgba(255, 255, 255, 0.01)',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                        gap: '16px',
+                        fontSize: '12px',
+                        color: 'var(--text3, #64748b)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{isRTL ? 'صفوف في الصفحة:' : 'Rows per page'}</span>
+                          <span style={{ color: '#ffffff', fontWeight: '600' }}>10 ▾</span>
+                        </div>
+                        <div>1 - 1 of 1</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button disabled style={{ background: 'transparent', border: 'none', color: 'var(--text3, #64748b)', cursor: 'not-allowed' }}>{isRTL ? 'السابق' : 'Previous'}</button>
+                          <span style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'rgba(255,255,255,0.08)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' }}>1</span>
+                          <button disabled style={{ background: 'transparent', border: 'none', color: 'var(--text3, #64748b)', cursor: 'not-allowed' }}>{isRTL ? 'التالي' : 'Next'}</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 6: COMMENTS */}
+                {courseManagerTab === 'comments' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '800px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#ffffff' }}>
+                          {isRTL ? 'إدارة تعليقات ومناقشات الطلاب' : 'Course Comments & Q&A'}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                          {isRTL ? 'مراجعة والموافقة على استفسارات الطلاب تحت دروس هذا الكورس' : 'Review, approve, and moderate learner questions under course lessons.'}
+                        </p>
+                      </div>
+
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        fontSize: '12px',
+                        color: '#34d399',
+                        fontWeight: '700'
+                      }}>
+                        <CheckCircle2 size={14} />
+                        <span>{isRTL ? 'التعليقات مفعلة' : 'Comments Active'}</span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      padding: '50px 20px',
+                      textAlign: 'center',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255, 255, 255, 0.06)'
+                    }}>
+                      <MessageSquare size={32} style={{ color: 'var(--text3, #64748b)', marginBottom: '10px' }} />
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                        {isRTL ? 'لا توجد تعليقات معلقة حالياً' : 'No comments pending moderation'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                        {isRTL ? 'أي تعليق أو سؤال يكتبه الطلاب داخل الدروس سيظهر هنا للمراجعة والرد الفوري' : 'Learner discussions and questions posted on lesson pages will appear here.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 7: CREDENTIALS */}
+                {courseManagerTab === 'credentials' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', maxWidth: '800px' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#ffffff' }}>
+                        {isRTL ? 'إعدادات الشهادات المعتمدة' : 'Course Credentials & Badges'}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                        {isRTL ? 'تخصيص شهادة التخرج التي تصدر للطلاب عند إتمام الكورس بنسبة 100%' : 'Configure official digital completion certificates issued when learners finish all lessons.'}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.025)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      padding: '24px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(168, 85, 247, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc' }}>
+                            <Award size={22} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: '800', color: '#ffffff' }}>
+                              {isRTL ? 'شهادة إتمام معتمدة' : 'Official Certificate of Completion'}
+                            </div>
+                            <div style={{ fontSize: '11.5px', color: 'var(--text3, #64748b)' }}>
+                              {isRTL ? 'تحمل رقم تحقق فريد وكود QR وتوقيع المدرب' : 'Includes unique verification code, QR validation, and instructor signature'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          padding: '3px 9px',
+                          borderRadius: '12px',
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          color: '#34d399'
+                        }}>
+                          ● {isRTL ? 'مفعلة' : 'Active'}
+                        </span>
+                      </div>
+
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px', display: 'flex', gap: '10px' }}>
+                        <button
+                          onClick={() => showToast(isRTL ? 'جاري تجهيز نموذج الشهادة للمعاينة' : 'Generating certificate preview...')}
+                          className="btn"
+                          style={{
+                            background: 'rgba(255,255,255,0.06)',
+                            color: '#ffffff',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            padding: '8px 16px',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Eye size={14} />
+                          <span>{isRTL ? 'معاينة تصميم الشهادة' : 'Preview Certificate Template'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-VIEW 8: COMMUNITY GROUPS */}
+                {courseManagerTab === 'communityGroups' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', maxWidth: '800px' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '800', color: '#ffffff' }}>
+                        {isRTL ? 'مجموعات المجتمع المتصلة' : 'Connected Community Groups'}
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                        {isRTL ? 'ربط هذا الكورس بمجتمع نقاش حصري للطلاب للدردشة وتبادل الخبرات' : 'Connect this course to a dedicated student community group for peer networking and cohort discussions.'}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      padding: '40px 20px',
+                      textAlign: 'center',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}>
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: 'rgba(168, 85, 247, 0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#c084fc'
+                      }}>
+                        <Users size={22} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', marginBottom: '4px' }}>
+                          {isRTL ? 'لا توجد مجموعة مجتمع مربوطة بهذا الكورس' : 'No community group connected yet'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text3, #64748b)' }}>
+                          {isRTL ? 'يمكنك إنشاء مجموعة مجتمع خاصة بطلاب هذا الكورس' : 'Create or link a group from the Communities tab to boost course completion rates.'}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setCurriculumCourse(null);
+                          setActiveTab('communities');
+                        }}
+                        className="btn glow-btn"
+                        style={{
+                          background: 'linear-gradient(135deg, #a855f7, #9333ea)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 18px',
+                          fontSize: '12.5px',
+                          fontWeight: '700'
+                        }}
+                      >
+                        {isRTL ? 'انتقل إلى قسم المجتمعات' : 'Go to Communities'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
             </div>
           ) : (
             /* Courses Catalog & Products Grid */
@@ -3718,6 +5586,230 @@ export default function MembershipsView() {
                   style={{ flex: 1.5, background: 'linear-gradient(135deg, #a855f7, #9333ea)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
                 >
                   {isRTL ? 'إنشاء' : 'Create Group'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 6: SCHEDULE LIVE SESSION                                            */}
+      {/* ========================================================================= */}
+      {showLiveSessionModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10003, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '480px', padding: '24px', borderRadius: '18px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '800' }}>
+              {isRTL ? 'جدولة جلسة بث مباشر جديدة' : 'Schedule Live Session'}
+            </h3>
+            <form onSubmit={handleAddLiveSession} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'عنوان الجلسة *' : 'Session Title *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={liveSessionForm.title}
+                  onChange={(e) => setLiveSessionForm({ ...liveSessionForm, title: e.target.value })}
+                  placeholder={isRTL ? 'مثال: ورشة عمل تفاعلية للإجابة على الأسئلة' : 'e.g. Weekly Live Q&A and Strategy Session'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'نوع البث' : 'Platform / Type'}
+                  </label>
+                  <select
+                    value={liveSessionForm.type}
+                    onChange={(e) => setLiveSessionForm({ ...liveSessionForm, type: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  >
+                    <option value="zoom">Zoom</option>
+                    <option value="google_meet">Google Meet</option>
+                    <option value="youtube_live">YouTube Live</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'التاريخ' : 'Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={liveSessionForm.date}
+                    onChange={(e) => setLiveSessionForm({ ...liveSessionForm, date: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'الوقت' : 'Time'}
+                  </label>
+                  <input
+                    type="time"
+                    value={liveSessionForm.time}
+                    onChange={(e) => setLiveSessionForm({ ...liveSessionForm, time: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'رابط الاجتماع / البث' : 'Meeting / Live URL'}
+                  </label>
+                  <input
+                    type="url"
+                    value={liveSessionForm.link}
+                    onChange={(e) => setLiveSessionForm({ ...liveSessionForm, link: e.target.value })}
+                    placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12.5px', direction: 'ltr' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'موضوع ومحاور الجلسة' : 'Description / Agenda'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={liveSessionForm.description}
+                  onChange={(e) => setLiveSessionForm({ ...liveSessionForm, description: e.target.value })}
+                  placeholder={isRTL ? 'أبرز النقاط التي ستتم مناقشتها مع الطلاب...' : 'Key topics covered in this session...'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '12.5px', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowLiveSessionModal(false)}
+                  className="btn btn-ghost"
+                  style={{ flex: 1 }}
+                >
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="glow-btn btn"
+                  style={{ flex: 1.5, background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
+                >
+                  {isRTL ? 'جدولة الجلسة' : 'Schedule Session'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 7: CREATE COURSE OFFER                                              */}
+      {/* ========================================================================= */}
+      {showCreateOfferModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)', zIndex: 10003, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '460px', padding: '24px', borderRadius: '18px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '800' }}>
+              {isRTL ? 'إنشاء عرض وتسعير جديد' : 'Create Course Offer'}
+            </h3>
+            <form onSubmit={handleCreateCourseOffer} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                  {isRTL ? 'اسم العرض *' : 'Offer Title *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newOfferForm.title}
+                  onChange={(e) => setNewOfferForm({ ...newOfferForm, title: e.target.value })}
+                  placeholder={isRTL ? 'مثال: خصم التدشين المبكر' : 'e.g. Early Bird Special Offer'}
+                  style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'نوع التسعير' : 'Pricing Type'}
+                  </label>
+                  <select
+                    value={newOfferForm.type}
+                    onChange={(e) => setNewOfferForm({ ...newOfferForm, type: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  >
+                    <option value="free">{isRTL ? 'مجاني' : 'Free'}</option>
+                    <option value="one_time">{isRTL ? 'دفع لمرة واحدة' : 'One-time'}</option>
+                    <option value="recurring">{isRTL ? 'اشتراك متكرر' : 'Recurring'}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'العملة' : 'Currency'}
+                  </label>
+                  <select
+                    value={newOfferForm.currency}
+                    onChange={(e) => setNewOfferForm({ ...newOfferForm, currency: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  >
+                    <option value="EUR">EUR (€)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EGP">EGP (ج.م)</option>
+                    <option value="SAR">SAR (ر.س)</option>
+                    <option value="AED">AED (د.إ)</option>
+                  </select>
+                </div>
+              </div>
+
+              {newOfferForm.type !== 'free' && (
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text2, #94a3b8)', display: 'block', marginBottom: '6px' }}>
+                    {isRTL ? 'السعر *' : 'Price *'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={newOfferForm.price}
+                    onChange={(e) => setNewOfferForm({ ...newOfferForm, price: e.target.value })}
+                    placeholder="99.00"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '9px 12px', color: '#ffffff', fontSize: '13px' }}
+                  />
+                </div>
+              )}
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={newOfferForm.isPublished}
+                  onChange={(e) => setNewOfferForm({ ...newOfferForm, isPublished: e.target.checked })}
+                />
+                <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#ffffff' }}>
+                  {isRTL ? 'نشر العرض فوراً (Published)' : 'Publish immediately (accessible to learners)'}
+                </span>
+              </label>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateOfferModal(false)}
+                  className="btn btn-ghost"
+                  style={{ flex: 1 }}
+                >
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="glow-btn btn"
+                  style={{ flex: 1.5, background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800' }}
+                >
+                  {isRTL ? 'إنشاء العرض' : 'Create Offer'}
                 </button>
               </div>
             </form>
