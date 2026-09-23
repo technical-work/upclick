@@ -8,10 +8,17 @@ function LiveSiteContent() {
   const searchParams = useSearchParams();
   const funnelId = searchParams?.get('funnelId') || '';
   const storeId = searchParams?.get('storeId') || '';
-  const stepIdx = Number(searchParams?.get('stepIdx') || searchParams?.get('pageIdx') || 0);
+  const rawStepIdx = searchParams?.get('stepIdx') ?? searchParams?.get('pageIdx');
+  const stepIdx = (rawStepIdx !== null && rawStepIdx !== undefined && rawStepIdx !== '')
+    ? Number(rawStepIdx)
+    : undefined;
   const isDraft = searchParams?.get('draft') === '1';
-  const host = searchParams?.get('host') || '';
-  const path = searchParams?.get('path') || '';
+
+  const browserHost = typeof window !== 'undefined' ? window.location.hostname : '';
+  const browserPath = typeof window !== 'undefined' ? window.location.pathname : '';
+
+  const host = searchParams?.get('host') || browserHost;
+  const path = searchParams?.get('path') || (browserPath && browserPath !== '/preview-site' ? browserPath : '/');
   const productId = searchParams?.get('productId') || '';
 
   return (

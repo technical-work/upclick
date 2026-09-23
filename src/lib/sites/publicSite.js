@@ -119,6 +119,11 @@ export function pickPublishedStep(site, { stepIdx, path } = {}) {
     if (byPath) return byPath;
   }
 
+  if (wanted === '/') {
+    const rootStep = steps.find((s) => s.path && normalizePath(s.path) === '/');
+    if (rootStep) return rootStep;
+  }
+
   if (Number.isFinite(stepIdx) && steps[stepIdx]) return steps[stepIdx];
   if (Number.isFinite(site?.defaultStepIdx) && steps[site.defaultStepIdx]) return steps[site.defaultStepIdx];
   return steps.find((s) => s.published || s.status === 'published') || steps[0] || null;

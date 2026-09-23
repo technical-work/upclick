@@ -72,6 +72,105 @@ async function removeDomainFromVercel(domainName) {
   }
 }
 
+async function getGoogleAuthClient() {
+  const { GoogleAuth } = await import('google-auth-library');
+  let credentials = null;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch {}
+  }
+  if (!credentials && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    credentials = {
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      project_id: process.env.FIREBASE_PROJECT_ID || 'upklick-software'
+    };
+  }
+  if (!credentials) {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const p = path.join(process.cwd(), 'upklick-software-firebase-adminsdk-fbsvc-7c8b04f04c.json');
+      if (fs.existsSync(p)) {
+        credentials = JSON.parse(fs.readFileSync(p, 'utf8'));
+      }
+    } catch {}
+  }
+  const projectId = credentials?.project_id || process.env.FIREBASE_PROJECT_ID || 'upklick-software';
+  const auth = new GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/cloud-platform']
+  });
+  const client = await auth.getClient();
+  return { client, projectId };
+}
+
+async function addDomainToFirebaseAuth(domainName) {
+  try {
+    const { client, projectId } = await getGoogleAuthClient();
+    const url = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/config`;
+    const res = await client.request({ url });
+    const currentDomains = res?.data?.authorizedDomains || [];
+    
+    const clean = normalizeHost(domainName);
+    if (!clean) return { ok: false };
+    
+    const set = new Set(currentDomains.map((d) => d.toLowerCase()));
+    set.add(clean);
+    if (clean.startsWith('www.')) {
+      set.add(clean.replace(/^www\./, ''));
+    } else if (clean.split('.').length === 2) {
+      set.add(`www.${clean}`);
+    }
+    
+    const nextDomains = Array.from(set);
+    if (nextDomains.length === currentDomains.length) {
+      return { ok: true, alreadyAuthorized: true };
+    }
+    
+    const patchUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/config?updateMask=authorizedDomains`;
+    await client.request({
+      url: patchUrl,
+      method: 'PATCH',
+      data: { authorizedDomains: nextDomains }
+    });
+    return { ok: true, added: clean };
+  } catch (err) {
+    console.warn('[verify-domain] Could not add domain to Firebase Auth authorizedDomains:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+async function removeDomainFromFirebaseAuth(domainName) {
+  try {
+    const { client, projectId } = await getGoogleAuthClient();
+    const url = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/config`;
+    const res = await client.request({ url });
+    const currentDomains = res?.data?.authorizedDomains || [];
+    
+    const clean = normalizeHost(domainName);
+    if (!clean) return { ok: false };
+    const toRemove = new Set([clean]);
+    if (clean.startsWith('www.')) toRemove.add(clean.replace(/^www\./, ''));
+    else toRemove.add(`www.${clean}`);
+    
+    const nextDomains = currentDomains.filter((d) => !toRemove.has(d.toLowerCase()));
+    if (nextDomains.length === currentDomains.length) return { ok: true };
+    
+    const patchUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/config?updateMask=authorizedDomains`;
+    await client.request({
+      url: patchUrl,
+      method: 'PATCH',
+      data: { authorizedDomains: nextDomains }
+    });
+    return { ok: true, removed: clean };
+  } catch (err) {
+    console.warn('[verify-domain] Could not remove domain from Firebase Auth authorizedDomains:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -116,6 +215,9 @@ export async function POST(req) {
       vercel = { configured: false, reason: 'VERCEL_TOKEN and VERCEL_PROJECT_ID not set in env' };
     }
 
+    // Auto-authorize in Firebase Authentication (OAuth / Redirect Domains)
+    const firebaseAuth = await addDomainToFirebaseAuth(host);
+
     return NextResponse.json({
       ok: true,
       host,
@@ -125,7 +227,8 @@ export async function POST(req) {
       aRecords,
       targets,
       expectedIps: EXPECTED_A_IPS,
-      vercel
+      vercel,
+      firebaseAuth
     });
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Could not check DNS' }, { status: 500 });
@@ -140,7 +243,8 @@ export async function DELETE(req) {
       return NextResponse.json({ error: 'Missing host' }, { status: 400 });
     }
     const vercel = await removeDomainFromVercel(host);
-    return NextResponse.json({ ok: true, host, vercel });
+    const firebaseAuth = await removeDomainFromFirebaseAuth(host);
+    return NextResponse.json({ ok: true, host, vercel, firebaseAuth });
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Could not remove domain from Vercel' }, { status: 500 });
   }

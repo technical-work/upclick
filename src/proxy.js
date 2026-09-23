@@ -51,6 +51,7 @@ export function proxy(request) {
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-custom-domain', host);
+  requestHeaders.set('x-custom-path', request.nextUrl.pathname || '/');
 
   return NextResponse.rewrite(url, {
     request: {

@@ -41,7 +41,7 @@ function readLocalStore(lookupId) {
 export default function LiveSiteView({
   funnelId = '',
   storeId = '',
-  stepIdx = 0,
+  stepIdx,
   path = '',
   host = '',
   isDraft = false,
@@ -61,8 +61,11 @@ export default function LiveSiteView({
   useEffect(() => {
     let cancelled = false;
 
+    const browserPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const effectivePath = path || (browserPath && browserPath !== '/preview-site' ? browserPath : '/');
+
     const applyStore = (match, resolvedProductId, nextMode) => {
-      const rawPage = pickStorePage(match, { stepIdx, path });
+      const rawPage = pickStorePage(match, { stepIdx, path: effectivePath });
       if (!rawPage) return false;
       const page = (!isDraft && (rawPage.publishedCanvas || match.published))
         ? { ...rawPage, canvas: rawPage.publishedCanvas || rawPage.canvas, page: rawPage.publishedPage || rawPage.page }
@@ -112,7 +115,7 @@ export default function LiveSiteView({
               const store = publishedSiteToStore(data, resolvedId);
               if (applyStore(store, resolvedProductId, incomingHost ? 'custom' : 'live')) return;
             } else {
-              const picked = pickPublishedStep(data, { stepIdx, path });
+              const picked = pickPublishedStep(data, { stepIdx, path: effectivePath });
               if (!cancelled && picked) {
                 setStoreRecord(null);
                 const resolvedCanvas = (Array.isArray(picked.publishedCanvas) && picked.publishedCanvas.length > 0)
@@ -147,7 +150,7 @@ export default function LiveSiteView({
             canvas: p.canvas || [],
             page: p.page || DEFAULT_PAGE
           })));
-          const draftStep = pickPublishedStep({ steps }, { stepIdx, path }) || steps?.[stepIdx] || steps?.[0] || null;
+          const draftStep = pickPublishedStep({ steps }, { stepIdx, path: effectivePath }) || (Number.isFinite(stepIdx) ? steps?.[stepIdx] : null) || steps?.[0] || null;
           if (!cancelled && draftStep) {
             setStep(draftStep);
             setMode('draft');
