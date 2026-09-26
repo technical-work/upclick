@@ -37,6 +37,7 @@ import StrategyView from '@/components/Views/StrategyView';
 import DigitalProductsView from '@/components/Views/DigitalProductsView';
 import RevenueView from '@/components/Views/RevenueView';
 import CoursesView from '@/components/Views/CoursesView';
+import MembershipsView from '@/components/Views/MembershipsView';
 import LaunchpadView from '@/components/Views/LaunchpadView';
 import AIGrowthIntelView from '@/components/Views/AIGrowthIntelView';
 import SocialTrendsView from '@/components/Views/SocialTrendsView';
@@ -59,7 +60,7 @@ import SupportView from '@/components/Views/SupportView';
 import SitesView from '@/components/Views/SitesView';
 import DomainsView from '@/components/Views/DomainsView';
 function DashboardShell() {
-  const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal } = useBusiness();
+  const { currentPage, setCurrentPage, onboardingDone, mobileMenuOpen, setMobileMenuOpen, tenantConfig, lang, theme, lockedToolModal, closeUpgradeModal, isToolAllowedForUser } = useBusiness();
   const { user, userData, loading, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -363,7 +364,11 @@ function DashboardShell() {
 
   const renderActiveView = () => {
     const allowedTools = userData?.allowedTools;
-    const isAllowed = !allowedTools || allowedTools.includes(currentPage) || ['home', 'profile', 'billing', 'support', 'courses', 'sites', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(currentPage);
+    const isAllowed = isToolAllowedForUser
+      ? isToolAllowedForUser(currentPage)
+      : (!allowedTools ||
+         allowedTools.includes(currentPage) ||
+         ['home', 'profile', 'billing', 'support', 'courses', 'memberships', 'sites', 'domains', 'my-domains', 'domain-pricing', 'domain-settings'].includes(currentPage));
     const activeView = isAllowed ? currentPage : 'home';
 
     switch (activeView) {
@@ -389,6 +394,8 @@ function DashboardShell() {
         return <RevenueView />;
       case 'courses':
         return <CoursesView />;
+      case 'memberships':
+        return <MembershipsView />;
       case 'launchpad':
         return <LaunchpadView />;
       case 'ai-growth':

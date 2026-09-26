@@ -479,6 +479,38 @@ export const TOOLS_EXPLAINER_DATA = {
     ],
     videoUrl: ''
   },
+  memberships: {
+    page: 'memberships',
+    titleAr: 'العضويات والأكاديمية (Memberships & Academy)',
+    titleEn: 'Memberships & Academy',
+    categoryAr: 'الأكاديميات والعضويات',
+    categoryEn: 'Memberships & Portals',
+    summaryAr: 'بوابة العضويات والأكاديمية المتكاملة على طريقة GoHighLevel؛ بناء المناهج الدراسية، إدارة مجتمعات الطلاب، وبوابة خاصة بالطلاب معزولة تماماً بهويتك.',
+    summaryEn: 'Complete GoHighLevel-style Memberships & Academy suite; curriculum & lesson builder, community groups, and an isolated white-label student portal.',
+    featuresAr: [
+      'بوابة خاصة مستقلة تماماً للطلاب (/portal/[username]) بدون أدوات UpKlick',
+      'إدارة متقدمة للموديولات والدروس مع دعم فيديوهات YouTube و Vimeo و Loom و MP4',
+      'مجتمعات نقاش تفاعلية للطلاب مع التفاعل والتعليقات',
+      'شهادات إتمام، إحصائيات متقدمة، ودعم فوري عبر واتساب'
+    ],
+    featuresEn: [
+      'Standalone white-label student portal (/portal/[username]) isolated from UpKlick',
+      'Advanced modules & lessons manager supporting YouTube, Vimeo, Loom, MP4 embeds',
+      'Interactive student community discussion boards and group feeds',
+      'Completion credentials, real-time analytics, and WhatsApp direct widget'
+    ],
+    howToUseAr: [
+      'خصص هوية ورابط بوابتك من تبويب الإعدادات',
+      'أنشئ كورساتك وأضف الدروس ومصادر التحميل',
+      'شارك رابط البوابة مع طلابك لمتابعة الدروس والتفاعل في المجتمع'
+    ],
+    howToUseEn: [
+      'Customize portal branding and slug in Client Portal Settings',
+      'Build your courses, modules, and upload lessons/resources',
+      'Share your student portal URL with learners to access content and communities'
+    ],
+    videoUrl: ''
+  },
   digital: {
     page: 'digital',
     titleAr: 'منتجات رقمية (Digital Products)',
