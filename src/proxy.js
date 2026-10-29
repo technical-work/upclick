@@ -40,7 +40,8 @@ export function proxy(request) {
   if (
     url.pathname.startsWith('/preview-site') || 
     url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/_next')
+    url.pathname.startsWith('/_next') ||
+    /\.(?:js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|map|json|xml|txt|mp4|webm|pdf)$/i.test(url.pathname)
   ) {
     return NextResponse.next();
   }
@@ -61,7 +62,7 @@ export function proxy(request) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)']
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)']
 };
 
 export default proxy;

@@ -6,7 +6,17 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import ElementRenderer from '@/components/builder/ElementRenderer';
 import { DEFAULT_PAGE } from '@/lib/builder/elementRegistry';
-import { normalizeHost, isPlatformHostname, pickPublishedStep, publishedSiteToStore, PUBLISHED_SITES, SITE_DOMAINS } from '@/lib/sites/publicSite';
+import { htmlLooksFullscreen } from '@/lib/builder/customHtml';
+import {
+  normalizeHost,
+  isPlatformHostname,
+  findExplicitStepByPath,
+  pickPublishedStep,
+  rewriteCanvasForSubpath,
+  publishedSiteToStore,
+  PUBLISHED_SITES,
+  SITE_DOMAINS
+} from '@/lib/sites/publicSite';
 import { findLocalBlogById, findLocalFormById, findLocalFunnelById, findLocalStoreById } from '@/lib/sites/userSitesScope';
 import {
   cartCount,
@@ -62,7 +72,12 @@ export default function LiveSiteView({
     let cancelled = false;
 
     const browserPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    const effectivePath = path || (browserPath && browserPath !== '/preview-site' ? browserPath : '/');
+    const browserSearch = typeof window !== 'undefined' ? window.location.search : '';
+    const effectivePath = (path && path !== '/')
+      ? path
+      : (browserPath && browserPath !== '/preview-site' && !browserPath.startsWith('/s/')
+        ? browserPath
+        : (path || '/'));
 
     const applyStore = (match, resolvedProductId, nextMode) => {
       const rawPage = pickStorePage(match, { stepIdx, path: effectivePath });
@@ -118,9 +133,18 @@ export default function LiveSiteView({
               const picked = pickPublishedStep(data, { stepIdx, path: effectivePath });
               if (!cancelled && picked) {
                 setStoreRecord(null);
-                const resolvedCanvas = (Array.isArray(picked.publishedCanvas) && picked.publishedCanvas.length > 0)
+                const rawCanvas = (Array.isArray(picked.publishedCanvas) && picked.publishedCanvas.length > 0)
                   ? picked.publishedCanvas
                   : (Array.isArray(picked.canvas) ? picked.canvas : []);
+                const isSubpathFallback = Boolean(
+                  effectivePath &&
+                  effectivePath !== '/' &&
+                  !findExplicitStepByPath(data, effectivePath)
+                );
+                const resolvedCanvas = rewriteCanvasForSubpath(rawCanvas, {
+                  subpath: isSubpathFallback ? effectivePath : '',
+                  search: browserSearch
+                });
                 setStep({
                   ...picked,
                   canvas: resolvedCanvas,
@@ -152,7 +176,18 @@ export default function LiveSiteView({
           })));
           const draftStep = pickPublishedStep({ steps }, { stepIdx, path: effectivePath }) || (Number.isFinite(stepIdx) ? steps?.[stepIdx] : null) || steps?.[0] || null;
           if (!cancelled && draftStep) {
-            setStep(draftStep);
+            const isSubpathFallback = Boolean(
+              effectivePath &&
+              effectivePath !== '/' &&
+              !findExplicitStepByPath({ steps }, effectivePath)
+            );
+            setStep({
+              ...draftStep,
+              canvas: rewriteCanvasForSubpath(draftStep.canvas || [], {
+                subpath: isSubpathFallback ? effectivePath : '',
+                search: browserSearch
+              })
+            });
             setMode('draft');
             return;
           }
@@ -245,6 +280,9 @@ export default function LiveSiteView({
   const page = { ...DEFAULT_PAGE, ...(step.page || {}) };
   const isStore = !!storeRecord;
   const badge = mode === 'draft' ? 'Saved preview' : '';
+  const hasFullscreenHtml = canvas.some(
+    (el) => (el?.type === 'code' || el?.type === 'custom_html') && htmlLooksFullscreen(el.code)
+  );
 
   return (
     <StorePreviewContext.Provider value={storePreviewValue}>
@@ -275,9 +313,9 @@ export default function LiveSiteView({
       ) : null}
 
       <main style={{
-        maxWidth: isStore ? '100%' : (page.maxWidth || 1080),
+        maxWidth: (isStore || hasFullscreenHtml) ? '100%' : (page.maxWidth || 1080),
         margin: '0 auto',
-        padding: isStore ? 0 : `${page.paddingY || 60}px ${page.paddingX || 20}px`
+        padding: (isStore || hasFullscreenHtml) ? 0 : `${page.paddingY || 60}px ${page.paddingX || 20}px`
       }}>
         {canvas.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '100px 20px', color: '#64748b' }}>
@@ -286,7 +324,7 @@ export default function LiveSiteView({
           </div>
         ) : (
           canvas.map((el) => {
-            const fullBleed = isStore && ['store_header', 'store_hero_banner'].includes(el.type);
+            const fullBleed = hasFullscreenHtml || (isStore && ['store_header', 'store_hero_banner'].includes(el.type));
             return (
               <div
                 key={el.id}
@@ -303,7 +341,7 @@ export default function LiveSiteView({
         )}
       </main>
 
-      {page.showBranding !== false && (
+      {page.showBranding !== false && !hasFullscreenHtml && (
         <footer style={{ borderTop: '1px solid #e2e8f0', padding: '36px 20px', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
           Powered by <b>UpKlick Stores & Funnels</b>
         </footer>

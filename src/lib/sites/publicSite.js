@@ -91,7 +91,7 @@ export function getProductionUrls({ origin, funnel, stepIdx = 0 }) {
   };
 }
 
-export function pickPublishedStep(site, { stepIdx, path } = {}) {
+export function findExplicitStepByPath(site, path) {
   const steps = site?.steps || site?.pages || site?.posts || [];
   if (!steps.length) return null;
   const rawWanted = String(path || '').trim();
@@ -123,6 +123,98 @@ export function pickPublishedStep(site, { stepIdx, path } = {}) {
     const rootStep = steps.find((s) => s.path && normalizePath(s.path) === '/');
     if (rootStep) return rootStep;
   }
+
+  return null;
+}
+
+const INTERNAL_QUERY_KEYS = new Set([
+  'host',
+  'path',
+  'funnelId',
+  'storeId',
+  'stepIdx',
+  'pageIdx',
+  'draft',
+  '_host'
+]);
+
+function rewriteIframeUrl(rawUrl, { subpath = '', search = '' } = {}) {
+  try {
+    const trimmed = String(rawUrl || '').trim();
+    if (!trimmed || !/^https?:\/\//i.test(trimmed)) return rawUrl;
+    const parsed = new URL(trimmed);
+    if (subpath && subpath !== '/') {
+      parsed.pathname = subpath.startsWith('/') ? subpath : `/${subpath}`;
+    }
+    if (search) {
+      const incoming = new URLSearchParams(search);
+      incoming.forEach((val, key) => {
+        if (!INTERNAL_QUERY_KEYS.has(key)) {
+          parsed.searchParams.set(key, val);
+        }
+      });
+    }
+    return parsed.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+export function rewriteCanvasForSubpath(canvas = [], { subpath = '', search = '' } = {}) {
+  const hasSubpath = Boolean(subpath && subpath !== '/');
+  let hasForwardableSearch = false;
+  if (search) {
+    try {
+      const params = new URLSearchParams(search);
+      params.forEach((_, key) => {
+        if (!INTERNAL_QUERY_KEYS.has(key)) hasForwardableSearch = true;
+      });
+    } catch {}
+  }
+  if (!hasSubpath && !hasForwardableSearch) return canvas;
+
+  return (Array.isArray(canvas) ? canvas : []).map((el) => {
+    if (!el || typeof el !== 'object') return el;
+    const type = el.type === 'custom_html' ? 'code' : el.type;
+
+    if (type === 'code' && typeof el.code === 'string' && /<iframe\b/i.test(el.code)) {
+      const nextCode = el.code.replace(
+        /(<iframe\b[^>]*?\bsrc\s*=\s*)(["'])([^"']+)(\2)/gi,
+        (full, prefix, quote, url, suffix) => {
+          const updated = rewriteIframeUrl(url, { subpath: hasSubpath ? subpath : '', search });
+          return `${prefix}${quote}${updated}${suffix}`;
+        }
+      );
+      return { ...el, code: nextCode };
+    }
+
+    if (type === 'embed' && typeof el.src === 'string') {
+      return {
+        ...el,
+        src: rewriteIframeUrl(el.src, { subpath: hasSubpath ? subpath : '', search })
+      };
+    }
+
+    if (type === 'row' && Array.isArray(el.columns)) {
+      return {
+        ...el,
+        columns: el.columns.map((col) => ({
+          ...col,
+          canvas: rewriteCanvasForSubpath(col.canvas || [], { subpath, search })
+        }))
+      };
+    }
+
+    return el;
+  });
+}
+
+export function pickPublishedStep(site, { stepIdx, path } = {}) {
+  const steps = site?.steps || site?.pages || site?.posts || [];
+  if (!steps.length) return null;
+
+  const explicit = findExplicitStepByPath(site, path);
+  if (explicit) return explicit;
 
   if (Number.isFinite(stepIdx) && steps[stepIdx]) return steps[stepIdx];
   if (Number.isFinite(site?.defaultStepIdx) && steps[site.defaultStepIdx]) return steps[site.defaultStepIdx];

@@ -451,6 +451,13 @@ export default function DomainSettings({
               {dns.aRecords?.length ? (
                 <div><b>A Records (IPs) detected:</b> {dns.aRecords.join(', ')}</div>
               ) : null}
+              {dns.conflictingARecords?.length ? (
+                <div style={{ color: '#ef4444', fontWeight: 700, marginTop: 4 }}>
+                  {isRtl
+                    ? `⚠️ تنبيه تعارض DNS: يرجى حذف سجلات A القديمة (${dns.conflictingARecords.join(', ')}) من لوحة تحكم الدومين والإبقاء فقط على ${apexIpTarget} حتى لا تظهر صفحة 404 من خادم قديم.`
+                    : `⚠️ Conflicting DNS A Record(s) found: Please remove old A record IP(s) (${dns.conflictingARecords.join(', ')}) at your registrar and keep only ${apexIpTarget} to prevent 404 errors and SSL issues.`}
+                </div>
+              ) : null}
               {!dns.cnames?.length && !dns.aRecords?.length ? (
                 <div>{isRtl ? 'لم يتم العثور على أي سجلات منشورة لهذا الدومين حتى الآن.' : 'No DNS records found for this host yet. Please verify spelling or wait for propagation.'}</div>
               ) : null}
