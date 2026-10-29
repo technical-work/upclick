@@ -197,7 +197,8 @@ export async function POST(req) {
 
     const cnameMatched = cnames.some((value) => recordMatches(value, targets));
     const aRecordMatched = aRecords.some((ip) => EXPECTED_A_IPS.includes(ip));
-    const matched = cnameMatched || aRecordMatched;
+    const conflictingARecords = aRecords.filter((ip) => !EXPECTED_A_IPS.includes(ip));
+    const matched = cnameMatched || (aRecordMatched && conflictingARecords.length === 0);
     const matchedType = cnameMatched ? 'cname' : (aRecordMatched ? 'a' : null);
 
     // Auto-provision on Vercel
@@ -225,6 +226,7 @@ export async function POST(req) {
       matchedType,
       cnames: cnames.map((value) => normalizeHost(value)),
       aRecords,
+      conflictingARecords,
       targets,
       expectedIps: EXPECTED_A_IPS,
       vercel,
