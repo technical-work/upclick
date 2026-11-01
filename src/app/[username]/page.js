@@ -1,13 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Tracking } from '../../lib/tracking';
 import TrackingScripts from '../../components/TrackingScripts';
 import LiveSiteView from '@/components/sites/LiveSiteView';
+import LegalPageContent from '@/components/LegalPageContent';
 import { normalizeHost, isPlatformHostname } from '@/lib/sites/publicSite';
+
+function resolveLegalSection(slug) {
+  const clean = decodeURIComponent(String(slug || '')).trim().toLowerCase();
+  if (clean === 'privacy-policy' || clean === 'privacy') return 'privacy';
+  if (clean === 'terms-of-service' || clean === 'terms') return 'terms';
+  if (clean === 'data-deletion') return 'deletion';
+  return null;
+}
 
 export default function PublicBioPage() {
   const { username } = useParams();
@@ -70,6 +79,15 @@ export default function PublicBioPage() {
         host={currentHost}
         path={cleanPath}
       />
+    );
+  }
+
+  const legalSection = resolveLegalSection(username);
+  if (legalSection) {
+    return (
+      <Suspense fallback={null}>
+        <LegalPageContent section={legalSection} />
+      </Suspense>
     );
   }
 

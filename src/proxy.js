@@ -34,7 +34,36 @@ function isPlatformHost(host) {
 
 export function proxy(request) {
   const host = hostnameOf(request.headers.get('host'));
-  if (isPlatformHost(host)) return NextResponse.next();
+  const rawPathname = request.nextUrl.pathname || '/';
+  const lowerPath = rawPathname.toLowerCase().replace(/\/+$/, '') || '/';
+
+  if (isPlatformHost(host)) {
+    if (lowerPath === '/privacy-policy' || lowerPath === '/privacy') {
+      if (rawPathname !== '/privacy-policy') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/privacy-policy';
+        return NextResponse.rewrite(url);
+      }
+      return NextResponse.next();
+    }
+    if (lowerPath === '/terms-of-service' || lowerPath === '/terms') {
+      if (rawPathname !== '/terms-of-service') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/terms-of-service';
+        return NextResponse.rewrite(url);
+      }
+      return NextResponse.next();
+    }
+    if (lowerPath === '/data-deletion') {
+      if (rawPathname !== '/data-deletion') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/data-deletion';
+        return NextResponse.rewrite(url);
+      }
+      return NextResponse.next();
+    }
+    return NextResponse.next();
+  }
 
   const url = request.nextUrl.clone();
   if (
