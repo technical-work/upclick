@@ -199,6 +199,8 @@ const AdminSupportTab = ({ isRTL, t }) => {
           setActiveTicket(updatedActive);
         }
       }
+    }, (err) => {
+      console.warn('Support tickets snapshot warning:', err?.message);
     });
     return () => unsubscribe();
   }, [activeTicket?.id]);
@@ -979,6 +981,8 @@ const AdminDashboard = () => {
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSales(data);
+    }, (err) => {
+      console.warn('Error fetching sales snapshot:', err?.message);
     });
     return unsub;
   };

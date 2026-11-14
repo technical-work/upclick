@@ -163,7 +163,7 @@ export default function CommunityHubView() {
         const hasGold = list.find(s => s.id === 'gold-community');
         setActiveSpaceId(hasGold ? 'gold-community' : list[0].id);
       }
-    });
+    }, () => {});
     return unsubscribe;
   }, [activeSpaceId]);
 
@@ -178,7 +178,7 @@ export default function CommunityHubView() {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setFeed(list);
-    });
+    }, () => {});
     return unsubscribe;
   }, [activeSpaceId]);
 
@@ -192,7 +192,7 @@ export default function CommunityHubView() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setChallenges(list);
-    });
+    }, () => {});
     return unsubscribe;
   }, [activeSpaceId]);
 
@@ -206,7 +206,7 @@ export default function CommunityHubView() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setLibrary(list);
-    });
+    }, () => {});
     return unsubscribe;
   }, [activeSpaceId]);
 
@@ -226,7 +226,7 @@ export default function CommunityHubView() {
 
       mapped.sort((a, b) => b.points - a.points);
       setLeaderboard(mapped);
-    });
+    }, () => {});
     return unsubscribe;
   }, []);
 
