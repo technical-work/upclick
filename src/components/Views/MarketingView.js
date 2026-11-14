@@ -5,6 +5,7 @@ import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
 import CustomSelect from '../CustomSelect';
+import CustomerEmailHub from '../email/CustomerEmailHub';
 
 // Helper to generate a unique ID outside component scope
 const generateReportId = () => 'rep_' + Date.now();
@@ -924,7 +925,7 @@ Please compute a comprehensive Lead & Client Growth Forecast:
 
       {/* Main Tabs */}
       <div className="tabs-bar" id="mkt-tabs" style={{ marginBottom: '20px' }}>
-        {['research', 'strategy', 'offers', 'funnels', 'analytics', 'saved'].map(tab => (
+        {['research', 'strategy', 'offers', 'funnels', 'email-campaigns', 'analytics', 'saved'].map(tab => (
           <button
             key={tab}
             className={`tab-btn ${activeTab === tab ? 'on' : ''}`}
@@ -934,6 +935,7 @@ Please compute a comprehensive Lead & Client Growth Forecast:
             {tab === 'strategy' && `🧭 ${L('Strategy', 'الاستراتيجية')}`}
             {tab === 'offers' && `🎁 ${L('Offers', 'العروض')}`}
             {tab === 'funnels' && `🔄 ${L('Funnels', 'المسارات')}`}
+            {tab === 'email-campaigns' && `📧 ${L('Email Campaigns', 'حملات البريد')}`}
             {tab === 'analytics' && `📊 ${L('Analytics', 'التحليلات')}`}
             {tab === 'saved' && `💾 ${L('Saved Reports', 'التقارير المحفوظة')}`}
           </button>
@@ -2206,6 +2208,13 @@ Please compute a comprehensive Lead & Client Growth Forecast:
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── TAB: EMAIL CAMPAIGNS (AWS SES MULTI-TENANT PROVIDER) ── */}
+      {activeTab === 'email-campaigns' && (
+        <div className="mkt-section on">
+          <CustomerEmailHub defaultView="campaigns" />
         </div>
       )}
     </div>

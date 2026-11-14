@@ -86,14 +86,34 @@ class EmailService {
     return this.provider.sendEmail({ to, subject, html });
   }
 
-  async sendCampaignEmail({ to, name, subject, messageHtml, text, unsubscribeUrl, actionUrl, actionText, campaignId }) {
+  async sendCampaignEmail({
+    to,
+    name,
+    subject,
+    messageHtml,
+    text,
+    unsubscribeUrl,
+    actionUrl,
+    actionText,
+    campaignId,
+    from,
+    fromName,
+    fromEmail,
+    replyTo,
+    brandName,
+    brandLogoUrl,
+    footerText
+  }) {
     const html = getCampaignEmailTemplate({
       name,
       title: subject,
       messageHtml,
       unsubscribeUrl,
       actionUrl,
-      actionText
+      actionText,
+      brandName: brandName || fromName,
+      brandLogoUrl,
+      footerText
     });
     const headers = unsubscribeUrl
       ? {
@@ -106,11 +126,15 @@ class EmailService {
       : undefined;
     return this.provider.sendCampaignEmail({
       to,
-      subject: subject || 'رسالة من UpKlick',
+      subject: subject || `رسالة من ${brandName || fromName || 'UpKlick'}`,
       html,
       text,
       headers,
-      tags
+      tags,
+      from,
+      fromName,
+      fromEmail,
+      replyTo
     });
   }
 }

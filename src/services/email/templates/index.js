@@ -3,14 +3,28 @@
  * Built with industry-standard HTML email table layouts, prominent brand logos, and anti-clipping protection for Gmail & Outlook.
  */
 
-const getLogoHeader = () => {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
+const getLogoHeader = ({ brandName, brandLogoUrl, brandUrl } = {}) => {
+  const baseUrl = brandUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://upklick.net';
+  const displayBrand = brandName || 'UpKlick';
+  if (brandLogoUrl) {
+    return `
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
+        <tr>
+          <td align="center">
+            <a href="${baseUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
+              <img src="${brandLogoUrl}" alt="${displayBrand}" style="max-height: 52px; max-width: 200px; object-fit: contain; display: block; margin: 0 auto;" />
+            </a>
+          </td>
+        </tr>
+      </table>
+    `;
+  }
   return `
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td align="center">
           <a href="${baseUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-            <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: #FF6B35;">UpKlick</h1>
+            <h1 style="margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: #FF6B35;">${displayBrand}</h1>
           </a>
         </td>
       </tr>
@@ -75,8 +89,10 @@ const baseEmailStyle = `
   }
 `;
 
-function wrapEmailBody(contentHtml, preheaderText = '') {
+function wrapEmailBody(contentHtml, preheaderText = '', brandOptions = {}) {
   const uniqueToken = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const displayBrand = brandOptions.brandName || 'UpKlick';
+  const footerCopy = brandOptions.footerText || `&copy; ${new Date().getFullYear()} ${displayBrand}. All rights reserved. | جميع الحقوق محفوظة.`;
   return `
 <!DOCTYPE html>
 <html lang="ar">
@@ -84,7 +100,7 @@ function wrapEmailBody(contentHtml, preheaderText = '') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>UpKlick</title>
+  <title>${displayBrand}</title>
   <style>
     ${baseEmailStyle}
   </style>
@@ -92,7 +108,7 @@ function wrapEmailBody(contentHtml, preheaderText = '') {
 <body style="margin: 0; padding: 0; background-color: #08080f; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
   <!-- Hidden Preheader & Anti-trimming hack for Gmail -->
   <div style="display:none !important; visibility:hidden; mso-hide:all; font-size:1px; color:#08080f; max-height:0px; max-width:0px; opacity:0; overflow:hidden;">
-    ${preheaderText || 'UpKlick Platform'} &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+    ${preheaderText || displayBrand} &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
   </div>
 
   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #08080f; width: 100%; table-layout: fixed;">
@@ -101,7 +117,7 @@ function wrapEmailBody(contentHtml, preheaderText = '') {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #141422; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 36px 28px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);">
           <tr>
             <td>
-              ${getLogoHeader()}
+              ${getLogoHeader(brandOptions)}
               ${contentHtml}
             </td>
           </tr>
@@ -110,7 +126,7 @@ function wrapEmailBody(contentHtml, preheaderText = '') {
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin-top: 24px;">
           <tr>
             <td align="center" style="font-size: 13px; color: #4a5568;">
-              &copy; ${new Date().getFullYear()} UpKlick. All rights reserved. | جميع الحقوق محفوظة.
+              ${footerCopy}
             </td>
           </tr>
         </table>
@@ -208,7 +224,17 @@ export function getNotificationEmailTemplate({ name, title, message, actionUrl, 
   return wrapEmailBody(content, title || 'إشعار جديد - UpKlick');
 }
 
-export function getCampaignEmailTemplate({ name, title, messageHtml, unsubscribeUrl, actionUrl, actionText }) {
+export function getCampaignEmailTemplate({
+  name,
+  title,
+  messageHtml,
+  unsubscribeUrl,
+  actionUrl,
+  actionText,
+  brandName,
+  brandLogoUrl,
+  footerText
+}) {
   const rawHtml = String(messageHtml || '');
 
   // If the email was built using the Visual Email Builder, it contains its own full layout
@@ -220,15 +246,16 @@ export function getCampaignEmailTemplate({ name, title, messageHtml, unsubscribe
     return finalHtml;
   }
 
-  const recipientName = name ? name : 'عزيزنا المستخدم';
+  const displayBrand = brandName || 'UpKlick';
+  const recipientName = name ? name : 'عزيزنا العميل';
   const content = `
     <div style="direction: rtl; text-align: right;">
-      <h2 class="title">${title || 'رسالة من UpKlick'}</h2>
+      <h2 class="title">${title || `رسالة من ${displayBrand}`}</h2>
       <p class="text">مرحباً ${recipientName}،</p>
       <div class="text">${messageHtml || ''}</div>
       ${actionUrl ? `
       <div style="text-align: center; margin-top: 32px;">
-        <a href="${actionUrl}" target="_blank" class="btn">${actionText || 'فتح UpKlick'}</a>
+        <a href="${actionUrl}" target="_blank" class="btn">${actionText || displayBrand}</a>
       </div>` : ''}
       ${unsubscribeUrl ? `
       <p class="footer" style="margin-top: 28px;">
@@ -237,7 +264,11 @@ export function getCampaignEmailTemplate({ name, title, messageHtml, unsubscribe
       </p>` : ''}
     </div>
   `;
-  return wrapEmailBody(content, title || 'رسالة من UpKlick');
+  return wrapEmailBody(content, title || `رسالة من ${displayBrand}`, {
+    brandName: displayBrand,
+    brandLogoUrl,
+    footerText
+  });
 }
 
 /**
