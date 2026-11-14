@@ -263,6 +263,7 @@ export default function RegisterPage() {
   const [theme, setTheme] = useState('dark');
 
   const hasFiredCtaRef = useRef(false);
+  const isRegisteringRef = useRef(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -303,7 +304,7 @@ export default function RegisterPage() {
   }, [tenantConfig, router]);
 
   useEffect(() => {
-    if (!authLoading && user && userData) {
+    if (!authLoading && user && userData && !isRegisteringRef.current) {
       if (userData.role === 'admin' || userData.role === 'super_admin') {
         router.push('/admin');
       } else {
@@ -337,14 +338,17 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    isRegisteringRef.current = true;
 
     const countryCode = countryData[country]?.code || '+20';
     const formattedPhone = `${countryCode}${phoneNumber.trim().replace(/^0+/, '')}`;
+    const cleanEmail = email.trim();
+    const cleanName = name.trim();
 
     try {
-      Tracking.custom('SignupAttempt', { email, name, phone: formattedPhone });
+      Tracking.custom('SignupAttempt', { email: cleanEmail, name: cleanName, phone: formattedPhone });
       // 1. Create User in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const uid = userCredential.user.uid;
 
       // Force refresh Auth token so Firestore SDK instantly attaches request.auth
@@ -352,41 +356,34 @@ export default function RegisterPage() {
         await userCredential.user.getIdToken(true);
       } catch (tErr) { }
 
-      Tracking.identify(uid, { email, name, phone: formattedPhone });
+      Tracking.identify(uid, { email: cleanEmail, name: cleanName, phone: formattedPhone });
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('upklick_show_fb_reward', 'true');
         if (typeof window.fbq === 'function') {
-          window.fbq('track', 'CompleteRegistration', { email, name });
-          window.fbq('track', 'Lead', { email, name });
+          window.fbq('track', 'CompleteRegistration', { email: cleanEmail, name: cleanName });
+          window.fbq('track', 'Lead', { email: cleanEmail, name: cleanName });
         }
       }
-      Tracking.track('CompleteRegistration', { email, name });
-      Tracking.lead({ source: 'registration_page', name, email, phone: formattedPhone });
+      Tracking.track('CompleteRegistration', { email: cleanEmail, name: cleanName });
+      Tracking.lead({ source: 'registration_page', name: cleanName, email: cleanEmail, phone: formattedPhone });
 
-      // Send Verification Email via Amazon SES
-      try {
-        await fetch('/api/auth/send-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, uid })
-        });
-      } catch (evErr) {
-        console.error("Error sending verification email during registration:", evErr);
-      }
-
-      // Ensure uniqueness of username on register
-      let baseUsername = name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+      // Ensure uniqueness of username on register (wrapped in try/catch so it never blocks user doc creation)
+      let baseUsername = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
       let cleanUsername = baseUsername;
-      let isUnique = false;
-      let counter = 0;
-      while (!isUnique) {
-        const docSnap = await getDoc(doc(db, 'bio_links', cleanUsername));
-        if (!docSnap.exists()) {
-          isUnique = true;
-        } else {
-          counter++;
-          cleanUsername = `${baseUsername}${counter}`;
+      try {
+        let isUnique = false;
+        let counter = 0;
+        while (!isUnique && counter < 15) {
+          const docSnap = await getDoc(doc(db, 'bio_links', cleanUsername));
+          if (!docSnap.exists()) {
+            isUnique = true;
+          } else {
+            counter++;
+            cleanUsername = `${baseUsername}${counter}`;
+          }
         }
+      } catch (bioErr) {
+        cleanUsername = `${baseUsername}${Math.floor(100 + Math.random() * 900)}`;
       }
 
       // 2. Setup user profile defaults inside Firestore
@@ -394,28 +391,56 @@ export default function RegisterPage() {
         ...initialGC,
         profile: {
           ...initialGC.profile,
-          name: name
+          name: cleanName
         },
         bioLink: {
           ...initialGC.bioLink,
-          displayName: name,
+          displayName: cleanName,
           username: cleanUsername
         }
       };
 
       const isTrial = tenantConfig?.freeTrial?.enabled !== false;
-      const trialStartedAt = isTrial ? new Date().toISOString() : null;
+      const nowIso = new Date().toISOString();
+      const trialStartedAt = isTrial ? nowIso : null;
       const trialCredits = isTrial ? (tenantConfig?.freeTrial?.credits !== undefined ? Number(tenantConfig.freeTrial.credits) : 500) : 0;
 
-      // 3. Save User document and Bio Link document via Server Admin SDK with client fallback
+      // 3. Save User document FIRST (both client merge & server Admin SDK) so email/name/uid are guaranteed before any redirect
+      try {
+        await setDoc(doc(db, 'users', uid), {
+          uid: uid,
+          name: cleanName,
+          email: cleanEmail,
+          phoneNumber: formattedPhone,
+          country: country,
+          role: 'user',
+          roleCategory: 'user',
+          isTeamMember: false,
+          lang: 'ar',
+          theme: 'dark',
+          onboardingDone: false,
+          GC: userGC,
+          isTrial: isTrial,
+          trialStartedAt: trialStartedAt,
+          aiCredits: trialCredits,
+          initialCredits: trialCredits,
+          creditsUsed: 0,
+          creditBucket: 'unused',
+          adminId: 'global',
+          createdAt: nowIso
+        }, { merge: true });
+      } catch (uErr) {
+        console.warn("Initial client setDoc warning:", uErr);
+      }
+
       try {
         const cRes = await fetch('/api/auth/create-user-doc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             uid,
-            email,
-            name,
+            email: cleanEmail,
+            name: cleanName,
             phoneNumber: formattedPhone,
             country: country,
             userGC,
@@ -427,39 +452,29 @@ export default function RegisterPage() {
           })
         });
 
-        if (!cRes.ok) {
-          throw new Error(`Server status ${cRes.status}`);
+        const cData = await cRes.json().catch(() => ({}));
+        if (!cRes.ok || !cData.success || cData.fallbackRequired) {
+          throw new Error(cData.error || cData.warning || `Server status ${cRes.status}`);
         }
       } catch (docErr) {
-        console.warn("Server create-user-doc failed, running client fallback:", docErr.message);
-        try {
-          await setDoc(doc(db, 'users', uid), {
-            uid: uid,
-            name: name,
-            email: email,
-            phoneNumber: formattedPhone,
-            country: country,
-            role: 'user',
-            lang: 'ar',
-            theme: 'dark',
-            onboardingDone: false,
-            GC: userGC,
-            isTrial: isTrial,
-            trialStartedAt: trialStartedAt,
-            aiCredits: trialCredits,
-            initialCredits: trialCredits,
-            creditsUsed: 0,
-            creditBucket: 'unused',
-            adminId: 'global',
-            createdAt: new Date().toISOString()
-          });
-        } catch (uErr) {
-          console.error("Client fallback setDoc error:", uErr);
-        }
+        console.warn("Server create-user-doc fallback notice:", docErr.message);
       }
 
-      // router will auto-redirect through useEffect
+      // 4. Send Verification Email via Amazon SES after user document is safely created
+      try {
+        await fetch('/api/auth/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, name: cleanName, uid })
+        });
+      } catch (evErr) {
+        console.error("Error sending verification email during registration:", evErr);
+      }
+
+      isRegisteringRef.current = false;
+      router.push('/dashboard');
     } catch (err) {
+      isRegisteringRef.current = false;
       console.error(err);
       Tracking.custom('SignupFailed', { error: err.message, email });
       if (err.code === 'auth/email-already-in-use') {

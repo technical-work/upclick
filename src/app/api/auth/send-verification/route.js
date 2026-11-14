@@ -32,7 +32,11 @@ export async function POST(req) {
 
     if (targetUid && adminDb) {
       try {
+        const cleanEmail = String(email || '').trim();
         await adminDb.collection('users').doc(targetUid).set({
+          uid: targetUid,
+          ...(cleanEmail ? { email: cleanEmail } : {}),
+          ...(name ? { name: String(name).trim() } : {}),
           emailVerificationCode: code,
           emailVerificationExpires: expiresAt
         }, { merge: true });
