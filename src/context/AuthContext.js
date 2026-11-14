@@ -32,18 +32,21 @@ export function AuthProvider({ children }) {
 
       if (firebaseUser) {
         const docRef = doc(db, 'users', firebaseUser.uid);
+        const isKnownAdminEmail =
+          String(firebaseUser.email || '').trim().toLowerCase() === 'admin@gmail.com';
         unsubSnapshot = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data() || {};
+            const resolvedRole = isKnownAdminEmail ? 'admin' : (data.role || 'user');
             setUserData({
               ...data,
               uid: data.uid || firebaseUser.uid,
               email: data.email || firebaseUser.email || '',
-              role: data.role || 'user'
+              role: resolvedRole
             });
 
             // Self-heal Firestore user document if email or uid was missing
-            if (firebaseUser.email && (!data.email || !data.uid)) {
+            if (firebaseUser.email && (!data.email || !data.uid || (isKnownAdminEmail && data.role !== 'admin'))) {
               const fallbackName =
                 data.name ||
                 firebaseUser.displayName ||
@@ -62,7 +65,7 @@ export function AuthProvider({ children }) {
                   uid: firebaseUser.uid,
                   email: firebaseUser.email,
                   ...(data.name ? {} : { name: fallbackName }),
-                  ...(data.role ? {} : { role: 'user' }),
+                  role: resolvedRole,
                   ...(data.adminId ? {} : { adminId: 'global' }),
                   ...(data.createdAt ? {} : { createdAt: createdIso })
                 },
@@ -70,7 +73,8 @@ export function AuthProvider({ children }) {
               ).catch((healErr) => console.warn('Self-heal user doc warning:', healErr));
             }
           } else {
-            setUserData({ role: 'user', email: firebaseUser.email, uid: firebaseUser.uid });
+            const resolvedRole = isKnownAdminEmail ? 'admin' : 'user';
+            setUserData({ role: resolvedRole, email: firebaseUser.email, uid: firebaseUser.uid });
             if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/register') && firebaseUser.email) {
               const createdIso = firebaseUser.metadata?.creationTime
                 ? new Date(firebaseUser.metadata.creationTime).toISOString()
@@ -81,7 +85,7 @@ export function AuthProvider({ children }) {
                   uid: firebaseUser.uid,
                   email: firebaseUser.email,
                   name: firebaseUser.displayName || firebaseUser.email.split('@')[0] || '',
-                  role: 'user',
+                  role: resolvedRole,
                   adminId: 'global',
                   createdAt: createdIso
                 },
@@ -93,7 +97,8 @@ export function AuthProvider({ children }) {
           clearTimeout(timeout);
         }, (error) => {
           console.error('Error listening to user document:', error);
-          setUserData({ role: 'user', email: firebaseUser.email, uid: firebaseUser.uid });
+          const resolvedRole = isKnownAdminEmail ? 'admin' : 'user';
+          setUserData({ role: resolvedRole, email: firebaseUser.email, uid: firebaseUser.uid });
           setLoading(false);
           clearTimeout(timeout);
         });

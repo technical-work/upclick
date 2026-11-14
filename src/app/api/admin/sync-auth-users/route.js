@@ -145,7 +145,9 @@ export async function POST(req) {
           updateMask.push('name');
         }
         if (!fsFields?.role?.stringValue) {
-          patchFields.role = { stringValue: 'user' };
+          const defaultRole =
+            String(u.email || '').trim().toLowerCase() === 'admin@gmail.com' ? 'admin' : 'user';
+          patchFields.role = { stringValue: defaultRole };
           updateMask.push('role');
         }
         if (!fsFields?.adminId?.stringValue) {

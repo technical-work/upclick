@@ -192,8 +192,13 @@ function DashboardShell() {
     );
   }
 
-  // Email Verification Lock Screen
-  if (user && !user.emailVerified) {
+  // Email Verification Lock Screen (bypass for admin@gmail.com and admins)
+  const isAdminAccount =
+    userData?.role === 'admin' ||
+    userData?.role === 'super_admin' ||
+    String(user?.email || '').trim().toLowerCase() === 'admin@gmail.com';
+
+  if (user && !user.emailVerified && !userData?.emailVerified && !isAdminAccount) {
     return (
       <EmailVerificationLock user={user} lang={lang} logout={logout} />
     );
