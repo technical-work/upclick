@@ -238,14 +238,14 @@ export default function TelegramHubView() {
         const chatsData = [];
         snapshot.forEach((doc) => chatsData.push({ id: doc.id, ...doc.data() }));
         setLiveChats(chatsData);
-      });
+      }, () => {});
 
       const contactsQuery = query(collection(db, 'telegram_contacts'), orderBy('updatedAt', 'desc'));
       unsubscribeContacts = onSnapshot(contactsQuery, (snapshot) => {
         const contactsData = [];
         snapshot.forEach((doc) => contactsData.push({ id: doc.id, ...doc.data() }));
         setLiveContacts(contactsData);
-      });
+      }, () => {});
     }
 
     return () => {
@@ -263,7 +263,7 @@ export default function TelegramHubView() {
         const msgs = [];
         snapshot.forEach((doc) => msgs.push({ id: doc.id, ...doc.data() }));
         setChatMessages(msgs);
-      });
+      }, () => {});
     } else {
       setChatMessages([]);
     }

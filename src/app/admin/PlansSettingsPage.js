@@ -209,6 +209,9 @@ const PlansSettingsPage = () => {
         if (Array.isArray(data.customRechargePacks)) setCustomRechargePacks(data.customRechargePacks);
       }
       setLoading(false);
+    }, (err) => {
+      console.warn('PlansSettingsPage snapshot warning:', err?.message);
+      setLoading(false);
     });
 
     return () => unsub();

@@ -30,19 +30,25 @@ export default function TaskModal() {
   const [assignee, setAssignee] = useState('');
   const [members, setMembers] = useState([]);
 
-  // Fetch team members dynamically
+  // Fetch team members dynamically only when modal is open
   useEffect(() => {
-    if (!ownerUid) return;
+    if (!ownerUid || !taskModalOpen) return;
     const q = query(collection(db, 'users'), where('adminId', '==', ownerUid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(d => ({
-        uid: d.id,
-        name: d.data().name || d.data().email || 'Team Member'
-      }));
-      setMembers(list);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map(d => ({
+          uid: d.id,
+          name: d.data().name || d.data().email || 'Team Member'
+        }));
+        setMembers(list);
+      },
+      () => {
+        setMembers([]);
+      }
+    );
     return unsubscribe;
-  }, [ownerUid]);
+  }, [ownerUid, taskModalOpen]);
 
   const selectOptions = [
     { uid: ownerUid, name: L('Myself (Owner)', 'نفسي (المالك)') },

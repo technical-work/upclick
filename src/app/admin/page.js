@@ -199,6 +199,8 @@ const AdminSupportTab = ({ isRTL, t }) => {
           setActiveTicket(updatedActive);
         }
       }
+    }, (err) => {
+      console.warn('Support tickets snapshot warning:', err?.message);
     });
     return () => unsubscribe();
   }, [activeTicket?.id]);
@@ -979,6 +981,8 @@ const AdminDashboard = () => {
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSales(data);
+    }, (err) => {
+      console.warn('Error fetching sales snapshot:', err?.message);
     });
     return unsub;
   };
@@ -1225,6 +1229,39 @@ const AdminDashboard = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [isExportingUsers, setIsExportingUsers] = useState(false);
+  const [isSyncingAuthUsers, setIsSyncingAuthUsers] = useState(false);
+  const [syncResultMsg, setSyncResultMsg] = useState('');
+
+  const handleSyncAuthUsers = async (silent = false) => {
+    if (!currentUser) return;
+    if (!silent) {
+      setIsSyncingAuthUsers(true);
+      setSyncResultMsg('');
+    }
+    try {
+      const idToken = await currentUser.getIdToken();
+      const res = await fetch('/api/admin/sync-auth-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`
+        }
+      });
+      const data = await res.json();
+      if (!silent && res.ok && data.success) {
+        setSyncResultMsg(
+          isRTL
+            ? `✅ تمت المزامنة بنجاح (إجمالي الحسابات: ${data.totalAuthUsers} • تم تحديث: ${data.syncedCount})`
+            : `✅ Synced (${data.totalAuthUsers} total • ${data.syncedCount} repaired)`
+        );
+        setTimeout(() => setSyncResultMsg(''), 6000);
+      }
+    } catch (err) {
+      if (!silent) console.warn('Sync auth users error:', err);
+    } finally {
+      if (!silent) setIsSyncingAuthUsers(false);
+    }
+  };
 
   const exportUsersToCSV = () => {
     const listToExport = filteredUsers.length > 0 ? filteredUsers : users;
@@ -1466,6 +1503,7 @@ const AdminDashboard = () => {
       unsubSales = fetchSales();
       unsubPayments = fetchPendingPayments();
       unsubAllPayments = fetchAllPayments();
+      handleSyncAuthUsers(true);
       getDoc(doc(db, 'tenants', 'global')).then(snap => {
         if (snap.exists()) {
           if (snap.data().freeTrial) setTenantFreeTrial(snap.data().freeTrial);
@@ -1806,12 +1844,43 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const normalizeFuzzyStr = (str) =>
+    String(str || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[aeiouy]+/g, 'a')
+      .replace(/(.)\1+/g, '$1');
+
   const filteredUsers = users.filter(u => {
     if (!u) return false;
-    if (!u.email && !u.name && !u.displayName && !u.userEmail && !u.phoneNumber) return false;
+    if (!u.email && !u.name && !u.displayName && !u.userEmail && !u.phoneNumber && !u.id && !u.uid) return false;
 
-    const matchesSearch = (u.email || u.userEmail || u.name || u.displayName || u.phoneNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
-    if (!matchesSearch) return false;
+    const cleanSearch = (searchTerm || '').trim().toLowerCase();
+    if (cleanSearch) {
+      const candidateFields = [
+        u.email,
+        u.userEmail,
+        u.name,
+        u.displayName,
+        u.phoneNumber,
+        u.id,
+        u.uid,
+        u.GC?.profile?.name,
+        u.GC?.bioLink?.displayName
+      ].filter(Boolean).map(v => String(v).toLowerCase());
+
+      const directMatch = candidateFields.some(field => field.includes(cleanSearch));
+      const searchLocalPart = cleanSearch.split('@')[0];
+      const fuzzyQuery = normalizeFuzzyStr(searchLocalPart);
+      const fuzzyMatch =
+        fuzzyQuery.length >= 4 &&
+        candidateFields.some(field => {
+          const fieldLocal = field.split('@')[0];
+          return normalizeFuzzyStr(fieldLocal).includes(fuzzyQuery);
+        });
+
+      return directMatch || fuzzyMatch;
+    }
 
     if (!isDateInSelectedRange(getUserCreatedDate(u))) return false;
     
@@ -1956,10 +2025,27 @@ const AdminDashboard = () => {
           {error && <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--red)', padding: '10px 15px', borderRadius: '8px', marginTop: '10px', fontSize: '13px', border: '1px solid rgba(239,68,68,0.2)' }}>⚠️ {error}</div>}
         </div>
         {activeTab === 'users' && (
-          <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-            <UserPlus size={18} />
-            <span>{t('admin.addNewUser')}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {syncResultMsg && (
+              <span style={{ fontSize: '12px', color: 'var(--green)', fontWeight: 700, background: 'rgba(16,185,129,0.1)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.25)' }}>
+                {syncResultMsg}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => handleSyncAuthUsers(false)}
+              disabled={isSyncingAuthUsers}
+              className="btn btn-ghost"
+              style={{ border: '1px solid var(--line)', fontSize: '13px', fontWeight: 700 }}
+              title={isRTL ? 'مزامنة جميع حسابات Firebase Auth مع جدول المستخدمين' : 'Sync Firebase Auth users to Firestore'}
+            >
+              <span>{isSyncingAuthUsers ? (isRTL ? '⏳ جاري المزامنة...' : '⏳ Syncing...') : (isRTL ? '🔄 مزامنة الحسابات' : '🔄 Sync Accounts')}</span>
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+              <UserPlus size={18} />
+              <span>{t('admin.addNewUser')}</span>
+            </button>
+          </div>
         )}
         {activeTab === 'sales' && userData?.role === 'admin' && (
           <button onClick={() => { setEditingSale(null); setNewSale({ userId: '', customerName: '', amount: '' }); setModalSearchTerm(''); setShowSalesModal(true); }} className="btn btn-primary">

@@ -34,9 +34,60 @@ export function AuthProvider({ children }) {
         const docRef = doc(db, 'users', firebaseUser.uid);
         unsubSnapshot = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserData(docSnap.data());
+            const data = docSnap.data() || {};
+            setUserData({
+              ...data,
+              uid: data.uid || firebaseUser.uid,
+              email: data.email || firebaseUser.email || '',
+              role: data.role || 'user'
+            });
+
+            // Self-heal Firestore user document if email or uid was missing
+            if (firebaseUser.email && (!data.email || !data.uid)) {
+              const fallbackName =
+                data.name ||
+                firebaseUser.displayName ||
+                data.GC?.profile?.name ||
+                firebaseUser.email.split('@')[0] ||
+                '';
+              const createdIso =
+                data.createdAt ||
+                (firebaseUser.metadata?.creationTime
+                  ? new Date(firebaseUser.metadata.creationTime).toISOString()
+                  : new Date().toISOString());
+
+              setDoc(
+                docRef,
+                {
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email,
+                  ...(data.name ? {} : { name: fallbackName }),
+                  ...(data.role ? {} : { role: 'user' }),
+                  ...(data.adminId ? {} : { adminId: 'global' }),
+                  ...(data.createdAt ? {} : { createdAt: createdIso })
+                },
+                { merge: true }
+              ).catch((healErr) => console.warn('Self-heal user doc warning:', healErr));
+            }
           } else {
             setUserData({ role: 'user', email: firebaseUser.email, uid: firebaseUser.uid });
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/register') && firebaseUser.email) {
+              const createdIso = firebaseUser.metadata?.creationTime
+                ? new Date(firebaseUser.metadata.creationTime).toISOString()
+                : new Date().toISOString();
+              setDoc(
+                docRef,
+                {
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email,
+                  name: firebaseUser.displayName || firebaseUser.email.split('@')[0] || '',
+                  role: 'user',
+                  adminId: 'global',
+                  createdAt: createdIso
+                },
+                { merge: true }
+              ).catch((healErr) => console.warn('Self-heal missing user doc warning:', healErr));
+            }
           }
           setLoading(false);
           clearTimeout(timeout);

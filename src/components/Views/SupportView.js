@@ -126,6 +126,8 @@ export default function SupportView() {
           setActiveTicket(updatedActive);
         }
       }
+    }, () => {
+      setTickets([]);
     });
 
     return () => unsubscribe();
