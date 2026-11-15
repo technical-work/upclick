@@ -17,8 +17,8 @@ import {
   CreditCard
 } from 'lucide-react';
 
-const EFFECTIVE_DATE_EN = 'November 1, 2026';
-const EFFECTIVE_DATE_AR = '1 نوفمبر 2026';
+const EFFECTIVE_DATE_EN = 'November 16, 2026';
+const EFFECTIVE_DATE_AR = '16 نوفمبر 2026';
 
 export const UPKLICK_CONTACT_INFO = {
   phoneDisplay: '+20 103 897 9275',
@@ -43,6 +43,7 @@ export default function LegalPageContent({ section = 'privacy' }) {
   const [deleteNotes, setDeleteNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [confirmationCode, setConfirmationCode] = useState(confirmationCodeFromUrl);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (confirmationCodeFromUrl) {
@@ -60,25 +61,99 @@ export default function LegalPageContent({ section = 'privacy' }) {
 
   const handleDeletionSubmit = async (e) => {
     e.preventDefault();
-    if (!deleteEmail.trim()) return;
+    setSubmitError('');
+
+    const cleanEmail = deleteEmail.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setSubmitError(
+        isAr
+          ? 'يرجى إدخال عنوان بريد إلكتروني صحيح.'
+          : 'Please enter a valid email address.'
+      );
+      return;
+    }
+    if (!deleteReason) {
+      setSubmitError(
+        isAr
+          ? 'يرجى اختيار نطاق البيانات المطلوب حذفها.'
+          : 'Please select a deletion scope.'
+      );
+      return;
+    }
+
+    // Client-side device rate limit (max 3 requests per 15 minutes from the same device)
+    let deviceId = '';
+    try {
+      deviceId = localStorage.getItem('upklick_device_id') || '';
+      if (!deviceId) {
+        deviceId = `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem('upklick_device_id', deviceId);
+      }
+      const now = Date.now();
+      const windowMs = 15 * 60 * 1000;
+      const storedRaw = localStorage.getItem('upklick_del_req_timestamps');
+      const timestamps = (storedRaw ? JSON.parse(storedRaw) : []).filter(
+        (ts) => now - ts < windowMs
+      );
+      if (timestamps.length >= 3) {
+        setSubmitError(
+          isAr
+            ? 'لقد أرسلت الحد الأقصى من الطلبات من هذا الجهاز مؤخراً. يرجى الانتظار 15 دقيقة أو مراسلتنا عبر upklickofficial@gmail.com.'
+            : 'Too many requests submitted from this device recently. Please wait 15 minutes or email upklickofficial@gmail.com directly.'
+        );
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/meta/data-deletion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: deleteEmail.trim(),
+          email: cleanEmail,
+          deletionScope: deleteReason,
           scope: deleteReason,
+          details: deleteNotes.trim(),
           notes: deleteNotes.trim(),
+          deviceId,
           source: 'web_form'
         })
       });
-      const data = await res.json();
-      setConfirmationCode(
-        data?.confirmation_code || `DEL-${Date.now().toString(36).toUpperCase()}`
-      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (!data?.confirmation_code && !data?.request_id)) {
+        setSubmitError(
+          data?.error ||
+            (isAr
+              ? 'تعذر إرسال طلب حذف البيانات. يرجى المحاولة مرة أخرى أو مراسلتنا على upklickofficial@gmail.com.'
+              : 'Failed to submit data deletion request. Please try again or email upklickofficial@gmail.com.')
+        );
+        return;
+      }
+
+      try {
+        const now = Date.now();
+        const windowMs = 15 * 60 * 1000;
+        const storedRaw = localStorage.getItem('upklick_del_req_timestamps');
+        const timestamps = (storedRaw ? JSON.parse(storedRaw) : []).filter(
+          (ts) => now - ts < windowMs
+        );
+        timestamps.push(now);
+        localStorage.setItem('upklick_del_req_timestamps', JSON.stringify(timestamps));
+      } catch {
+        // ignore storage errors
+      }
+
+      setConfirmationCode(data.request_id || data.confirmation_code);
     } catch {
-      setConfirmationCode(`DEL-${Date.now().toString(36).toUpperCase()}`);
+      setSubmitError(
+        isAr
+          ? 'حدث خطأ في الاتصال أثناء إرسال الطلب. يرجى المحاولة مرة أخرى أو مراسلتنا على upklickofficial@gmail.com.'
+          : 'Network error while submitting your request. Please try again or email upklickofficial@gmail.com.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -694,6 +769,7 @@ export default function LegalPageContent({ section = 'privacy' }) {
             setDeleteNotes={setDeleteNotes}
             submitting={submitting}
             confirmationCode={confirmationCode}
+            submitError={submitError}
             onSubmit={handleDeletionSubmit}
           />
         )}
@@ -897,31 +973,36 @@ function PrivacyPolicySection({ isAr }) {
 
         <CardSection num="03" title="بيانات تكامل منصات Meta (Facebook و Instagram و WhatsApp و Meta Ads)">
           <p style={{ marginTop: 0 }}>
-            عند قيامك بربط حسابك في UpKlick مع خدمات شركة <strong>Meta Platforms, Inc.</strong> (بما في ذلك تسجيل الدخول عبر فيسبوك، صفحات فيسبوك، حسابات إنستغرام للأعمال، واجهة برمجة تطبيقات WhatsApp Business، ومدير إعلانات Meta / Pixel)، قد نطلب الوصول إلى البيانات التالية بناءً على موافقتك الصريحة:
+            عند قيامك بربط حسابك في UpKlick مع خدمات شركة <strong>Meta Platforms, Inc.</strong> (بما في ذلك تسجيل الدخول عبر فيسبوك، صفحات فيسبوك، حسابات إنستغرام الاحترافية، واجهة برمجة تطبيقات WhatsApp Business، ومدير إعلانات Meta / Pixel)، نقوم بجمع ومعالجة الصلاحيات والبيانات التي تصرح بها صراحةً فقط:
           </p>
           <ul>
-            <li><strong>معلومات الملف الشخصي الأساسية:</strong> المعرف الفريد (User ID)، الاسم، والبريد الإلكتروني المرتبط بحساب Meta للمصادقة وربط الحساب.</li>
-            <li><strong>بيانات الصفحات والحسابات التجارية:</strong> قائمة صفحات فيسبوك وحسابات إنستغرام الاحترافية التي تديرها، ورموز الوصول (Access Tokens) اللازمة لنشر المحتوى أو قراءة الإحصائيات.</li>
+            <li><strong>معلومات الملف الشخصي الأساسية والمصادقة:</strong> المعرف الفريد (Meta User ID)، الاسم، والبريد الإلكتروني المستخدم لتوثيق هويتك وربط حسابك.</li>
+            <li><strong>صفحات فيسبوك وحسابات إنستغرام الاحترافية:</strong> معرفات صفحات فيسبوك وحسابات إنستغرام، الأسماء، أسماء المستخدمين، وصور الملف الشخصي للحسابات التي تختار ربطها، وتُستخدم لعرضها داخل لوحة التحكم الخاصة بك وتوجيه رسائلها إلى صندوق الوارد الخاص بك.</li>
+            <li><strong>رسائل فيسبوك ماسنجر ورسائل إنستغرام المباشرة (Messenger &amp; Instagram Direct Messages):</strong> عند ربط صفحة فيسبوك أو حساب إنستغرام احترافي، نتلقى الرسائل التي يرسلها العملاء إلى تلك الصفحة أو الحساب (معرف المرسل، الاسم، نص الرسالة، المرفقات، والطوابع الزمنية) عبر إشعارات ويب هوك الخاصة بـ Meta (Webhooks). نقوم بتخزينها في صندوق الوارد (UpKlick Inbox) الخاص بك لتتمكن من قراءتها والرد عليها، سواء يدوياً أو من خلال التدفقات التلقائية (Flows) وردود الذكاء الاصطناعي التي تقوم بإعدادها. نحن نرسل الرسائل فقط كردود على المحادثات التي يبدأها العملاء ضمن نافذة المراسلة المعتمدة من Meta.</li>
+            <li><strong>المعالجة بالذكاء الاصطناعي (AI Processing):</strong> إذا قمت بتفعيل ردود الذكاء الاصطناعي، يتم إرسال نص الرسائل الواردة وقاعدة المعرفة الخاصة بك إلى مزودي نماذج الذكاء الاصطناعي لدينا حصرياً لتوليد رد نيابةً عنك. ولا يُسمح لهؤلاء المزودين باستخدام هذه البيانات لتدريب نماذجهم.</li>
             <li><strong>بيانات WhatsApp Business API:</strong> معرف حساب واتساب للأعمال (WABA ID)، أرقام الهواتف المسجلة، قوالب الرسائل، وحالة تسليم الرسائل لإدارة المحادثات والحملات التسويقية المصرح بها.</li>
-            <li><strong>بيانات الإعلانات والـ Pixel (Meta Ads & Leads):</strong> معرفات الحساب الإعلاني والبيكسل (Pixel ID)، أداء الحملات الإعلانية، وبيانات العملاء المحتملين (Lead Ads) لمزامنتها تلقائياً مع نظام CRM الخاص بك.</li>
+            <li><strong>بيانات الإعلانات والـ Pixel (Meta Ads &amp; Leads):</strong> معرفات الحساب الإعلاني والبيكسل (Pixel ID)، أداء الحملات الإعلانية، وبيانات العملاء المحتملين (Lead Ads) لمزامنتها تلقائياً مع نظام CRM الخاص بك.</li>
           </ul>
           <p style={{ marginBottom: 0 }}>
-            <strong>التزامنا الصارم بخصوص بيانات Meta:</strong> يتم استخدام البيانات المستلمة من واجهات برمجة تطبيقات Meta حصرياً لتشغيل الميزات التي طلبتها داخل لوحة تحكم UpKlick الخاصة بك. نحن <strong>لا نبيع</strong> بيانات Meta مطلقاً، ولا نشاركها مع وسطاء البيانات أو أطراف ثالثة لأغراض إعلانية مستقلة، ولا نستخدمها لبناء ملفات تعريف غير مصرح بها.
+            <strong>التزامنا الصارم بخصوص بيانات Meta:</strong> يتم استخدام البيانات المستلمة من واجهات برمجة تطبيقات Meta حصرياً لتشغيل الميزات التي طلبتها داخل لوحة تحكم UpKlick الخاصة بك. نحن <strong>لا نبيع</strong> بيانات Meta مطلقاً، ولا نشاركها مع وسطاء البيانات أو أطراف ثالثة لأغراض إعلانية مستقلة، ولا نستخدمها لبناء ملفات تعريف غير مصرح بها. يتم تخزين جميع رموز الوصول (OAuth Access Tokens) بشكل مشفر ويمكن إلغاؤها في أي وقت.
           </p>
         </CardSection>
 
         <CardSection num="04" title="كيف نستخدم بياناتك">
           <ul>
             <li>تقديم وتشغيل وتخصيص خدمات المنصة وأدوات الذكاء الاصطناعي وبناء المواقع والمتاجر.</li>
-            <li>تنفيذ عمليات النشر المجدول، وإرسال رسائل البريد الإلكتروني ورسائل WhatsApp Business نيابةً عنك وبناءً على طلبك.</li>
+            <li>تشغيل صندوق الوارد الموحد للمحادثات، وتنفيذ عمليات النشر، وإرسال رسائل البريد الإلكتروني ورسائل WhatsApp Business نيابةً عنك وبناءً على طلبك.</li>
             <li>عرض تحليلات الأداء، وتتبع التحويلات الإعلانية، ومزامنة العملاء المحتملين.</li>
             <li>حماية المنصة من الاحتيال أو الاستخدام غير المصرح به والامتثال للمتطلبات القانونية.</li>
           </ul>
         </CardSection>
 
-        <CardSection num="05" title="أمن البيانات والاحتفاظ بها">
-          <p style={{ margin: 0 }}>
-            نستخدم تشفيراً قياسياً (TLS/SSL أثناء النقل وتشفير قواعد البيانات السحابية) لحماية رموز الوصول (OAuth Tokens) والبيانات الشخصية. نحتفظ ببياناتك فقط طوال فترة نشاط حسابك، أو حسب ما يقتضيه تقديم الخدمة. عند إلغاء ربط حساب Meta أو حذف حسابك، يتم إبطال رموز الوصول وحذف البيانات المرتبطة.
+        <CardSection num="05" title="مشاركة البيانات وتخزينها وأمنها">
+          <p style={{ marginTop: 0 }}>
+            نطبق ضوابط أمان قياسية تشمل تشفير HTTPS/TLS أثناء النقل، وضوابط وصول مقيدة، وبنية تحتية سحابية آمنة (Google Cloud / Firebase، وAWS SES، وVercel، ومزودي نماذج الذكاء الاصطناعي). نحن نشارك البيانات فقط مع معالجات البنية التحتية الفرعية الأساسية اللازمة لتقديم الخدمة (الاستضافة السحابية عبر Vercel وGoogle Cloud / Firebase، معالجة المدفوعات، مزودي نماذج الذكاء الاصطناعي، وواجهات برمجة التطبيقات التي تربطها صراحةً). نحتفظ بالبيانات الشخصية وبيانات التكامل فقط طوال فترة نشاط حسابك أو حسب الحاجة لتنفيذ طلباتك.
+          </p>
+          <p style={{ marginBottom: 0 }}>
+            يتم الاحتفاظ بالرسائل وبيانات الحسابات المرتبطة طوال فترة بقاء التكامل نشطاً. يؤدي فصل التكامل إلى حذف رموز الوصول الخاصة به فوراً؛ بينما يظل سجل المحادثات محفوظاً في مساحة العمل الخاصة بك حتى تقوم بحذفه أو تطلب حذفه. يتم حذف جميع بيانات Meta خلال 30 يوماً من حذف الحساب أو تقديم طلب حذف البيانات.
           </p>
         </CardSection>
 
@@ -977,7 +1058,9 @@ function PrivacyPolicySection({ isAr }) {
         </p>
         <ul>
           <li><strong>Authentication & Basic Profile:</strong> Your Meta User ID, name, and email address used to authenticate your identity and link your account.</li>
-          <li><strong>Facebook Pages & Instagram Professional Accounts:</strong> Page/Account IDs, names, profile metadata, content publishing permissions, and engagement/insights metrics for accounts you manage.</li>
+          <li><strong>Facebook Pages & Instagram Professional Accounts:</strong> Page and Instagram account IDs, names, usernames and profile pictures for the accounts you choose to connect, used to show them in your dashboard and route their messages to your Inbox.</li>
+          <li><strong>Messenger & Instagram Direct Messages:</strong> When you connect a Facebook Page or Instagram professional account, we receive the messages that customers send to that Page or account (sender ID, name, message text, attachments and timestamps) through Meta webhooks. We store them in your UpKlick Inbox so you can read and reply to them, either manually or through automated Flows and AI replies that you configure. We only send messages as replies to customer-initiated conversations within Meta&apos;s messaging window.</li>
+          <li><strong>AI Processing:</strong> If you enable AI replies, the text of incoming messages and your knowledge base is sent to our AI model providers solely to generate a reply for you. These providers are not allowed to use this data to train their models.</li>
           <li><strong>WhatsApp Business Platform Data:</strong> WhatsApp Business Account (WABA) ID, registered phone number IDs, approved message templates, webhook delivery statuses, and customer-initiated or opt-in messaging metadata.</li>
           <li><strong>Meta Ads, Pixel & Lead Ads Data:</strong> Ad account IDs, Meta Pixel IDs, campaign performance metrics, and lead form submissions synced into your UpKlick CRM at your direction.</li>
         </ul>
@@ -996,8 +1079,11 @@ function PrivacyPolicySection({ isAr }) {
       </CardSection>
 
       <CardSection num="05" title="Data Sharing, Storage & Security">
-        <p style={{ margin: 0 }}>
-          We implement industry-standard security controls including HTTPS/TLS encryption in transit, restricted access controls, and secure cloud infrastructure (Google Cloud / Firebase and AWS SES). We share data only with essential infrastructure sub-processors required to deliver the service (cloud hosting, payment processing, and APIs you explicitly connect). We retain personal and integration data only for as long as your account remains active or as needed to fulfill your requests.
+        <p style={{ marginTop: 0 }}>
+          We implement industry-standard security controls including HTTPS/TLS encryption in transit, restricted access controls, and secure cloud infrastructure (Vercel, Google Cloud / Firebase, AWS SES, and AI model providers). We share data only with essential infrastructure sub-processors required to deliver the service (cloud hosting on Vercel and Google Cloud / Firebase, payment processing, AI model providers, and APIs you explicitly connect). We retain personal and integration data only for as long as your account remains active or as needed to fulfill your requests.
+        </p>
+        <p style={{ marginBottom: 0 }}>
+          Messages and connected-account data are kept while the integration is active. Disconnecting an integration deletes its access tokens immediately; conversation history is kept in your workspace until you delete it or request deletion. All Meta data is deleted within 30 days of an account deletion or a data deletion request.
         </p>
       </CardSection>
 
@@ -1042,7 +1128,7 @@ function TermsOfServiceSection({ isAr }) {
 
         <CardSection num="02" title="وصف الخدمة">
           <p style={{ margin: 0 }}>
-            توفر UpKlick نظام تشغيل متكاملاً مدعوماً بالذكاء الاصطناعي لرواد الأعمال وصناع المحتوى والشركات، ويشمل: بناء الفانلز والمواقع والمتاجر الإلكترونية، إدارة علاقات العملاء (CRM)، أدوات التسويق عبر البريد الإلكتروني وواتساب، إدارة المجتمعات والدورات، والربط مع منصات التواصل الاجتماعي والإعلانات (بما في ذلك Meta وGoogle وTelegram).
+            توفر UpKlick نظام تشغيل متكاملاً مدعوماً بالذكاء الاصطناعي لرواد الأعمال وصناع المحتوى والشركات، ويشمل: بناء الفانلز والمواقع والمتاجر الإلكترونية، إدارة علاقات العملاء (CRM)، صندوق وارد موحد لرسائل فيسبوك ماسنجر ورسائل إنستغرام المباشرة (Facebook Messenger &amp; Instagram Direct messages)، أدوات التسويق عبر البريد الإلكتروني وواتساب، إدارة المجتمعات والدورات،حجز النطاقات، التحليلات، والربط مع منصات التواصل الاجتماعي والإعلانات (بما في ذلك Meta وGoogle وTelegram).
           </p>
         </CardSection>
 
@@ -1050,7 +1136,7 @@ function TermsOfServiceSection({ isAr }) {
           <ul>
             <li>يجب أن تكون المعلومات المقدمة عند التسجيل صحيحة ودقيقة ومحدثة.</li>
             <li>أنت مسؤول بالكامل عن الحفاظ على سرية بيانات الدخول الخاصة بحسابك وعن جميع الأنشطة التي تتم من خلاله.</li>
-            <li>يجب إخطارنا فوراً عند الاشتباه بأي استخدام غير مصرح به لحسابك.</li>
+            <li>يجب إخطارنا فوراً عبر <a href="mailto:upklickofficial@gmail.com">upklickofficial@gmail.com</a> عند الاشتباه بأي استخدام غير مصرح به لحسابك.</li>
           </ul>
         </CardSection>
 
@@ -1059,9 +1145,12 @@ function TermsOfServiceSection({ isAr }) {
             عند ربط حسابك في UpKlick مع خدمات <strong>Meta</strong> (فيسبوك، إنستغرام، WhatsApp Business، أو Meta Ads) أو أي منصات خارجية أخرى:
           </p>
           <ul>
-            <li>أنت تقر بأن لديك الصلاحية القانونية لربط وإدارة الصفحات والحسابات الإعلانية وأرقام WhatsApp Business المرتبطة.</li>
-            <li>تلتزم بالامتثال الكامل لشروط منصة Meta (Meta Platform Terms)، وسياسات المراسلة التجارية لـ WhatsApp (بما في ذلك الحصول على موافقة مسبقة Opt-in من المستلمين قبل إرسال رسائل تسويقية).</li>
-            <li>يُحظر استخدام أدوات الإرسال في المنصة لإرسال رسائل عشوائية غير مرغوب فيها (Spam) أو محتوى ينتهك القوانين أو حقوق الملكية الفكرية.</li>
+            <li>أنت تقر بأن لديك الصلاحية القانونية لربط وإدارة الصفحات وحسابات إنستغرام والحسابات الإعلانية وأرقام WhatsApp Business المرتبطة.</li>
+            <li>تلتزم بالامتثال الكامل لشروط منصة Meta (Meta Platform Terms)، والشروط التجارية لـ Meta، وسياسات المراسلة التجارية لـ WhatsApp.</li>
+            <li>سوف تستخدم مراسلات Messenger وInstagram فقط للرد على الأشخاص الذين تواصلوا مع صفحتك أو حسابك، ضمن نافذة المراسلة القياسية الخاصة بـ Meta، وبما يتوافق مع سياسة منصة Messenger وسياسة منصة Instagram.</li>
+            <li>إذا قمت بتفعيل الردود التلقائية (التدفقات Flows أو الذكاء الاصطناعي AI)، فيجب عليك إبلاغ العملاء بأنهم قد يتحدثون إلى مساعد آلي حيثما كان ذلك مطلوباً، وتوفير وسيلة لهم للتواصل مع موظف بشري.</li>
+            <li>أنت مسؤول عن محتوى الرسائل المرسلة من مساحة العمل الخاصة بك، بما في ذلك الردود التلقائية.</li>
+            <li>يجب الحصول على موافقة مسبقة صالحة (Opt-in) من المستلمين قبل إرسال رسائل تسويقية عبر حملات واتساب أو البريد الإلكتروني واحترام جميع طلبات إلغاء الاشتراك فوراً.</li>
           </ul>
         </CardSection>
 
@@ -1112,7 +1201,7 @@ function TermsOfServiceSection({ isAr }) {
 
       <CardSection num="02" title="Description of Service">
         <p style={{ margin: 0 }}>
-          UpKlick provides an AI-powered business operating system including website, funnel, and e-commerce store builders, CRM, email and WhatsApp outreach tools, memberships and communities, domain registration, analytics, and integrations with third-party platforms including Meta (Facebook, Instagram, WhatsApp Business, Meta Ads).
+          UpKlick provides an AI-powered business operating system including website, funnel, and e-commerce store builders, CRM, a unified Inbox for Facebook Messenger and Instagram Direct messages, email and WhatsApp outreach tools, memberships and communities, domain registration, analytics, and integrations with third-party platforms including Meta (Facebook, Instagram, WhatsApp Business, Meta Ads).
         </p>
       </CardSection>
 
@@ -1131,6 +1220,9 @@ function TermsOfServiceSection({ isAr }) {
         <ul>
           <li>You represent that you are authorized to connect and manage the respective Pages, Instagram accounts, Ad Accounts, and WhatsApp Business numbers.</li>
           <li>You agree to comply with all applicable Meta policies, including the Meta Platform Terms, Meta Commercial Terms, and the WhatsApp Business Messaging Policy.</li>
+          <li>You will use Messenger and Instagram messaging only to respond to people who contacted your Page or account, within Meta&apos;s standard messaging window, and in compliance with the Messenger Platform Policy and the Instagram Platform Policy.</li>
+          <li>If you enable automated replies (Flows or AI), you must tell customers they may be talking to an automated assistant where required, and give them a way to reach a human.</li>
+          <li>You are responsible for the content of messages sent from your workspace, including automated replies.</li>
           <li>You must obtain valid prior opt-in consent from recipients before sending marketing messages via WhatsApp or email campaigns and honor all unsubscribe/opt-out requests promptly.</li>
         </ul>
       </CardSection>
@@ -1180,6 +1272,7 @@ function DataDeletionSection({
   setDeleteNotes,
   submitting,
   confirmationCode,
+  submitError,
   onSubmit
 }) {
   const fbSteps = isAr
@@ -1187,25 +1280,25 @@ function DataDeletionSection({
         'انتقل إلى حسابك على Facebook واضغط على القائمة ثم اختر الإعدادات والخصوصية (Settings & Privacy) ← الإعدادات (Settings).',
         'من القائمة الجانبية، انتقل إلى التطبيقات ومواقع الويب (Apps and Websites) أو تكاملات الأعمال (Business Integrations).',
         'ابحث عن تطبيق UpKlick في قائمة التطبيقات النشطة واضغط على زر إزالة (Remove).',
-        'أكد عملية الإزالة، وسيقوم نظامنا تلقائياً بحذف رموز الوصول والبيانات المرتبطة عبر نقطة استدعاء الحذف الخاصة بـ Meta.'
+        'أكد عملية الإزالة. يؤدي هذا فوراً إلى إلغاء صلاحية وصول UpKlick إلى بيانات حسابك على فيسبوك وإنستغرام. ولحذف البيانات المخزنة مسبقاً داخل UpKlick، استخدم الطريقة 2 أو الطريقة 3 أدناه.'
       ]
     : [
         'Log into your Facebook account and navigate to Settings & Privacy → Settings.',
         'Select "Apps and Websites" or "Business Integrations" from the left-hand navigation menu.',
         'Find "UpKlick" in your list of connected apps and click the "Remove" button.',
-        'Confirm removal. Meta will automatically invoke our Data Deletion Callback endpoint to purge your stored tokens and integration data.'
+        "Confirm removal. This immediately revokes UpKlick's access to your Facebook and Instagram data. To also delete data already stored in UpKlick, use Method 2 or Method 3 below."
       ];
 
   const dashSteps = isAr
     ? [
         'سجّل الدخول إلى حسابك في UpKlick عبر الرابط /login.',
-        'انتقل إلى قسم الحسابات الاجتماعية (Social Accounts) أو التكاملات (Integrations) أو مركز التتبع الإعلاني (Tracking Center).',
-        'اضغط على إلغاء الربط (Disconnect) بجوار حساب Facebook أو Instagram أو WhatsApp Business ليتم مسح رموز الوصول والبيانات فوراً.'
+        'افتح الإعدادات (Settings) ← التكاملات (Integrations).',
+        'اضغط على إلغاء الربط (Disconnect) بجوار Facebook Messenger أو Instagram. يؤدي هذا فوراً إلى حذف رموز الوصول المخزنة وإيقاف استقبال الرسائل الجديدة. ويظل سجل المحادثات الحالي محفوظاً داخل مساحة العمل الخاصة بك حتى تطلب حذفه (الطريقة 3).'
       ]
     : [
         'Sign in to your UpKlick account at /login.',
-        'Open "Social Accounts", "Integrations", or "Marketing Tracking Center" from the dashboard sidebar.',
-        'Click "Disconnect" next to your connected Facebook, Instagram, WhatsApp Business, or Meta Pixel integration to immediately erase stored tokens and synced metadata.'
+        'Open Settings → Integrations.',
+        'Click Disconnect next to Facebook Messenger or Instagram. This immediately deletes the stored access tokens and stops new messages from being received. Your existing conversation history stays in your workspace until you request deletion (Method 3).'
       ];
 
   return (
@@ -1245,8 +1338,8 @@ function DataDeletionSection({
             </div>
             <div style={{ color: 'var(--t2)', fontSize: 14 }}>
               {isAr
-                ? 'تم استلام طلب حذف البيانات الخاص بك وجدولته للتنفيذ النهائي. رقم تأكيد الحذف الخاص بك هو:'
-                : 'Your data deletion request has been received and queued for permanent removal. Your confirmation code is:'}
+                ? 'تم استلام طلب حذف البيانات الخاص بك وإرسال رسالة تأكيد إلى بريدك الإلكتروني. رقم الطلب (Request ID) الخاص بك هو:'
+                : 'Your data deletion request has been received and a confirmation email has been sent. Your Request ID is:'}
             </div>
             <div
               style={{
@@ -1278,8 +1371,8 @@ function DataDeletionSection({
       >
         <p style={{ marginTop: 0, marginBottom: 14 }}>
           {isAr
-            ? 'وفقاً لمتطلبات منصة Meta، يمكنك إزالة صلاحيات وصول UpKlick وطلب حذف بياناتك المرتبطة بـ فيسبوك وإنستغرام في أي وقت باتباع الخطوات التالية:'
-            : 'In accordance with Meta Platform rules, you can revoke UpKlick permissions and trigger automatic deletion of your Meta-connected data directly from your Facebook account:'}
+            ? 'وفقاً لمتطلبات منصة Meta، يمكنك إلغاء صلاحيات وصول UpKlick من حسابك على فيسبوك في أي وقت باتباع الخطوات التالية:'
+            : 'In accordance with Meta Platform rules, you can revoke UpKlick permissions directly from your Facebook account:'}
         </p>
         <div>
           {fbSteps.map((stepText, idx) => (
@@ -1317,15 +1410,32 @@ function DataDeletionSection({
         num="03"
         title={
           isAr
-            ? 'الطريقة 3: إرسال طلب فوري لحذف البيانات بالكامل'
+            ? 'الطريقة 3: إرسال طلب مباشر لحذف البيانات'
             : 'Method 3: Submit a Direct Data Deletion Request'
         }
       >
         <p style={{ marginTop: 0 }}>
           {isAr
-            ? 'يمكنك أيضاً تعبئة النموذج أدناه لطلب حذف بيانات تكامل Meta أو حذف حسابك وجميع بياناتك من خوادم UpKlick نهائياً (يتم التنفيذ خلال 24 إلى 72 ساعة عمل بحد أقصى):'
-            : 'You can also submit a deletion request directly using the form below. Requests are processed automatically and completed within 24–72 hours:'}
+            ? 'أرسل طلب حذف البيانات باستخدام النموذج أدناه. سنقوم بالتأكيد عبر البريد الإلكتروني وإتمام عملية الحذف خلال 30 يوماً (وعادةً خلال 72 ساعة).'
+            : 'Submit a deletion request using the form below. We will confirm by email and complete the deletion within 30 days (usually within 72 hours).'}
         </p>
+
+        {submitError ? (
+          <div
+            style={{
+              background: 'rgba(255, 77, 79, 0.12)',
+              border: '1px solid rgba(255, 77, 79, 0.45)',
+              borderRadius: 14,
+              padding: '14px 18px',
+              marginBottom: 16,
+              color: '#ffb3b3',
+              fontSize: 13.5,
+              fontWeight: 600
+            }}
+          >
+            {submitError}
+          </div>
+        ) : null}
 
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
           <div>
@@ -1344,9 +1454,10 @@ function DataDeletionSection({
 
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--t1)' }}>
-              {isAr ? 'نطاق البيانات المطلوب حذفها' : 'Deletion Scope'}
+              {isAr ? 'نطاق البيانات المطلوب حذفها *' : 'Deletion Scope *'}
             </label>
             <select
+              required
               value={deleteReason}
               onChange={(e) => setDeleteReason(e.target.value)}
               className="uk-inp"
@@ -1366,7 +1477,7 @@ function DataDeletionSection({
 
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--t1)' }}>
-              {isAr ? 'ملاحظات إضافية أو معرف حساب Meta (اختياري)' : 'Additional Details or Meta User/App ID (Optional)'}
+              {isAr ? 'تفاصيل إضافية (اختياري)' : 'Details (Optional)'}
             </label>
             <textarea
               rows={3}
@@ -1374,8 +1485,8 @@ function DataDeletionSection({
               onChange={(e) => setDeleteNotes(e.target.value)}
               placeholder={
                 isAr
-                  ? 'أضف أي تفاصيل إضافية تساعدنا في تسريع طلبك...'
-                  : 'Optional: Include your Meta User ID, phone number, or workspace details...'
+                  ? 'أضف أي تفاصيل إضافية تساعدنا في تنفيذ طلبك...'
+                  : 'Optional: Include your Meta User ID, Page/Instagram handle, or workspace details...'
               }
               className="uk-inp"
               style={{ resize: 'vertical' }}
@@ -1419,7 +1530,7 @@ function DataDeletionSection({
           <Mail size={15} style={{ color: 'var(--or)' }} />
           <span>
             {isAr ? 'أو راسل فريق الخصوصية مباشرة عبر:' : 'Or email our privacy team directly at:'}{' '}
-            <a href="mailto:upklickofficial@gmail.com?subject=Data%20Deletion%20Request">
+            <a href="mailto:upklickofficial@gmail.com">
               upklickofficial@gmail.com
             </a>
           </span>
