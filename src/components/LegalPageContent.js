@@ -26,7 +26,6 @@ export const UPKLICK_CONTACT_INFO = {
   phoneHref: 'tel:+201038979275',
   whatsappHref: 'https://wa.me/201038979275',
   emailPrimary: 'upklickofficial@gmail.com',
-  emailSecondary: 'hello@upklick.io',
   addressAr: '14 شارع مكرم عبيد، مدينة نصر، القاهرة، جمهورية مصر العربية',
   addressEn: '14 Makram Ebeid St., Nasr City, Cairo, Arab Republic of Egypt',
   hoursAr: 'يومياً من 9:00 صباحاً حتى 10:00 مساءً (بتوقيت القاهرة)',
@@ -232,44 +231,53 @@ export default function LegalPageContent({ section = 'privacy' }) {
           align-items: center;
           justify-content: space-between;
           min-height: 62px;
-          gap: 16px;
-          flex-wrap: wrap;
+          gap: 10px;
+          flex-wrap: nowrap;
         }
         .uk-logo {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 60px;
-          width: 195px;
+          height: 56px;
+          width: 155px;
           overflow: hidden;
           text-decoration: none;
           flex-shrink: 0;
         }
         .uk-logo img {
-          height: 290px;
+          height: 240px;
           width: auto;
           object-fit: contain;
-          margin-top: 16px;
+          margin-top: 14px;
           display: block;
         }
         .uk-nav {
           display: flex;
           align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
+          gap: 4px;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          max-width: 100%;
+        }
+        .uk-nav::-webkit-scrollbar {
+          display: none;
         }
         .uk-nav-link {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
+          gap: 5px;
           color: var(--t2);
           text-decoration: none;
-          font-size: 13.5px;
+          font-size: 12.5px;
           font-weight: 600;
-          padding: 7px 14px;
-          border-radius: 11px;
+          padding: 6px 10px;
+          border-radius: 10px;
           border: 1px solid transparent;
           transition: all 0.2s ease;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .uk-nav-link:hover {
           color: var(--t1);
@@ -284,7 +292,8 @@ export default function LegalPageContent({ section = 'privacy' }) {
         .uk-hdr-btns {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
+          flex-shrink: 0;
         }
         .uk-btn {
           display: inline-flex;
@@ -566,10 +575,21 @@ export default function LegalPageContent({ section = 'privacy' }) {
           border-color: rgba(255, 107, 53, 0.3);
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 1040px) {
           .uk-hdr {
             top: 12px;
-            padding: 10px 16px;
+            padding: 10px 14px;
+            width: 95%;
+          }
+          .uk-hdr-inner {
+            flex-wrap: wrap;
+            min-height: 52px;
+          }
+          .uk-nav {
+            order: 3;
+            width: 100%;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
           }
           .uk-footer-top {
             grid-template-columns: 1fr 1fr;
@@ -577,6 +597,18 @@ export default function LegalPageContent({ section = 'privacy' }) {
           }
         }
         @media (max-width: 600px) {
+          .uk-logo {
+            width: 125px;
+            height: 44px;
+          }
+          .uk-logo img {
+            height: 195px;
+            margin-top: 10px;
+          }
+          .uk-hdr-btns .uk-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
           .uk-footer-top {
             grid-template-columns: 1fr;
           }
@@ -760,7 +792,6 @@ export default function LegalPageContent({ section = 'privacy' }) {
               <div className="uk-footer-col-title">{isAr ? 'تواصل معنا (مصر)' : 'Contact Us (Egypt)'}</div>
               <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">📞 {UPKLICK_CONTACT_INFO.phoneDisplay} ({UPKLICK_CONTACT_INFO.phoneLocal})</a>
               <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>✉️ {UPKLICK_CONTACT_INFO.emailPrimary}</a>
-              <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>✉️ {UPKLICK_CONTACT_INFO.emailSecondary}</a>
               <a href="/contact-us">📍 {isAr ? UPKLICK_CONTACT_INFO.addressAr : UPKLICK_CONTACT_INFO.addressEn}</a>
             </div>
 
@@ -907,7 +938,7 @@ function PrivacyPolicySection({ isAr }) {
           </p>
           <ul>
             <li><strong>رقم الهاتف داخل مصر (Mobile No inside Egypt):</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
-            <li><strong>البريد الإلكتروني (Email):</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+            <li><strong>البريد الإلكتروني (Email):</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a></li>
             <li><strong>العنوان (Address):</strong> {UPKLICK_CONTACT_INFO.addressAr}</li>
           </ul>
         </CardSection>
@@ -983,7 +1014,7 @@ function PrivacyPolicySection({ isAr }) {
         </p>
         <ul>
           <li><strong>Mobile Number (Egypt):</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref}>{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
-          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a></li>
           <li><strong>Physical Address:</strong> {UPKLICK_CONTACT_INFO.addressEn}</li>
         </ul>
       </CardSection>
@@ -1055,7 +1086,7 @@ function TermsOfServiceSection({ isAr }) {
         <CardSection num="08" title="التواصل والدعم القانوني">
           <p style={{ margin: 0 }}>
             لأي استفسارات تتعلق بشروط الخدمة، يرجى التواصل معنا عبر البريد الإلكتروني:{' '}
-            <a href="mailto:hello@upklick.io">hello@upklick.io</a>
+            <a href="mailto:upklickofficial@gmail.com">upklickofficial@gmail.com</a>
           </p>
         </CardSection>
       </>
@@ -1089,7 +1120,7 @@ function TermsOfServiceSection({ isAr }) {
         <ul>
           <li>You must provide accurate, current, and complete information during registration.</li>
           <li>You are solely responsible for safeguarding your account credentials and for all activity occurring under your account.</li>
-          <li>You must notify us immediately at <a href="mailto:hello@upklick.io">hello@upklick.io</a> of any unauthorized access or security breach.</li>
+          <li>You must notify us immediately at <a href="mailto:upklickofficial@gmail.com">upklickofficial@gmail.com</a> of any unauthorized access or security breach.</li>
         </ul>
       </CardSection>
 
@@ -1132,7 +1163,7 @@ function TermsOfServiceSection({ isAr }) {
       <CardSection num="09" title="Contact Information">
         <p style={{ margin: 0 }}>
           Questions about these Terms of Service should be sent to:{' '}
-          <a href="mailto:hello@upklick.io">hello@upklick.io</a>
+          <a href="mailto:upklickofficial@gmail.com">upklickofficial@gmail.com</a>
         </p>
       </CardSection>
     </>
@@ -1388,8 +1419,8 @@ function DataDeletionSection({
           <Mail size={15} style={{ color: 'var(--or)' }} />
           <span>
             {isAr ? 'أو راسل فريق الخصوصية مباشرة عبر:' : 'Or email our privacy team directly at:'}{' '}
-            <a href="mailto:hello@upklick.io?subject=Data%20Deletion%20Request">
-              hello@upklick.io
+            <a href="mailto:upklickofficial@gmail.com?subject=Data%20Deletion%20Request">
+              upklickofficial@gmail.com
             </a>
           </span>
         </div>
@@ -1457,7 +1488,7 @@ function RefundPolicySection({ isAr }) {
           </p>
           <ul>
             <li><strong>رقم الموبايل داخل مصر:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
-            <li><strong>البريد الإلكتروني:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+            <li><strong>البريد الإلكتروني:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a></li>
             <li><strong>العنوان:</strong> {UPKLICK_CONTACT_INFO.addressAr}</li>
           </ul>
         </CardSection>
@@ -1521,7 +1552,7 @@ function RefundPolicySection({ isAr }) {
         </p>
         <ul>
           <li><strong>Mobile No. inside Egypt:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref}>{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
-          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a></li>
           <li><strong>Physical Address:</strong> {UPKLICK_CONTACT_INFO.addressEn}</li>
         </ul>
       </CardSection>
@@ -1578,7 +1609,7 @@ function ShippingPolicySection({ isAr }) {
           </p>
           <ul>
             <li><strong>رقم الموبايل داخل مصر:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
-            <li><strong>البريد الإلكتروني:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+            <li><strong>البريد الإلكتروني:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a></li>
             <li><strong>العنوان:</strong> {UPKLICK_CONTACT_INFO.addressAr}</li>
           </ul>
         </CardSection>
@@ -1633,7 +1664,7 @@ function ShippingPolicySection({ isAr }) {
         </p>
         <ul>
           <li><strong>Mobile No. inside Egypt:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref}>{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
-          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a></li>
           <li><strong>Physical Address:</strong> {UPKLICK_CONTACT_INFO.addressEn}</li>
         </ul>
       </CardSection>
@@ -1718,10 +1749,7 @@ function ContactUsSection({ isAr }) {
             </div>
           </div>
           <div style={{ fontSize: 13.5, color: 'var(--t2)' }}>
-            {isAr ? 'بريد إضافي للدعم:' : 'Secondary Email:'}{' '}
-            <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`} style={{ color: 'var(--or)' }}>
-              {UPKLICK_CONTACT_INFO.emailSecondary}
-            </a>
+            {isAr ? 'متاح لاستقبال جميع استفسارات العملاء والدعم الفني' : 'Official customer & technical support email'}
           </div>
         </div>
 
