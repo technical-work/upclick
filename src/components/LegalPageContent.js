@@ -231,44 +231,53 @@ export default function LegalPageContent({ section = 'privacy' }) {
           align-items: center;
           justify-content: space-between;
           min-height: 62px;
-          gap: 16px;
-          flex-wrap: wrap;
+          gap: 10px;
+          flex-wrap: nowrap;
         }
         .uk-logo {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 60px;
-          width: 195px;
+          height: 56px;
+          width: 155px;
           overflow: hidden;
           text-decoration: none;
           flex-shrink: 0;
         }
         .uk-logo img {
-          height: 290px;
+          height: 240px;
           width: auto;
           object-fit: contain;
-          margin-top: 16px;
+          margin-top: 14px;
           display: block;
         }
         .uk-nav {
           display: flex;
           align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
+          gap: 4px;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          max-width: 100%;
+        }
+        .uk-nav::-webkit-scrollbar {
+          display: none;
         }
         .uk-nav-link {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
+          gap: 5px;
           color: var(--t2);
           text-decoration: none;
-          font-size: 13.5px;
+          font-size: 12.5px;
           font-weight: 600;
-          padding: 7px 14px;
-          border-radius: 11px;
+          padding: 6px 10px;
+          border-radius: 10px;
           border: 1px solid transparent;
           transition: all 0.2s ease;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .uk-nav-link:hover {
           color: var(--t1);
@@ -283,7 +292,8 @@ export default function LegalPageContent({ section = 'privacy' }) {
         .uk-hdr-btns {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
+          flex-shrink: 0;
         }
         .uk-btn {
           display: inline-flex;
@@ -565,10 +575,21 @@ export default function LegalPageContent({ section = 'privacy' }) {
           border-color: rgba(255, 107, 53, 0.3);
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 1040px) {
           .uk-hdr {
             top: 12px;
-            padding: 10px 16px;
+            padding: 10px 14px;
+            width: 95%;
+          }
+          .uk-hdr-inner {
+            flex-wrap: wrap;
+            min-height: 52px;
+          }
+          .uk-nav {
+            order: 3;
+            width: 100%;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
           }
           .uk-footer-top {
             grid-template-columns: 1fr 1fr;
@@ -576,6 +597,18 @@ export default function LegalPageContent({ section = 'privacy' }) {
           }
         }
         @media (max-width: 600px) {
+          .uk-logo {
+            width: 125px;
+            height: 44px;
+          }
+          .uk-logo img {
+            height: 195px;
+            margin-top: 10px;
+          }
+          .uk-hdr-btns .uk-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
           .uk-footer-top {
             grid-template-columns: 1fr;
           }
