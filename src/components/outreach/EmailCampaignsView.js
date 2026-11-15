@@ -583,6 +583,54 @@ export default function EmailCampaignsView({ isRTL, users = [] }) {
 
       </div>
 
+      {/* Admin-Only: Registered AWS SES Domains & Identities (EU-NORTH-1) */}
+      {Array.isArray(status?.awsIdentities) && status.awsIdentities.length > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: '14px 18px',
+            marginBottom: '20px',
+            background: 'rgba(16, 185, 129, 0.04)',
+            border: '1px solid rgba(16, 185, 129, 0.2)'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={16} style={{ color: '#10b981' }} />
+              <span>{t('النطاقات والإيميلات المسجلة في AWS SES (للأدمن فقط - EU-NORTH-1)', 'Registered AWS SES Domains & Identities (Admin Only - EU-NORTH-1)')}</span>
+            </div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={loadCore} style={{ fontSize: '11px', padding: '4px 10px' }}>
+              <RefreshCw size={12} />
+              <span>{t('تحديث من AWS', 'Refresh AWS')}</span>
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {status.awsIdentities.map((item) => (
+              <div
+                key={item.name}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  background: item.verified ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                  border: `1px solid ${item.verified ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
+                  fontSize: '12px',
+                  direction: 'ltr'
+                }}
+              >
+                <span>{item.type === 'EMAIL_ADDRESS' ? '📧' : '🌐'}</span>
+                <strong style={{ color: 'var(--text)' }}>{item.name}</strong>
+                <span style={{ fontSize: '10.5px', fontWeight: 800, color: item.verified ? '#10b981' : '#f59e0b' }}>
+                  {item.verified ? '✓ Verified' : `⏳ ${item.status}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="outreach-banner err" style={{ marginBottom: '16px' }}>
           <AlertTriangle size={16} style={{ flexShrink: 0 }} />

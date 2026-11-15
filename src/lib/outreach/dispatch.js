@@ -67,7 +67,10 @@ export async function sendToRecipient({ campaign, user, userId, isTest = false }
     unsubscribeUrl: unsub,
     actionUrl: campaign.actionUrl || null,
     actionText: campaign.actionText || null,
-    campaignId: campaign.id
+    campaignId: campaign.id,
+    fromName: campaign.fromName || undefined,
+    fromEmail: campaign.fromEmail || undefined,
+    replyTo: campaign.replyTo || undefined
   });
 
   if (!result.success) {

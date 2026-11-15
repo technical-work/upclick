@@ -28,9 +28,37 @@ export class SESProvider {
   }
 
   /**
+   * Resolve the dynamic "From" header for multi-tenant sending.
+   * - If customFromEmail is verified and provided: `"Sender Name" <custom@domain.com>`
+   * - If only fromName is provided (Instant Mode): `"Sender Name" <noreply@upklick.net>`
+   * - Otherwise falls back to default `this.fromEmail`.
+   */
+  resolveFromHeader({ from, fromName, fromEmail } = {}) {
+    if (from) return from;
+
+    // Extract default email address from `UpKlick <noreply@upklick.net>` or `noreply@upklick.net`
+    const match = String(this.fromEmail || '').match(/<([^>]+)>/);
+    const defaultEmailAddress = match ? match[1].trim() : String(this.fromEmail || 'noreply@upklick.net').trim();
+
+    const cleanName = String(fromName || '').replace(/["<>]/g, '').trim();
+    const cleanEmail = String(fromEmail || '').replace(/["<>\s]/g, '').trim();
+
+    if (cleanName && cleanEmail) {
+      return `"${cleanName}" <${cleanEmail}>`;
+    }
+    if (cleanName) {
+      return `"${cleanName}" <${defaultEmailAddress}>`;
+    }
+    if (cleanEmail) {
+      return cleanEmail;
+    }
+    return this.fromEmail;
+  }
+
+  /**
    * Send an email using Amazon SES SMTP
    */
-  async sendEmail({ to, subject, html, text, headers, tags }) {
+  async sendEmail({ to, subject, html, text, headers, tags, from, fromName, fromEmail, replyTo }) {
     if (!this.transporter) {
       console.warn('[SESProvider] SMTP credentials (SMTP_USER / SMTP_PASSWORD) are not configured.');
       return {
@@ -41,13 +69,15 @@ export class SESProvider {
     }
 
     const recipients = Array.isArray(to) ? to.join(', ') : to;
+    const resolvedFrom = this.resolveFromHeader({ from, fromName, fromEmail });
 
     const mailOptions = {
-      from: this.fromEmail,
+      from: resolvedFrom,
       to: recipients,
       subject: subject,
       html: html,
       ...(text ? { text } : {}),
+      ...(replyTo ? { replyTo: String(replyTo).trim() } : {}),
       headers: { ...(headers || {}) }
     };
 
@@ -72,14 +102,18 @@ export class SESProvider {
   /**
    * Production campaign send: one recipient
    */
-  async sendCampaignEmail({ to, subject, html, text, headers, tags }) {
+  async sendCampaignEmail({ to, subject, html, text, headers, tags, from, fromName, fromEmail, replyTo }) {
     return this.sendEmail({
       to,
       subject,
       html,
       text,
       headers,
-      tags
+      tags,
+      from,
+      fromName,
+      fromEmail,
+      replyTo
     });
   }
 }

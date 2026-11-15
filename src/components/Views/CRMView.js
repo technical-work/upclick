@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
 import { callClaudeAPI } from '../../utils/ai';
 import { parseMarkdown } from '../../utils/markdown';
+import CustomerEmailHub from '../email/CustomerEmailHub';
 
 const filterByDateRange = (itemDate, rangeType, customStart, customEnd) => {
   if (!itemDate) return rangeType === 'all';
@@ -147,6 +148,7 @@ export default function CRMView() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState(null);
+  const [emailTargetLead, setEmailTargetLead] = useState(null);
 
   const defaultWorkspace = {
     id: 'default',
@@ -428,6 +430,12 @@ export default function CRMView() {
         >
           {L('Follow-ups', 'المتابعات')}
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'email' ? 'on' : ''}`}
+          onClick={() => setActiveTab('email')}
+        >
+          📧 {L('Email Campaigns', 'حملات البريد')}
+        </button>
       </div>
 
       {/* Sub View Panels */}
@@ -489,8 +497,21 @@ export default function CRMView() {
                           </div>
                         )}
 
-                        {/* Edit / Delete actions top-right absolute or inline */}
+                        {/* Edit / Email / Delete actions top-right absolute or inline */}
                         <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                          {lead.email && (
+                            <button
+                              className="btn btn-ghost"
+                              style={{ fontSize: '10px', padding: '3px 8px', flex: 1, color: 'var(--orange)', borderColor: 'rgba(255, 107, 53, 0.35)' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEmailTargetLead(lead);
+                                setActiveTab('email');
+                              }}
+                            >
+                              ✉️ {L('Email', 'إيميل')}
+                            </button>
+                          )}
                           <button
                             className="btn btn-ghost"
                             style={{ fontSize: '10px', padding: '3px 8px', flex: 1 }}
@@ -618,6 +639,18 @@ export default function CRMView() {
                         </div>
                       )}
 
+                      {l.email && (
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--orange)', borderColor: 'rgba(255, 107, 53, 0.35)' }}
+                          onClick={() => {
+                            setEmailTargetLead(l);
+                            setActiveTab('email');
+                          }}
+                        >
+                          ✉️ {L('Send Email', 'إرسال بريد')}
+                        </button>
+                      )}
                       <button
                         className="btn btn-ghost"
                         style={{ padding: '3px 8px', fontSize: '11px' }}
@@ -726,6 +759,15 @@ export default function CRMView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 4. EMAIL CAMPAIGNS TAB */}
+      {activeTab === 'email' && (
+        <CustomerEmailHub
+          defaultView="campaigns"
+          preselectedLead={emailTargetLead}
+          onClearPreselectedLead={() => setEmailTargetLead(null)}
+        />
       )}
 
       {/* New Workspace Modal */}

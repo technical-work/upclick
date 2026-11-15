@@ -9,11 +9,29 @@ import {
   CheckCircle2,
   Globe,
   Mail,
-  Lock
+  Lock,
+  RotateCcw,
+  Truck,
+  Phone,
+  MapPin,
+  CreditCard
 } from 'lucide-react';
 
 const EFFECTIVE_DATE_EN = 'November 1, 2026';
 const EFFECTIVE_DATE_AR = '1 نوفمبر 2026';
+
+export const UPKLICK_CONTACT_INFO = {
+  phoneDisplay: '+20 103 897 9275',
+  phoneLocal: '01038979275',
+  phoneHref: 'tel:+201038979275',
+  whatsappHref: 'https://wa.me/201038979275',
+  emailPrimary: 'upklickofficial@gmail.com',
+  emailSecondary: 'hello@upklick.io',
+  addressAr: '14 شارع مكرم عبيد، مدينة نصر، القاهرة، جمهورية مصر العربية',
+  addressEn: '14 Makram Ebeid St., Nasr City, Cairo, Arab Republic of Egypt',
+  hoursAr: 'يومياً من 9:00 صباحاً حتى 10:00 مساءً (بتوقيت القاهرة)',
+  hoursEn: 'Daily from 9:00 AM to 10:00 PM (Cairo Time, GMT+2)'
+};
 
 export default function LegalPageContent({ section = 'privacy' }) {
   const searchParams = useSearchParams();
@@ -70,17 +88,38 @@ export default function LegalPageContent({ section = 'privacy' }) {
   const navItems = [
     {
       id: 'privacy',
-      href: '/Privacy-policy',
+      href: '/privacy-policy',
       labelEn: 'Privacy Policy',
       labelAr: 'سياسة الخصوصية',
       icon: Shield
     },
     {
       id: 'terms',
-      href: '/Terms-of-Service',
+      href: '/terms-of-service',
       labelEn: 'Terms of Service',
       labelAr: 'شروط الخدمة',
       icon: FileText
+    },
+    {
+      id: 'refund',
+      href: '/refund-policy',
+      labelEn: 'Refund Policy',
+      labelAr: 'سياسة الاسترجاع',
+      icon: RotateCcw
+    },
+    {
+      id: 'shipping',
+      href: '/shipping-policy',
+      labelEn: 'Shipping Policy',
+      labelAr: 'سياسة الشحن والتسليم',
+      icon: Truck
+    },
+    {
+      id: 'contact',
+      href: '/contact-us',
+      labelEn: 'Contact Us',
+      labelAr: 'تواصل معنا',
+      icon: Phone
     },
     {
       id: 'deletion',
@@ -609,6 +648,9 @@ export default function LegalPageContent({ section = 'privacy' }) {
       >
         {section === 'privacy' && <PrivacyPolicySection isAr={isAr} />}
         {section === 'terms' && <TermsOfServiceSection isAr={isAr} />}
+        {section === 'refund' && <RefundPolicySection isAr={isAr} />}
+        {section === 'shipping' && <ShippingPolicySection isAr={isAr} />}
+        {section === 'contact' && <ContactUsSection isAr={isAr} />}
         {section === 'deletion' && (
           <DataDeletionSection
             isAr={isAr}
@@ -708,25 +750,28 @@ export default function LegalPageContent({ section = 'privacy' }) {
             <div className="uk-footer-col">
               <div className="uk-footer-col-title">{isAr ? 'المنتج' : 'Product'}</div>
               <a href="/#tools">{isAr ? 'جميع الأدوات' : 'All Tools'}</a>
-              <a href="/#pricing">{isAr ? 'الأسعار' : 'Pricing'}</a>
-              <a href="/#roadmap">{isAr ? 'خارطة الطريق' : 'Roadmap'}</a>
+              <a href="/#pricing">{isAr ? 'الأسعار والخطط' : 'Pricing & Plans'}</a>
+              <a href="/checkout">{isAr ? 'صفحة الدفع والاشتراك' : 'Checkout Page'}</a>
               <a href="/login">{isAr ? 'تسجيل الدخول' : 'Login'}</a>
               <a href="/register?cta=start_free">{isAr ? 'حساب مجاني' : 'Sign Up Free'}</a>
             </div>
 
             <div className="uk-footer-col">
-              <div className="uk-footer-col-title">{isAr ? 'المصادر' : 'Resources'}</div>
-              <a href="/#faq">{isAr ? 'الأسئلة الشائعة' : 'FAQ'}</a>
-              <a href="/#social-community">{isAr ? 'مجتمع UpKlick' : 'Community'}</a>
-              <a href="mailto:hello@upklick.io">{isAr ? 'مركز المساعدة' : 'Help Center'}</a>
+              <div className="uk-footer-col-title">{isAr ? 'تواصل معنا (مصر)' : 'Contact Us (Egypt)'}</div>
+              <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">📞 {UPKLICK_CONTACT_INFO.phoneDisplay} ({UPKLICK_CONTACT_INFO.phoneLocal})</a>
+              <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>✉️ {UPKLICK_CONTACT_INFO.emailPrimary}</a>
+              <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>✉️ {UPKLICK_CONTACT_INFO.emailSecondary}</a>
+              <a href="/contact-us">📍 {isAr ? UPKLICK_CONTACT_INFO.addressAr : UPKLICK_CONTACT_INFO.addressEn}</a>
             </div>
 
             <div className="uk-footer-col">
-              <div className="uk-footer-col-title">{isAr ? 'الشركة والقانونية' : 'Legal & Company'}</div>
-              <a href="/Privacy-policy">{isAr ? 'سياسة الخصوصية' : 'Privacy Policy'}</a>
-              <a href="/Terms-of-Service">{isAr ? 'شروط الخدمة' : 'Terms of Service'}</a>
-              <a href="/data-deletion">{isAr ? 'حذف البيانات' : 'Data Deletion'}</a>
-              <a href="mailto:hello@upklick.io">hello@upklick.io</a>
+              <div className="uk-footer-col-title">{isAr ? 'السياسات والقانونية' : 'Policies & Legal'}</div>
+              <a href="/privacy-policy">{isAr ? 'سياسة الخصوصية (Privacy Policy)' : 'Privacy Policy'}</a>
+              <a href="/refund-policy">{isAr ? 'سياسة الاسترجاع والإلغاء (Refund Policy)' : 'Refund & Cancellation Policy'}</a>
+              <a href="/shipping-policy">{isAr ? 'سياسة الشحن والتسليم (Shipping Policy)' : 'Shipping & Delivery Policy'}</a>
+              <a href="/terms-of-service">{isAr ? 'شروط الخدمة (Terms of Service)' : 'Terms of Service'}</a>
+              <a href="/contact-us">{isAr ? 'تواصل معنا (Contact Us)' : 'Contact Us'}</a>
+              <a href="/data-deletion">{isAr ? 'حذف البيانات (Data Deletion)' : 'Data Deletion'}</a>
             </div>
           </div>
 
@@ -856,11 +901,15 @@ function PrivacyPolicySection({ isAr }) {
           </p>
         </CardSection>
 
-        <CardSection num="07" title="التواصل معنا">
-          <p style={{ margin: 0 }}>
-            إذا كانت لديك أي استفسارات حول سياسة الخصوصية أو ممارسات حماية البيانات لدينا، يمكنك التواصل مع فريق الخصوصية عبر البريد الإلكتروني:{' '}
-            <a href="mailto:hello@upklick.io">hello@upklick.io</a>
+        <CardSection num="07" title="التواصل معنا (Contact Us)">
+          <p style={{ marginTop: 0 }}>
+            إذا كانت لديك أي استفسارات حول سياسة الخصوصية أو ممارسات حماية البيانات لدينا، يمكنك التواصل معنا مباشرة:
           </p>
+          <ul>
+            <li><strong>رقم الهاتف داخل مصر (Mobile No inside Egypt):</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
+            <li><strong>البريد الإلكتروني (Email):</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+            <li><strong>العنوان (Address):</strong> {UPKLICK_CONTACT_INFO.addressAr}</li>
+          </ul>
         </CardSection>
       </>
     );
@@ -929,10 +978,14 @@ function PrivacyPolicySection({ isAr }) {
       </CardSection>
 
       <CardSection num="07" title="Contact Us">
-        <p style={{ margin: 0 }}>
-          For any questions, privacy requests, or Data Protection Officer inquiries regarding this Privacy Policy, please contact us at:{' '}
-          <a href="mailto:hello@upklick.io">hello@upklick.io</a>
+        <p style={{ marginTop: 0 }}>
+          For any questions, privacy requests, or Data Protection Officer inquiries regarding this Privacy Policy, please contact us at:
         </p>
+        <ul>
+          <li><strong>Mobile Number (Egypt):</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref}>{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
+          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+          <li><strong>Physical Address:</strong> {UPKLICK_CONTACT_INFO.addressEn}</li>
+        </ul>
       </CardSection>
     </>
   );
@@ -1340,6 +1393,459 @@ function DataDeletionSection({
             </a>
           </span>
         </div>
+      </CardSection>
+    </>
+  );
+}
+
+function RefundPolicySection({ isAr }) {
+  if (isAr) {
+    return (
+      <>
+        <PageHero
+          badge="سياسة الاسترجاع والإلغاء · REFUND & CANCELLATION POLICY"
+          titleMain="سياسة الاسترجاع"
+          titleGradient="والإلغاء"
+          subtitle="سياسة الاسترداد وإلغاء الاشتراكات الخاصة بالخدمات الرقمية والاشتراكات السحابية على منصة UpKlick"
+          isAr
+        />
+
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.16), rgba(108, 53, 255, 0.16))',
+            border: '1px solid rgba(255, 107, 53, 0.45)',
+            borderRadius: 20,
+            padding: '22px 26px',
+            marginBottom: 24
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: 18, color: '#ffffff', marginBottom: 6 }}>
+            بيان سياسة الاسترجاع الرسمي (Official Refund Policy Statement):
+          </div>
+          <div style={{ color: 'var(--t1)', fontSize: 15.5, fontWeight: 700 }}>
+            لا يوجد استرداد نقدي للمبالغ المدفوعة بعد تفعيل الاشتراك الرقمي — &ldquo;There is no refund&rdquo;.
+          </div>
+        </div>
+
+        <CardSection num="01" title="سياسة عدم الاسترداد (No Refund Policy — There is no refund)">
+          <p style={{ marginTop: 0 }}>
+            نظراً لأن <strong>UpKlick</strong> تقدم خدمات برمجية سحابية رقمية فورية (SaaS)، وأدوات ذكاء اصطناعي، وأرصدة رسائل وتسويق إلكتروني يتم تفعيلها وإتاحتها للمشترك فور إتمام عملية الدفع، فإن السياسة المعتمدة للمنصة هي: <strong>لا يوجد استرداد (There is no refund)</strong> لأي رسوم اشتراك شهري أو سنوي أو أرصدة إضافية بعد إتمام الدفع وتفعيل الخدمة.
+          </p>
+          <ul>
+            <li><strong>There is no refund:</strong> جميع المدفوعات النهائية غير قابلة للاسترداد النقدي الكلي أو الجزئي بمجرد تفعيل الحساب أو الباقة.</li>
+            <li>ننصح جميع المستخدمين بالاستفادة من الباقة التجريبية أو مراجعة تفاصيل ومميزات كل باقة (Starter بـ 299 ج.م، Growth بـ 499 ج.م، Pro بـ 799 ج.م) قبل إتمام عملية الدفع عبر صفحة الدفع (<a href="/checkout">/checkout</a>).</li>
+          </ul>
+        </CardSection>
+
+        <CardSection num="02" title="سياسة إلغاء الاشتراك (Cancellation Policy)">
+          <ul>
+            <li><strong>حرية الإلغاء في أي وقت:</strong> يحق للمشترك إلغاء التجديد التلقائي لاشتراكه في أي وقت من خلال لوحة التحكم (إعدادات الفوترة والاشتراك) أو بالتواصل مع فريق الدعم قبل موعد التجديد القادم.</li>
+            <li><strong>استمرار الخدمة حتى نهاية الفترة المدفوعة:</strong> عند طلب إلغاء الاشتراك، سيظل حسابك نشطاً وتتمتع بكامل صلاحيات الباقة حتى نهاية دورة الفوترة الحالية المدفوعة بالكامل، ولن يتم خصم أي مبالغ مستقبلية.</li>
+            <li><strong>شراء النطاقات (Custom Domains):</strong> رسوم حجز النطاقات الخاصة غير قابلة للإلغاء أو الاسترداد بعد تسجيل النطاق رسمياً باسم العميل لدى مسجل النطاقات الدولي.</li>
+          </ul>
+        </CardSection>
+
+        <CardSection num="03" title="الأخطاء التقنية أو الخصم المكرر">
+          <p style={{ margin: 0 }}>
+            في حالة حدوث خطأ تقني ناتج عن بوابة الدفع أدى إلى خصم نفس قيمة الاشتراك مرتين عن طريق الخطأ (Duplicate Charge)، يرجى التواصل مع خدمة العملاء خلال 48 ساعة من العملية مرفقاً بإيصال المعاملة لمراجعتها ومعالجة العملية المكررة.
+          </p>
+        </CardSection>
+
+        <CardSection num="04" title="التواصل مع قسم الفوترة والدعم (Contact Us)">
+          <p style={{ marginTop: 0 }}>
+            لأي استفسار يخص الفوترة أو طلبات إلغاء التجديد التلقائي، تواصل معنا عبر البيانات الرسمية التالية داخل جمهورية مصر العربية:
+          </p>
+          <ul>
+            <li><strong>رقم الموبايل داخل مصر:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
+            <li><strong>البريد الإلكتروني:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+            <li><strong>العنوان:</strong> {UPKLICK_CONTACT_INFO.addressAr}</li>
+          </ul>
+        </CardSection>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHero
+        badge="REFUND & CANCELLATION POLICY"
+        titleMain="Refund &"
+        titleGradient="Cancellation Policy"
+        subtitle="Official refund and subscription cancellation terms for UpKlick digital SaaS plans and services"
+        isAr={false}
+      />
+
+      <div
+        style={{
+          background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.16), rgba(108, 53, 255, 0.16))',
+          border: '1px solid rgba(255, 107, 53, 0.45)',
+          borderRadius: 20,
+          padding: '22px 26px',
+          marginBottom: 24
+        }}
+      >
+        <div style={{ fontWeight: 800, fontSize: 18, color: '#ffffff', marginBottom: 6 }}>
+          Official Refund Policy Statement:
+        </div>
+        <div style={{ color: 'var(--t1)', fontSize: 16, fontWeight: 800 }}>
+          There is no refund. All digital subscription fees and digital service purchases are final and non-refundable once activated.
+        </div>
+      </div>
+
+      <CardSection num="01" title="Refund Policy — There is no refund">
+        <p style={{ marginTop: 0 }}>
+          <strong>There is no refund.</strong> Because <strong>UpKlick</strong> provides instant-access digital cloud software (SaaS), AI automation tools, funnel/store builders, and digital credits that are provisioned immediately upon payment confirmation, all sales are final and <strong>there is no refund</strong> (neither full nor partial) once a subscription or digital plan is activated.
+        </p>
+        <ul>
+          <li><strong>No Refunds on Subscriptions:</strong> Monthly and annual subscription plans (Starter Plan at 299 EGP, Growth Plan at 499 EGP, Pro Plan at 799 EGP) are non-refundable after payment processing.</li>
+          <li><strong>No Refunds on Digital Add-ons & Domains:</strong> AI credits, messaging credits, and custom domain registrations cannot be refunded once provisioned.</li>
+        </ul>
+      </CardSection>
+
+      <CardSection num="02" title="Subscription Cancellation Policy">
+        <ul>
+          <li><strong>Cancel Anytime:</strong> You may cancel your recurring subscription renewal at any time directly from your UpKlick Dashboard under Billing Settings or by contacting our support team prior to your next billing date.</li>
+          <li><strong>Access Until End of Billing Cycle:</strong> Upon cancellation, your account will remain active with full access to your paid plan features until the end of your current paid billing period, and no further recurring charges will be made.</li>
+        </ul>
+      </CardSection>
+
+      <CardSection num="03" title="Duplicate Charges & Billing Support">
+        <p style={{ margin: 0 }}>
+          In the event of an accidental duplicate transaction caused by a technical payment gateway error, please contact our support team within 48 hours with your transaction reference so we can verify and resolve the duplicate charge.
+        </p>
+      </CardSection>
+
+      <CardSection num="04" title="Contact Us (Billing & Customer Support)">
+        <p style={{ marginTop: 0 }}>
+          For any billing questions or cancellation assistance, please reach out to us via our official Egypt contact channels:
+        </p>
+        <ul>
+          <li><strong>Mobile No. inside Egypt:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref}>{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
+          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+          <li><strong>Physical Address:</strong> {UPKLICK_CONTACT_INFO.addressEn}</li>
+        </ul>
+      </CardSection>
+    </>
+  );
+}
+
+function ShippingPolicySection({ isAr }) {
+  if (isAr) {
+    return (
+      <>
+        <PageHero
+          badge="سياسة الشحن والتسليم · SHIPPING & DELIVERY POLICY"
+          titleMain="سياسة الشحن"
+          titleGradient="والتسليم"
+          subtitle="توضيح طبيعة التسليم الرقمي الفوري لخدمات واشتراكات منصة UpKlick السحابية"
+          isAr
+        />
+
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(0, 217, 139, 0.14), rgba(108, 53, 255, 0.16))',
+            border: '1px solid rgba(0, 217, 139, 0.45)',
+            borderRadius: 20,
+            padding: '22px 26px',
+            marginBottom: 24
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: 18, color: '#ffffff', marginBottom: 6 }}>
+            بيان سياسة الشحن الرسمي (Official Shipping Policy Statement):
+          </div>
+          <div style={{ color: 'var(--t1)', fontSize: 15.5, fontWeight: 700 }}>
+            لا يوجد شحن مادي للمنتجات — &ldquo;There is no shipping&rdquo; (جميع خدماتنا ومنتجاتنا رقمية سحابية 100% يتم تفعيلها وتسليمها إلكترونياً بشكل فوري).
+          </div>
+        </div>
+
+        <CardSection num="01" title="سياسة الشحن (Shipping Policy — There is no shipping)">
+          <p style={{ marginTop: 0 }}>
+            <strong>There is no shipping (لا يوجد شحن مادي).</strong> منصة <strong>UpKlick</strong> هي منصة برمجيات سحابية كخدمة (Cloud SaaS Platform) تقدم أدوات رقمية لرواد الأعمال والشركات (بناء المواقع والفانلز والمتاجر، إدارة علاقات العملاء CRM، أدوات الذكاء الاصطناعي، وأدوات التسويق الرقمي). نحن لا نبيع أو نشحن أي سلع مادية ملموسة، وبالتالي <strong>لا يوجد شحن (There is no shipping)</strong> ولا توجد أي رسوم شحن أو شركات توصيل.
+          </p>
+        </CardSection>
+
+        <CardSection num="02" title="آلية التسليم الرقمي الفوري (Instant Digital Delivery)">
+          <ul>
+            <li><strong>التفعيل الفوري (Instant Activation):</strong> فور إتمام عملية الدفع الإلكتروني بنجاح عبر بوابة الدفع (Paymob / البطاقات البنكية / المحافظ الإلكترونية)، يتم تفعيل الباقة المشترك بها (Starter / Growth / Pro) تلقائياً وفوراً على حساب العميل في نفس اللحظة.</li>
+            <li><strong>إشعار التأكيد:</strong> يتلقى العميل رسالة تأكيد إلكترونية على البريد الإلكتروني المسجل تتضمن تفاصيل الباقة المفعلة وإيصال الدفع الرقمي.</li>
+            <li><strong>كيفية الوصول للخدمة:</strong> يمكن للعميل الدخول مباشرة إلى لوحة التحكم عبر الرابط <a href="/dashboard">https://www.upklick.net/dashboard</a> واستخدام كافة الأدوات والميزات المشمولة في باقته على مدار الساعة.</li>
+          </ul>
+        </CardSection>
+
+        <CardSection num="03" title="التأخر في التفعيل والدعم الفني (Contact Us)">
+          <p style={{ marginTop: 0 }}>
+            في حال واجهت أي تأخر غير معتاد في ظهور تفعيل الباقة بعد الدفع، يرجى التواصل الفوري مع فريق الدعم الفني لدينا لتفعيلها فوراً:
+          </p>
+          <ul>
+            <li><strong>رقم الموبايل داخل مصر:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref} dir="ltr">{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
+            <li><strong>البريد الإلكتروني:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+            <li><strong>العنوان:</strong> {UPKLICK_CONTACT_INFO.addressAr}</li>
+          </ul>
+        </CardSection>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageHero
+        badge="SHIPPING & DELIVERY POLICY"
+        titleMain="Shipping &"
+        titleGradient="Delivery Policy"
+        subtitle="Official delivery and fulfillment policy for UpKlick cloud software subscriptions and digital services"
+        isAr={false}
+      />
+
+      <div
+        style={{
+          background: 'linear-gradient(135deg, rgba(0, 217, 139, 0.14), rgba(108, 53, 255, 0.16))',
+          border: '1px solid rgba(0, 217, 139, 0.45)',
+          borderRadius: 20,
+          padding: '22px 26px',
+          marginBottom: 24
+        }}
+      >
+        <div style={{ fontWeight: 800, fontSize: 18, color: '#ffffff', marginBottom: 6 }}>
+          Official Shipping Policy Statement:
+        </div>
+        <div style={{ color: 'var(--t1)', fontSize: 16, fontWeight: 800 }}>
+          There is no shipping. UpKlick is a 100% digital cloud SaaS platform with instant online service delivery.
+        </div>
+      </div>
+
+      <CardSection num="01" title="Shipping Policy — There is no shipping">
+        <p style={{ marginTop: 0 }}>
+          <strong>There is no shipping.</strong> <strong>UpKlick</strong> provides cloud-based software-as-a-service (SaaS) subscriptions, AI business tools, website/funnel builders, CRM software, and digital marketing tools. We do not sell or ship physical goods of any kind. Accordingly, <strong>there is no shipping</strong>, no physical courier dispatch, and zero shipping fees.
+        </p>
+      </CardSection>
+
+      <CardSection num="02" title="Digital Service Delivery & Provisioning Timeframe">
+        <ul>
+          <li><strong>Instant Online Delivery:</strong> All subscription plans (Starter Plan, Growth Plan, and Pro Plan) and digital features are delivered electronically and activated <strong>immediately</strong> upon successful payment confirmation.</li>
+          <li><strong>Confirmation Receipt:</strong> Once your payment is processed on our <a href="/checkout">Checkout Page (/checkout)</a>, your account permissions are upgraded automatically and a confirmation email is sent to your registered email address.</li>
+          <li><strong>24/7 Cloud Access:</strong> You can access your activated software tools immediately by signing into your dashboard at <a href="/dashboard">https://www.upklick.net/dashboard</a>.</li>
+        </ul>
+      </CardSection>
+
+      <CardSection num="03" title="Contact Us for Delivery or Activation Support">
+        <p style={{ marginTop: 0 }}>
+          If your digital subscription does not appear active within a few minutes of payment, please contact our support team immediately:
+        </p>
+        <ul>
+          <li><strong>Mobile No. inside Egypt:</strong> <a href={UPKLICK_CONTACT_INFO.phoneHref}>{UPKLICK_CONTACT_INFO.phoneDisplay}</a> ({UPKLICK_CONTACT_INFO.phoneLocal})</li>
+          <li><strong>Email Address:</strong> <a href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}>{UPKLICK_CONTACT_INFO.emailPrimary}</a> / <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`}>{UPKLICK_CONTACT_INFO.emailSecondary}</a></li>
+          <li><strong>Physical Address:</strong> {UPKLICK_CONTACT_INFO.addressEn}</li>
+        </ul>
+      </CardSection>
+    </>
+  );
+}
+
+function ContactUsSection({ isAr }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const handleContactSubmit = (e) => {
+    e.preventDefault();
+    setSent(true);
+  };
+
+  return (
+    <>
+      <PageHero
+        badge={isAr ? 'تواصل معنا · خدمة العملاء والدعم الفني' : 'CONTACT US · CUSTOMER SUPPORT'}
+        titleMain={isAr ? 'تواصل' : 'Contact'}
+        titleGradient={isAr ? 'معنا' : 'Us'}
+        subtitle={
+          isAr
+            ? 'بيانات التواصل الرسمية لمنصة UpKlick داخل جمهورية مصر العربية (رقم الهاتف، البريد الإلكتروني، والعنوان)'
+            : 'Official contact details for UpKlick in the Arab Republic of Egypt (Mobile Number, Email Address, and Physical Address)'
+        }
+        isAr={isAr}
+      />
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
+          gap: 18,
+          marginBottom: 24
+        }}
+      >
+        <div className="uk-card" style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <span className="uk-step-num" style={{ width: 36, height: 36 }}>
+              <Phone size={18} />
+            </span>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--t2)', fontWeight: 700 }}>
+                {isAr ? 'رقم الهاتف داخل مصر (Mobile No. in Egypt)' : 'Mobile No. inside Egypt'}
+              </div>
+              <a
+                href={UPKLICK_CONTACT_INFO.phoneHref}
+                dir="ltr"
+                style={{ fontSize: 18, fontWeight: 800, color: '#fff', textDecoration: 'none' }}
+              >
+                {UPKLICK_CONTACT_INFO.phoneDisplay}
+              </a>
+            </div>
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--t2)' }}>
+            {isAr
+              ? `الرقم المحلي داخل مصر: ${UPKLICK_CONTACT_INFO.phoneLocal} (متاح اتصال وواتساب)`
+              : `Local Egypt Mobile: ${UPKLICK_CONTACT_INFO.phoneLocal} (Voice & WhatsApp Support)`}
+          </div>
+        </div>
+
+        <div className="uk-card" style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <span className="uk-step-num" style={{ width: 36, height: 36 }}>
+              <Mail size={18} />
+            </span>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--t2)', fontWeight: 700 }}>
+                {isAr ? 'البريد الإلكتروني الرسمي (Email Address)' : 'Official Email Address'}
+              </div>
+              <a
+                href={`mailto:${UPKLICK_CONTACT_INFO.emailPrimary}`}
+                style={{ fontSize: 16.5, fontWeight: 800, color: '#fff', textDecoration: 'none' }}
+              >
+                {UPKLICK_CONTACT_INFO.emailPrimary}
+              </a>
+            </div>
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--t2)' }}>
+            {isAr ? 'بريد إضافي للدعم:' : 'Secondary Email:'}{' '}
+            <a href={`mailto:${UPKLICK_CONTACT_INFO.emailSecondary}`} style={{ color: 'var(--or)' }}>
+              {UPKLICK_CONTACT_INFO.emailSecondary}
+            </a>
+          </div>
+        </div>
+
+        <div className="uk-card" style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <span className="uk-step-num" style={{ width: 36, height: 36 }}>
+              <MapPin size={18} />
+            </span>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--t2)', fontWeight: 700 }}>
+                {isAr ? 'العنوان الفعلي (Physical Address - Egypt)' : 'Physical Address (Egypt)'}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>
+                {isAr ? UPKLICK_CONTACT_INFO.addressAr : UPKLICK_CONTACT_INFO.addressEn}
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--t2)' }}>
+            {isAr ? UPKLICK_CONTACT_INFO.hoursAr : UPKLICK_CONTACT_INFO.hoursEn}
+          </div>
+        </div>
+      </div>
+
+      <CardSection
+        num="01"
+        title={isAr ? 'أرسل لنا رسالة مباشرة' : 'Send Us a Direct Message'}
+      >
+        {sent ? (
+          <div
+            style={{
+              background: 'rgba(0, 217, 139, 0.12)',
+              border: '1px solid rgba(0, 217, 139, 0.4)',
+              borderRadius: 14,
+              padding: '18px 22px',
+              color: '#fff'
+            }}
+          >
+            <strong style={{ color: '#00d98b', display: 'block', marginBottom: 4 }}>
+              {isAr ? 'تم إرسال رسالتك بنجاح!' : 'Your message has been received!'}
+            </strong>
+            <span>
+              {isAr
+                ? `سيتواصل معك فريق دعم UpKlick قريباً عبر البريد الإلكتروني أو الهاتف (${UPKLICK_CONTACT_INFO.phoneDisplay}).`
+                : `Our support team will get back to you shortly via email or phone (${UPKLICK_CONTACT_INFO.phoneDisplay}).`}
+            </span>
+          </div>
+        ) : (
+          <form onSubmit={handleContactSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--t1)' }}>
+                  {isAr ? 'الاسم بالكامل *' : 'Full Name *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={isAr ? 'أدخل اسمك بالكامل' : 'Enter your full name'}
+                  className="uk-inp"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--t1)' }}>
+                  {isAr ? 'البريد الإلكتروني *' : 'Email Address *'}
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="uk-inp"
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--t1)' }}>
+                  {isAr ? 'رقم الموبايل (مصر) *' : 'Mobile Number (Egypt) *'}
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="010XXXXXXXX"
+                  className="uk-inp"
+                />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--t1)' }}>
+                {isAr ? 'رسالتك أو استفسارك *' : 'Your Message or Inquiry *'}
+              </label>
+              <textarea
+                rows={4}
+                required
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder={isAr ? 'اكتب تفاصيل استفسارك هنا...' : 'How can we help you?'}
+                className="uk-inp"
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+            <div>
+              <button type="submit" className="uk-btn uk-btn-prime" style={{ padding: '12px 26px', fontSize: 14 }}>
+                <Mail size={16} />
+                <span>{isAr ? 'إرسال الرسالة' : 'Send Message'}</span>
+              </button>
+            </div>
+          </form>
+        )}
+      </CardSection>
+
+      <CardSection
+        num="02"
+        title={isAr ? 'روابط السياسات المعتمدة والدفع' : 'Official Policies & Checkout Links'}
+      >
+        <ul>
+          <li><a href="/privacy-policy">{isAr ? 'سياسة الخصوصية (Privacy Policy)' : 'Privacy Policy'}</a></li>
+          <li><a href="/refund-policy">{isAr ? 'سياسة الاسترجاع والإلغاء (Refund Policy — There is no refund)' : 'Refund & Cancellation Policy (There is no refund)'}</a></li>
+          <li><a href="/shipping-policy">{isAr ? 'سياسة الشحن والتسليم (Shipping Policy — There is no shipping)' : 'Shipping & Delivery Policy (There is no shipping)'}</a></li>
+          <li><a href="/terms-of-service">{isAr ? 'شروط الخدمة (Terms of Service)' : 'Terms of Service'}</a></li>
+          <li><a href="/checkout">{isAr ? 'صفحة الدفع والاشتراك (Checkout Page)' : 'Checkout & Subscription Page (/checkout)'}</a></li>
+        </ul>
       </CardSection>
     </>
   );

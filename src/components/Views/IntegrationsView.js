@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../context/BusinessContext';
+import CustomerEmailHub from '../email/CustomerEmailHub';
 
 export default function IntegrationsView() {
   const { lang, L, t, GC, saveGC } = useBusiness();
@@ -330,6 +331,10 @@ export default function IntegrationsView() {
       {/* ================= TAB 3: MARKETING ================= */}
       {activeTab === 'integ-marketing' && (
         <div className="tab-panel on" id="integ-marketing">
+          <div style={{ marginBottom: '20px' }}>
+            <CustomerEmailHub defaultView="settings" />
+          </div>
+
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
               <span style={{ fontSize: '32px' }}>📧</span>
