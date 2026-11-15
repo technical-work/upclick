@@ -25,7 +25,7 @@ export const UPKLICK_CONTACT_INFO = {
   phoneLocal: '01038979275',
   phoneHref: 'tel:+201038979275',
   whatsappHref: 'https://wa.me/201038979275',
-  emailPrimary: 'support@upklick.net',
+  emailPrimary: 'upklickofficial@gmail.com',
   emailSecondary: 'hello@upklick.io',
   addressAr: '14 شارع مكرم عبيد، مدينة نصر، القاهرة، جمهورية مصر العربية',
   addressEn: '14 Makram Ebeid St., Nasr City, Cairo, Arab Republic of Egypt',
